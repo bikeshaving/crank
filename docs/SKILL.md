@@ -16,22 +16,33 @@ metadata:
 Crank provides a `jsx` tagged template literal that runs directly in the browser with no transpiler, no bundler, and no build step. This is the recommended approach for single-file HTML artifacts, prototypes, and demos.
 
 ```html
-<script type="module">
-import {jsx, renderer} from "https://esm.sh/@b9g/crank/standalone";
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>Crank App</title>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import {jsx, renderer} from "https://cdn.jsdelivr.net/npm/@b9g/crank/standalone.js";
 
-function *Counter() {
-  let count = 0;
-  const onclick = () => this.refresh(() => count++);
+    function *Counter() {
+      let count = 0;
+      const onclick = () => this.refresh(() => count++);
 
-  for ({} of this) {
-    yield jsx`
-      <button onclick=${onclick}>Count: ${count}</button>
-    `;
-  }
-}
+      for ({} of this) {
+        yield jsx`
+          <button onclick=${onclick}>Count: ${count}</button>
+        `;
+      }
+    }
 
-renderer.render(jsx`<${Counter} />`, document.getElementById("app"));
-</script>
+    renderer.render(jsx`<${Counter} />`, document.getElementById("app"));
+  </script>
+</body>
+</html>
 ```
 
 The standalone module exports both the `jsx` tag and the DOM `renderer` in a single import. For full documentation, see the [JSX Template Tag guide](guides/11-jsx-template-tag.md).
@@ -120,6 +131,7 @@ Read these two files for complete API coverage and idiomatic patterns:
 - [JSX Template Tag](guides/11-jsx-template-tag.md)
 - [Reference for React Developers](guides/13-reference-for-react-developers.md)
 - [Custom Renderers](guides/14-custom-renderers.md)
+- [Usage with LLMs](guides/15-usage-with-llms.md)
 
 ## Blog Posts
 - [Introducing Crank](blog/2020-04-15-introducing-crank.md)
