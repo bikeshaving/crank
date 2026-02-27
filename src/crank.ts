@@ -905,11 +905,6 @@ const defaultAdapter: RenderAdapter<any, any, any, any> = {
 	finalize: NOOP,
 };
 
-export type ComponentIdMode = "fast" | "stable";
-export interface RendererOptions {
-	componentIdMode?: ComponentIdMode;
-}
-
 /**
  * An abstract class which is subclassed to render to different target
  * environments. Subclasses call super() with a custom RenderAdapter object.
@@ -933,13 +928,10 @@ export class Renderer<
 	 */
 	declare cache: WeakMap<object, Retainer<TNode, TScope>>;
 	declare adapter: RenderAdapter<TNode, TScope, TRoot, TResult>;
-	constructor(
-		adapter: Partial<RenderAdapter<TNode, TScope, TRoot, TResult>>,
-		options?: RendererOptions,
-	) {
+	constructor(adapter: Partial<RenderAdapter<TNode, TScope, TRoot, TResult>>) {
 		this.cache = new WeakMap();
 		this.adapter = {...defaultAdapter, ...adapter};
-		initComponentIdState(this.adapter, options?.componentIdMode ?? "fast");
+		initComponentIdState(this.adapter);
 	}
 
 	/**
@@ -2330,12 +2322,8 @@ interface ComponentIdState {
 
 const componentIdStates = new WeakMap<object, ComponentIdState>();
 
-function initComponentIdState(adapter: object, mode: ComponentIdMode): void {
-	let counter = 0;
-	const generate =
-		mode === "stable"
-			? (fn: Function) => `crank-${djb2Hash(fn.toString())}`
-			: (_fn: Function) => `crank-${++counter}`;
+function initComponentIdState(adapter: object): void {
+	const generate = (fn: Function) => `crank-${djb2Hash(fn.toString())}`;
 	componentIdStates.set(adapter, {ids: new WeakMap(), generate});
 }
 
