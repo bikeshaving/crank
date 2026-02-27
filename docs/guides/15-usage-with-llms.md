@@ -28,7 +28,7 @@ automatically. Download and unzip the skill into your global skills directory:
 
 ```shell
 curl -L https://crank.js.org/skill -o /tmp/crank-skill.zip
-unzip -o /tmp/crank-skill.zip -d ~/.claude/skills/
+unzip -o /tmp/crank-skill.zip -d ~/.claude/skills/crank-component-authoring/
 ```
 
 This creates `~/.claude/skills/crank-component-authoring/SKILL.md`, which
