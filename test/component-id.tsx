@@ -91,7 +91,7 @@ test("different components from the same HOC get different IDs", () => {
 		return <div />;
 	});
 
-	const ComponentC = Hoc((props, ctx) => {
+	const ComponentC = Hoc((_props: unknown, ctx: Context) => {
 		idC = ctx.componentId;
 		return <div />;
 	});
@@ -106,6 +106,39 @@ test("different components from the same HOC get different IDs", () => {
 	);
 	Assert.ok(idA !== idB);
 	Assert.ok(idA !== idC);
+});
+
+test("different components inside the same HOC get different IDs", () => {
+	let idA: string | undefined;
+	let idB: string | undefined;
+
+	function ComponentAInner(this: Context) {
+		return <div />;
+	}
+
+	function ComponentBInner(this: Context) {
+		return <div />;
+	}
+
+	function Hoc(Component: any) {
+		return function Wrapped(this: Context, props: any) {
+			if (Component === ComponentAInner) idA = this.componentId;
+			if (Component === ComponentBInner) idB = this.componentId;
+			return <Component {...props} />;
+		};
+	}
+
+	const ComponentA = Hoc(ComponentAInner);
+	const ComponentB = Hoc(ComponentBInner);
+
+	renderer.render(
+		<div>
+			<ComponentA />
+			<ComponentB />
+		</div>,
+		document.body,
+	);
+	Assert.ok(idA !== idB);
 });
 
 test("componentId is stable across re-renders in a generator component", () => {
@@ -126,13 +159,13 @@ test("componentId is stable across re-renders in a generator component", () => {
 	Assert.is(ids[1], ids[2]);
 });
 
-test("stable mode produces same ID across separate renderer instances", () => {
+test("same ID across separate renderer instances", () => {
 	function MyComponent(this: Context) {
 		return <div>{this.componentId}</div>;
 	}
 
-	const rendererA = new DOMRenderer({componentIdMode: "stable"});
-	const rendererB = new DOMRenderer({componentIdMode: "stable"});
+	const rendererA = new DOMRenderer();
+	const rendererB = new DOMRenderer();
 
 	const rootA = document.createElement("div");
 	const rootB = document.createElement("div");
@@ -148,7 +181,7 @@ test("stable mode produces same ID across separate renderer instances", () => {
 	rendererB.render(null, rootB);
 });
 
-test("fast mode IDs increment per renderer", () => {
+test("different components in same renderer get different IDs", () => {
 	let idA: string | undefined;
 	let idB: string | undefined;
 
