@@ -13,7 +13,7 @@ The skill is a Markdown document that packages Crank’s component specification
 style guide, and worked examples into one file. It teaches AI assistants the
 framework’s idioms (generators for state, `this.refresh()` for updates,
 async functions for data fetching) so they produce code that actually works
-instead of guessing based on React patterns.
+instead of guessing based on inconsistent training data.
 
 Download the latest skill: [crank.js.org/skill](https://crank.js.org/skill)
 
