@@ -129,6 +129,80 @@ function generateJavaScriptIFrameHTML(
 	`;
 }
 
+function generateHTMLIFrameHTML(id: number, code: string): string {
+	// Inject our scripts at the end of <body> (or before </body> if present)
+	const scripts = `
+		<script>
+			${getColorSchemeScript()}
+
+			// Listen for color scheme changes from parent
+			window.addEventListener('storage', (e) => {
+				if (e.key === 'color-scheme' && (e.newValue === 'dark' || e.newValue === 'light')) {
+					const isDark = e.newValue === 'dark';
+					document.documentElement.dataset.theme = e.newValue;
+					document.documentElement.style.setProperty('--bg-color', isDark ? '#0a0e1f' : '#e7f4f5');
+					document.documentElement.style.setProperty('--text-color', isDark ? '#f5f9ff' : '#0a0e1f');
+					document.documentElement.classList.toggle('color-scheme-light', !isDark);
+					document.body.classList.toggle('color-scheme-light', !isDark);
+				}
+			});
+
+			window.addEventListener("load", (ev) => {
+				window.parent.postMessage(
+					JSON.stringify({type: "executed", id: ${id}}),
+					window.location.origin,
+				);
+			});
+
+			window.addEventListener("error", (ev) => {
+				if (/ResizeObserver loop completed with undelivered notifications/.test(ev.message)) {
+					return;
+				}
+
+				window.parent.postMessage(
+					JSON.stringify({type: "error", id: ${id}, message: ev.message}),
+					window.location.origin,
+				);
+			});
+
+			window.addEventListener("unhandledrejection", (ev) => {
+				if (/ResizeObserver loop completed with undelivered notifications/.test(ev.reason.message)) {
+					return;
+				}
+				window.parent.postMessage(
+					JSON.stringify({type: "error", id: ${id}, message: ev.reason.message}),
+					window.location.origin,
+				);
+			});
+
+			const obs = new ResizeObserver((entries) => {
+				const height = Math.max(entries[0].contentRect.height, 100);
+				if (
+					document.documentElement.clientHeight <
+					document.documentElement.scrollHeight
+				) {
+					window.parent.postMessage(
+						JSON.stringify({
+							type: "resize",
+							id: ${id},
+							height,
+						}),
+						window.location.origin,
+					);
+				}
+			})
+
+			obs.observe(document.documentElement);
+		</script>
+	`;
+
+	// Insert scripts before </body> if present, otherwise append to the end
+	if (/<\/body>/i.test(code)) {
+		return code.replace(/<\/body>/i, scripts + "</body>");
+	}
+	return code + scripts;
+}
+
 function generatePythonIFrameHTML(
 	id: number,
 	code: string,
@@ -251,7 +325,7 @@ export function* CodePreview(
 		value: string;
 		visible?: boolean;
 		autoresize?: boolean;
-		language?: "javascript" | "python";
+		language?: "javascript" | "python" | "html";
 	},
 ): any {
 	const id = globalId++;
@@ -266,6 +340,7 @@ export function* CodePreview(
 
 	const currentLanguage = language || "javascript";
 	const isPython = currentLanguage === "python";
+	const isHTML = currentLanguage === "html";
 
 	let staticURLs: Record<string, any> | undefined;
 	let execute: () => unknown;
@@ -292,11 +367,14 @@ export function* CodePreview(
 
 			let code = value;
 
-			if (isPython) {
+			if (isHTML) {
+				// Raw HTML - inject directly with messaging scripts
+				document1.write(generateHTMLIFrameHTML(id, code));
+			} else if (isPython) {
 				// Python code - no transformation needed
 				document1.write(generatePythonIFrameHTML(id, code, staticURLs!));
 			} else {
-				// JavaScript code - transform with Babel
+				// JavaScript code - transform with acorn
 				try {
 					const parsed = transform(value);
 					code = parsed.code;

@@ -155,7 +155,7 @@ export function* InlineCodeBlock(
 									visible=${isIntersecting}
 									autoresize
 									showStatus
-									language=${lang.startsWith("python") ? "python" : "javascript"}
+									language=${lang.startsWith("python") ? "python" : lang.startsWith("html") ? "html" : "javascript"}
 								/>
 							</div>
 						`

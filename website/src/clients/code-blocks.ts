@@ -15,6 +15,7 @@ if (containers.length > 0) {
 			Prism.default.manual = true;
 			await Promise.all([
 				import("prismjs/components/prism-javascript"),
+				import("prismjs/components/prism-markup"),
 				import("prismjs/components/prism-diff"),
 				import("prismjs/components/prism-bash"),
 			]);

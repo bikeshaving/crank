@@ -32,7 +32,7 @@ Crank supports both formats.
 
 The classic transform turns JSX elements into `createElement()` calls.
 
-```jsx notoggle
+```jsx
 /** @jsx createElement */
 import {createElement} from "@b9g/crank";
 
@@ -41,7 +41,7 @@ const el = <div id="hello">An element</div>;
 
 Transpiles to:
 
-```js notoggle
+```js
 import {createElement} from "@b9g/crank";
 
 const el = createElement("div", {id: "element"}, "An element");
@@ -51,7 +51,7 @@ With the classic transform, the `createElement` function must be manually
 imported. The automatic transform turns JSX elements into function calls from
 an automatically imported namespace.
 
-```jsx notoggle
+```jsx
 /** @jsxImportSource @b9g/crank */
 
 const profile = (
@@ -64,7 +64,7 @@ const profile = (
 ```
 Transpiles to:
 
-```js notoggle
+```js
 import { jsx as _jsx } from "@b9g/crank/jsx-runtime";
 import { jsxs as _jsxs } from "@b9g/crank/jsx-runtime";
 
