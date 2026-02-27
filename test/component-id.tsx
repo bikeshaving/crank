@@ -70,6 +70,44 @@ test("different components get different IDs", () => {
 	Assert.ok(idA !== idB);
 });
 
+test("different components from the same HOC get different IDs", () => {
+	let idA: string | undefined;
+	let idB: string | undefined;
+	let idC: string | undefined;
+
+	function Hoc(Component: any) {
+		return function Wrapped(props: any) {
+			return <Component {...props} />;
+		};
+	}
+
+	const ComponentA = Hoc(function ComponentA(this: Context) {
+		idA = this.componentId;
+		return <div />;
+	});
+
+	const ComponentB = Hoc(function ComponentB(this: Context) {
+		idB = this.componentId;
+		return <div />;
+	});
+
+	const ComponentC = Hoc((props, ctx) => {
+		idC = ctx.componentId;
+		return <div />;
+	});
+
+	renderer.render(
+		<div>
+			<ComponentA />
+			<ComponentB />
+			<ComponentC />
+		</div>,
+		document.body,
+	);
+	Assert.ok(idA !== idB);
+	Assert.ok(idA !== idC);
+});
+
 test("componentId is stable across re-renders in a generator component", () => {
 	const ids: string[] = [];
 	function* Component(this: Context) {
