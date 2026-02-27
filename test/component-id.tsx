@@ -25,7 +25,7 @@ test("basic access returns a crank- prefixed string", () => {
 	}
 
 	renderer.render(<Component />, document.body);
-	Assert.is(capturedId!, "crank-1");
+	Assert.is(capturedId!, "crank-109thto");
 });
 
 test("two instances of the same component get identical IDs", () => {
