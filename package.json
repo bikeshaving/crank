@@ -115,7 +115,7 @@
   "bugs": {
     "url": "https://github.com/bikeshaving/crank/issues"
   },
-  "description": "The Just JavaScript Framework.",
+  "description": "The Just JavaScript UI Framework.",
   "homepage": "https://crank.js.org",
   "license": "MIT",
   "private": true,
