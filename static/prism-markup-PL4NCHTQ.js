@@ -1,7 +1,7 @@
 import {
   init_Buffer,
   init_process
-} from "./chunk-Z5A3KT4W.js";
+} from "./chunk-HNZBFXQU.js";
 
 // node_modules/prismjs/components/prism-markup.js
 init_Buffer();

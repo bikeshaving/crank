@@ -5,11 +5,11 @@ import {
   camelToKebabCase,
   createElement,
   formatStyleValue
-} from "./chunk-DH2YG64X.js";
+} from "./chunk-4BVTMV6T.js";
 import {
   init_Buffer,
   init_process
-} from "./chunk-Z5A3KT4W.js";
+} from "./chunk-HNZBFXQU.js";
 
 // node_modules/@b9g/crank/standalone.js
 init_Buffer();

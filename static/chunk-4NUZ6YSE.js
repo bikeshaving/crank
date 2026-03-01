@@ -2,7 +2,7 @@ import {
   __commonJS,
   init_Buffer,
   init_process
-} from "./chunk-Z5A3KT4W.js";
+} from "./chunk-HNZBFXQU.js";
 
 // node_modules/prismjs/prism.js
 var require_prism = __commonJS({

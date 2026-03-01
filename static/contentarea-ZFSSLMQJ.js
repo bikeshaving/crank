@@ -1,10 +1,10 @@
 import {
   Edit
-} from "./chunk-HYWJG25E.js";
+} from "./chunk-MMVEEDTX.js";
 import {
   init_Buffer,
   init_process
-} from "./chunk-Z5A3KT4W.js";
+} from "./chunk-HNZBFXQU.js";
 
 // node_modules/@b9g/revise/contentarea.js
 init_Buffer();
