@@ -101,6 +101,7 @@ export function* Root(
 					<script type="module" src=${assets.codeBlocksScript}></script>
 					<script type="module" src=${assets.searchScript}></script>
 					<script type="module" src=${assets.gearScript}></script>
+					<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "2778280e10354cd5b1ec2458a0a095b4"}'></script>
 				</body>
 			</html>
 		`;
