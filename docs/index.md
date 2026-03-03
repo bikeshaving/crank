@@ -5,9 +5,9 @@ description: "The Just JavaScript UI framework. Crank is a UI library where you 
 
 ## What is Crank.js?
 
-Crank is a JavaScript / TypeScript library for building websites and
-applications. It is a UI framework where components are defined with plain old
-functions, including async and generator functions.
+Crank is a JavaScript/TypeScript library for building websites and
+applications. It is a UI framework where components are defined with plain
+JavaScript functions, generators, and promises.
 
 ## Why is Crank “Just JavaScript?”
 

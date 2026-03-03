@@ -52,7 +52,7 @@ function CopySection() {
 				<dt>Tagline</dt>
 				<dd>${"\u201CThe Just JavaScript UI Framework\u201D"}</dd>
 				<dt>Description</dt>
-				<dd>Crank is a JavaScript/TypeScript library for building websites and applications. It is a UI framework where components are defined with plain old functions, including async and generator functions.</dd>
+				<dd>Crank is a JavaScript/TypeScript library for building websites and applications. It is a UI framework where components are defined with plain JavaScript functions, generators, and promises.</dd>
 				<dt>Website</dt>
 				<dd><a href="https://crank.js.org">crank.js.org</a></dd>
 				<dt>Author</dt>
