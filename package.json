@@ -132,7 +132,8 @@
     "test": "playwright-test --runner uvu && cd packages/eslint-plugin-crank && bun test",
     "test:core": "playwright-test --runner uvu",
     "test:eslint": "cd packages/eslint-plugin-crank && bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "skill": "npx @b9g/skillpack docs/SKILL.md -o skills/"
   },
   "type": "module",
   "types": "crank.d.ts",
