@@ -5,9 +5,9 @@ description: Conventions for writing cranky code. Covers component structure, st
 
 Crank is built on the thesis that JavaScript already has all the primitives you need to build UIs. Idiomatic Crank code can humorously be called *cranky*. The following are its four core principles:
 
-1. **Use the language.** Write vanilla JavaScript. Variables are state, control flow is lifecycle, `fetch()` does data fetching.
-2. **Match the platform.** Prefer props like `class`, `for`, `onclick`, `innerHTML`. Use DOM names and conventions.
-3. **Own the execution.** Avoid unnecessary reactive abstractions. Understanding the execution of components is your job, and `this.refresh(() => ...)` makes it legible.
+1. **Use the language.** Write vanilla JavaScript. Variables are state, control flow handles lifecycle, `fetch()` does data fetching.
+2. **Match the platform.** Use DOM names and conventions: `class`, `for`, `onclick`, `innerHTML`, not framework-specific alternatives.
+3. **Own the execution.** Avoid complex reactive abstractions. Explicit `this.refresh()` calls make state changes legible.
 4. **Compose uniformly.** A component should resemble built-in elements: props in, events out.
 
 For full explanations, see the [Components](03-components.md), [Lifecycles](07-lifecycles.md), and [Async Components](05-async-components.md) guides. Many of the conventions described in this document can be fixed automatically through the [`eslint-plugin-crank`](https://github.com/bikeshaving/crank/tree/main/packages/eslint-plugin-crank) package.
