@@ -1,6 +1,6 @@
 ---
 name: crank-component-authoring
-description: Build interactive web apps, dashboards, visualizations, widgets, landing pages, multi-step forms, blogs, or games with Crank.js, an elegant UI framework which allows you to write components with plain JavaScript functions, including async and generator functions. Use the JSX template tag and CDNs to create single-file HTML. Use for frontend development, prototypes, demos, interactive apps, or converting code from React, Vue, Svelte, Solid, or Angular to Crank.js.
+description: Build web apps, dashboards, landing pages, widgets, calculators, forms, quizzes, charts, visualizations, animations, dynamic SVGs, MathML equations, blogs, or games as single-file HTML with no build step, using Crank.js, an elegant UI framework which allows you to write components with plain JavaScript functions, generators, and promises. Use when user asks to create something interactive, build a single-file HTML app, or start a greenfield frontend project. Always trigger when converting code from React, Vue, Svelte, Solid, or any other web framework to Crank.js, when the user mentions Crank by name, or when comparing different web/UI frameworks. Not for projects already using other frameworks.
 license: MIT
 metadata:
   author: Brian Kim
