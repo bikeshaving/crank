@@ -173,6 +173,34 @@ function MaybeGreeting({name}) {
 }
 ```
 
+❌ **Don't** use `<Fragment>` when `<>` suffices:
+
+```jsx
+// ❌ verbose
+yield (
+  <Fragment>
+    <Header />
+    <Main />
+  </Fragment>
+);
+
+// ✅ short syntax
+yield (
+  <>
+    <Header />
+    <Main />
+  </>
+);
+
+// ✅ Fragment when a key is needed
+yield items.map((item) => (
+  <Fragment key={item.id}>
+    <dt>{item.term}</dt>
+    <dd>{item.definition}</dd>
+  </Fragment>
+));
+```
+
 ### State Updates
 
 ❌ **Don’t** mutate state and call `refresh()` as separate steps:
@@ -381,6 +409,25 @@ function *App({mode}) {
 }
 ```
 
+✅ **Do** use an incrementing counter in the outer scope when you need component instance IDs:
+
+```jsx
+let nextId = 0;
+function *DynamicField({label}) {
+  // unique per instance, stable across re-renders
+  const id = `field-${nextId++}`;
+
+  for ({label} of this) {
+    yield (
+      <>
+        <label for={id}>{label}</label>
+        <input id={id} />
+      </>
+    );
+  }
+}
+```
+
 ### Cleanup
 
 ❌ **Don’t** leave timers, listeners, or subscriptions without cleanup. They outlive the component and leak:
@@ -498,6 +545,27 @@ function *Measurable() {
 function MyInput({ref, class: cls, ...props}) {
   // ✅ forward ref to the root element
   return <input ref={ref} class={"my-input " + cls} {...props} />;
+}
+```
+
+❌ **Don't** place `this.schedule()` or `this.after()` outside the loop unless you only want them to fire once:
+
+```jsx
+function *AutoSave({data}) {
+  // ❌ only fires on mount, not on updates
+  this.after(() => save(data));
+
+  for ({data} of this) {
+    yield <Form data={data} />;
+  }
+}
+
+function *AutoSave({data}) {
+  for ({data} of this) {
+    // ✅ fires after every render
+    this.after(() => save(data));
+    yield <Form data={data} />;
+  }
 }
 ```
 
