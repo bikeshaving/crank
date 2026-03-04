@@ -242,45 +242,50 @@ The template tag normalizes whitespace to match JSX conventions:
 - A backslash before a newline (`\` at end of line) preserves the preceding whitespace and removes the backslash.
 - Trailing whitespace at the end of the template is trimmed.
 
-## Kitchen Sink
-
-Every template tag feature in one snippet:
+## Quick Reference
 
 ```js
 jsx`
-  <!-- Comments are ignored -->
+  <!-- host element -->
+  <div />
 
-  <!-- Host elements with boolean, string, expression, and spread props -->
-  <input disabled type="text" value=${val} ...${props} />
+  <!-- component element with shorthand close -->
+  <${Component}>children<//>
 
-  <!-- Component elements -->
-  <${Component} onclick=${handler}>children<//>
+  <!-- comment-style close -->
+  <${Component}>children<//Component>
 
-  <!-- Fragment shorthand -->
+  <!-- fragment shorthand -->
   <>
-    <p>First</p>
-    <p>Second</p>
+    <p>first</p>
+    <p>second</p>
   </>
 
-  <!-- Keyed fragment -->
+  <!-- keyed fragment -->
   <${Fragment} key=${id}>
     <dt>${term}</dt>
     <dd>${definition}</dd>
   <//>
 
-  <!-- Conditional children -->
+  <!-- boolean, string, interpolated string, expression, and spread props -->
+  <input disabled type="text" class="a ${b} c" value=${val} ...${props} />
+
+  <!-- conditional child -->
   ${show && jsx`<${Alert} message=${msg} />`}
 
-  <!-- Mapped children with keys -->
-  <ul>
-    ${items.map((item) => jsx`
-      <li key=${item.id}>${item.name}</li>
-    `)}
-  </ul>
+  <!-- mapped children with keys -->
+  ${items.map((d) => jsx`<li key=${d.id}>${d.name}</li>`)}
+
+  <!-- commenting out a tree: expressions inside comments are discarded -->
+  <!--
+    <${Component} onclick=${handler}>
+      <p>${text}</p>
+    <//>
+  -->
 `
 ```
 
-Multiple root elements are supported — no wrapping fragment needed.
+Multiple root elements are supported — the template tag automatically wraps them in a fragment.
 
 ## Caching
 

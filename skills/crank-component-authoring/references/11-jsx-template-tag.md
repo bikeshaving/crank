@@ -242,6 +242,51 @@ The template tag normalizes whitespace to match JSX conventions:
 - A backslash before a newline (`\` at end of line) preserves the preceding whitespace and removes the backslash.
 - Trailing whitespace at the end of the template is trimmed.
 
+## Quick Reference
+
+```js
+jsx`
+  <!-- host element -->
+  <div />
+
+  <!-- component element with shorthand close -->
+  <${Component}>children<//>
+
+  <!-- comment-style close -->
+  <${Component}>children<//Component>
+
+  <!-- fragment shorthand -->
+  <>
+    <p>first</p>
+    <p>second</p>
+  </>
+
+  <!-- keyed fragment -->
+  <${Fragment} key=${id}>
+    <dt>${term}</dt>
+    <dd>${definition}</dd>
+  <//>
+
+  <!-- boolean, string, interpolated string, expression, and spread props -->
+  <input disabled type="text" class="a ${b} c" value=${val} ...${props} />
+
+  <!-- conditional child -->
+  ${show && jsx`<${Alert} message=${msg} />`}
+
+  <!-- mapped children with keys -->
+  ${items.map((d) => jsx`<li key=${d.id}>${d.name}</li>`)}
+
+  <!-- commenting out a tree: expressions inside comments are discarded -->
+  <!--
+    <${Component} onclick=${handler}>
+      <p>${text}</p>
+    <//>
+  -->
+`
+```
+
+Multiple root elements are supported — the template tag automatically wraps them in a fragment.
+
 ## Caching
 
 The template tag caches parse results keyed by the raw template strings. On subsequent calls with the same template, the cached AST is reused and only the expression values are updated. This makes repeated renders efficient — the parsing cost is paid once per unique template site.

@@ -103,6 +103,51 @@ Crank components are plain JavaScript functions and generators. State is variabl
 - Props are plain values — destructure and transform them freely.
 - Shared logic is plain classes, functions, and modules.
 
+## JSX Template Tag — Quick Reference
+
+```js
+jsx`
+  <!-- host element -->
+  <div />
+
+  <!-- component element with shorthand close -->
+  <${Component}>children<//>
+
+  <!-- comment-style close -->
+  <${Component}>children<//Component>
+
+  <!-- fragment shorthand -->
+  <>
+    <p>first</p>
+    <p>second</p>
+  </>
+
+  <!-- keyed fragment -->
+  <${Fragment} key=${id}>
+    <dt>${term}</dt>
+    <dd>${definition}</dd>
+  <//>
+
+  <!-- boolean, string, interpolated string, expression, and spread props -->
+  <input disabled type="text" class="a ${b} c" value=${val} ...${props} />
+
+  <!-- conditional child -->
+  ${show && jsx`<${Alert} message=${msg} />`}
+
+  <!-- mapped children with keys -->
+  ${items.map((d) => jsx`<li key=${d.id}>${d.name}</li>`)}
+
+  <!-- commenting out a tree: expressions inside comments are discarded -->
+  <!--
+    <${Component} onclick=${handler}>
+      <p>${text}</p>
+    <//>
+  -->
+`
+```
+
+Multiple root elements are supported — the template tag automatically wraps them in a fragment.
+
 ## References
 
 Read these two files for complete API coverage and idiomatic patterns:
