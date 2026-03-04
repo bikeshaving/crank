@@ -34,11 +34,11 @@
 			" data-index="2"><code>  <span class="token keyword">return</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>div</span><span class="token punctuation">&gt;</span></span>Hello<span class="token punctuation">,</span> <span class="token punctuation">{</span>name<span class="token punctuation">}</span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>div</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-215" class="props">
+			" data-index="3"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-216" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-215'] = {"code":"\u002F\u002F ✅ plain function for stateless components\nfunction Greeting({name}) {\n  return \u003Cdiv\u003EHello, {name}\u003C\u002Fdiv\u003E;\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-216'] = {"code":"\u002F\u002F ✅ plain function for stateless components\nfunction Greeting({name}) {\n  return \u003Cdiv\u003EHello, {name}\u003C\u002Fdiv\u003E;\n}","lang":"jsx"};
 		</script></div><p>❌ <strong>Don’t</strong> use arrow functions for components:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -78,11 +78,11 @@
 			" data-index="10"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="11"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-216" class="props">
+			" data-index="11"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-217" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-216'] = {"code":"\u002F\u002F ❌ arrow functions can't be generators or access this\nconst Counter = () =\u003E {\n  \u002F\u002F this.refresh is not available\n  return \u003Cdiv \u002F\u003E;\n};\n\n\u002F\u002F ✅ function declarations work with this and generators\nfunction *Counter() {\n  for ({} of this) {\n    yield \u003Cdiv \u002F\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-217'] = {"code":"\u002F\u002F ❌ arrow functions can't be generators or access this\nconst Counter = () =\u003E {\n  \u002F\u002F this.refresh is not available\n  return \u003Cdiv \u002F\u003E;\n};\n\n\u002F\u002F ✅ function declarations work with this and generators\nfunction *Counter() {\n  for ({} of this) {\n    yield \u003Cdiv \u002F\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><p>❌ <strong>Don&#039;t</strong> use <code class="inline">while (true)</code> for component iteration:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -164,11 +164,11 @@
 			" data-index="24"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="25"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-217" class="props">
+			" data-index="25"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-218" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-217'] = {"code":"function *Counter({label}) {\n  let count = 0;\n  const onclick = () =\u003E this.refresh(() =\u003E count++);\n  \u002F\u002F ❌ label never updates\n  while (true) {\n    yield \u003Cbutton onclick={onclick}\u003E{label}: {count}\u003C\u002Fbutton\u003E;\n  }\n}\n\nfunction *Counter({label}) {\n  let count = 0;\n  const onclick = () =\u003E this.refresh(() =\u003E count++);\n  \u002F\u002F ✅ for...of receives fresh props each render\n  for ({label} of this) {\n    yield \u003Cbutton onclick={onclick}\u003E{label}: {count}\u003C\u002Fbutton\u003E;\n  }\n}\n\n\u002F\u002F ✅ for ({} of this) when the component has no props\nfunction *Counter() {\n  let count = 0;\n  const onclick = () =\u003E this.refresh(() =\u003E count++);\n  for ({} of this) {\n    yield \u003Cbutton onclick={onclick}\u003E{count}\u003C\u002Fbutton\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-218'] = {"code":"function *Counter({label}) {\n  let count = 0;\n  const onclick = () =\u003E this.refresh(() =\u003E count++);\n  \u002F\u002F ❌ label never updates\n  while (true) {\n    yield \u003Cbutton onclick={onclick}\u003E{label}: {count}\u003C\u002Fbutton\u003E;\n  }\n}\n\nfunction *Counter({label}) {\n  let count = 0;\n  const onclick = () =\u003E this.refresh(() =\u003E count++);\n  \u002F\u002F ✅ for...of receives fresh props each render\n  for ({label} of this) {\n    yield \u003Cbutton onclick={onclick}\u003E{label}: {count}\u003C\u002Fbutton\u003E;\n  }\n}\n\n\u002F\u002F ✅ for ({} of this) when the component has no props\nfunction *Counter() {\n  let count = 0;\n  const onclick = () =\u003E this.refresh(() =\u003E count++);\n  for ({} of this) {\n    yield \u003Cbutton onclick={onclick}\u003E{count}\u003C\u002Fbutton\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><p><strong>ESLint rule:</strong> <a href="https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/prefer-props-iterator.ts"><code class="inline">crank/prefer-props-iterator</code></a></p><p>✅ <strong>Do</strong> use the three-region structure of generator components: setup before the loop, render inside it, cleanup after it:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -211,11 +211,11 @@
 			" data-index="11"><code>  <span class="token function">clearInterval</span><span class="token punctuation">(</span>id<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="12"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-218" class="props">
+			" data-index="12"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-219" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-218'] = {"code":"function *Timer() {\n  \u002F\u002F Setup: runs once on mount\n  let seconds = 0;\n  const id = setInterval(() =\u003E this.refresh(() =\u003E seconds++), 1000);\n\n  for ({} of this) {\n    \u002F\u002F Render: runs on every update\n    yield \u003Cp\u003E{seconds}s\u003C\u002Fp\u003E;\n  }\n\n  \u002F\u002F Cleanup: runs once on unmount\n  clearInterval(id);\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-219'] = {"code":"function *Timer() {\n  \u002F\u002F Setup: runs once on mount\n  let seconds = 0;\n  const id = setInterval(() =\u003E this.refresh(() =\u003E seconds++), 1000);\n\n  for ({} of this) {\n    \u002F\u002F Render: runs on every update\n    yield \u003Cp\u003E{seconds}s\u003C\u002Fp\u003E;\n  }\n\n  \u002F\u002F Cleanup: runs once on unmount\n  clearInterval(id);\n}","lang":"jsx"};
 		</script></div><p>❌ <strong>Don’t</strong> put persistent state inside the loop. It resets on every render:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -243,11 +243,11 @@
 			" data-index="6"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-219" class="props">
+			" data-index="7"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-220" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-219'] = {"code":"function *Counter() {\n  for ({} of this) {\n    \u002F\u002F ❌ resets to 0 on every render, counter never advances\n    let count = 0;\n    const onclick = () =\u003E this.refresh(() =\u003E count++);\n    yield \u003Cbutton onclick={onclick}\u003ECount: {count}\u003C\u002Fbutton\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-220'] = {"code":"function *Counter() {\n  for ({} of this) {\n    \u002F\u002F ❌ resets to 0 on every render, counter never advances\n    let count = 0;\n    const onclick = () =\u003E this.refresh(() =\u003E count++);\n    yield \u003Cbutton onclick={onclick}\u003ECount: {count}\u003C\u002Fbutton\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><p>❌ <strong>Don’t</strong> assume code after <code class="inline">yield</code> runs in the current render:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -323,11 +323,11 @@
 			" data-index="22"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="23"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-220" class="props">
+			" data-index="23"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-221" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-220'] = {"code":"function *Logger() {\n  for ({} of this) {\n    yield \u003Cdiv\u003EHello\u003C\u002Fdiv\u003E;\n    \u002F\u002F ❌ this runs on the NEXT render, not after the current one\n    console.log(document.querySelector(\"div\").textContent);\n  }\n}\n\nfunction *Logger() {\n  for ({} of this) {\n    \u002F\u002F ✅ this.after() runs after the current render commits\n    this.after(() =\u003E console.log(document.querySelector(\"div\").textContent));\n    yield \u003Cdiv\u003EHello\u003C\u002Fdiv\u003E;\n  }\n}\n\n\u002F\u002F ✅ for await...of continues past yield immediately\nasync function *Logger() {\n  for await ({} of this) {\n    yield \u003Cdiv\u003EHello\u003C\u002Fdiv\u003E;\n    \u002F\u002F runs right after this render commits\n    console.log(document.querySelector(\"div\").textContent);\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-221'] = {"code":"function *Logger() {\n  for ({} of this) {\n    yield \u003Cdiv\u003EHello\u003C\u002Fdiv\u003E;\n    \u002F\u002F ❌ this runs on the NEXT render, not after the current one\n    console.log(document.querySelector(\"div\").textContent);\n  }\n}\n\nfunction *Logger() {\n  for ({} of this) {\n    \u002F\u002F ✅ this.after() runs after the current render commits\n    this.after(() =\u003E console.log(document.querySelector(\"div\").textContent));\n    yield \u003Cdiv\u003EHello\u003C\u002Fdiv\u003E;\n  }\n}\n\n\u002F\u002F ✅ for await...of continues past yield immediately\nasync function *Logger() {\n  for await ({} of this) {\n    yield \u003Cdiv\u003EHello\u003C\u002Fdiv\u003E;\n    \u002F\u002F runs right after this render commits\n    console.log(document.querySelector(\"div\").textContent);\n  }\n}","lang":"jsx"};
 		</script></div><p>❌ <strong>Don’t</strong> <code class="inline">return</code> from a generator loop unless you want it to restart from scratch on the next update, losing all local state:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -370,11 +370,11 @@
 			" data-index="11"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="12"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-221" class="props">
+			" data-index="12"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-222" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-221'] = {"code":"\u002F\u002F ❌ return restarts the generator, state is lost\nfunction *Greeting({name}) {\n  for ({name} of this) {\n    return \u003Cdiv\u003EHello {name}\u003C\u002Fdiv\u003E;\n  }\n}\n\n\u002F\u002F ✅ yield preserves state across renders\nfunction *Greeting({name}) {\n  for ({name} of this) {\n    yield \u003Cdiv\u003EHello {name}\u003C\u002Fdiv\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-222'] = {"code":"\u002F\u002F ❌ return restarts the generator, state is lost\nfunction *Greeting({name}) {\n  for ({name} of this) {\n    return \u003Cdiv\u003EHello {name}\u003C\u002Fdiv\u003E;\n  }\n}\n\n\u002F\u002F ✅ yield preserves state across renders\nfunction *Greeting({name}) {\n  for ({name} of this) {\n    yield \u003Cdiv\u003EHello {name}\u003C\u002Fdiv\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> return <code class="inline">null</code> for intentionally empty output, never <code class="inline">undefined</code>:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -423,11 +423,11 @@
 			" data-index="13"><code>  <span class="token keyword">return</span> <span class="token keyword">null</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="14"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-222" class="props">
+			" data-index="14"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-223" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-222'] = {"code":"\u002F\u002F ❌ implicit undefined return\nfunction MaybeGreeting({name}) {\n  if (name) {\n    return \u003Cdiv\u003EHello {name}\u003C\u002Fdiv\u003E;\n  }\n}\n\n\u002F\u002F ✅ explicit null\nfunction MaybeGreeting({name}) {\n  if (name) {\n    return \u003Cdiv\u003EHello {name}\u003C\u002Fdiv\u003E;\n  }\n\n  return null;\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-223'] = {"code":"\u002F\u002F ❌ implicit undefined return\nfunction MaybeGreeting({name}) {\n  if (name) {\n    return \u003Cdiv\u003EHello {name}\u003C\u002Fdiv\u003E;\n  }\n}\n\n\u002F\u002F ✅ explicit null\nfunction MaybeGreeting({name}) {\n  if (name) {\n    return \u003Cdiv\u003EHello {name}\u003C\u002Fdiv\u003E;\n  }\n\n  return null;\n}","lang":"jsx"};
 		</script></div><p>❌ <strong>Don&#039;t</strong> use <code class="inline">&lt;Fragment&gt;</code> when <code class="inline">&lt;&gt;</code> suffices:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -500,11 +500,11 @@
 			" data-index="21"><code>  <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span><span class="token class-name">Fragment</span></span><span class="token punctuation">&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="22"><code><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-223" class="props">
+			" data-index="22"><code><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-224" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-223'] = {"code":"\u002F\u002F ❌ verbose\nyield (\n  \u003CFragment\u003E\n    \u003CHeader \u002F\u003E\n    \u003CMain \u002F\u003E\n  \u003C\u002FFragment\u003E\n);\n\n\u002F\u002F ✅ short syntax\nyield (\n  \u003C\u003E\n    \u003CHeader \u002F\u003E\n    \u003CMain \u002F\u003E\n  \u003C\u002F\u003E\n);\n\n\u002F\u002F ✅ Fragment when a key is needed\nyield items.map((item) =\u003E (\n  \u003CFragment key={item.id}\u003E\n    \u003Cdt\u003E{item.term}\u003C\u002Fdt\u003E\n    \u003Cdd\u003E{item.definition}\u003C\u002Fdd\u003E\n  \u003C\u002FFragment\u003E\n));","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-224'] = {"code":"\u002F\u002F ❌ verbose\nyield (\n  \u003CFragment\u003E\n    \u003CHeader \u002F\u003E\n    \u003CMain \u002F\u003E\n  \u003C\u002FFragment\u003E\n);\n\n\u002F\u002F ✅ short syntax\nyield (\n  \u003C\u003E\n    \u003CHeader \u002F\u003E\n    \u003CMain \u002F\u003E\n  \u003C\u002F\u003E\n);\n\n\u002F\u002F ✅ Fragment when a key is needed\nyield items.map((item) =\u003E (\n  \u003CFragment key={item.id}\u003E\n    \u003Cdt\u003E{item.term}\u003C\u002Fdt\u003E\n    \u003Cdd\u003E{item.definition}\u003C\u002Fdd\u003E\n  \u003C\u002FFragment\u003E\n));","lang":"jsx"};
 		</script></div><h3 id="state-updates">State Updates <a class="heading-anchor" href="#state-updates">#</a></h3><p>❌ <strong>Don’t</strong> mutate state and call <code class="inline">refresh()</code> as separate steps:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -553,11 +553,11 @@
 			" data-index="13"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="14"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-224" class="props">
+			" data-index="14"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-225" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-224'] = {"code":"function *Counter() {\n  let count = 0;\n  \u002F\u002F ❌ easy to forget one or the other in longer handlers\n  const onclick = () =\u003E {\n    count++;\n    this.refresh();\n  };\n\n  \u002F\u002F ✅ refresh(() =\u003E ...) runs mutation and re-render atomically\n  const onclick = () =\u003E this.refresh(() =\u003E count++);\n\n  for ({} of this) {\n    yield \u003Cbutton onclick={onclick}\u003ECount: {count}\u003C\u002Fbutton\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-225'] = {"code":"function *Counter() {\n  let count = 0;\n  \u002F\u002F ❌ easy to forget one or the other in longer handlers\n  const onclick = () =\u003E {\n    count++;\n    this.refresh();\n  };\n\n  \u002F\u002F ✅ refresh(() =\u003E ...) runs mutation and re-render atomically\n  const onclick = () =\u003E this.refresh(() =\u003E count++);\n\n  for ({} of this) {\n    yield \u003Cbutton onclick={onclick}\u003ECount: {count}\u003C\u002Fbutton\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><p><strong>ESLint rule:</strong> <a href="https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/prefer-refresh-callback.ts"><code class="inline">crank/prefer-refresh-callback</code></a></p><p>❌ <strong>Don’t</strong> call <code class="inline">refresh()</code> during execution or after unmount:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -594,11 +594,11 @@
 			" data-index="9"><code>  <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-225" class="props">
+			" data-index="10"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-226" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-225'] = {"code":"function *Example() {\n  \u002F\u002F ❌ no-op during execution, emits a warning\n  this.refresh();\n\n  for ({} of this) {\n    yield \u003Cdiv \u002F\u003E;\n  }\n\n  \u002F\u002F ❌ no-op after unmount, emits a warning\n  this.refresh();\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-226'] = {"code":"function *Example() {\n  \u002F\u002F ❌ no-op during execution, emits a warning\n  this.refresh();\n\n  for ({} of this) {\n    yield \u003Cdiv \u002F\u003E;\n  }\n\n  \u002F\u002F ❌ no-op after unmount, emits a warning\n  this.refresh();\n}","lang":"jsx"};
 		</script></div><h3 id="props-and-events">Props and Events <a class="heading-anchor" href="#props-and-events">#</a></h3><p>❌ <strong>Don’t</strong> destructure props in the parameter but skip them in the <code class="inline">for...of</code> binding:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -644,11 +644,11 @@
 			" data-index="12"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="13"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-226" class="props">
+			" data-index="13"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-227" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-226'] = {"code":"function *Greeting({name = \"World\"}) {\n  \u002F\u002F ❌ name captured once, never updated\n  for ({} of this) {\n    yield \u003Cp\u003EHello, {name}\u003C\u002Fp\u003E;\n  }\n}\n\nfunction *Greeting({name = \"World\", formal = false}) {\n  \u002F\u002F ✅ destructure every prop used in the body, with matching defaults\n  for ({name = \"World\", formal = false} of this) {\n    const prefix = formal ? \"Dear\" : \"Hello\";\n    yield \u003Cp\u003E{prefix}, {name}\u003C\u002Fp\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-227'] = {"code":"function *Greeting({name = \"World\"}) {\n  \u002F\u002F ❌ name captured once, never updated\n  for ({} of this) {\n    yield \u003Cp\u003EHello, {name}\u003C\u002Fp\u003E;\n  }\n}\n\nfunction *Greeting({name = \"World\", formal = false}) {\n  \u002F\u002F ✅ destructure every prop used in the body, with matching defaults\n  for ({name = \"World\", formal = false} of this) {\n    const prefix = formal ? \"Dear\" : \"Hello\";\n    yield \u003Cp\u003E{prefix}, {name}\u003C\u002Fp\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><p><strong>ESLint rule:</strong> <a href="https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/prop-destructuring-consistency.ts"><code class="inline">crank/prop-destructuring-consistency</code></a></p><p>❌ <strong>Don’t</strong> use React-style attribute names:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -679,11 +679,11 @@
 			" data-index="7"><code><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>input</span> <span class="token attr-name">onchange</span><span class="token script language-javascript"><span class="token script-punctuation punctuation">=</span><span class="token punctuation">{</span>handler<span class="token punctuation">}</span></span> <span class="token attr-name">onkeydown</span><span class="token script language-javascript"><span class="token script-punctuation punctuation">=</span><span class="token punctuation">{</span>handler<span class="token punctuation">}</span></span> <span class="token punctuation">/&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>circle</span> <span class="token attr-name">stroke-width</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">&quot;</span>2<span class="token punctuation">&quot;</span></span> <span class="token attr-name">fill-opacity</span><span class="token script language-javascript"><span class="token script-punctuation punctuation">=</span><span class="token punctuation">{</span><span class="token number">0.5</span><span class="token punctuation">}</span></span> <span class="token punctuation">/&gt;</span></span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-227" class="props">
+			" data-index="8"><code><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>circle</span> <span class="token attr-name">stroke-width</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">&quot;</span>2<span class="token punctuation">&quot;</span></span> <span class="token attr-name">fill-opacity</span><span class="token script language-javascript"><span class="token script-punctuation punctuation">=</span><span class="token punctuation">{</span><span class="token number">0.5</span><span class="token punctuation">}</span></span> <span class="token punctuation">/&gt;</span></span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-228" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-227'] = {"code":"\u002F\u002F ❌ React aliases: Crank uses standard HTML, SVG, and DOM event names\n\u003Clabel className=\"label\" htmlFor=\"name\"\u003EName\u003C\u002Flabel\u003E\n\u003Cinput onChange={handler} onKeyDown={handler} \u002F\u003E\n\u003Ccircle strokeWidth=\"2\" fillOpacity={0.5} \u002F\u003E\n\n\u002F\u002F ✅ standard DOM names\n\u003Clabel class=\"label\" for=\"name\"\u003EName\u003C\u002Flabel\u003E\n\u003Cinput onchange={handler} onkeydown={handler} \u002F\u003E\n\u003Ccircle stroke-width=\"2\" fill-opacity={0.5} \u002F\u003E","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-228'] = {"code":"\u002F\u002F ❌ React aliases: Crank uses standard HTML, SVG, and DOM event names\n\u003Clabel className=\"label\" htmlFor=\"name\"\u003EName\u003C\u002Flabel\u003E\n\u003Cinput onChange={handler} onKeyDown={handler} \u002F\u003E\n\u003Ccircle strokeWidth=\"2\" fillOpacity={0.5} \u002F\u003E\n\n\u002F\u002F ✅ standard DOM names\n\u003Clabel class=\"label\" for=\"name\"\u003EName\u003C\u002Flabel\u003E\n\u003Cinput onchange={handler} onkeydown={handler} \u002F\u003E\n\u003Ccircle stroke-width=\"2\" fill-opacity={0.5} \u002F\u003E","lang":"jsx"};
 		</script></div><p><strong>ESLint rules:</strong> <a href="https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/no-react-props.ts"><code class="inline">crank/no-react-props</code></a>, <a href="https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/no-react-event-props.ts"><code class="inline">crank/no-react-event-props</code></a>, <a href="https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/no-react-svg-props.ts"><code class="inline">crank/no-react-svg-props</code></a></p><p>❌ <strong>Don’t</strong> pass callback props down through multiple layers:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -720,11 +720,11 @@
 			" data-index="9"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-228" class="props">
+			" data-index="10"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-229" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-228'] = {"code":"function *App() {\n  let todos = [];\n  \u002F\u002F ❌ couples parent and child, clutters intermediate components\n  const ondelete = (id) =\u003E this.refresh(() =\u003E {\n    todos = todos.filter((t) =\u003E t.id !== id);\n  });\n\n  for ({} of this) {\n    yield \u003CTodoList todos={todos} ondelete={ondelete} \u002F\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-229'] = {"code":"function *App() {\n  let todos = [];\n  \u002F\u002F ❌ couples parent and child, clutters intermediate components\n  const ondelete = (id) =\u003E this.refresh(() =\u003E {\n    todos = todos.filter((t) =\u003E t.id !== id);\n  });\n\n  for ({} of this) {\n    yield \u003CTodoList todos={todos} ondelete={ondelete} \u002F\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> use <code class="inline">dispatchEvent</code> in children and <code class="inline">addEventListener</code> in parents. Custom events bubble up the component tree, just like DOM events:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -833,11 +833,11 @@
 			" data-index="33"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="34"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-229" class="props">
+			" data-index="34"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-230" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-229'] = {"code":"class TodoDeleteEvent extends CustomEvent {\n  constructor(id) {\n    super(\"tododelete\", {bubbles: true, detail: {id}});\n  }\n}\n\nfunction *TodoItem({todo}) {\n  const ondelete = () =\u003E {\n    \u002F\u002F ✅ events bubble: children dispatch, parents listen\n    this.dispatchEvent(new TodoDeleteEvent(todo.id));\n  };\n\n  for ({todo} of this) {\n    yield (\n      \u003Cli\u003E\n        {todo.title}\n        \u003Cbutton onclick={ondelete}\u003EDelete\u003C\u002Fbutton\u003E\n      \u003C\u002Fli\u003E\n    );\n  }\n}\n\nfunction *App() {\n  let todos = [];\n\n  this.addEventListener(\"tododelete\", (ev) =\u003E {\n    this.refresh(() =\u003E {\n      todos = todos.filter((t) =\u003E t.id !== ev.detail.id);\n    });\n  });\n\n  for ({} of this) {\n    yield \u003Cul\u003E{todos.map((t) =\u003E \u003CTodoItem key={t.id} todo={t} \u002F\u003E)}\u003C\u002Ful\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-230'] = {"code":"class TodoDeleteEvent extends CustomEvent {\n  constructor(id) {\n    super(\"tododelete\", {bubbles: true, detail: {id}});\n  }\n}\n\nfunction *TodoItem({todo}) {\n  const ondelete = () =\u003E {\n    \u002F\u002F ✅ events bubble: children dispatch, parents listen\n    this.dispatchEvent(new TodoDeleteEvent(todo.id));\n  };\n\n  for ({todo} of this) {\n    yield (\n      \u003Cli\u003E\n        {todo.title}\n        \u003Cbutton onclick={ondelete}\u003EDelete\u003C\u002Fbutton\u003E\n      \u003C\u002Fli\u003E\n    );\n  }\n}\n\nfunction *App() {\n  let todos = [];\n\n  this.addEventListener(\"tododelete\", (ev) =\u003E {\n    this.refresh(() =\u003E {\n      todos = todos.filter((t) =\u003E t.id !== ev.detail.id);\n    });\n  });\n\n  for ({} of this) {\n    yield \u003Cul\u003E{todos.map((t) =\u003E \u003CTodoItem key={t.id} todo={t} \u002F\u003E)}\u003C\u002Ful\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> use inline event handlers freely:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -877,11 +877,11 @@
 			" data-index="10"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="11"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-230" class="props">
+			" data-index="11"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-231" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-230'] = {"code":"function *Counter() {\n  let count = 0;\n\n  for ({} of this) {\n    \u002F\u002F ✅ no stale closures, let variables are reassigned each iteration\n    yield (\n      \u003Cbutton onclick={() =\u003E this.refresh(() =\u003E count++)}\u003E\n        Count: {count}\n      \u003C\u002Fbutton\u003E\n    );\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-231'] = {"code":"function *Counter() {\n  let count = 0;\n\n  for ({} of this) {\n    \u002F\u002F ✅ no stale closures, let variables are reassigned each iteration\n    yield (\n      \u003Cbutton onclick={() =\u003E this.refresh(() =\u003E count++)}\u003E\n        Count: {count}\n      \u003C\u002Fbutton\u003E\n    );\n  }\n}","lang":"jsx"};
 		</script></div><h3 id="identity">Identity <a class="heading-anchor" href="#identity">#</a></h3><p>✅ <strong>Do</strong> use keys to control component identity. Crank matches elements by position, so the same component at the same position reuses its generator state by default. Keys force a fresh component when data identity changes:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -900,11 +900,11 @@
 			" data-index="3"><code><span class="token comment">// ✅ key forces a fresh component</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code><span class="token keyword">yield</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span><span class="token class-name">UserProfile</span></span> <span class="token attr-name">key</span><span class="token script language-javascript"><span class="token script-punctuation punctuation">=</span><span class="token punctuation">{</span>userId<span class="token punctuation">}</span></span> <span class="token attr-name">userId</span><span class="token script language-javascript"><span class="token script-punctuation punctuation">=</span><span class="token punctuation">{</span>userId<span class="token punctuation">}</span></span> <span class="token punctuation">/&gt;</span></span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-231" class="props">
+			" data-index="4"><code><span class="token keyword">yield</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span><span class="token class-name">UserProfile</span></span> <span class="token attr-name">key</span><span class="token script language-javascript"><span class="token script-punctuation punctuation">=</span><span class="token punctuation">{</span>userId<span class="token punctuation">}</span></span> <span class="token attr-name">userId</span><span class="token script language-javascript"><span class="token script-punctuation punctuation">=</span><span class="token punctuation">{</span>userId<span class="token punctuation">}</span></span> <span class="token punctuation">/&gt;</span></span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-232" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-231'] = {"code":"\u002F\u002F ❌ stale state bleeds across users\nyield \u003CUserProfile userId={userId} \u002F\u003E;\n\n\u002F\u002F ✅ key forces a fresh component\nyield \u003CUserProfile key={userId} userId={userId} \u002F\u003E;","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-232'] = {"code":"\u002F\u002F ❌ stale state bleeds across users\nyield \u003CUserProfile userId={userId} \u002F\u003E;\n\n\u002F\u002F ✅ key forces a fresh component\nyield \u003CUserProfile key={userId} userId={userId} \u002F\u003E;","lang":"jsx"};
 		</script></div><p>❌ <strong>Don’t</strong> key by array index:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -914,11 +914,11 @@
 			" data-index="0"><code><span class="token comment">// ❌ equivalent to no key; state shifts when items reorder</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code><span class="token keyword">yield</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>ul</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">{</span>todos<span class="token punctuation">.</span><span class="token function">map</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token parameter">t<span class="token punctuation">,</span> i</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span><span class="token class-name">TodoItem</span></span> <span class="token attr-name">key</span><span class="token script language-javascript"><span class="token script-punctuation punctuation">=</span><span class="token punctuation">{</span>i<span class="token punctuation">}</span></span> <span class="token attr-name">todo</span><span class="token script language-javascript"><span class="token script-punctuation punctuation">=</span><span class="token punctuation">{</span>t<span class="token punctuation">}</span></span> <span class="token punctuation">/&gt;</span></span><span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>ul</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-232" class="props">
+			" data-index="1"><code><span class="token keyword">yield</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>ul</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">{</span>todos<span class="token punctuation">.</span><span class="token function">map</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token parameter">t<span class="token punctuation">,</span> i</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span><span class="token class-name">TodoItem</span></span> <span class="token attr-name">key</span><span class="token script language-javascript"><span class="token script-punctuation punctuation">=</span><span class="token punctuation">{</span>i<span class="token punctuation">}</span></span> <span class="token attr-name">todo</span><span class="token script language-javascript"><span class="token script-punctuation punctuation">=</span><span class="token punctuation">{</span>t<span class="token punctuation">}</span></span> <span class="token punctuation">/&gt;</span></span><span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>ul</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-233" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-232'] = {"code":"\u002F\u002F ❌ equivalent to no key; state shifts when items reorder\nyield \u003Cul\u003E{todos.map((t, i) =\u003E \u003CTodoItem key={i} todo={t} \u002F\u003E)}\u003C\u002Ful\u003E;","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-233'] = {"code":"\u002F\u002F ❌ equivalent to no key; state shifts when items reorder\nyield \u003Cul\u003E{todos.map((t, i) =\u003E \u003CTodoItem key={i} todo={t} \u002F\u003E)}\u003C\u002Ful\u003E;","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> use stable, unique identifiers as keys so each component tracks its own data across reorders and removals. Positional matching (no keys) is fine for static content:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -937,11 +937,11 @@
 			" data-index="3"><code><span class="token comment">// ✅ positional matching is fine for static lists</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code><span class="token keyword">yield</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>ul</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">{</span>items<span class="token punctuation">.</span><span class="token function">map</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token parameter">item</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>li</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">{</span>item<span class="token punctuation">.</span>name<span class="token punctuation">}</span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>li</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>ul</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-233" class="props">
+			" data-index="4"><code><span class="token keyword">yield</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>ul</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">{</span>items<span class="token punctuation">.</span><span class="token function">map</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token parameter">item</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>li</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">{</span>item<span class="token punctuation">.</span>name<span class="token punctuation">}</span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>li</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>ul</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-234" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-233'] = {"code":"\u002F\u002F ✅ stable key, each component tracks its own item\nyield \u003Cul\u003E{todos.map((t) =\u003E \u003CTodoItem key={t.id} todo={t} \u002F\u003E)}\u003C\u002Ful\u003E;\n\n\u002F\u002F ✅ positional matching is fine for static lists\nyield \u003Cul\u003E{items.map((item) =\u003E \u003Cli\u003E{item.name}\u003C\u002Fli\u003E)}\u003C\u002Ful\u003E;","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-234'] = {"code":"\u002F\u002F ✅ stable key, each component tracks its own item\nyield \u003Cul\u003E{todos.map((t) =\u003E \u003CTodoItem key={t.id} todo={t} \u002F\u003E)}\u003C\u002Ful\u003E;\n\n\u002F\u002F ✅ positional matching is fine for static lists\nyield \u003Cul\u003E{items.map((item) =\u003E \u003Cli\u003E{item.name}\u003C\u002Fli\u003E)}\u003C\u002Ful\u003E;","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> use <code class="inline">&amp;&amp;</code>, <code class="inline">||</code>, and <code class="inline">??</code> for conditional rendering. The values <code class="inline">true</code>, <code class="inline">false</code>, <code class="inline">null</code>, and <code class="inline">undefined</code> all render as empty but preserve their slot in the children array, so siblings don’t shift positions:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -969,11 +969,11 @@
 			" data-index="6"><code>  <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>div</span><span class="token punctuation">&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-234" class="props">
+			" data-index="7"><code><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-235" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-234'] = {"code":"\u002F\u002F ✅ falsy values preserve their slot\nyield (\n  \u003Cdiv\u003E\n    {showHeader && \u003CHeader \u002F\u003E}\n    {error || \u003CMain \u002F\u003E}\n    {customFooter ?? \u003CDefaultFooter \u002F\u003E}\n  \u003C\u002Fdiv\u003E\n);","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-235'] = {"code":"\u002F\u002F ✅ falsy values preserve their slot\nyield (\n  \u003Cdiv\u003E\n    {showHeader && \u003CHeader \u002F\u003E}\n    {error || \u003CMain \u002F\u003E}\n    {customFooter ?? \u003CDefaultFooter \u002F\u003E}\n  \u003C\u002Fdiv\u003E\n);","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> use distinct component functions when you want Crank to treat elements as different types. Swapping the tag unmounts the old instance and mounts a fresh one:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1004,11 +1004,11 @@
 			" data-index="7"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-235" class="props">
+			" data-index="8"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-236" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-235'] = {"code":"function *CreateForm() { \u002F* ... *\u002F }\nfunction *EditForm() { \u002F* ... *\u002F }\n\nfunction *App({mode}) {\n  for ({mode} of this) {\n    \u002F\u002F switching the tag creates a fresh instance\n    yield mode === \"create\" ? \u003CCreateForm \u002F\u003E : \u003CEditForm \u002F\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-236'] = {"code":"function *CreateForm() { \u002F* ... *\u002F }\nfunction *EditForm() { \u002F* ... *\u002F }\n\nfunction *App({mode}) {\n  for ({mode} of this) {\n    \u002F\u002F switching the tag creates a fresh instance\n    yield mode === \"create\" ? \u003CCreateForm \u002F\u003E : \u003CEditForm \u002F\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> use an incrementing counter in the outer scope when you need component instance IDs:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1054,11 +1054,11 @@
 			" data-index="12"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="13"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-236" class="props">
+			" data-index="13"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-237" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-236'] = {"code":"let nextId = 0;\nfunction *DynamicField({label}) {\n  \u002F\u002F unique per instance, stable across re-renders\n  const id = `field-${nextId++}`;\n\n  for ({label} of this) {\n    yield (\n      \u003C\u003E\n        \u003Clabel for={id}\u003E{label}\u003C\u002Flabel\u003E\n        \u003Cinput id={id} \u002F\u003E\n      \u003C\u002F\u003E\n    );\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-237'] = {"code":"let nextId = 0;\nfunction *DynamicField({label}) {\n  \u002F\u002F unique per instance, stable across re-renders\n  const id = `field-${nextId++}`;\n\n  for ({label} of this) {\n    yield (\n      \u003C\u003E\n        \u003Clabel for={id}\u003E{label}\u003C\u002Flabel\u003E\n        \u003Cinput id={id} \u002F\u003E\n      \u003C\u002F\u003E\n    );\n  }\n}","lang":"jsx"};
 		</script></div><h3 id="cleanup">Cleanup <a class="heading-anchor" href="#cleanup">#</a></h3><p>❌ <strong>Don’t</strong> leave timers, listeners, or subscriptions without cleanup. They outlive the component and leak:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1086,11 +1086,11 @@
 			" data-index="6"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-237" class="props">
+			" data-index="7"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-238" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-237'] = {"code":"function *Timer() {\n  let s = 0;\n  \u002F\u002F ❌ no cleanup, interval leaks\n  setInterval(() =\u003E this.refresh(() =\u003E s++), 1000);\n  for ({} of this) {\n    yield \u003Cdiv\u003E{s}\u003C\u002Fdiv\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-238'] = {"code":"function *Timer() {\n  let s = 0;\n  \u002F\u002F ❌ no cleanup, interval leaks\n  setInterval(() =\u003E this.refresh(() =\u003E s++), 1000);\n  for ({} of this) {\n    yield \u003Cdiv\u003E{s}\u003C\u002Fdiv\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> clean up after the loop when setup and teardown are both visible in the component body:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1127,11 +1127,11 @@
 			" data-index="9"><code>  <span class="token function">clearInterval</span><span class="token punctuation">(</span>id<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-238" class="props">
+			" data-index="10"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-239" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-238'] = {"code":"function *Timer() {\n  let s = 0;\n  const id = setInterval(() =\u003E this.refresh(() =\u003E s++), 1000);\n\n  for ({} of this) {\n    yield \u003Cp\u003E{s}s\u003C\u002Fp\u003E;\n  }\n\n  \u002F\u002F ✅ post-loop cleanup\n  clearInterval(id);\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-239'] = {"code":"function *Timer() {\n  let s = 0;\n  const id = setInterval(() =\u003E this.refresh(() =\u003E s++), 1000);\n\n  for ({} of this) {\n    yield \u003Cp\u003E{s}s\u003C\u002Fp\u003E;\n  }\n\n  \u002F\u002F ✅ post-loop cleanup\n  clearInterval(id);\n}","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> wrap the loop in <code class="inline">try</code>/<code class="inline">finally</code> when the component might throw:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1186,11 +1186,11 @@
 			" data-index="15"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="16"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-239" class="props">
+			" data-index="16"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-240" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-239'] = {"code":"function *Timer() {\n  let s = 0;\n  const id = setInterval(() =\u003E this.refresh(() =\u003E s++), 1000);\n  \u002F\u002F ✅ try\u002Ffinally for error safety\n  try {\n    for ({} of this) {\n      yield (\n        \u003Cdiv\u003E\n          \u003Cp\u003E{s}s\u003C\u002Fp\u003E\n          \u003CSomeChild \u002F\u003E\n        \u003C\u002Fdiv\u003E\n      );\n    }\n  } finally {\n    clearInterval(id);\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-240'] = {"code":"function *Timer() {\n  let s = 0;\n  const id = setInterval(() =\u003E this.refresh(() =\u003E s++), 1000);\n  \u002F\u002F ✅ try\u002Ffinally for error safety\n  try {\n    for ({} of this) {\n      yield (\n        \u003Cdiv\u003E\n          \u003Cp\u003E{s}s\u003C\u002Fp\u003E\n          \u003CSomeChild \u002F\u003E\n        \u003C\u002Fdiv\u003E\n      );\n    }\n  } finally {\n    clearInterval(id);\n  }\n}","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> use <code class="inline">this.cleanup()</code> when registering teardown from a helper function, or when you want to colocate cleanup with the variable:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1239,11 +1239,11 @@
 			" data-index="13"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="14"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-240" class="props">
+			" data-index="14"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-241" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-240'] = {"code":"function createInterval(ctx, callback, delay) {\n  const id = setInterval(callback, delay);\n  \u002F\u002F ✅ this.cleanup() in a helper\n  ctx.cleanup(() =\u003E clearInterval(id));\n  return id;\n}\n\nfunction *Timer() {\n  let s = 0;\n  createInterval(this, () =\u003E this.refresh(() =\u003E s++), 1000);\n\n  for ({} of this) {\n    yield \u003Cp\u003E{s}s\u003C\u002Fp\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-241'] = {"code":"function createInterval(ctx, callback, delay) {\n  const id = setInterval(callback, delay);\n  \u002F\u002F ✅ this.cleanup() in a helper\n  ctx.cleanup(() =\u003E clearInterval(id));\n  return id;\n}\n\nfunction *Timer() {\n  let s = 0;\n  createInterval(this, () =\u003E this.refresh(() =\u003E s++), 1000);\n\n  for ({} of this) {\n    yield \u003Cp\u003E{s}s\u003C\u002Fp\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><p><strong>ESLint rule:</strong> <a href="https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/require-cleanup-for-timers.ts"><code class="inline">crank/require-cleanup-for-timers</code></a></p><p>✅ <strong>Do</strong> use <code class="inline">Symbol.dispose</code> and <code class="inline">Symbol.asyncDispose</code> with <code class="inline">using</code> declarations for automatic resource cleanup. Generator components are naturally compatible with the <a href="https://github.com/tc39/proposal-explicit-resource-management">Explicit Resource Management</a> proposal:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1298,11 +1298,11 @@
 			" data-index="15"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="16"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-241" class="props">
+			" data-index="16"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-242" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-241'] = {"code":"function *Component() {\n  using connection = openConnection();\n  \u002F\u002F connection[Symbol.dispose]() is called automatically when the generator returns\n\n  for ({} of this) {\n    yield \u003Cdiv\u003E{connection.status}\u003C\u002Fdiv\u003E;\n  }\n}\n\nasync function *AsyncComponent() {\n  await using stream = await openStream();\n  \u002F\u002F stream[Symbol.asyncDispose]() is called automatically when the generator returns\n\n  for ({} of this) {\n    yield \u003Cdiv\u003E{stream.status}\u003C\u002Fdiv\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-242'] = {"code":"function *Component() {\n  using connection = openConnection();\n  \u002F\u002F connection[Symbol.dispose]() is called automatically when the generator returns\n\n  for ({} of this) {\n    yield \u003Cdiv\u003E{connection.status}\u003C\u002Fdiv\u003E;\n  }\n}\n\nasync function *AsyncComponent() {\n  await using stream = await openStream();\n  \u002F\u002F stream[Symbol.asyncDispose]() is called automatically when the generator returns\n\n  for ({} of this) {\n    yield \u003Cdiv\u003E{stream.status}\u003C\u002Fdiv\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><h3 id="dom-access">DOM Access <a class="heading-anchor" href="#dom-access">#</a></h3><p>✅ <strong>Do</strong> use <code class="inline">ref</code> callbacks to capture host elements for later use:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1327,11 +1327,11 @@
 			" data-index="5"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-242" class="props">
+			" data-index="6"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-243" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-242'] = {"code":"function *Measurable() {\n  let el = null;\n  for ({} of this) {\n    \u002F\u002F ✅ ref fires once on first commit\n    yield \u003Cdiv ref={(node) =\u003E el = node} \u002F\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-243'] = {"code":"function *Measurable() {\n  let el = null;\n  for ({} of this) {\n    \u002F\u002F ✅ ref fires once on first commit\n    yield \u003Cdiv ref={(node) =\u003E el = node} \u002F\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> forward <code class="inline">ref</code> to the root host element in wrapper components so callers can access the underlying DOM node:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1347,11 +1347,11 @@
 			" data-index="2"><code>  <span class="token keyword">return</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>input</span> <span class="token attr-name">ref</span><span class="token script language-javascript"><span class="token script-punctuation punctuation">=</span><span class="token punctuation">{</span>ref<span class="token punctuation">}</span></span> <span class="token attr-name">class</span><span class="token script language-javascript"><span class="token script-punctuation punctuation">=</span><span class="token punctuation">{</span><span class="token string">&quot;my-input &quot;</span> <span class="token operator">+</span> cls<span class="token punctuation">}</span></span> <span class="token spread"><span class="token punctuation">{</span><span class="token operator">...</span>props<span class="token punctuation">}</span></span> <span class="token punctuation">/&gt;</span></span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-243" class="props">
+			" data-index="3"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-244" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-243'] = {"code":"function MyInput({ref, class: cls, ...props}) {\n  \u002F\u002F ✅ forward ref to the root element\n  return \u003Cinput ref={ref} class={\"my-input \" + cls} {...props} \u002F\u003E;\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-244'] = {"code":"function MyInput({ref, class: cls, ...props}) {\n  \u002F\u002F ✅ forward ref to the root element\n  return \u003Cinput ref={ref} class={\"my-input \" + cls} {...props} \u002F\u003E;\n}","lang":"jsx"};
 		</script></div><p>❌ <strong>Don&#039;t</strong> place <code class="inline">this.schedule()</code> or <code class="inline">this.after()</code> outside the loop unless you only want them to fire once:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1403,11 +1403,11 @@
 			" data-index="14"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="15"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-244" class="props">
+			" data-index="15"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-245" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-244'] = {"code":"function *AutoSave({data}) {\n  \u002F\u002F ❌ only fires on mount, not on updates\n  this.after(() =\u003E save(data));\n\n  for ({data} of this) {\n    yield \u003CForm data={data} \u002F\u003E;\n  }\n}\n\nfunction *AutoSave({data}) {\n  for ({data} of this) {\n    \u002F\u002F ✅ fires after every render\n    this.after(() =\u003E save(data));\n    yield \u003CForm data={data} \u002F\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-245'] = {"code":"function *AutoSave({data}) {\n  \u002F\u002F ❌ only fires on mount, not on updates\n  this.after(() =\u003E save(data));\n\n  for ({data} of this) {\n    yield \u003CForm data={data} \u002F\u003E;\n  }\n}\n\nfunction *AutoSave({data}) {\n  for ({data} of this) {\n    \u002F\u002F ✅ fires after every render\n    this.after(() =\u003E save(data));\n    yield \u003CForm data={data} \u002F\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><p>❌ <strong>Don&#039;t</strong> perform DOM operations that require connected nodes in <code class="inline">ref</code> or <code class="inline">this.schedule()</code> callbacks:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1477,11 +1477,11 @@
 			" data-index="20"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="21"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-245" class="props">
+			" data-index="21"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-246" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-245'] = {"code":"function *AutoFocusInput() {\n  for ({} of this) {\n    \u002F\u002F ❌ ref fires before the node is connected to the document\n    yield \u003Cinput ref={(node) =\u003E node.focus()} \u002F\u003E;\n  }\n}\n\nfunction *AutoFocusInput() {\n  \u002F\u002F ❌ schedule fires before the node is connected to the document\n  this.schedule(() =\u003E document.querySelector(\"input\").focus());\n  for ({} of this) {\n    yield \u003Cinput \u002F\u003E;\n  }\n}\n\nfunction *AutoFocusInput() {\n  for ({} of this) {\n    \u002F\u002F ✅ after() fires once the node is connected\n    this.after((input) =\u003E input.focus());\n    yield \u003Cinput \u002F\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-246'] = {"code":"function *AutoFocusInput() {\n  for ({} of this) {\n    \u002F\u002F ❌ ref fires before the node is connected to the document\n    yield \u003Cinput ref={(node) =\u003E node.focus()} \u002F\u003E;\n  }\n}\n\nfunction *AutoFocusInput() {\n  \u002F\u002F ❌ schedule fires before the node is connected to the document\n  this.schedule(() =\u003E document.querySelector(\"input\").focus());\n  for ({} of this) {\n    yield \u003Cinput \u002F\u003E;\n  }\n}\n\nfunction *AutoFocusInput() {\n  for ({} of this) {\n    \u002F\u002F ✅ after() fires once the node is connected\n    this.after((input) =\u003E input.focus());\n    yield \u003Cinput \u002F\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><h3 id="async-components">Async Components <a class="heading-anchor" href="#async-components">#</a></h3><p>❌ <strong>Don’t</strong> manage loading state manually with flags in a sync generator when an async component would be simpler:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1542,11 +1542,11 @@
 			" data-index="17"><code>  <span class="token keyword">return</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>div</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">{</span>user<span class="token punctuation">.</span>name<span class="token punctuation">}</span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>div</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="18"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-246" class="props">
+			" data-index="18"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-247" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-246'] = {"code":"function *UserProfile({userId}) {\n  let user = null;\n  \u002F\u002F ❌ manual loading flags in a sync generator\n  let loading = true;\n  fetch(`\u002Fapi\u002Fusers\u002F${userId}`)\n    .then((res) =\u003E res.json())\n    .then((data) =\u003E this.refresh(() =\u003E { user = data; loading = false; }));\n\n  for ({userId} of this) {\n    yield loading ? \u003Cdiv\u003ELoading...\u003C\u002Fdiv\u003E : \u003Cdiv\u003E{user.name}\u003C\u002Fdiv\u003E;\n  }\n}\n\n\u002F\u002F ✅ async function for one-shot fetch\nasync function UserProfile({userId}) {\n  const res = await fetch(`\u002Fapi\u002Fusers\u002F${userId}`);\n  const user = await res.json();\n  return \u003Cdiv\u003E{user.name}\u003C\u002Fdiv\u003E;\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-247'] = {"code":"function *UserProfile({userId}) {\n  let user = null;\n  \u002F\u002F ❌ manual loading flags in a sync generator\n  let loading = true;\n  fetch(`\u002Fapi\u002Fusers\u002F${userId}`)\n    .then((res) =\u003E res.json())\n    .then((data) =\u003E this.refresh(() =\u003E { user = data; loading = false; }));\n\n  for ({userId} of this) {\n    yield loading ? \u003Cdiv\u003ELoading...\u003C\u002Fdiv\u003E : \u003Cdiv\u003E{user.name}\u003C\u002Fdiv\u003E;\n  }\n}\n\n\u002F\u002F ✅ async function for one-shot fetch\nasync function UserProfile({userId}) {\n  const res = await fetch(`\u002Fapi\u002Fusers\u002F${userId}`);\n  const user = await res.json();\n  return \u003Cdiv\u003E{user.name}\u003C\u002Fdiv\u003E;\n}","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> use <code class="inline">Suspense</code> from <code class="inline">@b9g/crank/async</code> for loading states. It races a fallback against async children so you don&#039;t have to wire up the <code class="inline">for await...of</code> pattern yourself:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1580,11 +1580,11 @@
 			" data-index="8"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-247" class="props">
+			" data-index="9"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-248" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-247'] = {"code":"import {Suspense} from \"@b9g\u002Fcrank\u002Fasync\";\n\n\u002F\u002F ✅ declarative loading state\nfunction App() {\n  return (\n    \u003CSuspense fallback={\u003Cdiv\u003ELoading...\u003C\u002Fdiv\u003E}\u003E\n      \u003CUserProfile userId={userId} \u002F\u003E\n    \u003C\u002FSuspense\u003E\n  );\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-248'] = {"code":"import {Suspense} from \"@b9g\u002Fcrank\u002Fasync\";\n\n\u002F\u002F ✅ declarative loading state\nfunction App() {\n  return (\n    \u003CSuspense fallback={\u003Cdiv\u003ELoading...\u003C\u002Fdiv\u003E}\u003E\n      \u003CUserProfile userId={userId} \u002F\u003E\n    \u003C\u002FSuspense\u003E\n  );\n}","lang":"jsx"};
 		</script></div><p>See the <a href="/guides/async-components">Async Components guide</a> for details on <code class="inline">Suspense</code>, <code class="inline">SuspenseList</code>, and <code class="inline">lazy</code>.</p><h3 id="error-handling">Error Handling <a class="heading-anchor" href="#error-handling">#</a></h3><p>❌ <strong>Don&#039;t</strong> throw errors for expected conditions like validation or missing data. Reserve <code class="inline">try</code>/<code class="inline">catch</code> of <code class="inline">yield</code> for truly unexpected errors:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1642,11 +1642,11 @@
 			" data-index="16"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="17"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-248" class="props">
+			" data-index="17"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-249" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-248'] = {"code":"\u002F\u002F ❌ throwing for validation\nfunction ContactForm({email}) {\n  if (!email.includes(\"@\")) {\n    throw new Error(\"Invalid email\");\n  }\n\n  return \u003Cdiv\u003EContact: {email}\u003C\u002Fdiv\u003E;\n}\n\nfunction *App() {\n  for ({} of this) {\n    try {\n      yield \u003CContactForm email={email} \u002F\u003E;\n    } catch (err) {\n      yield \u003Cdiv\u003E{err.message}\u003C\u002Fdiv\u003E;\n    }\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-249'] = {"code":"\u002F\u002F ❌ throwing for validation\nfunction ContactForm({email}) {\n  if (!email.includes(\"@\")) {\n    throw new Error(\"Invalid email\");\n  }\n\n  return \u003Cdiv\u003EContact: {email}\u003C\u002Fdiv\u003E;\n}\n\nfunction *App() {\n  for ({} of this) {\n    try {\n      yield \u003CContactForm email={email} \u002F\u003E;\n    } catch (err) {\n      yield \u003Cdiv\u003E{err.message}\u003C\u002Fdiv\u003E;\n    }\n  }\n}","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> handle expected failures with control flow at the source:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1677,11 +1677,11 @@
 			" data-index="7"><code>  <span class="token keyword">return</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>div</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">{</span>user<span class="token punctuation">.</span>name<span class="token punctuation">}</span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>div</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-249" class="props">
+			" data-index="8"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-250" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-249'] = {"code":"\u002F\u002F ✅ handle expected failures at the source\nasync function UserProfile({userId}) {\n  const res = await fetch(`\u002Fapi\u002Fusers\u002F${userId}`).catch(() =\u003E null);\n  if (!res?.ok) {\n    return \u003Cdiv\u003ECould not load user\u003C\u002Fdiv\u003E;\n  }\n  const user = await res.json();\n  return \u003Cdiv\u003E{user.name}\u003C\u002Fdiv\u003E;\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-250'] = {"code":"\u002F\u002F ✅ handle expected failures at the source\nasync function UserProfile({userId}) {\n  const res = await fetch(`\u002Fapi\u002Fusers\u002F${userId}`).catch(() =\u003E null);\n  if (!res?.ok) {\n    return \u003Cdiv\u003ECould not load user\u003C\u002Fdiv\u003E;\n  }\n  const user = await res.json();\n  return \u003Cdiv\u003E{user.name}\u003C\u002Fdiv\u003E;\n}","lang":"jsx"};
 		</script></div><h3 id="composition">Composition <a class="heading-anchor" href="#composition">#</a></h3><p>❌ <strong>Don’t</strong> use render props or functions-as-children:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1718,11 +1718,11 @@
 			" data-index="9"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-250" class="props">
+			" data-index="10"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-251" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-250'] = {"code":"function *App() {\n  for ({} of this) {\n    yield (\n      \u003Cdiv\u003E\n        {\u002F* ❌ render props and functions-as-children *\u002F}\n        \u003CDataProvider render={(data) =\u003E \u003CChart data={data} \u002F\u003E} \u002F\u003E\n        \u003CMouseTracker\u003E{(pos) =\u003E \u003CTooltip x={pos.x} y={pos.y} \u002F\u003E}\u003C\u002FMouseTracker\u003E\n      \u003C\u002Fdiv\u003E\n    );\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-251'] = {"code":"function *App() {\n  for ({} of this) {\n    yield (\n      \u003Cdiv\u003E\n        {\u002F* ❌ render props and functions-as-children *\u002F}\n        \u003CDataProvider render={(data) =\u003E \u003CChart data={data} \u002F\u003E} \u002F\u003E\n        \u003CMouseTracker\u003E{(pos) =\u003E \u003CTooltip x={pos.x} y={pos.y} \u002F\u003E}\u003C\u002FMouseTracker\u003E\n      \u003C\u002Fdiv\u003E\n    );\n  }\n}","lang":"jsx"};
 		</script></div><p>❌ <strong>Don&#039;t</strong> inspect or transform <code class="inline">children</code>:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1753,11 +1753,11 @@
 			" data-index="7"><code>  <span class="token keyword">return</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>div</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">{</span>children<span class="token punctuation">}</span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>div</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-251" class="props">
+			" data-index="8"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-252" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-251'] = {"code":"\u002F\u002F ❌ treating children as data\nfunction Wrapper({children}) {\n  return \u003Cdiv\u003E{children.filter((c) =\u003E c.props.visible)}\u003C\u002Fdiv\u003E;\n}\n\n\u002F\u002F ✅ forward children as-is\nfunction Wrapper({children}) {\n  return \u003Cdiv\u003E{children}\u003C\u002Fdiv\u003E;\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-252'] = {"code":"\u002F\u002F ❌ treating children as data\nfunction Wrapper({children}) {\n  return \u003Cdiv\u003E{children.filter((c) =\u003E c.props.visible)}\u003C\u002Fdiv\u003E;\n}\n\n\u002F\u002F ✅ forward children as-is\nfunction Wrapper({children}) {\n  return \u003Cdiv\u003E{children}\u003C\u002Fdiv\u003E;\n}","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> use named props as slots for multiple insertion points:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1788,11 +1788,11 @@
 			" data-index="7"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-252" class="props">
+			" data-index="8"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-253" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-252'] = {"code":"function Card({title, actions, children}) {\n  return (\n    \u003Cdiv class=\"card\"\u003E\n      \u003Cheader\u003E{title}\u003C\u002Fheader\u003E\n      \u003Cmain\u003E{children}\u003C\u002Fmain\u003E\n      \u003Cfooter\u003E{actions}\u003C\u002Ffooter\u003E\n    \u003C\u002Fdiv\u003E\n  );\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-253'] = {"code":"function Card({title, actions, children}) {\n  return (\n    \u003Cdiv class=\"card\"\u003E\n      \u003Cheader\u003E{title}\u003C\u002Fheader\u003E\n      \u003Cmain\u003E{children}\u003C\u002Fmain\u003E\n      \u003Cfooter\u003E{actions}\u003C\u002Ffooter\u003E\n    \u003C\u002Fdiv\u003E\n  );\n}","lang":"jsx"};
 		</script></div><p>❌ <strong>Don’t</strong> use plain strings as provision keys:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1820,11 +1820,11 @@
 			" data-index="6"><code><span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">provide</span><span class="token punctuation">(</span>ThemeKey<span class="token punctuation">,</span> <span class="token string">&quot;dark&quot;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code><span class="token keyword">const</span> theme <span class="token operator">=</span> <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">consume</span><span class="token punctuation">(</span>ThemeKey<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-253" class="props">
+			" data-index="7"><code><span class="token keyword">const</span> theme <span class="token operator">=</span> <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">consume</span><span class="token punctuation">(</span>ThemeKey<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-254" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-253'] = {"code":"\u002F\u002F ❌ string keys risk collisions across libraries\nthis.provide(\"theme\", \"dark\");\nconst theme = this.consume(\"theme\");\n\n\u002F\u002F ✅ symbol keys are private\nconst ThemeKey = Symbol(\"theme\");\nthis.provide(ThemeKey, \"dark\");\nconst theme = this.consume(ThemeKey);","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-254'] = {"code":"\u002F\u002F ❌ string keys risk collisions across libraries\nthis.provide(\"theme\", \"dark\");\nconst theme = this.consume(\"theme\");\n\n\u002F\u002F ✅ symbol keys are private\nconst ThemeKey = Symbol(\"theme\");\nthis.provide(ThemeKey, \"dark\");\nconst theme = this.consume(ThemeKey);","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> use provisions when siblings or distant descendants need shared data without prop drilling:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1870,11 +1870,11 @@
 			" data-index="12"><code>  <span class="token keyword">return</span> <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>span</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">{</span>amount<span class="token punctuation">.</span><span class="token function">toLocaleString</span><span class="token punctuation">(</span>locale<span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>span</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="13"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-254" class="props">
+			" data-index="13"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-255" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-254'] = {"code":"\u002F\u002F ✅ provisions for shared data without prop drilling\nconst LocaleKey = Symbol(\"locale\");\n\nfunction *App({locale, children}) {\n  for ({locale, children} of this) {\n    this.provide(LocaleKey, locale);\n    yield children;\n  }\n}\n\nfunction Price({amount}) {\n  const locale = this.consume(LocaleKey);\n  return \u003Cspan\u003E{amount.toLocaleString(locale)}\u003C\u002Fspan\u003E;\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-255'] = {"code":"\u002F\u002F ✅ provisions for shared data without prop drilling\nconst LocaleKey = Symbol(\"locale\");\n\nfunction *App({locale, children}) {\n  for ({locale, children} of this) {\n    this.provide(LocaleKey, locale);\n    yield children;\n  }\n}\n\nfunction Price({amount}) {\n  const locale = this.consume(LocaleKey);\n  return \u003Cspan\u003E{amount.toLocaleString(locale)}\u003C\u002Fspan\u003E;\n}","lang":"jsx"};
 		</script></div><h3 id="reusable-logic">Reusable Logic <a class="heading-anchor" href="#reusable-logic">#</a></h3><p>❌ <strong>Don’t</strong> extend <code class="inline">Context.prototype</code> to share behavior:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -1947,11 +1947,11 @@
 			" data-index="21"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="22"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-255" class="props">
+			" data-index="22"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-256" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-255'] = {"code":"import {Context} from \"@b9g\u002Fcrank\";\n\u002F\u002F ❌ implicit, globally scoped, can’t run setup logic\nContext.prototype.setInterval = function (callback, delay) {\n  const id = setInterval(callback, delay);\n  this.cleanup(() =\u003E clearInterval(id));\n  return id;\n};\n\n\u002F\u002F ✅ plain helper function\nfunction useInterval(ctx, callback, delay) {\n  const id = setInterval(callback, delay);\n  ctx.cleanup(() =\u003E clearInterval(id));\n  return id;\n}\n\nfunction *Timer() {\n  let seconds = 0;\n  useInterval(this, () =\u003E this.refresh(() =\u003E seconds++), 1000);\n\n  for ({} of this) {\n    yield \u003Cp\u003E{seconds}s\u003C\u002Fp\u003E;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-256'] = {"code":"import {Context} from \"@b9g\u002Fcrank\";\n\u002F\u002F ❌ implicit, globally scoped, can’t run setup logic\nContext.prototype.setInterval = function (callback, delay) {\n  const id = setInterval(callback, delay);\n  this.cleanup(() =\u003E clearInterval(id));\n  return id;\n};\n\n\u002F\u002F ✅ plain helper function\nfunction useInterval(ctx, callback, delay) {\n  const id = setInterval(callback, delay);\n  ctx.cleanup(() =\u003E clearInterval(id));\n  return id;\n}\n\nfunction *Timer() {\n  let seconds = 0;\n  useInterval(this, () =\u003E this.refresh(() =\u003E seconds++), 1000);\n\n  for ({} of this) {\n    yield \u003Cp\u003E{seconds}s\u003C\u002Fp\u003E;\n  }\n}","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> use higher-order components to wrap rendering logic around existing components. For example, a <code class="inline">memo</code> wrapper uses <code class="inline">&lt;Copy /&gt;</code> to skip re-renders when props haven’t changed:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -2006,11 +2006,11 @@
 			" data-index="15"><code>  <span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="16"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-256" class="props">
+			" data-index="16"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-257" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-256'] = {"code":"import {Copy} from \"@b9g\u002Fcrank\";\n\n\u002F\u002F ✅ higher-order component\nfunction memo(Component) {\n  return function *Memoized(props) {\n    yield \u003CComponent {...props} \u002F\u003E;\n    for (const newProps of this) {\n      if (shallowEqual(props, newProps)) {\n        yield \u003CCopy \u002F\u003E;\n      } else {\n        yield \u003CComponent {...newProps} \u002F\u003E;\n      }\n\n      props = newProps;\n    }\n  };\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-257'] = {"code":"import {Copy} from \"@b9g\u002Fcrank\";\n\n\u002F\u002F ✅ higher-order component\nfunction memo(Component) {\n  return function *Memoized(props) {\n    yield \u003CComponent {...props} \u002F\u003E;\n    for (const newProps of this) {\n      if (shallowEqual(props, newProps)) {\n        yield \u003CCopy \u002F\u003E;\n      } else {\n        yield \u003CComponent {...newProps} \u002F\u003E;\n      }\n\n      props = newProps;\n    }\n  };\n}","lang":"jsx"};
 		</script></div><p>See <a href="/guides/reusable-logic">Reusable Logic</a> for alternative approaches and tradeoffs.</p><h3 id="typescript">TypeScript <a class="heading-anchor" href="#typescript">#</a></h3><p>✅ <strong>Do</strong> annotate <code class="inline">this: Context&lt;typeof Component&gt;</code> in generator components:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-tsx
 							css-1ashatc
@@ -2047,11 +2047,11 @@
 			" data-index="9"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-257" class="props">
+			" data-index="10"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-258" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-257'] = {"code":"import type {Context} from \"@b9g\u002Fcrank\";\n\n\u002F\u002F required in strict mode, infers props from the component definition\nfunction *Greeting(\n  this: Context\u003Ctypeof Greeting\u003E,\n  {name = \"World\"}: {name?: string},\n) {\n  for ({name = \"World\"} of this) {\n    yield \u003Cdiv\u003EHello, {name}\u003C\u002Fdiv\u003E;\n  }\n}","lang":"tsx"};
+			window.__embeddedJSON__['inline-code-block-props-258'] = {"code":"import type {Context} from \"@b9g\u002Fcrank\";\n\n\u002F\u002F required in strict mode, infers props from the component definition\nfunction *Greeting(\n  this: Context\u003Ctypeof Greeting\u003E,\n  {name = \"World\"}: {name?: string},\n) {\n  for ({name = \"World\"} of this) {\n    yield \u003Cdiv\u003EHello, {name}\u003C\u002Fdiv\u003E;\n  }\n}","lang":"tsx"};
 		</script></div><p>❌ <strong>Don&#039;t</strong> define a separate interface for props:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-tsx
 							css-1ashatc
@@ -2133,11 +2133,11 @@
 			" data-index="24"><code><span class="token comment">// ✅ use Parameters to extract props from a component elsewhere</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="25"><code><span class="token keyword">type</span> <span class="token class-name">GreetingProps</span> <span class="token operator">=</span> Parameters<span class="token operator">&lt;</span><span class="token keyword">typeof</span> Greeting<span class="token operator">&gt;</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-258" class="props">
+			" data-index="25"><code><span class="token keyword">type</span> <span class="token class-name">GreetingProps</span> <span class="token operator">=</span> Parameters<span class="token operator">&lt;</span><span class="token keyword">typeof</span> Greeting<span class="token operator">&gt;</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-259" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-258'] = {"code":"\u002F\u002F ❌ adds indirection and drifts from the actual parameter\ninterface GreetingProps {\n  name?: string;\n}\n\nfunction *Greeting(\n  this: Context\u003Ctypeof Greeting\u003E,\n  {name = \"World\"}: GreetingProps,\n) {\n  for ({name = \"World\"} of this) {\n    yield \u003Cdiv\u003EHello, {name}\u003C\u002Fdiv\u003E;\n  }\n}\n\n\u002F\u002F ✅ inline props type\nfunction *Greeting(\n  this: Context\u003Ctypeof Greeting\u003E,\n  {name = \"World\"}: {name?: string},\n) {\n  for ({name = \"World\"} of this) {\n    yield \u003Cdiv\u003EHello, {name}\u003C\u002Fdiv\u003E;\n  }\n}\n\n\u002F\u002F ✅ use Parameters to extract props from a component elsewhere\ntype GreetingProps = Parameters\u003Ctypeof Greeting\u003E[0];","lang":"tsx"};
+			window.__embeddedJSON__['inline-code-block-props-259'] = {"code":"\u002F\u002F ❌ adds indirection and drifts from the actual parameter\ninterface GreetingProps {\n  name?: string;\n}\n\nfunction *Greeting(\n  this: Context\u003Ctypeof Greeting\u003E,\n  {name = \"World\"}: GreetingProps,\n) {\n  for ({name = \"World\"} of this) {\n    yield \u003Cdiv\u003EHello, {name}\u003C\u002Fdiv\u003E;\n  }\n}\n\n\u002F\u002F ✅ inline props type\nfunction *Greeting(\n  this: Context\u003Ctypeof Greeting\u003E,\n  {name = \"World\"}: {name?: string},\n) {\n  for ({name = \"World\"} of this) {\n    yield \u003Cdiv\u003EHello, {name}\u003C\u002Fdiv\u003E;\n  }\n}\n\n\u002F\u002F ✅ use Parameters to extract props from a component elsewhere\ntype GreetingProps = Parameters\u003Ctypeof Greeting\u003E[0];","lang":"tsx"};
 		</script></div><p>✅ <strong>Do</strong> use <code class="inline">Children</code> for the children prop type, including named slots:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-tsx
 							css-1ashatc
@@ -2186,11 +2186,11 @@
 			" data-index="13"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="14"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-259" class="props">
+			" data-index="14"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-260" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-259'] = {"code":"import {Children} from \"@b9g\u002Fcrank\";\n\nfunction Layout({header, sidebar, children}: {\n  header: Children,\n  sidebar: Children,\n  children: Children,\n}) {\n  return (\n    \u003Cdiv class=\"layout\"\u003E\n      \u003Cheader\u003E{header}\u003C\u002Fheader\u003E\n      \u003Caside\u003E{sidebar}\u003C\u002Faside\u003E\n      \u003Cmain\u003E{children}\u003C\u002Fmain\u003E\n    \u003C\u002Fdiv\u003E\n  );\n}","lang":"tsx"};
+			window.__embeddedJSON__['inline-code-block-props-260'] = {"code":"import {Children} from \"@b9g\u002Fcrank\";\n\nfunction Layout({header, sidebar, children}: {\n  header: Children,\n  sidebar: Children,\n  children: Children,\n}) {\n  return (\n    \u003Cdiv class=\"layout\"\u003E\n      \u003Cheader\u003E{header}\u003C\u002Fheader\u003E\n      \u003Caside\u003E{sidebar}\u003C\u002Faside\u003E\n      \u003Cmain\u003E{children}\u003C\u002Fmain\u003E\n    \u003C\u002Fdiv\u003E\n  );\n}","lang":"tsx"};
 		</script></div><p>✅ <strong>Do</strong> augment <code class="inline">EventMap</code> and <code class="inline">ProvisionMap</code> for typed events and provisions:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-tsx
 							css-1ashatc
@@ -2227,11 +2227,11 @@
 			" data-index="9"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-260" class="props">
+			" data-index="10"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-261" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-260'] = {"code":"declare global {\n  module Crank {\n    interface EventMap {\n      \"tododelete\": CustomEvent\u003C{id: string}\u003E;\n    }\n\n    interface ProvisionMap {\n      theme: \"light\" | \"dark\";\n    }\n  }\n}","lang":"tsx"};
+			window.__embeddedJSON__['inline-code-block-props-261'] = {"code":"declare global {\n  module Crank {\n    interface EventMap {\n      \"tododelete\": CustomEvent\u003C{id: string}\u003E;\n    }\n\n    interface ProvisionMap {\n      theme: \"light\" | \"dark\";\n    }\n  }\n}","lang":"tsx"};
 		</script></div><h3 id="performance">Performance <a class="heading-anchor" href="#performance">#</a></h3><p>❌ <strong>Don’t</strong> redo expensive work on every render when the inputs haven’t changed:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -2304,11 +2304,11 @@
 			" data-index="21"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="22"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-261" class="props">
+			" data-index="22"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-262" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-261'] = {"code":"function *Report({data}) {\n  for ({data} of this) {\n    \u002F\u002F ❌ recomputes every render\n    const summary = computeExpensiveSummary(data);\n    yield \u003Cdiv\u003E{summary}\u003C\u002Fdiv\u003E;\n  }\n}\n\nfunction *Report({data}) {\n  let oldData;\n  let summary;\n\n  for ({data} of this) {\n    \u002F\u002F ✅ cache the result, save old values after yield to compare next iteration\n    if (data !== oldData) {\n      summary = computeExpensiveSummary(data);\n    }\n\n    yield \u003Cdiv\u003E{summary}\u003C\u002Fdiv\u003E;\n\n    oldData = data;\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-262'] = {"code":"function *Report({data}) {\n  for ({data} of this) {\n    \u002F\u002F ❌ recomputes every render\n    const summary = computeExpensiveSummary(data);\n    yield \u003Cdiv\u003E{summary}\u003C\u002Fdiv\u003E;\n  }\n}\n\nfunction *Report({data}) {\n  let oldData;\n  let summary;\n\n  for ({data} of this) {\n    \u002F\u002F ✅ cache the result, save old values after yield to compare next iteration\n    if (data !== oldData) {\n      summary = computeExpensiveSummary(data);\n    }\n\n    yield \u003Cdiv\u003E{summary}\u003C\u002Fdiv\u003E;\n\n    oldData = data;\n  }\n}","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> use <code class="inline">copy</code> to skip re-rendering:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -2318,11 +2318,11 @@
 			" data-index="0"><code><span class="token comment">// ✅ copy preserves the entire subtree</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span><span class="token class-name">Sidebar</span></span> <span class="token attr-name">copy</span> <span class="token punctuation">/&gt;</span></span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-262" class="props">
+			" data-index="1"><code><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span><span class="token class-name">Sidebar</span></span> <span class="token attr-name">copy</span> <span class="token punctuation">/&gt;</span></span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-263" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-262'] = {"code":"\u002F\u002F ✅ copy preserves the entire subtree\n\u003CSidebar copy \u002F\u003E","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-263'] = {"code":"\u002F\u002F ✅ copy preserves the entire subtree\n\u003CSidebar copy \u002F\u003E","lang":"jsx"};
 		</script></div><p>✅ <strong>Do</strong> use <code class="inline">this.schedule(() =&gt; this.refresh())</code> to render a component twice in one pass:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-jsx
 							css-1ashatc
@@ -2356,14 +2356,14 @@
 			" data-index="8"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-263" class="props">
+			" data-index="9"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-264" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-263'] = {"code":"function *Component() {\n  for ({} of this) {\n    \u002F\u002F schedule a second render in the same pass\n    this.schedule(() =\u003E this.refresh());\n    \u002F\u002F first render: yield returns the committed output for inspection\n    const output = yield \u003CChild \u002F\u003E;\n    \u002F\u002F second render: use the inspected output to produce the final result\n    yield \u003CFinal data={process(output)} \u002F\u003E;\n  }\n}","lang":"jsx"};
-		</script></div><div class="css-1lyshc7"><a href="https://github.com/bikeshaving/crank/edit/main/docs/guides/12-crank-style-guide.md" target="_blank" rel="noopener noreferrer" class="css-vrpffa"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>Edit on GitHub</a></div></main><footer class="css-1nd56js"><nav class="css-nf2n4z"><a href="/guides/getting-started/">Docs</a><a href="/blog/">Blog</a><a href="/playground/">Playground</a><a href="/press-kit/">Press Kit</a><a href="https://github.com/bikeshaving/crank">GitHub</a><a href="https://www.npmjs.com/package/@b9g/crank">NPM</a></nav><p class="css-1st8n6b">MIT Licensed · Made with Crank.js</p></footer><script data-name="embedded-json-264" id="static-urls">
+			window.__embeddedJSON__['inline-code-block-props-264'] = {"code":"function *Component() {\n  for ({} of this) {\n    \u002F\u002F schedule a second render in the same pass\n    this.schedule(() =\u003E this.refresh());\n    \u002F\u002F first render: yield returns the committed output for inspection\n    const output = yield \u003CChild \u002F\u003E;\n    \u002F\u002F second render: use the inspected output to produce the final result\n    yield \u003CFinal data={process(output)} \u002F\u003E;\n  }\n}","lang":"jsx"};
+		</script></div><div class="css-1lyshc7"><a href="https://github.com/bikeshaving/crank/edit/main/docs/guides/12-crank-style-guide.md" target="_blank" rel="noopener noreferrer" class="css-vrpffa"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>Edit on GitHub</a></div></main><footer class="css-1nd56js"><nav class="css-nf2n4z"><a href="/guides/getting-started/">Docs</a><a href="/blog/">Blog</a><a href="/playground/">Playground</a><a href="/press-kit/">Press Kit</a><a href="https://github.com/bikeshaving/crank">GitHub</a><a href="https://www.npmjs.com/package/@b9g/crank">NPM</a></nav><p class="css-1st8n6b">MIT Licensed · Made with Crank.js</p></footer><script data-name="embedded-json-265" id="static-urls">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['embedded-json-264'] = {"client.css":"\u002Fstatic\u002Fclient-53580c6c596afa25.css","@b9g\u002Fcrank":"\u002Fstatic\u002Findex-75ce222f11213d3f.js","@b9g\u002Fcrank\u002Fasync":"\u002Fstatic\u002Fasync-9cca74524aa7902f.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-53b9deed3b2794b8.js","@b9g\u002Fcrank\u002Fevent-target":"\u002Fstatic\u002Fevent-target-30828c7029258362.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-3a37cf45a602c351.js","@b9g\u002Fcrank\u002Fjsx-dev-runtime":"\u002Fstatic\u002Fjsx-dev-runtime-e5e4dcf100e42abb.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-e5e4dcf100e42abb.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-99a44ff45f5faa9c.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-a2f993d597c194da.js"};
+			window.__embeddedJSON__['embedded-json-265'] = {"client.css":"\u002Fstatic\u002Fclient-53580c6c596afa25.css","@b9g\u002Fcrank":"\u002Fstatic\u002Findex-75ce222f11213d3f.js","@b9g\u002Fcrank\u002Fasync":"\u002Fstatic\u002Fasync-9cca74524aa7902f.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-53b9deed3b2794b8.js","@b9g\u002Fcrank\u002Fevent-target":"\u002Fstatic\u002Fevent-target-30828c7029258362.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-3a37cf45a602c351.js","@b9g\u002Fcrank\u002Fjsx-dev-runtime":"\u002Fstatic\u002Fjsx-dev-runtime-e5e4dcf100e42abb.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-e5e4dcf100e42abb.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-99a44ff45f5faa9c.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-a2f993d597c194da.js"};
 		</script><script type="module" src="/static/navbar-f02cdf011dc9b864.js"></script><script type="module" src="/static/code-blocks-0061330b1490c587.js"></script><script type="module" src="/static/search-bf547953f6e56a66.js"></script><script type="module" src="/static/gear-2081c009161fa35b.js"></script><script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon="{&quot;token&quot;: &quot;2778280e10354cd5b1ec2458a0a095b4&quot;}"></script></body></html>

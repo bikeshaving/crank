@@ -602,7 +602,108 @@ build tools required:</p><div style="margin: 30px auto;" class="code-block-conta
 				window.__embeddedJSON__ = {};
 			}
 			window.__embeddedJSON__['inline-code-block-props-212'] = {"code":"jsx`\n  \u003Cdiv\u003E\n    \u003C!-- This comment is ignored --\u003E\n    \u003Cp\u003EHello ${name}\u003C\u002Fp\u003E\n    \u003C!-- Even ${expressions} inside comments are discarded --\u003E\n  \u003C\u002Fdiv\u003E\n`","lang":"js"};
-		</script></div><h2 id="whitespace">Whitespace <a class="heading-anchor" href="#whitespace">#</a></h2><p>The template tag normalizes whitespace to match JSX conventions:</p><ul><li>A newline and any surrounding whitespace is collapsed — text before a newline has trailing whitespace trimmed, and text after a newline has leading whitespace trimmed.</li><li>A backslash before a newline (<code class="inline">\</code> at end of line) preserves the preceding whitespace and removes the backslash.</li><li>Trailing whitespace at the end of the template is trimmed.</li></ul><h2 id="caching">Caching <a class="heading-anchor" href="#caching">#</a></h2><p>The template tag caches parse results keyed by the raw template strings. On subsequent calls with the same template, the cached AST is reused and only the expression values are updated. This makes repeated renders efficient — the parsing cost is paid once per unique template site.</p><h2 id="error-messages">Error Messages <a class="heading-anchor" href="#error-messages">#</a></h2><p>Syntax errors include line and column context with a caret pointer:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+		</script></div><h2 id="whitespace">Whitespace <a class="heading-anchor" href="#whitespace">#</a></h2><p>The template tag normalizes whitespace to match JSX conventions:</p><ul><li>A newline and any surrounding whitespace is collapsed — text before a newline has trailing whitespace trimmed, and text after a newline has leading whitespace trimmed.</li><li>A backslash before a newline (<code class="inline">\</code> at end of line) preserves the preceding whitespace and removes the backslash.</li><li>Trailing whitespace at the end of the template is trimmed.</li></ul><h2 id="kitchen-sink">Kitchen Sink <a class="heading-anchor" href="#kitchen-sink">#</a></h2><p>Every template tag feature in one snippet:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-js
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code>jsx<span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code><span class="token template-string"><span class="token string">  &lt;!-- Comments are ignored --&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code><span class="token template-string"><span class="token string">  &lt;!-- Host elements with boolean, string, expression, and spread props --&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code><span class="token template-string"><span class="token string">  &lt;input disabled type=&quot;text&quot; value=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>val<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> ...</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>props<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> /&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code><span class="token template-string"><span class="token string">  &lt;!-- Component elements --&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code><span class="token template-string"><span class="token string">  &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Component<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> onclick=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>handler<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&gt;children&lt;//&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code><span class="token template-string"><span class="token string">  &lt;!-- Fragment shorthand --&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code><span class="token template-string"><span class="token string">  &lt;&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code><span class="token template-string"><span class="token string">    &lt;p&gt;First&lt;/p&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><code><span class="token template-string"><span class="token string">    &lt;p&gt;Second&lt;/p&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code><span class="token template-string"><span class="token string">  &lt;/&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="15"><code><span class="token template-string"><span class="token string">  &lt;!-- Keyed fragment --&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><code><span class="token template-string"><span class="token string">  &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Fragment<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> key=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>id<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><code><span class="token template-string"><span class="token string">    &lt;dt&gt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>term<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&lt;/dt&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="18"><code><span class="token template-string"><span class="token string">    &lt;dd&gt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>definition<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&lt;/dd&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="19"><code><span class="token template-string"><span class="token string">  &lt;//&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="20"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="21"><code><span class="token template-string"><span class="token string">  &lt;!-- Conditional children --&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="22"><code><span class="token template-string"><span class="token string">  </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>show <span class="token operator">&amp;&amp;</span> jsx<span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string">&lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Alert<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> message=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>msg<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> /&gt;</span><span class="token template-punctuation string">`</span></span><span class="token interpolation-punctuation punctuation">}</span></span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="23"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="24"><code><span class="token template-string"><span class="token string">  &lt;!-- Mapped children with keys --&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="25"><code><span class="token template-string"><span class="token string">  &lt;ul&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="26"><code><span class="token template-string"><span class="token string">    </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>items<span class="token punctuation">.</span><span class="token function">map</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token parameter">item</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> jsx<span class="token template-string"><span class="token template-punctuation string">`</span></span></span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="27"><code><span class="token template-string"><span class="token interpolation"><span class="token template-string"><span class="token string">      &lt;li key=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>item<span class="token punctuation">.</span>id<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&gt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>item<span class="token punctuation">.</span>name<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&lt;/li&gt;</span></span></span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="28"><code><span class="token template-string"><span class="token interpolation"><span class="token template-string"><span class="token string">    </span><span class="token template-punctuation string">`</span></span><span class="token punctuation">)</span><span class="token interpolation-punctuation punctuation">}</span></span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="29"><code><span class="token template-string"><span class="token string">  &lt;/ul&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="30"><code><span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-213" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-213'] = {"code":"jsx`\n  \u003C!-- Comments are ignored --\u003E\n\n  \u003C!-- Host elements with boolean, string, expression, and spread props --\u003E\n  \u003Cinput disabled type=\"text\" value=${val} ...${props} \u002F\u003E\n\n  \u003C!-- Component elements --\u003E\n  \u003C${Component} onclick=${handler}\u003Echildren\u003C\u002F\u002F\u003E\n\n  \u003C!-- Fragment shorthand --\u003E\n  \u003C\u003E\n    \u003Cp\u003EFirst\u003C\u002Fp\u003E\n    \u003Cp\u003ESecond\u003C\u002Fp\u003E\n  \u003C\u002F\u003E\n\n  \u003C!-- Keyed fragment --\u003E\n  \u003C${Fragment} key=${id}\u003E\n    \u003Cdt\u003E${term}\u003C\u002Fdt\u003E\n    \u003Cdd\u003E${definition}\u003C\u002Fdd\u003E\n  \u003C\u002F\u002F\u003E\n\n  \u003C!-- Conditional children --\u003E\n  ${show && jsx`\u003C${Alert} message=${msg} \u002F\u003E`}\n\n  \u003C!-- Mapped children with keys --\u003E\n  \u003Cul\u003E\n    ${items.map((item) =\u003E jsx`\n      \u003Cli key=${item.id}\u003E${item.name}\u003C\u002Fli\u003E\n    `)}\n  \u003C\u002Ful\u003E\n`","lang":"js"};
+		</script></div><p>Multiple root elements are supported — no wrapping fragment needed.</p><h2 id="caching">Caching <a class="heading-anchor" href="#caching">#</a></h2><p>The template tag caches parse results keyed by the raw template strings. On subsequent calls with the same template, the cached AST is reused and only the expression values are updated. This makes repeated renders efficient — the parsing cost is paid once per unique template site.</p><h2 id="error-messages">Error Messages <a class="heading-anchor" href="#error-messages">#</a></h2><p>Syntax errors include line and column context with a caret pointer:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -617,14 +718,14 @@ build tools required:</p><div style="margin: 30px auto;" class="code-block-conta
 			" data-index="2"><code><span class="token operator">&gt;</span> <span class="token number">1</span> <span class="token operator">|</span> <span class="token operator">&lt;</span>p <span class="token keyword">class</span><span class="token operator">==</span><span class="token operator">&gt;</span><span class="token operator">&lt;</span><span class="token operator">/</span>p<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code>     <span class="token operator">|</span>          <span class="token operator">^</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-213" class="props">
+			" data-index="3"><code>     <span class="token operator">|</span>          <span class="token operator">^</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-214" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-213'] = {"code":"Unexpected text `=\u003E\u003C\u002Fp\u003E`\n\n\u003E 1 | \u003Cp class==\u003E\u003C\u002Fp\u003E\n     |          ^","lang":""};
-		</script></div><div class="css-1lyshc7"><a href="https://github.com/bikeshaving/crank/edit/main/docs/guides/11-jsx-template-tag.md" target="_blank" rel="noopener noreferrer" class="css-vrpffa"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>Edit on GitHub</a></div></main><footer class="css-1nd56js"><nav class="css-nf2n4z"><a href="/guides/getting-started/">Docs</a><a href="/blog/">Blog</a><a href="/playground/">Playground</a><a href="/press-kit/">Press Kit</a><a href="https://github.com/bikeshaving/crank">GitHub</a><a href="https://www.npmjs.com/package/@b9g/crank">NPM</a></nav><p class="css-1st8n6b">MIT Licensed · Made with Crank.js</p></footer><script data-name="embedded-json-214" id="static-urls">
+			window.__embeddedJSON__['inline-code-block-props-214'] = {"code":"Unexpected text `=\u003E\u003C\u002Fp\u003E`\n\n\u003E 1 | \u003Cp class==\u003E\u003C\u002Fp\u003E\n     |          ^","lang":""};
+		</script></div><div class="css-1lyshc7"><a href="https://github.com/bikeshaving/crank/edit/main/docs/guides/11-jsx-template-tag.md" target="_blank" rel="noopener noreferrer" class="css-vrpffa"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>Edit on GitHub</a></div></main><footer class="css-1nd56js"><nav class="css-nf2n4z"><a href="/guides/getting-started/">Docs</a><a href="/blog/">Blog</a><a href="/playground/">Playground</a><a href="/press-kit/">Press Kit</a><a href="https://github.com/bikeshaving/crank">GitHub</a><a href="https://www.npmjs.com/package/@b9g/crank">NPM</a></nav><p class="css-1st8n6b">MIT Licensed · Made with Crank.js</p></footer><script data-name="embedded-json-215" id="static-urls">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['embedded-json-214'] = {"client.css":"\u002Fstatic\u002Fclient-53580c6c596afa25.css","@b9g\u002Fcrank":"\u002Fstatic\u002Findex-75ce222f11213d3f.js","@b9g\u002Fcrank\u002Fasync":"\u002Fstatic\u002Fasync-9cca74524aa7902f.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-53b9deed3b2794b8.js","@b9g\u002Fcrank\u002Fevent-target":"\u002Fstatic\u002Fevent-target-30828c7029258362.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-3a37cf45a602c351.js","@b9g\u002Fcrank\u002Fjsx-dev-runtime":"\u002Fstatic\u002Fjsx-dev-runtime-e5e4dcf100e42abb.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-e5e4dcf100e42abb.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-99a44ff45f5faa9c.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-a2f993d597c194da.js"};
+			window.__embeddedJSON__['embedded-json-215'] = {"client.css":"\u002Fstatic\u002Fclient-53580c6c596afa25.css","@b9g\u002Fcrank":"\u002Fstatic\u002Findex-75ce222f11213d3f.js","@b9g\u002Fcrank\u002Fasync":"\u002Fstatic\u002Fasync-9cca74524aa7902f.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-53b9deed3b2794b8.js","@b9g\u002Fcrank\u002Fevent-target":"\u002Fstatic\u002Fevent-target-30828c7029258362.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-3a37cf45a602c351.js","@b9g\u002Fcrank\u002Fjsx-dev-runtime":"\u002Fstatic\u002Fjsx-dev-runtime-e5e4dcf100e42abb.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-e5e4dcf100e42abb.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-99a44ff45f5faa9c.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-a2f993d597c194da.js"};
 		</script><script type="module" src="/static/navbar-f02cdf011dc9b864.js"></script><script type="module" src="/static/code-blocks-0061330b1490c587.js"></script><script type="module" src="/static/search-bf547953f6e56a66.js"></script><script type="module" src="/static/gear-2081c009161fa35b.js"></script><script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon="{&quot;token&quot;: &quot;2778280e10354cd5b1ec2458a0a095b4&quot;}"></script></body></html>
