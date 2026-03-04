@@ -76,11 +76,11 @@ rendering process and manages the component tree</li></ol><div style="margin: 30
 			" data-index="14"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="15"><code><span class="token keyword">export</span> <span class="token keyword">const</span> renderer <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">MyRenderer</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-293" class="props">
+			" data-index="15"><code><span class="token keyword">export</span> <span class="token keyword">const</span> renderer <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">MyRenderer</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-296" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-293'] = {"code":"import {Renderer, type RenderAdapter} from \"@b9g\u002Fcrank\";\n\nexport const adapter: RenderAdapter\u003CMyNode, MyScope, MyRoot\u003E = {\n  create: ({tag, props}) =\u003E new MyNode(tag, props),\n  patch: ({node, props}) =\u003E node.update(props),\n  arrange: ({node, children}) =\u003E node.replaceChildren(children),\n  \u002F\u002F ... other methods\n};\n\nexport class MyRenderer extends Renderer\u003CMyNode, MyScope, MyRoot\u003E {\n  constructor() {\n    super(adapter);\n  }\n}\n\nexport const renderer = new MyRenderer();","lang":"typescript"};
+			window.__embeddedJSON__['inline-code-block-props-296'] = {"code":"import {Renderer, type RenderAdapter} from \"@b9g\u002Fcrank\";\n\nexport const adapter: RenderAdapter\u003CMyNode, MyScope, MyRoot\u003E = {\n  create: ({tag, props}) =\u003E new MyNode(tag, props),\n  patch: ({node, props}) =\u003E node.update(props),\n  arrange: ({node, children}) =\u003E node.replaceChildren(children),\n  \u002F\u002F ... other methods\n};\n\nexport class MyRenderer extends Renderer\u003CMyNode, MyScope, MyRoot\u003E {\n  constructor() {\n    super(adapter);\n  }\n}\n\nexport const renderer = new MyRenderer();","lang":"typescript"};
 		</script></div><p>A module which implements a custom renderer should by convention export an
 adapter, the subclass, and an instance of the subclass for convenience.</p><h2 id="renderadapter-interface">RenderAdapter Interface <a class="heading-anchor" href="#renderadapter-interface">#</a></h2><p>The <code class="inline">RenderAdapter</code> interface defines how Crank elements are turned into nodes
 in your target environment. Each method handles a specific part of the element
@@ -124,11 +124,11 @@ object includes <code class="inline">root: TRoot | undefined</code>, giving acce
 			" data-index="8"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-294" class="props">
+			" data-index="9"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-297" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-294'] = {"code":"create({tag, props, scope}) {\n  switch (tag) {\n    case \"sprite\":\n      return new PIXI.Sprite(props.texture);\n    case \"container\":\n      return new PIXI.Container();\n    default:\n      throw new Error(`Unknown tag: ${tag}`);\n  }\n}","lang":"typescript"};
+			window.__embeddedJSON__['inline-code-block-props-297'] = {"code":"create({tag, props, scope}) {\n  switch (tag) {\n    case \"sprite\":\n      return new PIXI.Sprite(props.texture);\n    case \"container\":\n      return new PIXI.Container();\n    default:\n      throw new Error(`Unknown tag: ${tag}`);\n  }\n}","lang":"typescript"};
 		</script></div><p><strong>Parameters:</strong> <code class="inline">tag</code>, <code class="inline">tagName</code>, <code class="inline">props</code>, <code class="inline">scope</code>, <code class="inline">root</code></p><h4 id="patch-data-void"><code class="inline">patch(data): void</code> <a class="heading-anchor" href="#patch-data-void">#</a></h4><p>Updates a node’s properties when props change. This is where you implement
 prop-to-attribute mapping, event listener binding, and property
 synchronization.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
@@ -173,11 +173,11 @@ synchronization.</p><div style="margin: 30px auto;" class="code-block-container 
 			" data-index="11"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="12"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-295" class="props">
+			" data-index="12"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-298" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-295'] = {"code":"patch({node, props, oldProps}) {\n  for (const [key, value] of Object.entries(props)) {\n    if (oldProps?.[key] !== value) {\n      if (key.startsWith(\"on\")) {\n        const eventName = key.slice(2).toLowerCase();\n        node.removeAllListeners(eventName);\n        if (value) node.on(eventName, value);\n      } else {\n        node[key] = value;\n      }\n    }\n  }\n}","lang":"typescript"};
+			window.__embeddedJSON__['inline-code-block-props-298'] = {"code":"patch({node, props, oldProps}) {\n  for (const [key, value] of Object.entries(props)) {\n    if (oldProps?.[key] !== value) {\n      if (key.startsWith(\"on\")) {\n        const eventName = key.slice(2).toLowerCase();\n        node.removeAllListeners(eventName);\n        if (value) node.on(eventName, value);\n      } else {\n        node[key] = value;\n      }\n    }\n  }\n}","lang":"typescript"};
 		</script></div><p><strong>Parameters:</strong> <code class="inline">tag</code>, <code class="inline">tagName</code>, <code class="inline">node</code>, <code class="inline">props</code>, <code class="inline">oldProps</code>, <code class="inline">scope</code>, <code class="inline">root</code>,
 <code class="inline">copyProps</code>, <code class="inline">isHydrating</code>, <code class="inline">quietProps</code></p><ul><li><code class="inline">copyProps</code>: A set of props to skip because the user provided a copy with
 meta-prop syntax.</li><li><code class="inline">isHydrating</code>: Whether we are currently hydrating.</li><li><code class="inline">quietProps</code>: A set of props to suppress hydration warnings for because the
@@ -198,11 +198,11 @@ re-ordering existing nodes in the tree.</p><div style="margin: 30px auto;" class
 			" data-index="2"><code>  children<span class="token punctuation">.</span><span class="token function">forEach</span><span class="token punctuation">(</span><span class="token punctuation">(</span>child<span class="token punctuation">,</span> index<span class="token punctuation">)</span> <span class="token operator">=&gt;</span> node<span class="token punctuation">.</span><span class="token function">addChildAt</span><span class="token punctuation">(</span>child<span class="token punctuation">,</span> index<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-296" class="props">
+			" data-index="3"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-299" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-296'] = {"code":"arrange({node, children}) {\n  node.removeChildren();\n  children.forEach((child, index) =\u003E node.addChildAt(child, index));\n}","lang":"typescript"};
+			window.__embeddedJSON__['inline-code-block-props-299'] = {"code":"arrange({node, children}) {\n  node.removeChildren();\n  children.forEach((child, index) =\u003E node.addChildAt(child, index));\n}","lang":"typescript"};
 		</script></div><p><strong>Parameters:</strong> <code class="inline">tag</code>, <code class="inline">tagName</code>, <code class="inline">node</code>, <code class="inline">props</code>, <code class="inline">children</code>, <code class="inline">oldProps</code>,
 <code class="inline">root</code></p><h4 id="remove-data-void"><code class="inline">remove(data): void</code> <a class="heading-anchor" href="#remove-data-void">#</a></h4><p>Removes a node when an element is unmounted.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-typescript
@@ -228,11 +228,11 @@ re-ordering existing nodes in the tree.</p><div style="margin: 30px auto;" class
 			" data-index="5"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-297" class="props">
+			" data-index="6"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-300" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-297'] = {"code":"remove({node, parentNode, isNested}) {\n  node.destroy?.();\n  \u002F\u002F Remove from parent (unless nested removal)\n  if (!isNested && parentNode.children.includes(node)) {\n    parentNode.removeChild(node);\n  }\n}","lang":"typescript"};
+			window.__embeddedJSON__['inline-code-block-props-300'] = {"code":"remove({node, parentNode, isNested}) {\n  node.destroy?.();\n  \u002F\u002F Remove from parent (unless nested removal)\n  if (!isNested && parentNode.children.includes(node)) {\n    parentNode.removeChild(node);\n  }\n}","lang":"typescript"};
 		</script></div><p><strong>Parameters:</strong> <code class="inline">node</code>, <code class="inline">parentNode</code>, <code class="inline">isNested</code>, <code class="inline">root</code></p><ul><li><code class="inline">isNested</code>: Whether this removal is nested in another removal. Depending on
 your target environment, you may only need to remove the top-level node from
 its parent and leave the remaining nodes untouched.</li></ul><h4 id="text-data-tnode"><code class="inline">text(data): TNode</code> <a class="heading-anchor" href="#text-data-tnode">#</a></h4><p>Creates or updates text nodes.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
@@ -262,11 +262,11 @@ its parent and leave the remaining nodes untouched.</li></ul><h4 id="text-data-t
 			" data-index="6"><code>  <span class="token keyword">return</span> <span class="token keyword">new</span> <span class="token class-name">TextNode</span><span class="token punctuation">(</span>value<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-298" class="props">
+			" data-index="7"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-301" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-298'] = {"code":"text({value, oldNode}) {\n  if (oldNode && oldNode.text !== value) {\n    oldNode.text = value;\n    return oldNode;\n  }\n\n  return new TextNode(value);\n}","lang":"typescript"};
+			window.__embeddedJSON__['inline-code-block-props-301'] = {"code":"text({value, oldNode}) {\n  if (oldNode && oldNode.text !== value) {\n    oldNode.text = value;\n    return oldNode;\n  }\n\n  return new TextNode(value);\n}","lang":"typescript"};
 		</script></div><p><strong>Parameters:</strong> <code class="inline">value</code>, <code class="inline">scope</code>, <code class="inline">oldNode</code>, <code class="inline">hydrationNodes</code>, <code class="inline">root</code></p><h4 id="raw-data-elementvalue-tnode"><code class="inline">raw(data): ElementValue&lt;TNode&gt;</code> <a class="heading-anchor" href="#raw-data-elementvalue-tnode">#</a></h4><p>Handles raw values that bypass normal element processing.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-typescript
 							css-1ashatc
@@ -288,11 +288,11 @@ its parent and leave the remaining nodes untouched.</li></ul><h4 id="text-data-t
 			" data-index="4"><code>  <span class="token keyword">return</span> value<span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-299" class="props">
+			" data-index="5"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-302" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-299'] = {"code":"raw({value}) {\n  if (typeof value === \"string\") {\n    return parseMarkup(value);\n  }\n  return value;\n}","lang":"typescript"};
+			window.__embeddedJSON__['inline-code-block-props-302'] = {"code":"raw({value}) {\n  if (typeof value === \"string\") {\n    return parseMarkup(value);\n  }\n  return value;\n}","lang":"typescript"};
 		</script></div><p><strong>Parameters:</strong> <code class="inline">value</code>, <code class="inline">scope</code>, <code class="inline">hydrationNodes</code>, <code class="inline">root</code></p><h4 id="adopt-data-array-tnode-undefined"><code class="inline">adopt(data): Array&lt;TNode&gt; | undefined</code> <a class="heading-anchor" href="#adopt-data-array-tnode-undefined">#</a></h4><p>Adopts existing nodes during hydration (for server-side rendering or state
 restoration). Should return an array of child nodes if the provided node
 matches the expected tag, or <code class="inline">undefined</code> if hydration should fail.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
@@ -316,11 +316,11 @@ matches the expected tag, or <code class="inline">undefined</code> if hydration 
 			" data-index="4"><code>  <span class="token keyword">return</span> <span class="token keyword">undefined</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-300" class="props">
+			" data-index="5"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-303" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-300'] = {"code":"adopt({tag, node}) {\n  if (node && node.tagName.toLowerCase() === tag) {\n    return Array.from(node.children);\n  }\n  return undefined;\n}","lang":"typescript"};
+			window.__embeddedJSON__['inline-code-block-props-303'] = {"code":"adopt({tag, node}) {\n  if (node && node.tagName.toLowerCase() === tag) {\n    return Array.from(node.children);\n  }\n  return undefined;\n}","lang":"typescript"};
 		</script></div><p><strong>Parameters:</strong> <code class="inline">tag</code>, <code class="inline">tagName</code>, <code class="inline">props</code>, <code class="inline">node</code>, <code class="inline">scope</code>, <code class="inline">root</code></p><h4 id="scope-data-tscope-undefined"><code class="inline">scope(data): TScope | undefined</code> <a class="heading-anchor" href="#scope-data-tscope-undefined">#</a></h4><p>Computes scope context for child elements. Useful for passing coordinate
 systems, themes, or namespaces down the tree. Called once when elements are
 created.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
@@ -353,11 +353,11 @@ created.</p><div style="margin: 30px auto;" class="code-block-container "><div c
 			" data-index="7"><code>  <span class="token keyword">return</span> scope<span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-301" class="props">
+			" data-index="8"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-304" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-301'] = {"code":"scope({tag, props, scope}) {\n  if (tag === \"viewport\") {\n    return {\n      ...scope,\n      transform: new Transform(props.x, props.y, props.scale),\n    };\n  }\n  return scope;\n}","lang":"typescript"};
+			window.__embeddedJSON__['inline-code-block-props-304'] = {"code":"scope({tag, props, scope}) {\n  if (tag === \"viewport\") {\n    return {\n      ...scope,\n      transform: new Transform(props.x, props.y, props.scale),\n    };\n  }\n  return scope;\n}","lang":"typescript"};
 		</script></div><p><strong>Parameters:</strong> <code class="inline">tag</code>, <code class="inline">tagName</code>, <code class="inline">props</code>, <code class="inline">scope</code>, <code class="inline">root</code></p><h4 id="read-value-tresult"><code class="inline">read(value): TResult</code> <a class="heading-anchor" href="#read-value-tresult">#</a></h4><p>Transforms the internal node representation into the public API.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-typescript
 							css-1ashatc
@@ -379,11 +379,11 @@ created.</p><div style="margin: 30px auto;" class="code-block-container "><div c
 			" data-index="4"><code>  <span class="token keyword">return</span> value<span class="token operator">?.</span><span class="token function">getPublicAPI</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-302" class="props">
+			" data-index="5"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-305" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-302'] = {"code":"read: (value) =\u003E {\n  if (Array.isArray(value)) {\n    return value.map(node =\u003E node.getPublicAPI());\n  }\n  return value?.getPublicAPI();\n}","lang":"typescript"};
+			window.__embeddedJSON__['inline-code-block-props-305'] = {"code":"read: (value) =\u003E {\n  if (Array.isArray(value)) {\n    return value.map(node =\u003E node.getPublicAPI());\n  }\n  return value?.getPublicAPI();\n}","lang":"typescript"};
 		</script></div><h4 id="finalize-root-void"><code class="inline">finalize(root): void</code> <a class="heading-anchor" href="#finalize-root-void">#</a></h4><p>Performs final rendering operations (e.g., triggering a render pass).</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-typescript
 							css-1ashatc
@@ -402,11 +402,11 @@ created.</p><div style="margin: 30px auto;" class="code-block-container "><div c
 			" data-index="3"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-303" class="props">
+			" data-index="4"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-306" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-303'] = {"code":"finalize: (root) =\u003E {\n  if (root instanceof PIXI.Application) {\n    root.render();\n  }\n}","lang":"typescript"};
+			window.__embeddedJSON__['inline-code-block-props-306'] = {"code":"finalize: (root) =\u003E {\n  if (root instanceof PIXI.Application) {\n    root.render();\n  }\n}","lang":"typescript"};
 		</script></div><!--
 ## Complete Example: Canvas Renderer
 Here’s a complete example of a custom renderer for HTML5 Canvas:
@@ -680,11 +680,11 @@ canvasRenderer.render(<CanvasApp />, canvas);
 			" data-index="26"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="27"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-304" class="props">
+			" data-index="27"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-307" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-304'] = {"code":"declare global {\n  namespace JSX {\n    interface IntrinsicElements {\n      \u002F\u002F Canvas elements\n      rect: {\n        x?: number;\n        y?: number;\n        width?: number;\n        height?: number;\n        fill?: string;\n        children?: any;\n      };\n\n      text: {\n        x?: number;\n        y?: number;\n        children?: string | number;\n      };\n\n      group: {\n        x?: number;\n        y?: number;\n        scale?: number;\n        children?: any;\n      };\n    }\n  }\n}","lang":"typescript"};
+			window.__embeddedJSON__['inline-code-block-props-307'] = {"code":"declare global {\n  namespace JSX {\n    interface IntrinsicElements {\n      \u002F\u002F Canvas elements\n      rect: {\n        x?: number;\n        y?: number;\n        width?: number;\n        height?: number;\n        fill?: string;\n        children?: any;\n      };\n\n      text: {\n        x?: number;\n        y?: number;\n        children?: string | number;\n      };\n\n      group: {\n        x?: number;\n        y?: number;\n        scale?: number;\n        children?: any;\n      };\n    }\n  }\n}","lang":"typescript"};
 		</script></div><h2 id="advanced-patterns">Advanced Patterns <a class="heading-anchor" href="#advanced-patterns">#</a></h2><h3 id="bridge-components">Bridge Components <a class="heading-anchor" href="#bridge-components">#</a></h3><p>Create components that bridge between different renderers:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-typescript
 							css-1ashatc
@@ -712,11 +712,11 @@ canvasRenderer.render(<CanvasApp />, canvas);
 			" data-index="6"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-305" class="props">
+			" data-index="7"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-308" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-305'] = {"code":"function* PixiApplication({children, ...props}) {\n  const app = new PIXI.Application(props);\n  document.body.appendChild(app.view);\n\n  for ({children, ...props} of this) {\n    pixiRenderer.render(children, app.stage, this);\n  }\n}","lang":"typescript"};
+			window.__embeddedJSON__['inline-code-block-props-308'] = {"code":"function* PixiApplication({children, ...props}) {\n  const app = new PIXI.Application(props);\n  document.body.appendChild(app.view);\n\n  for ({children, ...props} of this) {\n    pixiRenderer.render(children, app.stage, this);\n  }\n}","lang":"typescript"};
 		</script></div><p>The third parameter to <code class="inline">render()</code> allows you to connect the contexts of your
 child renderer with your parent renderer.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-typescript
@@ -784,14 +784,14 @@ child renderer with your parent renderer.</p><div style="margin: 30px auto;" cla
 			" data-index="19"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="20"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-306" class="props">
+			" data-index="20"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-309" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-306'] = {"code":"function* GameUI() {\n  const gameState = new GameState();\n  \u002F\u002F You can add provision for child Canvas components to read\n  this.provide(\"gameState\", gameState);\n  for ({} of this) {\n    yield (\n      \u003C\u003E\n        {\u002F* DOM UI *\u002F}\n        \u003Cdiv class=\"ui\"\u003E\n          \u003CScore value={gameState.score} \u002F\u003E\n          \u003Cbutton onclick={() =\u003E gameState.restart()}\u003E\n            Restart\n          \u003C\u002Fbutton\u003E\n        \u003C\u002Fdiv\u003E\n\n        {\u002F* Canvas Game components will read the provisions *\u002F}\n        \u003CGameCanvas \u002F\u003E\n      \u003C\u002F\u003E\n    );\n  }\n}","lang":"typescript"};
-		</script></div><div class="css-1lyshc7"><a href="https://github.com/bikeshaving/crank/edit/main/docs/guides/14-custom-renderers.md" target="_blank" rel="noopener noreferrer" class="css-vrpffa"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>Edit on GitHub</a></div></main><footer class="css-1nd56js"><nav class="css-nf2n4z"><a href="/guides/getting-started/">Docs</a><a href="/blog/">Blog</a><a href="/playground/">Playground</a><a href="/press-kit/">Press Kit</a><a href="https://github.com/bikeshaving/crank">GitHub</a><a href="https://www.npmjs.com/package/@b9g/crank">NPM</a></nav><p class="css-1st8n6b">MIT Licensed · Made with Crank.js</p></footer><script data-name="embedded-json-307" id="static-urls">
+			window.__embeddedJSON__['inline-code-block-props-309'] = {"code":"function* GameUI() {\n  const gameState = new GameState();\n  \u002F\u002F You can add provision for child Canvas components to read\n  this.provide(\"gameState\", gameState);\n  for ({} of this) {\n    yield (\n      \u003C\u003E\n        {\u002F* DOM UI *\u002F}\n        \u003Cdiv class=\"ui\"\u003E\n          \u003CScore value={gameState.score} \u002F\u003E\n          \u003Cbutton onclick={() =\u003E gameState.restart()}\u003E\n            Restart\n          \u003C\u002Fbutton\u003E\n        \u003C\u002Fdiv\u003E\n\n        {\u002F* Canvas Game components will read the provisions *\u002F}\n        \u003CGameCanvas \u002F\u003E\n      \u003C\u002F\u003E\n    );\n  }\n}","lang":"typescript"};
+		</script></div><div class="css-1lyshc7"><a href="https://github.com/bikeshaving/crank/edit/main/docs/guides/14-custom-renderers.md" target="_blank" rel="noopener noreferrer" class="css-vrpffa"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>Edit on GitHub</a></div></main><footer class="css-1nd56js"><nav class="css-nf2n4z"><a href="/guides/getting-started/">Docs</a><a href="/blog/">Blog</a><a href="/playground/">Playground</a><a href="/press-kit/">Press Kit</a><a href="https://github.com/bikeshaving/crank">GitHub</a><a href="https://www.npmjs.com/package/@b9g/crank">NPM</a></nav><p class="css-1st8n6b">MIT Licensed · Made with Crank.js</p></footer><script data-name="embedded-json-310" id="static-urls">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['embedded-json-307'] = {"client.css":"\u002Fstatic\u002Fclient-53580c6c596afa25.css","@b9g\u002Fcrank":"\u002Fstatic\u002Findex-75ce222f11213d3f.js","@b9g\u002Fcrank\u002Fasync":"\u002Fstatic\u002Fasync-9cca74524aa7902f.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-53b9deed3b2794b8.js","@b9g\u002Fcrank\u002Fevent-target":"\u002Fstatic\u002Fevent-target-30828c7029258362.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-3a37cf45a602c351.js","@b9g\u002Fcrank\u002Fjsx-dev-runtime":"\u002Fstatic\u002Fjsx-dev-runtime-e5e4dcf100e42abb.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-e5e4dcf100e42abb.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-99a44ff45f5faa9c.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-a2f993d597c194da.js"};
+			window.__embeddedJSON__['embedded-json-310'] = {"client.css":"\u002Fstatic\u002Fclient-53580c6c596afa25.css","@b9g\u002Fcrank":"\u002Fstatic\u002Findex-75ce222f11213d3f.js","@b9g\u002Fcrank\u002Fasync":"\u002Fstatic\u002Fasync-9cca74524aa7902f.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-53b9deed3b2794b8.js","@b9g\u002Fcrank\u002Fevent-target":"\u002Fstatic\u002Fevent-target-30828c7029258362.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-3a37cf45a602c351.js","@b9g\u002Fcrank\u002Fjsx-dev-runtime":"\u002Fstatic\u002Fjsx-dev-runtime-e5e4dcf100e42abb.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-e5e4dcf100e42abb.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-99a44ff45f5faa9c.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-a2f993d597c194da.js"};
 		</script><script type="module" src="/static/navbar-f02cdf011dc9b864.js"></script><script type="module" src="/static/code-blocks-0061330b1490c587.js"></script><script type="module" src="/static/search-bf547953f6e56a66.js"></script><script type="module" src="/static/gear-2081c009161fa35b.js"></script><script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon="{&quot;token&quot;: &quot;2778280e10354cd5b1ec2458a0a095b4&quot;}"></script></body></html>
