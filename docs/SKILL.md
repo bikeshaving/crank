@@ -94,6 +94,54 @@ renderer.render(<Timer message="Elapsed" />, document.getElementById("app"));
 | `useContext(ctx)` | `this.consume(key)` | No Provider components |
 | `<Ctx.Provider value={v}>` | `this.provide(key, v)` | Called in generator body |
 
+## API Surface
+
+These are the complete public exports.
+
+```js
+// Core — components, elements, and rendering infrastructure
+import {
+  createElement,   // Create an element (called automatically by JSX)
+  Fragment,         // Group children without a wrapper node ("")
+  Portal,           // Render children into a different root node
+  Copy,             // Reuse the previously rendered child tree
+  Text,             // Render a text node with explicit text prop
+  Raw,              // Insert raw HTML/markup via value prop
+  Element,          // Element class (for type checking)
+  isElement,        // Test if a value is a Crank element
+  cloneElement,     // Clone an element with merged props
+  Context,          // Component context class
+  Renderer,         // Base renderer class (for custom renderers)
+} from "@b9g/crank";
+
+// DOM renderer
+import {renderer, DOMRenderer} from "@b9g/crank/dom";
+
+// HTML string renderer (SSR)
+import {renderer as htmlRenderer, HTMLRenderer} from "@b9g/crank/html";
+
+// JSX template tag (no build step)
+import {jsx, html} from "@b9g/crank/jsx-tag";
+
+// Standalone — re-exports everything above in one import
+import {jsx, html, Fragment, renderer, domRenderer, htmlRenderer, DOMRenderer, HTMLRenderer} from "@b9g/crank/standalone";
+```
+
+### Context methods (`this` inside generator components)
+
+```js
+this.refresh(callback?)   // Mutate state and re-render
+this.schedule(callback?)  // Run after this render commits (once)
+this.after(callback?)     // Run after every render commits
+this.flush(callback?)     // Run after the entire render tree commits
+this.cleanup(callback?)   // Run on unmount
+this.consume(key)         // Read a provided value from an ancestor
+this.provide(key, value)  // Provide a value to descendants
+this.addEventListener(type, listener)    // Listen for DOM or custom events
+this.removeEventListener(type, listener) // Remove an event listener
+this.dispatchEvent(event)               // Dispatch an event up the tree
+```
+
 ## Philosophy
 
 Crank components are plain JavaScript functions and generators. State is variables. Props are values. Updates are explicit.
