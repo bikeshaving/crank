@@ -602,7 +602,7 @@ build tools required:</p><div style="margin: 30px auto;" class="code-block-conta
 				window.__embeddedJSON__ = {};
 			}
 			window.__embeddedJSON__['inline-code-block-props-212'] = {"code":"jsx`\n  \u003Cdiv\u003E\n    \u003C!-- This comment is ignored --\u003E\n    \u003Cp\u003EHello ${name}\u003C\u002Fp\u003E\n    \u003C!-- Even ${expressions} inside comments are discarded --\u003E\n  \u003C\u002Fdiv\u003E\n`","lang":"js"};
-		</script></div><h2 id="whitespace">Whitespace <a class="heading-anchor" href="#whitespace">#</a></h2><p>The template tag normalizes whitespace to match JSX conventions:</p><ul><li>A newline and any surrounding whitespace is collapsed — text before a newline has trailing whitespace trimmed, and text after a newline has leading whitespace trimmed.</li><li>A backslash before a newline (<code class="inline">\</code> at end of line) preserves the preceding whitespace and removes the backslash.</li><li>Trailing whitespace at the end of the template is trimmed.</li></ul><h2 id="kitchen-sink">Kitchen Sink <a class="heading-anchor" href="#kitchen-sink">#</a></h2><p>Every template tag feature in one snippet:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+		</script></div><h2 id="whitespace">Whitespace <a class="heading-anchor" href="#whitespace">#</a></h2><p>The template tag normalizes whitespace to match JSX conventions:</p><ul><li>A newline and any surrounding whitespace is collapsed — text before a newline has trailing whitespace trimmed, and text after a newline has leading whitespace trimmed.</li><li>A backslash before a newline (<code class="inline">\</code> at end of line) preserves the preceding whitespace and removes the backslash.</li><li>Trailing whitespace at the end of the template is trimmed.</li></ul><h2 id="quick-reference">Quick Reference <a class="heading-anchor" href="#quick-reference">#</a></h2><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-js
 							css-1ashatc
 						"><div class="
@@ -611,99 +611,120 @@ build tools required:</p><div style="margin: 30px auto;" class="code-block-conta
 			" data-index="0"><code>jsx<span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code><span class="token template-string"><span class="token string">  &lt;!-- Comments are ignored --&gt;</span></span></code><br></div><div class="
+			" data-index="1"><code><span class="token template-string"><span class="token string">  &lt;!-- host element --&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><br></div><div class="
+			" data-index="2"><code><span class="token template-string"><span class="token string">  &lt;div /&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code><span class="token template-string"><span class="token string">  &lt;!-- Host elements with boolean, string, expression, and spread props --&gt;</span></span></code><br></div><div class="
+			" data-index="3"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code><span class="token template-string"><span class="token string">  &lt;input disabled type=&quot;text&quot; value=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>val<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> ...</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>props<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> /&gt;</span></span></code><br></div><div class="
+			" data-index="4"><code><span class="token template-string"><span class="token string">  &lt;!-- component element with shorthand close --&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><br></div><div class="
+			" data-index="5"><code><span class="token template-string"><span class="token string">  &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Component<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&gt;children&lt;//&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code><span class="token template-string"><span class="token string">  &lt;!-- Component elements --&gt;</span></span></code><br></div><div class="
+			" data-index="6"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code><span class="token template-string"><span class="token string">  &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Component<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> onclick=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>handler<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&gt;children&lt;//&gt;</span></span></code><br></div><div class="
+			" data-index="7"><code><span class="token template-string"><span class="token string">  &lt;!-- comment-style close --&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><br></div><div class="
+			" data-index="8"><code><span class="token template-string"><span class="token string">  &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Component<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&gt;children&lt;//Component&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code><span class="token template-string"><span class="token string">  &lt;!-- Fragment shorthand --&gt;</span></span></code><br></div><div class="
+			" data-index="9"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code><span class="token template-string"><span class="token string">  &lt;&gt;</span></span></code><br></div><div class="
+			" data-index="10"><code><span class="token template-string"><span class="token string">  &lt;!-- fragment shorthand --&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="11"><code><span class="token template-string"><span class="token string">    &lt;p&gt;First&lt;/p&gt;</span></span></code><br></div><div class="
+			" data-index="11"><code><span class="token template-string"><span class="token string">  &lt;&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="12"><code><span class="token template-string"><span class="token string">    &lt;p&gt;Second&lt;/p&gt;</span></span></code><br></div><div class="
+			" data-index="12"><code><span class="token template-string"><span class="token string">    &lt;p&gt;first&lt;/p&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="13"><code><span class="token template-string"><span class="token string">  &lt;/&gt;</span></span></code><br></div><div class="
+			" data-index="13"><code><span class="token template-string"><span class="token string">    &lt;p&gt;second&lt;/p&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="14"><br></div><div class="
+			" data-index="14"><code><span class="token template-string"><span class="token string">  &lt;/&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="15"><code><span class="token template-string"><span class="token string">  &lt;!-- Keyed fragment --&gt;</span></span></code><br></div><div class="
+			" data-index="15"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="16"><code><span class="token template-string"><span class="token string">  &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Fragment<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> key=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>id<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&gt;</span></span></code><br></div><div class="
+			" data-index="16"><code><span class="token template-string"><span class="token string">  &lt;!-- keyed fragment --&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="17"><code><span class="token template-string"><span class="token string">    &lt;dt&gt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>term<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&lt;/dt&gt;</span></span></code><br></div><div class="
+			" data-index="17"><code><span class="token template-string"><span class="token string">  &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Fragment<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> key=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>id<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="18"><code><span class="token template-string"><span class="token string">    &lt;dd&gt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>definition<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&lt;/dd&gt;</span></span></code><br></div><div class="
+			" data-index="18"><code><span class="token template-string"><span class="token string">    &lt;dt&gt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>term<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&lt;/dt&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="19"><code><span class="token template-string"><span class="token string">  &lt;//&gt;</span></span></code><br></div><div class="
+			" data-index="19"><code><span class="token template-string"><span class="token string">    &lt;dd&gt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>definition<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&lt;/dd&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="20"><br></div><div class="
+			" data-index="20"><code><span class="token template-string"><span class="token string">  &lt;//&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="21"><code><span class="token template-string"><span class="token string">  &lt;!-- Conditional children --&gt;</span></span></code><br></div><div class="
+			" data-index="21"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="22"><code><span class="token template-string"><span class="token string">  </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>show <span class="token operator">&amp;&amp;</span> jsx<span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string">&lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Alert<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> message=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>msg<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> /&gt;</span><span class="token template-punctuation string">`</span></span><span class="token interpolation-punctuation punctuation">}</span></span></span></code><br></div><div class="
+			" data-index="22"><code><span class="token template-string"><span class="token string">  &lt;!-- boolean, string, interpolated string, expression, and spread props --&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="23"><br></div><div class="
+			" data-index="23"><code><span class="token template-string"><span class="token string">  &lt;input disabled type=&quot;text&quot; class=&quot;a </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>b<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> c&quot; value=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>val<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> ...</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>props<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> /&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="24"><code><span class="token template-string"><span class="token string">  &lt;!-- Mapped children with keys --&gt;</span></span></code><br></div><div class="
+			" data-index="24"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="25"><code><span class="token template-string"><span class="token string">  &lt;ul&gt;</span></span></code><br></div><div class="
+			" data-index="25"><code><span class="token template-string"><span class="token string">  &lt;!-- conditional child --&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="26"><code><span class="token template-string"><span class="token string">    </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>items<span class="token punctuation">.</span><span class="token function">map</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token parameter">item</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> jsx<span class="token template-string"><span class="token template-punctuation string">`</span></span></span></span></code><br></div><div class="
+			" data-index="26"><code><span class="token template-string"><span class="token string">  </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>show <span class="token operator">&amp;&amp;</span> jsx<span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string">&lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Alert<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> message=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>msg<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> /&gt;</span><span class="token template-punctuation string">`</span></span><span class="token interpolation-punctuation punctuation">}</span></span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="27"><code><span class="token template-string"><span class="token interpolation"><span class="token template-string"><span class="token string">      &lt;li key=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>item<span class="token punctuation">.</span>id<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&gt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>item<span class="token punctuation">.</span>name<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&lt;/li&gt;</span></span></span></span></code><br></div><div class="
+			" data-index="27"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="28"><code><span class="token template-string"><span class="token interpolation"><span class="token template-string"><span class="token string">    </span><span class="token template-punctuation string">`</span></span><span class="token punctuation">)</span><span class="token interpolation-punctuation punctuation">}</span></span></span></code><br></div><div class="
+			" data-index="28"><code><span class="token template-string"><span class="token string">  &lt;!-- mapped children with keys --&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="29"><code><span class="token template-string"><span class="token string">  &lt;/ul&gt;</span></span></code><br></div><div class="
+			" data-index="29"><code><span class="token template-string"><span class="token string">  </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>items<span class="token punctuation">.</span><span class="token function">map</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token parameter">d</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> jsx<span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string">&lt;li key=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>d<span class="token punctuation">.</span>id<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&gt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>d<span class="token punctuation">.</span>name<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&lt;/li&gt;</span><span class="token template-punctuation string">`</span></span><span class="token punctuation">)</span><span class="token interpolation-punctuation punctuation">}</span></span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="30"><code><span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-213" class="props">
+			" data-index="30"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="31"><code><span class="token template-string"><span class="token string">  &lt;!-- commenting out a tree: expressions inside comments are discarded --&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="32"><code><span class="token template-string"><span class="token string">  &lt;!--</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="33"><code><span class="token template-string"><span class="token string">    &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Component<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> onclick=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>handler<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="34"><code><span class="token template-string"><span class="token string">      &lt;p&gt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>text<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&lt;/p&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="35"><code><span class="token template-string"><span class="token string">    &lt;//&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="36"><code><span class="token template-string"><span class="token string">  --&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="37"><code><span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-213" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-213'] = {"code":"jsx`\n  \u003C!-- Comments are ignored --\u003E\n\n  \u003C!-- Host elements with boolean, string, expression, and spread props --\u003E\n  \u003Cinput disabled type=\"text\" value=${val} ...${props} \u002F\u003E\n\n  \u003C!-- Component elements --\u003E\n  \u003C${Component} onclick=${handler}\u003Echildren\u003C\u002F\u002F\u003E\n\n  \u003C!-- Fragment shorthand --\u003E\n  \u003C\u003E\n    \u003Cp\u003EFirst\u003C\u002Fp\u003E\n    \u003Cp\u003ESecond\u003C\u002Fp\u003E\n  \u003C\u002F\u003E\n\n  \u003C!-- Keyed fragment --\u003E\n  \u003C${Fragment} key=${id}\u003E\n    \u003Cdt\u003E${term}\u003C\u002Fdt\u003E\n    \u003Cdd\u003E${definition}\u003C\u002Fdd\u003E\n  \u003C\u002F\u002F\u003E\n\n  \u003C!-- Conditional children --\u003E\n  ${show && jsx`\u003C${Alert} message=${msg} \u002F\u003E`}\n\n  \u003C!-- Mapped children with keys --\u003E\n  \u003Cul\u003E\n    ${items.map((item) =\u003E jsx`\n      \u003Cli key=${item.id}\u003E${item.name}\u003C\u002Fli\u003E\n    `)}\n  \u003C\u002Ful\u003E\n`","lang":"js"};
-		</script></div><p>Multiple root elements are supported — no wrapping fragment needed.</p><h2 id="caching">Caching <a class="heading-anchor" href="#caching">#</a></h2><p>The template tag caches parse results keyed by the raw template strings. On subsequent calls with the same template, the cached AST is reused and only the expression values are updated. This makes repeated renders efficient — the parsing cost is paid once per unique template site.</p><h2 id="error-messages">Error Messages <a class="heading-anchor" href="#error-messages">#</a></h2><p>Syntax errors include line and column context with a caret pointer:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+			window.__embeddedJSON__['inline-code-block-props-213'] = {"code":"jsx`\n  \u003C!-- host element --\u003E\n  \u003Cdiv \u002F\u003E\n\n  \u003C!-- component element with shorthand close --\u003E\n  \u003C${Component}\u003Echildren\u003C\u002F\u002F\u003E\n\n  \u003C!-- comment-style close --\u003E\n  \u003C${Component}\u003Echildren\u003C\u002F\u002FComponent\u003E\n\n  \u003C!-- fragment shorthand --\u003E\n  \u003C\u003E\n    \u003Cp\u003Efirst\u003C\u002Fp\u003E\n    \u003Cp\u003Esecond\u003C\u002Fp\u003E\n  \u003C\u002F\u003E\n\n  \u003C!-- keyed fragment --\u003E\n  \u003C${Fragment} key=${id}\u003E\n    \u003Cdt\u003E${term}\u003C\u002Fdt\u003E\n    \u003Cdd\u003E${definition}\u003C\u002Fdd\u003E\n  \u003C\u002F\u002F\u003E\n\n  \u003C!-- boolean, string, interpolated string, expression, and spread props --\u003E\n  \u003Cinput disabled type=\"text\" class=\"a ${b} c\" value=${val} ...${props} \u002F\u003E\n\n  \u003C!-- conditional child --\u003E\n  ${show && jsx`\u003C${Alert} message=${msg} \u002F\u003E`}\n\n  \u003C!-- mapped children with keys --\u003E\n  ${items.map((d) =\u003E jsx`\u003Cli key=${d.id}\u003E${d.name}\u003C\u002Fli\u003E`)}\n\n  \u003C!-- commenting out a tree: expressions inside comments are discarded --\u003E\n  \u003C!--\n    \u003C${Component} onclick=${handler}\u003E\n      \u003Cp\u003E${text}\u003C\u002Fp\u003E\n    \u003C\u002F\u002F\u003E\n  --\u003E\n`","lang":"js"};
+		</script></div><p>Multiple root elements are supported — the template tag automatically wraps them in a fragment.</p><h2 id="caching">Caching <a class="heading-anchor" href="#caching">#</a></h2><p>The template tag caches parse results keyed by the raw template strings. On subsequent calls with the same template, the cached AST is reused and only the expression values are updated. This makes repeated renders efficient — the parsing cost is paid once per unique template site.</p><h2 id="error-messages">Error Messages <a class="heading-anchor" href="#error-messages">#</a></h2><p>Syntax errors include line and column context with a caret pointer:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
