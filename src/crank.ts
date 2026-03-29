@@ -11,6 +11,7 @@ import {
 	markStart,
 	measureMark,
 	safeRace,
+	setProfiling,
 	unwrap,
 	wrap,
 } from "./_utils.js";
@@ -3910,4 +3911,6 @@ declare global {
  * Some JSX tools expect things like createElement/Fragment to be defined on
  * the default export. Prefer using the named exports directly.
  */
+export {setProfiling};
+
 export default {createElement, Fragment};

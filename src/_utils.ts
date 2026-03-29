@@ -1,14 +1,20 @@
-export const supportsUserTiming =
+const supportsUserTiming =
 	typeof performance !== "undefined" && typeof performance.mark === "function";
 
+let _profiling = false;
+
+export function setProfiling(enabled: boolean): void {
+	_profiling = enabled && supportsUserTiming;
+}
+
 export function markStart(label: string): void {
-	if (supportsUserTiming) {
+	if (_profiling) {
 		performance.mark("⚙ " + label);
 	}
 }
 
 export function measureMark(label: string): void {
-	if (supportsUserTiming) {
+	if (_profiling) {
 		const name = "⚙ " + label;
 		try {
 			performance.measure(name, name);
