@@ -24,7 +24,18 @@ function getRootDocument(root: Node | undefined): Document {
 	return document;
 }
 
+const writablePropertyCache = new Map<Function, Map<string, boolean>>();
+
 function isWritableProperty(element: Element, name: string): boolean {
+	const ctor = element.constructor;
+	let ctorCache = writablePropertyCache.get(ctor);
+	if (ctorCache !== undefined) {
+		const cached = ctorCache.get(name);
+		if (cached !== undefined) {
+			return cached;
+		}
+	}
+
 	// walk up the object's prototype chain to find the owner
 	let propOwner = element;
 	do {
@@ -33,21 +44,20 @@ function isWritableProperty(element: Element, name: string): boolean {
 		}
 	} while ((propOwner = Object.getPrototypeOf(propOwner)));
 
-	if (propOwner === null) {
-		return false;
+	let result = false;
+	if (propOwner !== null) {
+		const descriptor = Object.getOwnPropertyDescriptor(propOwner, name);
+		result = descriptor != null &&
+			(descriptor.writable === true || descriptor.set !== undefined);
 	}
 
-	// get the descriptor for the named property and check whether it implies
-	// that the property is writable
-	const descriptor = Object.getOwnPropertyDescriptor(propOwner, name);
-	if (
-		descriptor != null &&
-		(descriptor.writable === true || descriptor.set !== undefined)
-	) {
-		return true;
+	if (ctorCache === undefined) {
+		ctorCache = new Map();
+		writablePropertyCache.set(ctor, ctorCache);
 	}
 
-	return false;
+	ctorCache.set(name, result);
+	return result;
 }
 
 function emitHydrationWarning(
