@@ -1037,7 +1037,7 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	ret: Retainer<TNode, TScope>,
 	children: Children,
 ): Promise<TResult> | TResult {
-	const commitLabel = "commit (" + getTagName(ret.el.tag) + ")";
+	const commitLabel = () => "commit (" + getTagName(ret.el.tag) + ")";
 	markStart("diff");
 	const diff = diffChildren(
 		adapter,
@@ -2600,7 +2600,7 @@ export class Context<
 			setFlag(ctx.ret, IsSchedulingRefresh);
 		}
 
-		const commitLabel = "commit (" + getTagName(ctx.ret.el.tag) + ")";
+		const commitLabel = () => "commit (" + getTagName(ctx.ret.el.tag) + ")";
 		let diff: Promise<undefined> | undefined;
 		const schedulePromises: Array<PromiseLike<unknown>> = [];
 		try {
@@ -2965,7 +2965,7 @@ function runComponent<TNode, TResult>(
 
 	const ret = ctx.ret;
 	const initial = !ctx.iterator;
-	const tagName = getTagName(ret.el.tag);
+	const tagName = () => getTagName(ret.el.tag);
 	if (initial) {
 		setFlag(ctx.ret, IsExecuting);
 		clearEventListeners(ctx.ctx);
