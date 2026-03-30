@@ -1,21 +1,22 @@
 const supportsUserTiming =
 	typeof performance !== "undefined" && typeof performance.mark === "function";
 
-let _profiling = false;
+let profiling = false;
 
 export function setProfiling(enabled: boolean): void {
-	_profiling = enabled && supportsUserTiming;
+	profiling = enabled && supportsUserTiming;
 }
 
-export function markStart(label: string): void {
-	if (_profiling) {
-		performance.mark("⚙ " + label);
+export function markStart(label: string | (() => string)): void {
+	if (profiling) {
+		const name = typeof label === "function" ? label() : label;
+		performance.mark("⚙ " + name);
 	}
 }
 
-export function measureMark(label: string): void {
-	if (_profiling) {
-		const name = "⚙ " + label;
+export function measureMark(label: string | (() => string)): void {
+	if (profiling) {
+		const name = "⚙ " + (typeof label === "function" ? label() : label);
 		try {
 			performance.measure(name, name);
 		} catch (_) {
