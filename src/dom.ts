@@ -24,7 +24,7 @@ function getRootDocument(root: Node | undefined): Document {
 	return document;
 }
 
-const writablePropertyCache = new Map<Function, Map<string, boolean>>();
+const writablePropertyCache = new WeakMap<Function, Map<string, boolean>>();
 
 function isWritableProperty(element: Element, name: string): boolean {
 	// Check own properties first — custom elements may define per-instance
