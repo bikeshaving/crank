@@ -27,6 +27,15 @@ function getRootDocument(root: Node | undefined): Document {
 const writablePropertyCache = new Map<Function, Map<string, boolean>>();
 
 function isWritableProperty(element: Element, name: string): boolean {
+	// Check own properties first — custom elements may define per-instance
+	// writable properties via Object.defineProperty(this, ...).
+	if (Object.prototype.hasOwnProperty.call(element, name)) {
+		const descriptor = Object.getOwnPropertyDescriptor(element, name);
+		return descriptor != null &&
+			(descriptor.writable === true || descriptor.set !== undefined);
+	}
+
+	// For prototype-chain properties, use the cache keyed by constructor.
 	const ctor = element.constructor;
 	let ctorCache = writablePropertyCache.get(ctor);
 	if (ctorCache !== undefined) {
@@ -36,13 +45,15 @@ function isWritableProperty(element: Element, name: string): boolean {
 		}
 	}
 
-	// walk up the object's prototype chain to find the owner
-	let propOwner = element;
-	do {
+	// Walk up the prototype chain (skip the instance, already checked)
+	let propOwner = Object.getPrototypeOf(element);
+	while (propOwner !== null) {
 		if (Object.prototype.hasOwnProperty.call(propOwner, name)) {
 			break;
 		}
-	} while ((propOwner = Object.getPrototypeOf(propOwner)));
+
+		propOwner = Object.getPrototypeOf(propOwner);
+	}
 
 	let result = false;
 	if (propOwner !== null) {
