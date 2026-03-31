@@ -7,16 +7,15 @@ export function setProfiling(enabled: boolean): void {
 	profiling = enabled && supportsUserTiming;
 }
 
-export function markStart(label: string | (() => string)): void {
+export function markStart(label: string): void {
 	if (profiling) {
-		const name = typeof label === "function" ? label() : label;
-		performance.mark("⚙ " + name);
+		performance.mark("⚙ " + label);
 	}
 }
 
-export function measureMark(label: string | (() => string)): void {
+export function measureMark(label: string): void {
 	if (profiling) {
-		const name = "⚙ " + (typeof label === "function" ? label() : label);
+		const name = "⚙ " + label;
 		try {
 			performance.measure(name, name);
 		} catch (_) {
