@@ -290,11 +290,7 @@ export function addEventTargetDelegates<T extends CustomEventTarget>(
 	) {
 		for (let i = 0; i < delegates.length; i++) {
 			const delegate = delegates[i];
-			if (!isEventTarget(delegate)) {
-				continue;
-			}
-
-			if (target1[_delegates].has(delegate)) {
+			if (!isEventTarget(delegate) || target1[_delegates].has(delegate)) {
 				continue;
 			}
 
@@ -318,11 +314,7 @@ export function removeEventTargetDelegates<T extends CustomEventTarget>(
 	) {
 		for (let i = 0; i < delegates.length; i++) {
 			const delegate = delegates[i];
-			if (!isEventTarget(delegate)) {
-				continue;
-			}
-
-			if (!target1[_delegates].has(delegate)) {
+			if (!isEventTarget(delegate) || !target1[_delegates].has(delegate)) {
 				continue;
 			}
 
