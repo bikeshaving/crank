@@ -31,8 +31,10 @@ function isWritableProperty(element: Element, name: string): boolean {
 	// writable properties via Object.defineProperty(this, ...).
 	if (Object.prototype.hasOwnProperty.call(element, name)) {
 		const descriptor = Object.getOwnPropertyDescriptor(element, name);
-		return descriptor != null &&
-			(descriptor.writable === true || descriptor.set !== undefined);
+		return (
+			descriptor != null &&
+			(descriptor.writable === true || descriptor.set !== undefined)
+		);
 	}
 
 	// For prototype-chain properties, use the cache keyed by constructor.
@@ -58,7 +60,8 @@ function isWritableProperty(element: Element, name: string): boolean {
 	let result = false;
 	if (propOwner !== null) {
 		const descriptor = Object.getOwnPropertyDescriptor(propOwner, name);
-		result = descriptor != null &&
+		result =
+			descriptor != null &&
 			(descriptor.writable === true || descriptor.set !== undefined);
 	}
 
