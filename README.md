@@ -54,7 +54,7 @@ await renderer.render(<UserProfile />, document.body);
 ### Why Developers Choose Crank
 
 - **Intuitive**: Uses `async`/`await` for loading states and generator functions for lifecycles. Updates are just execution and control flow makes sense
-- **Fast**: Comparable to React in benchmarks while weighing in at ~28KB gzipped with zero dependencies
+- **Fast**: Comparable to React in benchmarks, lightweight with zero dependencies
 - **Flexible**: Write build-free vanilla JavaScript with template literals or write ergonomic JSX
 - **Transparent**: State lives in function scope. Explicit re-execution means no mysterious why did you render bugs.
 - **Future-proof**: Built on stable JavaScript features, not evolving framework abstractions
