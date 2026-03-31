@@ -1,4 +1,24 @@
 # Changelog
+## [0.7.9] - 2026-03-30
+### Performance
+- **Make User Timing API profiling opt-in via `setProfiling()`**
+  `performance.mark()`/`measure()`/`clearMarks()` were called unconditionally on
+  every component render, adding 50–68% overhead in benchmarks. Profiling is now
+  off by default. Enable with `setProfiling(true)` from `@b9g/crank` when needed.
+
+- **Cache `isWritableProperty` prototype chain lookups**
+  DOM property writability checks are now cached per (constructor, propName) using
+  a WeakMap. Per-instance own properties (custom elements) are checked first to
+  avoid incorrect caching.
+
+- **Eliminate allocation in event delegate processing**
+  `addEventTargetDelegates` no longer allocates a filtered array on every
+  `commitComponent` call.
+
+### New API
+- **`setProfiling(enabled: boolean)`** — exported from `@b9g/crank`. Controls
+  whether User Timing marks are emitted. Off by default.
+
 ## [0.7.8] - 2026-02-27
 ### New Features
 - **User Timing API instrumentation**
