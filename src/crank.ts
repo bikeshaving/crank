@@ -2600,7 +2600,7 @@ export class Context<
 			setFlag(ctx.ret, IsSchedulingRefresh);
 		}
 
-		const commitLabel = () => "commit (" + getTagName(ctx.ret.el.tag) + ")";
+		const commitLabel = "commit (" + getTagName(ctx.ret.el.tag) + ")";
 		let diff: Promise<undefined> | undefined;
 		const schedulePromises: Array<PromiseLike<unknown>> = [];
 		try {
