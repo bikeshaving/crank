@@ -1,5 +1,5 @@
 # Changelog
-## [0.7.9] - 2026-03-30
+## [0.7.9] - 2026-03-31
 ### Performance
 - **Make User Timing API profiling opt-in via `setProfiling()`**
   `performance.mark()`/`measure()`/`clearMarks()` were called unconditionally on

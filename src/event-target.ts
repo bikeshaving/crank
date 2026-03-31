@@ -311,14 +311,17 @@ export function removeEventTargetDelegates<T extends CustomEventTarget>(
 	delegates: Array<unknown>,
 	include: (target1: T) => boolean = (target1) => target === target1,
 ): void {
-	const delegates1 = delegates.filter(isEventTarget);
 	for (
 		let target1: T | null = target;
 		target1 && include(target1);
 		target1 = target1[_parent]
 	) {
-		for (let i = 0; i < delegates1.length; i++) {
-			const delegate = delegates1[i];
+		for (let i = 0; i < delegates.length; i++) {
+			const delegate = delegates[i];
+			if (!isEventTarget(delegate)) {
+				continue;
+			}
+
 			if (!target1[_delegates].has(delegate)) {
 				continue;
 			}
