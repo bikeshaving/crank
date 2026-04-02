@@ -270,9 +270,9 @@ export function createElement<TTag extends Tag>(
 	}
 
 	if (children.length > 1) {
-		(props as TagProps<TTag>).children = children;
+		props = {...props as TagProps<TTag>, children};
 	} else if (children.length === 1) {
-		(props as TagProps<TTag>).children = children[0];
+		props = {...props as TagProps<TTag>, children: children[0]};
 	}
 
 	return new Element(tag, props as TagProps<TTag>);
