@@ -1,303 +1,202 @@
----
-title: JSX Template Tag
----
-
-Crank provides a [tagged template
-function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#tagged_templates)
-as an alternative to JSX syntax. The main advantage of using a template tag is
-that your code can run directly in browsers without having to be transpiled.
-
-**Note:** While the template tag is called `jsx`, it’s also available as `html`
-for convenience. The author of Crank would like to remind you that HTML !==
-JSX, but sometimes it is easier to pretend JSX is HTML for syntax highlighters
-and other tooling.
-
-## A Complete Single-File Application
-
-Here’s a complete HTML page that demonstrates Crank’s JSX template tag with no
-build tools required:
-
-```index.html
-<!DOCTYPE html>
-<html lang="en-US">
+  <data:text/html,<<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width" />
-  <title>Crank JSX Template Tag Demo</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-      background: #f5f5f5;
-    }
-    .app {
-      background: white;
-      padding: 30px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    .counter {
-      text-align: center;
-      padding: 20px;
-    }
-    button {
-      background: #007bff;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 4px;
-      font-size: 16px;
-      cursor: pointer;
-      margin: 0 8px;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    .count {
-      font-size: 48px;
-      font-weight: bold;
-      margin: 20px 0;
-      color: #333;
-    }
-    .greeting {
-      background: #e7f3ff;
-      padding: 15px;
-      border-radius: 4px;
-      margin: 20px 0;
-      border-left: 4px solid #007bff;
-    }
-  </style>
-</head>
-<body>
-  <div id="app"></div>
+<meta charset="UTF-8">
+<title>Cidade Viva Brasil ULTRA</title>
 
-  <script type="module">
-    // Import everything from a single module - no build required!
-    import {jsx, Fragment, renderer} from "https://cdn.jsdelivr.net/npm/@b9g/crank/standalone.js";
+<style>
+body { margin:0; background:black; color:white; text-align:center; }
+canvas { background:#111; display:block; margin:auto; }
 
-    // A simple greeting component
-    function Greeting({name = "World", message = "Welcome"}) {
-      return jsx`
-        <div class="greeting">
-          <h2>${message}, ${name}!</h2>
-          <p>This component is built with Crank's JSX template tag.</p>
-        </div>
-      `;
-    }
-
-    // A stateful counter component using generators
-    function *Counter() {
-      let count = 0;
-
-      // Event handlers using refresh callback pattern
-      const increment = () => this.refresh(() => count++);
-      const decrement = () => this.refresh(() => count--);
-      const reset = () => this.refresh(() => count = 0);
-
-      for ({} of this) {
-        yield jsx`
-          <div class="counter">
-            <h3>Interactive Counter</h3>
-            <div class="count">${count}</div>
-            <div>
-              <button onclick=${decrement}>-1</button>
-              <button onclick=${reset}>Reset</button>
-              <button onclick=${increment}>+1</button>
-            </div>
-            <p>
-              <small>
-                Count is ${count === 0 ? 'zero' : count > 0 ? 'positive' : 'negative'}
-              </small>
-            </p>
-          </div>
-        `;
-      }
-    }
-
-    // Async component that fetches data
-    async function RandomDog() {
-      const res = await fetch("https://dog.ceo/api/breeds/image/random");
-      const data = await res.json();
-      return jsx`
-        <div style="text-align: center; padding: 15px;">
-          <img src=${data.message} alt="A random dog" width="300" />
-        </div>
-      `;
-    }
-
-    // Main application component
-    function *App() {
-      for ({} of this) {
-        yield jsx`
-          <div class="app">
-            <h1>Crank JSX Template Tag Demo</h1>
-
-            <${Greeting}
-              name="Developer"
-              message="Hello"
-            />
-
-            <${Counter} />
-
-            <button onclick=${() => this.refresh()}>Show me a dog</button>
-            <${RandomDog} />
-          </div>
-        `;
-      }
-    }
-
-    // Render the application
-    renderer.render(jsx`<${App} />`, document.getElementById("app"));
-
-    console.log("Crank application loaded successfully!");
-  </script>
-</body>
-</html>
-```
-
-Save this as an HTML file and open it in your browser — no build step required.
-
-## Installation
-
-The `@b9g/crank/standalone` module re-exports everything from the core `@b9g/crank` module, the `jsx` and `html` tag functions from `@b9g/crank/jsx-tag`, and both renderers (`renderer`/`domRenderer` from `@b9g/crank/dom`, `htmlRenderer` from `@b9g/crank/html`). A single import is sufficient for most use cases:
-
-```js live
-import {jsx, renderer} from "@b9g/crank/standalone";
-
-function Greeting({name = "World"}) {
-  return jsx`<div>Hello ${name}!</div>`;
+.controls {
+  position: fixed;
+  bottom: 5px;
+  width: 100%;
 }
 
-renderer.render(jsx`<${Greeting} />`, document.body);
-```
+button {
+  padding: 8px;
+  margin: 2px;
+}
 
-The `html` tag is an alias for `jsx` — they are the same function.
+#gameOver {
+  position: fixed;
+  top: 40%;
+  width: 100%;
+  font-size: 40px;
+  display: none;
+}
+</style>
+</head>
 
-## Tags
+<body>
 
-String tags are written literally. Component and other expression tags must be interpolated:
+<h3>🇧🇷 Cidade Viva Brasil ULTRA</h3>
+<p>
+❤️ <span id="life">100</span> |
+💰 <span id="money">0</span> |
+🚨 <span id="wanted">0</span>
+</p>
 
-```js
-jsx`<div />`                    // host element
-jsx`<${Component} />`           // component element
-jsx`<${Fragment} />`            // symbol element
-```
+<div id="gameOver">💀 VOCÊ MORREU</div>
 
-Component closing tags can be written in three styles:
+<canvas id="gameCanvas" width="800" height="400"></canvas>
 
-```js
-// Symmetric — must match the opening tag
-jsx`<${Component}>${children}</${Component}>`
-// Comment-style — text after // is not checked, serves as documentation
-jsx`<${Component}>${children}<//Component>`
-// Shorthand — closes the nearest open tag
-jsx`<${Component}>${children}<//>`
-```
+<div class="controls">
+<button onclick="moveLeft()">⬅️</button>
+<button onclick="moveRight()">➡️</button>
+<button onclick="jump()">🦘</button>
+<button onclick="shoot()">🔫</button>
+<button onclick="steal()">💰</button>
+</div>
 
-## Props
+<script>
+let canvas = document.getElementById("gameCanvas");
+let ctx = canvas.getContext("2d");
 
-Props appear after the tag name, before `>` or `/>`:
+// MUNDO GRANDE
+let worldWidth = 3000;
+let cameraX = 0;
 
-```js
-// Boolean prop — value is true
-jsx`<button disabled>`
+// PLAYER
+let player = { x:100, y:300, vy:0, life:100 };
 
-// String prop — single or double quotes
-jsx`<div class="foo">`
-jsx`<div class='foo'>`
+// POLÍCIA
+let police = [
+  {x:800,y:300,siren:false},
+  {x:1200,y:300,siren:false}
+];
 
-// Expression prop — value used directly
-jsx`<div onclick=${handler}>`
+// SISTEMA
+let bullets = [];
+let money = 0;
+let wanted = 0;
+let gravity = 0.5;
 
-// Interpolated string prop — expressions coerced to strings
-jsx`<div class="prefix ${value} suffix">`
+// LOCAIS
+let bank = {x:600,y:270};
 
-// Spread prop — object entries merged into props
-jsx`<div ...${obj}>`
-```
+// SONS
+function playBeep(freq){
+  let ctxAudio = new (window.AudioContext||window.webkitAudioContext)();
+  let osc = ctxAudio.createOscillator();
+  osc.frequency.value = freq;
+  osc.connect(ctxAudio.destination);
+  osc.start();
+  setTimeout(()=>osc.stop(),100);
+}
 
-Escape sequences (`\n`, `\t`, `\xNN`, `\uNNNN`, `\u{N...}`) are processed within quoted strings, just like JavaScript.
+// DESENHAR
+function draw(){
 
-## Children and Comments
+  ctx.clearRect(0,0,800,400);
 
-Between opening and closing tags, the template accepts text, `${expressions}`, and nested elements. HTML-style comments are also supported — their contents are ignored, including any expressions:
+  cameraX = player.x - 400;
 
-```js
-jsx`
-  <div>
-    <!-- This comment is ignored -->
-    <p>Hello ${name}</p>
-    <!-- Even ${expressions} inside comments are discarded -->
-  </div>
-`
-```
+  // chão
+  ctx.fillStyle="#333";
+  ctx.fillRect(-cameraX,330,worldWidth,70);
 
-## Whitespace
+  // banco
+  ctx.fillStyle="blue";
+  ctx.fillRect(bank.x-cameraX, bank.y,60,60);
 
-The template tag normalizes whitespace to match JSX conventions:
+  // polícia
+  police.forEach(p=>{
+    ctx.fillStyle = p.siren ? "red" : "blue";
+    ctx.fillRect(p.x-cameraX,p.y,50,30);
+    p.siren = !p.siren;
+  });
 
-- A newline and any surrounding whitespace is collapsed — text before a newline has trailing whitespace trimmed, and text after a newline has leading whitespace trimmed.
-- A backslash before a newline (`\` at end of line) preserves the preceding whitespace and removes the backslash.
-- Trailing whitespace at the end of the template is trimmed.
+  // balas
+  ctx.fillStyle="white";
+  bullets.forEach(b=>{
+    ctx.fillRect(b.x-cameraX,b.y,5,5);
+  });
 
-## Quick Reference
+  // player
+  ctx.fillStyle="lime";
+  ctx.fillRect(player.x-cameraX,player.y,30,30);
+}
 
-```js
-jsx`
-  <!-- host element -->
-  <div />
+// UPDATE
+function update(){
 
-  <!-- component element with shorthand close -->
-  <${Component}>children<//>
+  if(player.life <= 0){
+    document.getElementById("gameOver").style.display="block";
+    return;
+  }
 
-  <!-- comment-style close -->
-  <${Component}>children<//Component>
+  player.vy += gravity;
+  player.y += player.vy;
 
-  <!-- fragment shorthand -->
-  <>
-    <p>first</p>
-    <p>second</p>
-  </>
+  if(player.y > 300){
+    player.y = 300;
+    player.vy = 0;
+  }
 
-  <!-- keyed fragment -->
-  <${Fragment} key=${id}>
-    <dt>${term}</dt>
-    <dd>${definition}</dd>
-  <//>
+  // polícia persegue
+  if(wanted > 0){
+    police.forEach(p=>{
+      if(p.x > player.x) p.x -= 2;
+      else p.x += 2;
 
-  <!-- boolean, string, interpolated string, expression, and spread props -->
-  <input disabled type="text" class="a ${b} c" value=${val} ...${props} />
+      // dano
+      if(Math.abs(p.x-player.x)<30){
+        player.life -= 0.2;
+      }
+    });
+  }
 
-  <!-- conditional child -->
-  ${show && jsx`<${Alert} message=${msg} />`}
+  // balas
+  bullets.forEach(b=>b.x += 6);
 
-  <!-- mapped children with keys -->
-  ${items.map((d) => jsx`<li key=${d.id}>${d.name}</li>`)}
+  draw();
+  updateUI();
+  requestAnimationFrame(update);
+}
 
-  <!-- commenting out a tree: expressions inside comments are discarded -->
-  <!--
-    <${Component} onclick=${handler}>
-      <p>${text}</p>
-    <//>
-  -->
-`
-```
+// CONTROLES
+function moveLeft(){ player.x -= 10; }
+function moveRight(){ player.x += 10; }
 
-Multiple root elements are supported — the template tag automatically wraps them in a fragment.
+function jump(){
+  if(player.y >= 300){
+    player.vy = -10;
+  }
+}
 
-## Caching
+function shoot(){
+  bullets.push({x:player.x+30,y:player.y+10});
+  wanted++;
+  playBeep(600);
+}
 
-The template tag caches parse results keyed by the raw template strings. On subsequent calls with the same template, the cached AST is reused and only the expression values are updated. This makes repeated renders efficient — the parsing cost is paid once per unique template site.
+function steal(){
+  if(Math.abs(player.x-bank.x)<60){
+    money += 200;
+    wanted += 2;
+    playBeep(200);
+  }
+}
 
-## Error Messages
+// UI
+function updateUI(){
+  document.getElementById("life").innerText = Math.floor(player.life);
+  document.getElementById("money").innerText = money;
+  document.getElementById("wanted").innerText = wanted;
+}
 
-Syntax errors include line and column context with a caret pointer:
+// teclado
+document.addEventListener("keydown",(e)=>{
+  if(e.key==="a") moveLeft();
+  if(e.key==="d") moveRight();
+  if(e.key==="w") jump();
+  if(e.key==="f") shoot();
+});
 
-```
-Unexpected text `=></p>`
+update();
+</script>
 
-> 1 | <p class==></p>
-     |          ^
-```
+</body>
+</html>
