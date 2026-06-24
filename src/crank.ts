@@ -225,16 +225,12 @@ export function isElement(value: any): value is Element {
 	return value != null && value.$$typeof === ElementSymbol;
 }
 
-const DEPRECATED_PROP_PREFIXES = ["crank-", "c-", "$"];
-
-const DEPRECATED_SPECIAL_PROP_BASES = ["key", "ref", "static", "copy"];
 /**
  * Creates an element with the specified tag, props and children.
  *
  * This function is usually used as a transpilation target for JSX transpilers,
- * but it can also be called directly. It additionally extracts special props so
- * they aren't accessible to renderer methods or components, and assigns the
- * children prop according to any additional arguments passed to the function.
+ * but it can also be called directly. It assigns the children prop according to
+ * any additional arguments passed to the function.
  */
 export function createElement<TTag extends Tag>(
 	tag: TTag,
@@ -245,30 +241,9 @@ export function createElement<TTag extends Tag>(
 		props = {} as TagProps<TTag>;
 	}
 
-	if ("static" in (props as TagProps<TTag>)) {
-		console.error(`The \`static\` prop is deprecated. Use \`copy\` instead.`);
-		(props as TagProps<TTag>)["copy"] = (props as TagProps<TTag>)["static"];
-		delete (props as any)["static"];
-	}
-
-	for (let i = 0; i < DEPRECATED_PROP_PREFIXES.length; i++) {
-		const propPrefix = DEPRECATED_PROP_PREFIXES[i];
-		for (let j = 0; j < DEPRECATED_SPECIAL_PROP_BASES.length; j++) {
-			const propBase = DEPRECATED_SPECIAL_PROP_BASES[j];
-			const deprecatedPropName = propPrefix + propBase;
-			if (deprecatedPropName in (props as TagProps<TTag>)) {
-				const targetPropBase = propBase === "static" ? "copy" : propBase;
-				console.error(
-					`The \`${deprecatedPropName}\` prop is deprecated. Use \`${targetPropBase}\` instead.`,
-				);
-				(props as TagProps<TTag>)[targetPropBase] = (props as TagProps<TTag>)[
-					deprecatedPropName
-				];
-				delete (props as any)[deprecatedPropName];
-			}
-		}
-	}
-
+	// Spread into a fresh object rather than mutating the caller's props, but only
+	// when there are children to assign. Mutating breaks callers that reuse a
+	// props object across calls (e.g. proxy-based hyperscript DSLs). (#356)
 	if (children.length > 1) {
 		props = {...(props as TagProps<TTag>), children};
 	} else if (children.length === 1) {
@@ -2480,16 +2455,6 @@ export class Context<
 		return this[_ContextState].ret.el.props as ComponentPropsOrProps<T>;
 	}
 
-	/**
-	 * The current value of the associated element.
-	 *
-	 * @deprecated
-	 */
-	get value(): TResult {
-		console.warn("Context.value is deprecated.");
-		return this[_ContextState].adapter.read(getValue(this[_ContextState].ret));
-	}
-
 	get isExecuting(): boolean {
 		return getFlag(this[_ContextState].ret, IsExecuting);
 	}
@@ -2733,16 +2698,6 @@ export class Context<
 		}
 
 		callbacks.add(callback);
-	}
-
-	/**
-	 * @deprecated the flush() method has been renamed to after().
-	 */
-	flush(): Promise<TResult>;
-	flush(callback: (value: TResult) => unknown): void;
-	flush(callback?: (value: TResult) => unknown): Promise<TResult> | void {
-		console.error("Context.flush() method has been renamed to after()");
-		this.after(callback!);
 	}
 
 	/**

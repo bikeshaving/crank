@@ -133,7 +133,6 @@ import {jsx, html, Fragment, renderer, domRenderer, htmlRenderer, DOMRenderer, H
 this.refresh(callback?)   // Mutate state and re-render
 this.schedule(callback?)  // Run after this render commits (once)
 this.after(callback?)     // Run after every render commits
-this.flush(callback?)     // Run after the entire render tree commits
 this.cleanup(callback?)   // Run on unmount
 this.consume(key)         // Read a provided value from an ancestor
 this.provide(key, value)  // Provide a value to descendants
