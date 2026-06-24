@@ -1,4 +1,21 @@
 # Changelog
+## [Unreleased]
+### Breaking Changes
+- **Removed deprecated compatibility shims.**
+  - `createElement` no longer normalizes the deprecated `static` prop (use
+    `copy`) or the prefixed special-prop forms (`crank-`/`c-`/`$` on
+    `key`/`ref`/`static`/`copy`). Use the unprefixed `key`/`ref`/`copy`. This
+    also removes a per-`createElement` normalization loop from the hot path.
+  - Removed `Context.flush()` (renamed to `Context.after()` in 0.7) and the
+    deprecated `Context.value` getter.
+
+### Bug Fixes
+- **`createElement` no longer mutates the caller's props object** (#356)
+  Children are spread into a fresh props object instead of being assigned onto
+  the passed-in props, so reusing a props object across calls (e.g. a
+  proxy-based hyperscript DSL) no longer causes circular references. The JSX
+  automatic runtime also only assigns `key` when it is present.
+
 ## [0.7.9] - 2026-03-31
 ### Performance
 - **Make User Timing API profiling opt-in via `setProfiling()`**
