@@ -3,7 +3,7 @@ import type {ElementValue, RenderAdapter} from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import {REACT_SVG_PROPS} from "./_svg.js";
 
-const voidTags = new Set([
+export const voidTags = new Set([
 	"area",
 	"base",
 	"br",
@@ -22,7 +22,7 @@ const voidTags = new Set([
 	"wbr",
 ]);
 
-function escape(text: string): string {
+export function escape(text: string): string {
 	return text.replace(/[&<>"']/g, (match) => {
 		switch (match) {
 			case "&":
@@ -54,7 +54,7 @@ function printStyleObject(style: Record<string, any>): string {
 	return cssStrings.join("");
 }
 
-function printAttrs(props: Record<string, any>, isSVG?: boolean): string {
+export function printAttrs(props: Record<string, any>, isSVG?: boolean): string {
 	const attrs: string[] = [];
 	for (let [name, value] of Object.entries(props)) {
 		if (
