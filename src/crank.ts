@@ -1174,7 +1174,15 @@ function renderRootStream<TNode, TScope, TRoot extends TNode | undefined, TResul
 	// Kick off the diff (fan-out). We deliberately do not await its Promise.all
 	// join; commitStream awaits each child in document order instead.
 	const ctx = ret.ctx as ContextState<TNode, TScope, TRoot, TResult> | undefined;
-	diffChildren(adapter, root, ret, ctx, ret.scope, ret, children);
+	// We don't await the diff's Promise.all join (commitStream awaits each child
+	// in document order instead), but swallow its rejection so an ignored join
+	// doesn't surface as an unhandled rejection — the error is re-raised through
+	// commitStream, which awaits the same underlying child diffs.
+	const diff = diffChildren(adapter, root, ret, ctx, ret.scope, ret, children);
+	if (isPromiseLike(diff)) {
+		diff.then(NOOP, NOOP);
+	}
+
 	return commitStream(adapter, ret, ret, ctx, ret.scope, root, undefined, emit);
 }
 
@@ -1248,6 +1256,12 @@ async function commitStream<
 			const inflight = ret.ctx && ret.ctx.inflight;
 			if (inflight) {
 				await inflight[0];
+				// inflight[0] (the body) swallows rejections; a throw surfaces via
+				// the IsErrored flag (set synchronously before this resumes) and the
+				// diff promise, which we await to re-raise it.
+				if (getFlag(ret, IsErrored)) {
+					await inflight[1];
+				}
 			} else if (isPromiseLike(diff)) {
 				await diff;
 			}

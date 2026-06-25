@@ -231,6 +231,91 @@ test("async siblings stream in document order", async () => {
 	Assert.is(result, "<ul><li>A</li><li>B</li><li>C</li></ul>");
 });
 
+test("a throwing async component rejects the stream", async () => {
+	async function Boom() {
+		await new Promise((r) => setTimeout(r, 5));
+		throw new Error("boom");
+	}
+
+	let err: Error | undefined;
+	try {
+		await renderer.render(
+			<div>
+				<Boom />
+			</div>,
+			recordingStream().writable,
+		);
+	} catch (e) {
+		err = e as Error;
+	}
+
+	Assert.ok(err, "expected the stream to reject");
+	Assert.is(err!.message, "boom");
+});
+
+test("a sync error boundary recovers during streaming", async () => {
+	function Boom(): any {
+		throw new Error("boom");
+	}
+
+	function* Boundary(this: Context) {
+		for ({} of this) {
+			try {
+				yield <Boom />;
+			} catch (_err) {
+				yield <p>caught</p>;
+			}
+		}
+	}
+
+	// Synchronous recovery happens during the diff phase, before commitStream
+	// walks Boundary's (already-recovered) children.
+	const result = await renderer.render(
+		<main>
+			<Boundary />
+		</main>,
+		recordingStream().writable,
+	);
+	Assert.is(result, "<main><p>caught</p></main>");
+});
+
+// KNOWN LIMITATION: an *async* child that throws cannot be recovered by an
+// error boundary mid-stream — by the time it rejects, the walk has already
+// committed earlier siblings and descended past the boundary, so the recovered
+// fallback can't replace it. The stream rejects instead (React solves this with
+// abort-and-swap; out of scope here).
+test("async error past a boundary rejects the stream (not yet recoverable)", async () => {
+	async function Boom(): Promise<any> {
+		await new Promise((r) => setTimeout(r, 5));
+		throw new Error("boom");
+	}
+
+	function* Boundary(this: Context) {
+		for ({} of this) {
+			try {
+				yield <Boom />;
+			} catch (_err) {
+				yield <p>caught</p>;
+			}
+		}
+	}
+
+	let err: Error | undefined;
+	try {
+		await renderer.render(
+			<main>
+				<Boundary />
+			</main>,
+			recordingStream().writable,
+		);
+	} catch (e) {
+		err = e as Error;
+	}
+
+	Assert.ok(err, "expected the stream to reject");
+	Assert.is(err!.message, "boom");
+});
+
 test("render(el, new Response()) returns a streaming Response", async () => {
 	function App() {
 		return (
