@@ -1240,9 +1240,17 @@ async function commitStream<
 	} else if (typeof tag === "function") {
 		// A sync component has already populated its children synchronously, even
 		// if those children are async — so we don't wait, and its shell streams.
-		// Only an unresolved async component (children not yet built) is awaited.
-		if (ret.children == null && isPromiseLike(diff)) {
-			await diff;
+		// An unresolved async component is awaited only as far as its body (its
+		// inflight "block"), after which diffComponentChildren has populated
+		// children; we do NOT wait on its descendants (inflight[1]/diff), so its
+		// own shell streams while deeper async is still resolving.
+		if (ret.children == null) {
+			const inflight = ret.ctx && ret.ctx.inflight;
+			if (inflight) {
+				await inflight[0];
+			} else if (isPromiseLike(diff)) {
+				await diff;
+			}
 		}
 
 		await commitStreamChildren(

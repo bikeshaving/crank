@@ -172,6 +172,45 @@ test("a sync component wrapping the shell still streams it early", async () => {
 	);
 });
 
+test("an async component streams its shell before its async descendants", async () => {
+	let resolveApp!: () => void;
+	let resolveInner!: () => void;
+	async function Inner() {
+		await new Promise<void>((r) => (resolveInner = r));
+		return <p>inner</p>;
+	}
+
+	// App is async: once its own body resolves it returns a shell containing
+	// further async (Inner). The shell should flush before Inner resolves.
+	async function App() {
+		await new Promise<void>((r) => (resolveApp = r));
+		return (
+			<main>
+				<h1>shell</h1>
+				<Inner />
+			</main>
+		);
+	}
+
+	const {writable, text} = recordingStream();
+	const done = renderer.render(<App />, writable);
+
+	await tick();
+	Assert.is(text(), "", "nothing should flush before App's body resolves");
+
+	resolveApp();
+	await tick();
+	Assert.ok(
+		text().includes("<h1>shell</h1>"),
+		`App's shell should flush before Inner resolves: ${text()}`,
+	);
+	Assert.not.ok(text().includes("inner"));
+
+	resolveInner();
+	const result = await done;
+	Assert.is(result, "<main><h1>shell</h1><p>inner</p></main>");
+});
+
 test("async siblings stream in document order", async () => {
 	const make = (ms: number, text: string) =>
 		async function () {
