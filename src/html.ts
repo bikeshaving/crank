@@ -1,5 +1,5 @@
 import {Portal, Renderer} from "./crank.js";
-import type {ElementValue, RenderAdapter} from "./crank.js";
+import type {Children, Context, ElementValue, RenderAdapter} from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import {REACT_SVG_PROPS} from "./_svg.js";
 
@@ -238,11 +238,81 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 
 			node.value = result;
 		},
+
+		arrangeStream({
+			tag,
+			props,
+			scope,
+		}: {
+			tag: string | symbol;
+			tagName: string;
+			props: Record<string, any>;
+			scope: string | undefined;
+			root: TextNode | undefined;
+		}): {open: string; close: string; skipChildren: boolean} {
+			if (typeof tag !== "string") {
+				return {open: "", close: "", skipChildren: false};
+			}
+
+			const isSVG = scope === "svg" || tag === "foreignObject";
+			const open = printOpen(tag, props, isSVG);
+			if (voidTags.has(tag)) {
+				return {open, close: "", skipChildren: true};
+			} else if ("innerHTML" in props) {
+				return {
+					open: open + String(props["innerHTML"] ?? ""),
+					close: printClose(tag),
+					skipChildren: true,
+				};
+			} else if ("dangerouslySetInnerHTML" in props) {
+				return {
+					open: open + (props["dangerouslySetInnerHTML"]?.__html ?? ""),
+					close: printClose(tag),
+					skipChildren: true,
+				};
+			}
+
+			return {open, close: printClose(tag), skipChildren: false};
+		},
 	};
 
 export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 	constructor() {
 		super(impl);
+	}
+
+	/**
+	 * Renders `children` to `writable`, flushing HTML in document order as async
+	 * parts resolve (the static shell streams before async content settles).
+	 * Resolves to the full HTML string as well.
+	 */
+	renderStream(
+		children: Children,
+		writable: WritableStream<string>,
+		bridge?: Context | undefined,
+	): Promise<string> {
+		const writer = writable.getWriter();
+		let result = "";
+		return this.stream(
+			children,
+			(chunk) => {
+				result += chunk;
+				if (chunk) {
+					writer.write(chunk);
+				}
+			},
+			undefined,
+			bridge,
+		).then(
+			() => {
+				writer.close();
+				return result;
+			},
+			(err) => {
+				writer.abort(err);
+				throw err;
+			},
+		);
 	}
 }
 

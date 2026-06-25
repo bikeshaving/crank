@@ -825,6 +825,27 @@ export interface RenderAdapter<
 	}): void;
 
 	/**
+	 * Splits a host element's serialization into an opening part (emitted before
+	 * its children) and a closing part (emitted after), for streaming renderers.
+	 *
+	 * This is the enter/exit decomposition of `arrange`: where `arrange` produces
+	 * a finished node bottom-up, `arrangeStream` lets the open tag flush before
+	 * the children resolve. `skipChildren` is true for elements whose content is
+	 * self-contained (void tags, innerHTML), in which case `open` carries it all
+	 * and the streaming commit does not descend.
+	 *
+	 * Optional. Renderers that don't implement it cannot stream and fall back to
+	 * atomic `render`. Targets that mutate in place (the DOM) leave it undefined.
+	 */
+	arrangeStream?(data: {
+		tag: string | symbol;
+		tagName: string;
+		props: Record<string, any>;
+		scope: TScope | undefined;
+		root: TRoot | undefined;
+	}): {open: TResult; close: TResult; skipChildren: boolean};
+
+	/**
 	 * Removes a node from its parent.
 	 *
 	 * Called when an element is being unmounted. Should clean up the node
@@ -965,6 +986,22 @@ export class Renderer<
 		return renderRoot(this.adapter, root, ret, children) as
 			| Promise<TResult>
 			| TResult;
+	}
+
+	/**
+	 * Renders `children`, emitting result chunks to `emit` in document order as
+	 * the tree resolves, rather than returning a single value at the end. The
+	 * adapter must implement `arrangeStream`. Resolves when the whole tree has
+	 * been emitted.
+	 */
+	stream(
+		children: Children,
+		emit: (chunk: TResult) => void,
+		root?: TRoot | undefined,
+		bridge?: Context | undefined,
+	): Promise<void> {
+		const ret = getRootRetainer(this, bridge, {children, root});
+		return renderRootStream(this.adapter, root, ret, children, emit);
 	}
 
 	hydrate(
@@ -1117,6 +1154,122 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	return adapter.read(unwrap(getChildValues(ret)));
 }
 
+// --- streaming commit ---
+//
+// The atomic path above resolves the whole tree (diffChildren's Promise.all)
+// and then commits bottom-up. The streaming path instead walks the resolving
+// retainer tree in document order, awaiting each child's diff (parent.childDiffs)
+// as it reaches it and emitting via the adapter's enter/exit split — so a host's
+// open tag flushes before its children resolve. diffChildren populates
+// `children` and `childDiffs` synchronously before its async work settles, so
+// commitStream can start emitting immediately.
+
+function renderRootStream<TNode, TScope, TRoot extends TNode | undefined, TResult>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
+	root: TRoot | undefined,
+	ret: Retainer<TNode, TScope>,
+	children: Children,
+	emit: (chunk: TResult) => void,
+): Promise<void> {
+	// Kick off the diff (fan-out). We deliberately do not await its Promise.all
+	// join; commitStream awaits each child in document order instead.
+	const ctx = ret.ctx as ContextState<TNode, TScope, TRoot, TResult> | undefined;
+	diffChildren(adapter, root, ret, ctx, ret.scope, ret, children);
+	return commitStream(adapter, ret, ret, ctx, ret.scope, root, undefined, emit);
+}
+
+async function commitStream<
+	TNode,
+	TScope,
+	TRoot extends TNode | undefined,
+	TResult,
+>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
+	host: Retainer<TNode, TScope>,
+	ret: Retainer<TNode, TScope>,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+	scope: TScope | undefined,
+	root: TRoot | undefined,
+	// The retainer's own diff, from its parent's childDiffs. We await it only
+	// where the retainer's children aren't known synchronously — i.e. components,
+	// whose body may be async. A host's structure is built synchronously during
+	// diff, so its open tag flushes without waiting on its (possibly async)
+	// descendants; those are awaited deeper.
+	diff: Promise<undefined> | undefined,
+	emit: (chunk: TResult) => void,
+): Promise<void> {
+	const el = ret.el;
+	const tag = el.tag;
+	if (tag === Portal) {
+		const portalRoot = (el.props.root ?? root) as TRoot | undefined;
+		await commitStreamChildren(adapter, ret, ctx, ret.scope, portalRoot, ret, emit);
+	} else if (tag === Fragment) {
+		await commitStreamChildren(adapter, host, ctx, scope, root, ret, emit);
+	} else if (typeof tag === "function") {
+		// A sync component has already populated its children synchronously, even
+		// if those children are async — so we don't wait, and its shell streams.
+		// Only an unresolved async component (children not yet built) is awaited.
+		if (ret.children == null && isPromiseLike(diff)) {
+			await diff;
+		}
+
+		await commitStreamChildren(
+			adapter,
+			host,
+			ret.ctx as ContextState<TNode, TScope, TRoot, TResult> | undefined,
+			scope,
+			root,
+			ret,
+			emit,
+		);
+	} else if (typeof tag === "string") {
+		const props = stripSpecialProps(el.props);
+		const {open, close, skipChildren} = adapter.arrangeStream!({
+			tag,
+			tagName: getTagName(tag),
+			props,
+			scope: ret.scope,
+			root,
+		});
+		emit(open);
+		if (!skipChildren) {
+			await commitStreamChildren(adapter, ret, ctx, ret.scope, root, ret, emit);
+		}
+
+		emit(close);
+	} else {
+		// Text, Raw, Copy: leaf values. Reuse the atomic commit to produce the
+		// value, then emit it.
+		commit(adapter, host, ret, ctx, scope, root, 0, [], undefined);
+		emit(adapter.read(getValue(ret)));
+	}
+}
+
+async function commitStreamChildren<
+	TNode,
+	TScope,
+	TRoot extends TNode | undefined,
+	TResult,
+>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
+	host: Retainer<TNode, TScope>,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+	scope: TScope | undefined,
+	root: TRoot | undefined,
+	parent: Retainer<TNode, TScope>,
+	emit: (chunk: TResult) => void,
+): Promise<void> {
+	const children = wrap(parent.children);
+	const childDiffs = parent.childDiffs;
+	for (let i = 0; i < children.length; i++) {
+		const child = children[i];
+		if (child) {
+			const diff = childDiffs ? childDiffs[i] : parent.pendingDiff;
+			await commitStream(adapter, host, child, ctx, scope, root, diff, emit);
+		}
+	}
+}
+
 function diffChild<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -1233,6 +1386,7 @@ function diffChild<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	}
 
 	parent.children = ret;
+	parent.childDiffs = [diff];
 	if (isPromiseLike(diff)) {
 		const diff1 = diff.finally(() => {
 			setFlag(parent, DidDiff);
