@@ -285,12 +285,11 @@ export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 	// given a WritableStream sink (handled by the base Renderer), and a streaming
 	// Response when given one — so `render(jsx`<${App} />`, new Response())` works
 	// directly in a fetch handler.
-	render(children: Children): string | Promise<string>;
 	render(children: Children, root: Response): Response;
 	render(children: Children, root: WritableStream<string>): Promise<string>;
 	render(
 		children: Children,
-		root?: TextNode | undefined,
+		root?: any,
 		bridge?: Context | undefined,
 	): string | Promise<string>;
 	render(children: Children, root?: any, bridge?: Context | undefined): any {
