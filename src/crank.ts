@@ -384,6 +384,10 @@ class Retainer<TNode, TScope = unknown> {
 	// This is only assigned for host and raw elements.
 	declare oldProps: Record<string, any> | undefined;
 	declare pendingDiff: Promise<undefined> | undefined;
+	// Per-child diff promises from the most recent diff, retained so commit can
+	// proceed in document order as each child resolves (streaming) rather than
+	// only after the whole Promise.all join settles (atomic).
+	declare childDiffs: Array<Promise<undefined> | undefined> | undefined;
 	declare onNextDiff: Function | undefined;
 	declare graveyard: Array<Retainer<TNode, TScope>> | undefined;
 	declare lingerers:
@@ -399,6 +403,7 @@ class Retainer<TNode, TScope = unknown> {
 		this.value = undefined;
 		this.oldProps = undefined;
 		this.pendingDiff = undefined;
+		this.childDiffs = undefined;
 		this.onNextDiff = undefined;
 		this.graveyard = undefined;
 		this.lingerers = undefined;
@@ -417,6 +422,7 @@ function cloneRetainer<TNode, TScope>(
 	clone.scope = ret.scope;
 	clone.oldProps = ret.oldProps;
 	clone.pendingDiff = ret.pendingDiff;
+	clone.childDiffs = ret.childDiffs;
 	clone.onNextDiff = ret.onNextDiff;
 	clone.graveyard = ret.graveyard;
 	clone.lingerers = ret.lingerers;
@@ -1479,6 +1485,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	}
 
 	parent.children = unwrap(newRetained);
+	parent.childDiffs = diffs;
 	if (isAsync) {
 		const diffs1 = Promise.all(diffs)
 			.then(() => undefined)
