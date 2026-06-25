@@ -1,40 +1,87 @@
 // Experimental streaming HTML renderer (#293).
 //
-// The HTML renderer assembles bottom-up, so it can't flush early. This builds a
-// tree of `string | Tree[] | (() => Promise<Tree>)` from the Crank element tree
-// and `walk`s it: async components become deferred functions, which run eagerly
-// while output is emitted in strict document (DFS) order.
+// One eager-DFS walk over the element tree with two emission points:
+//
+//   - onEnter(chunk) fires literal markup in strict document order. A consumer
+//     that flushes onEnter immediately gets streaming SSR (bytes leave before
+//     later async siblings resolve).
+//   - onExit(info)   fires when an element subtree has fully resolved, carrying
+//     its assembled html. This is the commit/arrange point: children fire before
+//     their parents, siblings in document order — exactly arrange order. A
+//     consumer that acts only on onExit gets atomic, bottom-up commit (today's
+//     html.ts behavior, and the shape a DOM renderer needs to keep rollback).
+//
+// Atomic is the buffered special case of streaming: the walk's return value is
+// the fully assembled string, byte-identical to the non-streaming renderer.
 import {Fragment, Portal, Raw, Text, Copy, isElement} from "./crank.js";
 import type {Children, Element} from "./crank.js";
 import {escape, printAttrs, voidTags} from "./html.js";
 
-type Tree = string | Array<Tree> | (() => Promise<Tree>);
-type Started = string | Array<Started> | Promise<Started>;
+// An element subtree: open tag, inner Tree, close tag, plus the tag/props so an
+// onExit consumer can arrange it. Non-element markup is just a string.
+interface ElementNode {
+	tag: string;
+	props: Record<string, any>;
+	open: string;
+	children: Tree;
+	close: string;
+}
+
+type Tree = string | Array<Tree> | (() => Promise<Tree>) | ElementNode;
+
+interface StartedElement {
+	tag: string;
+	props: Record<string, any>;
+	open: string;
+	children: Started;
+	close: string;
+}
+
+type Started = string | Array<Started> | Promise<Started> | StartedElement;
+
+export interface ExitInfo {
+	tag: string;
+	props: Record<string, any>;
+	html: string;
+}
 
 const isPromise = (x: any): x is Promise<any> =>
 	x != null && typeof x.then === "function";
 const isIteratorLike = (x: any): x is Iterator<any> | AsyncIterator<any> =>
 	x != null && typeof x.next === "function";
 
-// --- the eager-DFS async-tree walk (validated against issue #293's examples) ---
+// --- the eager-DFS async-tree walk ---
 
+// start() descends the tree and fires every deferred thunk, so all async
+// branches run concurrently (the fan-out). Thunks become promises.
 function start(node: Tree): Started {
 	if (typeof node === "function") return node().then(start);
 	if (Array.isArray(node)) return node.map(start);
+	if (typeof node === "object" && node !== null) {
+		return {...node, children: start(node.children)};
+	}
+
 	return node;
 }
 
+// emit() descends the started tree in document order, firing onEnter for markup
+// as it lands and onExit when each element subtree completes. Returns the
+// assembled string for the node (so parents can assemble from children).
 function emit(
 	node: Started,
-	onEnter: (value: string) => void,
+	onEnter: (chunk: string) => void,
+	onExit: (info: ExitInfo) => void,
 ): string | Promise<string> {
-	if (isPromise(node)) return node.then((n) => emit(n, onEnter));
+	if (isPromise(node)) {
+		return node.then((n) => emit(n, onEnter, onExit));
+	}
+
 	if (Array.isArray(node)) {
 		let result = "";
 		let i = 0;
 		const next = (): string | Promise<string> => {
 			while (i < node.length) {
-				const r = emit(node[i], onEnter);
+				const r = emit(node[i], onEnter, onExit);
 				i++;
 				if (isPromise(r)) {
 					return r.then((s) => {
@@ -52,15 +99,29 @@ function emit(
 		return next();
 	}
 
+	if (typeof node === "object" && node !== null) {
+		onEnter(node.open);
+		const inner = emit(node.children, onEnter, onExit);
+		const finish = (innerHTML: string): string => {
+			onEnter(node.close);
+			const html = node.open + innerHTML + node.close;
+			onExit({tag: node.tag, props: node.props, html});
+			return html;
+		};
+
+		return isPromise(inner) ? inner.then(finish) : finish(inner);
+	}
+
 	onEnter(node);
 	return node;
 }
 
 function walk(
 	tree: Tree,
-	onEnter: (value: string) => void,
+	onEnter: (chunk: string) => void,
+	onExit: (info: ExitInfo) => void,
 ): string | Promise<string> {
-	return emit(start(tree), onEnter);
+	return emit(start(tree), onEnter, onExit);
 }
 
 // --- a minimal one-shot SSR context ---
@@ -156,20 +217,22 @@ function elementToTree(
 		const isSVG = scope === "svg" || tag === "foreignObject";
 		const attrs = printAttrs(attrProps(props), isSVG);
 		const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
-		if (voidTags.has(tag)) return open;
-		const close = `</${tag}>`;
-		let contents: Tree;
+		if (voidTags.has(tag)) {
+			return {tag, props, open, children: "", close: ""};
+		}
+
+		let children: Tree;
 		if ("innerHTML" in props) {
-			contents = String(props.innerHTML ?? "");
+			children = String(props.innerHTML ?? "");
 		} else if ("dangerouslySetInnerHTML" in props) {
-			contents = props.dangerouslySetInnerHTML?.__html ?? "";
+			children = props.dangerouslySetInnerHTML?.__html ?? "";
 		} else {
 			const childScope =
 				tag === "svg" ? "svg" : tag === "foreignObject" ? undefined : scope;
-			contents = childrenToTree(props.children, parent, childScope);
+			children = childrenToTree(props.children, parent, childScope);
 		}
 
-		return [open, contents, close];
+		return {tag, props, open, children, close: `</${tag}>`};
 	} else if (typeof tag === "function") {
 		return componentToTree(tag, props, parent, scope);
 	}
@@ -209,8 +272,33 @@ function componentToTree(
 	return childrenToTree(result as Children, ctx, scope);
 }
 
+// --- public surface ---
+
 /**
- * Render an element to an HTML string, streaming chunks to `writable` in
+ * The shared traversal. Builds the Tree from `element` and walks it once,
+ * driving both emission points. `onEnter` receives markup in document order;
+ * `onExit` receives each element subtree as it completes. Resolves to the fully
+ * assembled string (atomic output, byte-identical to the string renderer).
+ */
+export function renderWalk(
+	element: Children,
+	onEnter: (chunk: string) => void = () => {},
+	onExit: (info: ExitInfo) => void = () => {},
+): string | Promise<string> {
+	const tree = childToTree(element, undefined, undefined);
+	return walk(tree, onEnter, onExit);
+}
+
+/**
+ * Atomic render: the same walk, revealing nothing until the whole tree resolves.
+ * Equivalent to listening only on the root's onExit.
+ */
+export function renderToString(element: Children): string | Promise<string> {
+	return renderWalk(element);
+}
+
+/**
+ * Streaming render: the same walk, flushing each onEnter chunk to `writable` in
  * document order as async parts resolve. Resolves to the full string too.
  */
 export function renderToStream(
@@ -218,8 +306,7 @@ export function renderToStream(
 	writable: WritableStream<string>,
 ): string | Promise<string> {
 	const writer = writable.getWriter();
-	const tree = childToTree(element, undefined, undefined);
-	const result = walk(tree, (chunk) => {
+	const result = renderWalk(element, (chunk) => {
 		if (chunk) writer.write(chunk);
 	});
 

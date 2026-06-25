@@ -1,8 +1,13 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
-import {createElement, Context} from "../src/crank.js";
+import {createElement, Fragment, Context} from "../src/crank.js";
 import {renderer} from "../src/html.js";
-import {renderToStream} from "../src/html-stream.js";
+import {
+	renderToStream,
+	renderToString,
+	renderWalk,
+	type ExitInfo,
+} from "../src/html-stream.js";
 
 const test = suite("html-stream");
 
@@ -18,32 +23,136 @@ function recordingStream() {
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-test("sync output matches the string renderer", async () => {
-	const el = (
-		<div class="a">
-			<span>hi</span>
+// --- atomic parity: onExit/return channel === today's string renderer ---
+
+function Greeting({name}: {name: string}) {
+	return <p>Hello {name}</p>;
+}
+
+function* Counter(this: Context) {
+	for ({} of this) {
+		yield <span>0</span>;
+	}
+}
+
+async function Async() {
+	await new Promise((r) => setTimeout(r, 5));
+	return <em>async</em>;
+}
+
+const cases: Record<string, any> = {
+	"host + attrs + text": (
+		<div class="a" id="x">
+			<span>hi &amp; bye</span>
 			<input type="text" disabled />
 		</div>
+	),
+	"void + innerHTML": (
+		<div>
+			<br />
+			<p innerHTML="<b>raw</b>" />
+			<img src="/x.png" alt="x" />
+		</div>
+	),
+	fragment: (
+		<Fragment>
+			<li>a</li>
+			<li>b</li>
+		</Fragment>
+	),
+	svg: (
+		<svg viewBox="0 0 1 1">
+			<rect width="1" height="1" />
+		</svg>
+	),
+	"function component": (
+		<ul>
+			<Greeting name="world" />
+		</ul>
+	),
+	"generator component": (
+		<div>
+			<Counter />
+		</div>
+	),
+	nested: (
+		<section>
+			<header>
+				<h1>t</h1>
+			</header>
+			<div>{["x", "y", "z"].map((c) => <i key={c}>{c}</i>)}</div>
+		</section>
+	),
+};
+
+for (const [name, el] of Object.entries(cases)) {
+	test(`atomic walk matches the string renderer: ${name}`, () => {
+		Assert.is(renderToString(el), renderer.render(el));
+	});
+}
+
+test("atomic walk matches the string renderer: async", async () => {
+	const el = (
+		<main>
+			<Async />
+			<p>after</p>
+		</main>
 	);
-	const {writable, text} = recordingStream();
-	const result = renderToStream(el, writable);
-	Assert.is(typeof result, "string");
-	Assert.is(result, renderer.render(el));
-	await tick();
-	Assert.is(text(), result);
+	Assert.is(await renderToString(el), await renderer.render(el));
 });
 
+// --- onExit is the per-subtree commit point (the DOM/arrange channel) ---
+
+test("onExit fires children before parents, siblings in document order", () => {
+	const exits: Array<ExitInfo> = [];
+	const el = (
+		<div>
+			<span>hi</span>
+			<b>x</b>
+		</div>
+	);
+	const html = renderWalk(
+		el,
+		() => {},
+		(info) => exits.push(info),
+	);
+
+	Assert.is(html, "<div><span>hi</span><b>x</b></div>");
+	// span and b commit before their parent div; siblings in order.
+	Assert.equal(
+		exits.map((e) => e.tag),
+		["span", "b", "div"],
+	);
+	// each carries its fully assembled subtree html (arrange input).
+	Assert.is(exits[0].html, "<span>hi</span>");
+	Assert.is(exits[1].html, "<b>x</b>");
+	Assert.is(exits[2].html, "<div><span>hi</span><b>x</b></div>");
+});
+
+test("a DOM-style onExit consumer can rebuild the document from commits", () => {
+	// Ignore onEnter entirely; act only on completion points, as the DOM would.
+	const committed: Record<string, string> = {};
+	let last = "";
+	renderWalk(
+		<article>
+			<h1>title</h1>
+			<p>body</p>
+		</article>,
+		() => {},
+		(info) => {
+			committed[info.tag] = info.html;
+			last = info.html;
+		},
+	);
+
+	Assert.is(committed.h1, "<h1>title</h1>");
+	Assert.is(committed.p, "<p>body</p>");
+	Assert.is(last, "<article><h1>title</h1><p>body</p></article>");
+});
+
+// --- streaming: the same walk, flushing onEnter early ---
+
 test("function and generator components render", async () => {
-	function Greeting({name}: {name: string}) {
-		return <p>Hello {name}</p>;
-	}
-
-	function* Counter(this: Context) {
-		for ({} of this) {
-			yield <span>0</span>;
-		}
-	}
-
 	const el = (
 		<div>
 			<Greeting name="world" />
