@@ -15,7 +15,7 @@
 // the fully assembled string, byte-identical to the non-streaming renderer.
 import {Fragment, Portal, Raw, Text, Copy, isElement} from "./crank.js";
 import type {Children, Element} from "./crank.js";
-import {escape, printAttrs, voidTags} from "./html.js";
+import {escape, printOpen, printClose, voidTags} from "./html.js";
 
 // An element subtree: open tag, inner Tree, close tag, plus the tag/props so an
 // onExit consumer can arrange it. Non-element markup is just a string.
@@ -215,8 +215,7 @@ function elementToTree(
 		return "";
 	} else if (typeof tag === "string") {
 		const isSVG = scope === "svg" || tag === "foreignObject";
-		const attrs = printAttrs(attrProps(props), isSVG);
-		const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
+		const open = printOpen(tag, attrProps(props), isSVG);
 		if (voidTags.has(tag)) {
 			return {tag, props, open, children: "", close: ""};
 		}
@@ -232,7 +231,7 @@ function elementToTree(
 			children = childrenToTree(props.children, parent, childScope);
 		}
 
-		return {tag, props, open, children, close: `</${tag}>`};
+		return {tag, props, open, children, close: printClose(tag)};
 	} else if (typeof tag === "function") {
 		return componentToTree(tag, props, parent, scope);
 	}

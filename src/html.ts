@@ -54,6 +54,25 @@ function printStyleObject(style: Record<string, any>): string {
 	return cssStrings.join("");
 }
 
+/**
+ * The opening tag for a host element, e.g. `<div class="a">`. For void tags
+ * this is the element's entire serialization (there is no closing tag). `props`
+ * must already have special props (children/key/ref/…) stripped.
+ */
+export function printOpen(
+	tag: string,
+	props: Record<string, any>,
+	isSVG?: boolean,
+): string {
+	const attrs = printAttrs(props, isSVG);
+	return `<${tag}${attrs.length ? " " : ""}${attrs}>`;
+}
+
+/** The closing tag for a host element, e.g. `</div>`. Empty for void tags. */
+export function printClose(tag: string): string {
+	return voidTags.has(tag) ? "" : `</${tag}>`;
+}
+
 export function printAttrs(props: Record<string, any>, isSVG?: boolean): string {
 	const attrs: string[] = [];
 	for (let [name, value] of Object.entries(props)) {
@@ -202,23 +221,19 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 				throw new Error(`Unknown tag: ${tagName}`);
 			}
 
-			const attrs = printAttrs(
-				props,
-				scope === "svg" || tag === "foreignObject",
-			);
-			const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
+			const isSVG = scope === "svg" || tag === "foreignObject";
+			const open = printOpen(tag, props, isSVG);
 			let result: string;
 			if (voidTags.has(tag)) {
 				result = open;
 			} else {
-				const close = `</${tag}>`;
 				const contents =
 					"innerHTML" in props
 						? props["innerHTML"]
 						: "dangerouslySetInnerHTML" in props
 							? (props["dangerouslySetInnerHTML"]?.__html ?? "")
 							: join(children);
-				result = `${open}${contents}${close}`;
+				result = `${open}${contents}${printClose(tag)}`;
 			}
 
 			node.value = result;
