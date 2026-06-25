@@ -982,26 +982,26 @@ export class Renderer<
 		root?: TRoot | undefined,
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
+		// Polymorphic: when the adapter can stream (arrangeStream) and `root` is a
+		// writable sink, render incrementally into it in document order instead of
+		// returning a single value. The full result is still resolved.
+		if (
+			this.adapter.arrangeStream &&
+			root != null &&
+			typeof (root as any).getWriter === "function"
+		) {
+			return renderToSink(
+				this,
+				children,
+				root as unknown as WritableStream<TResult>,
+				bridge,
+			) as Promise<TResult>;
+		}
+
 		const ret = getRootRetainer(this, bridge, {children, root});
 		return renderRoot(this.adapter, root, ret, children) as
 			| Promise<TResult>
 			| TResult;
-	}
-
-	/**
-	 * Renders `children`, emitting result chunks to `emit` in document order as
-	 * the tree resolves, rather than returning a single value at the end. The
-	 * adapter must implement `arrangeStream`. Resolves when the whole tree has
-	 * been emitted.
-	 */
-	stream(
-		children: Children,
-		emit: (chunk: TResult) => void,
-		root?: TRoot | undefined,
-		bridge?: Context | undefined,
-	): Promise<void> {
-		const ret = getRootRetainer(this, bridge, {children, root});
-		return renderRootStream(this.adapter, root, ret, children, emit);
 	}
 
 	hydrate(
@@ -1176,6 +1176,38 @@ function renderRootStream<TNode, TScope, TRoot extends TNode | undefined, TResul
 	const ctx = ret.ctx as ContextState<TNode, TScope, TRoot, TResult> | undefined;
 	diffChildren(adapter, root, ret, ctx, ret.scope, ret, children);
 	return commitStream(adapter, ret, ret, ctx, ret.scope, root, undefined, emit);
+}
+
+// Streams a render into a writable sink (the polymorphic render(children, sink)
+// path), writing each chunk in document order and resolving to the full result.
+function renderToSink<
+	TNode extends object,
+	TScope,
+	TRoot extends TNode | undefined,
+	TResult,
+>(
+	renderer: Renderer<TNode, TScope, TRoot, TResult>,
+	children: Children,
+	sink: WritableStream<TResult>,
+	bridge: Context | undefined,
+): Promise<TResult> {
+	const adapter = renderer.adapter;
+	const ret = getRootRetainer(renderer, bridge, {children, root: undefined});
+	const writer = sink.getWriter();
+	const chunks: Array<TResult> = [];
+	return renderRootStream(adapter, undefined, ret, children, (chunk) => {
+		chunks.push(chunk);
+		writer.write(chunk);
+	}).then(
+		() => {
+			writer.close();
+			return adapter.read(chunks as unknown as ElementValue<TNode>);
+		},
+		(err) => {
+			writer.abort(err);
+			throw err;
+		},
+	);
 }
 
 async function commitStream<

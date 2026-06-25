@@ -3,9 +3,9 @@ import * as Assert from "uvu/assert";
 import {createElement, Fragment, Context} from "../src/crank.js";
 import {renderer} from "../src/html.js";
 
-// These exercise the REAL HTMLRenderer streaming path through the core
-// (renderer.renderStream -> Renderer.stream -> renderRootStream -> commitStream),
-// not the standalone prototype.
+// These exercise the REAL HTMLRenderer streaming path through the core: the
+// polymorphic render() dispatches on a writable sink / Response into
+// renderRootStream -> commitStream. Not the standalone prototype.
 
 const test = suite("html-core-stream");
 
@@ -83,7 +83,7 @@ const cases: Record<string, any> = {
 
 for (const [name, el] of Object.entries(cases)) {
 	test(`streamed output matches renderer.render: ${name}`, async () => {
-		const result = await renderer.renderStream(el, recordingStream().writable);
+		const result = await renderer.render(el, recordingStream().writable);
 		Assert.is(result, renderer.render(el) as string);
 	});
 }
@@ -95,7 +95,7 @@ test("streamed output matches renderer.render: async", async () => {
 			<p>after</p>
 		</main>
 	);
-	const result = await renderer.renderStream(el, recordingStream().writable);
+	const result = await renderer.render(el, recordingStream().writable);
 	Assert.is(result, await (renderer.render(el) as Promise<string>));
 });
 
@@ -118,7 +118,7 @@ test("streams the static shell before async content resolves", async () => {
 	);
 
 	const {writable, text} = recordingStream();
-	const done = renderer.renderStream(el, writable);
+	const done = renderer.render(el, writable);
 
 	await tick();
 	Assert.ok(text().includes("<body>"), `shell not flushed: ${text()}`);
@@ -157,7 +157,7 @@ test("a sync component wrapping the shell still streams it early", async () => {
 	}
 
 	const {writable, text} = recordingStream();
-	const done = renderer.renderStream(<App />, writable);
+	const done = renderer.render(<App />, writable);
 
 	await tick();
 	Assert.ok(text().includes("<body>"), `shell not flushed: ${text()}`);
@@ -188,8 +188,35 @@ test("async siblings stream in document order", async () => {
 			<li>C</li>
 		</ul>
 	);
-	const result = await renderer.renderStream(el, recordingStream().writable);
+	const result = await renderer.render(el, recordingStream().writable);
 	Assert.is(result, "<ul><li>A</li><li>B</li><li>C</li></ul>");
+});
+
+test("render(el, new Response()) returns a streaming Response", async () => {
+	function App() {
+		return (
+			<html>
+				<body>
+					<h1>hi</h1>
+				</body>
+			</html>
+		);
+	}
+
+	const res = renderer.render(<App />, new Response(null, {status: 201}));
+	Assert.instance(res, Response);
+	Assert.is(res.status, 201);
+	Assert.is(res.headers.get("content-type"), "text/html; charset=utf-8");
+	Assert.is(await res.text(), "<html><body><h1>hi</h1></body></html>");
+});
+
+test("render(el, Response) preserves an explicit content-type", async () => {
+	const res = renderer.render(
+		<p>x</p>,
+		new Response(null, {headers: {"content-type": "application/xhtml+xml"}}),
+	);
+	Assert.is(res.headers.get("content-type"), "application/xhtml+xml");
+	Assert.is(await res.text(), "<p>x</p>");
 });
 
 test.run();
