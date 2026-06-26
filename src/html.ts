@@ -73,7 +73,10 @@ export function printClose(tag: string): string {
 	return voidTags.has(tag) ? "" : `</${tag}>`;
 }
 
-export function printAttrs(props: Record<string, any>, isSVG?: boolean): string {
+export function printAttrs(
+	props: Record<string, any>,
+	isSVG?: boolean,
+): string {
 	const attrs: string[] = [];
 	for (let [name, value] of Object.entries(props)) {
 		if (

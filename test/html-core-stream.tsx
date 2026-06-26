@@ -76,7 +76,11 @@ const cases: Record<string, any> = {
 			<header>
 				<h1>t</h1>
 			</header>
-			<div>{["x", "y", "z"].map((c) => <i key={c}>{c}</i>)}</div>
+			<div>
+				{["x", "y", "z"].map((c) => (
+					<i key={c}>{c}</i>
+				))}
+			</div>
 		</section>
 	),
 };

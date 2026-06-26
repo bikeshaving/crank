@@ -1168,7 +1168,12 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 // `children` and `childDiffs` synchronously before its async work settles, so
 // commitStream can start emitting immediately.
 
-function renderRootStream<TNode, TScope, TRoot extends TNode | undefined, TResult>(
+function renderRootStream<
+	TNode,
+	TScope,
+	TRoot extends TNode | undefined,
+	TResult,
+>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
 	ret: Retainer<TNode, TScope>,
@@ -1177,7 +1182,9 @@ function renderRootStream<TNode, TScope, TRoot extends TNode | undefined, TResul
 ): Promise<void> {
 	// Kick off the diff (fan-out). We deliberately do not await its Promise.all
 	// join; commitStream awaits each child in document order instead.
-	const ctx = ret.ctx as ContextState<TNode, TScope, TRoot, TResult> | undefined;
+	const ctx = ret.ctx as
+		| ContextState<TNode, TScope, TRoot, TResult>
+		| undefined;
 	// We don't await the diff's Promise.all join (commitStream awaits each child
 	// in document order instead), but swallow its rejection so an ignored join
 	// doesn't surface as an unhandled rejection — the error is re-raised through
@@ -1248,7 +1255,15 @@ async function commitStream<
 	const tag = el.tag;
 	if (tag === Portal) {
 		const portalRoot = (el.props.root ?? root) as TRoot | undefined;
-		await commitStreamChildren(adapter, ret, ctx, ret.scope, portalRoot, ret, emit);
+		await commitStreamChildren(
+			adapter,
+			ret,
+			ctx,
+			ret.scope,
+			portalRoot,
+			ret,
+			emit,
+		);
 	} else if (tag === Fragment) {
 		await commitStreamChildren(adapter, host, ctx, scope, root, ret, emit);
 	} else if (typeof tag === "function") {
