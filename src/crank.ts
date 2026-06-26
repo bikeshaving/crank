@@ -829,15 +829,15 @@ export interface RenderAdapter<
 	 * its children) and a closing part (emitted after), for streaming renderers.
 	 *
 	 * This is the enter/exit decomposition of `arrange`: where `arrange` produces
-	 * a finished node bottom-up, `arrangeStream` lets the open tag flush before
-	 * the children resolve. `skipChildren` is true for elements whose content is
+	 * a finished node bottom-up, `enclose` lets the open tag flush before the
+	 * children resolve. `skipChildren` is true for elements whose content is
 	 * self-contained (void tags, innerHTML), in which case `open` carries it all
 	 * and the streaming commit does not descend.
 	 *
 	 * Optional. Renderers that don't implement it cannot stream and fall back to
 	 * atomic `render`. Targets that mutate in place (the DOM) leave it undefined.
 	 */
-	arrangeStream?(data: {
+	enclose?(data: {
 		tag: string | symbol;
 		tagName: string;
 		props: Record<string, any>;
@@ -982,11 +982,11 @@ export class Renderer<
 		root?: TRoot | undefined,
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
-		// Polymorphic: when the adapter can stream (arrangeStream) and `root` is a
+		// Polymorphic: when the adapter implements `enclose` and `root` is a
 		// writable sink, render incrementally into it in document order instead of
 		// returning a single value. The full result is still resolved.
 		if (
-			this.adapter.arrangeStream &&
+			this.adapter.enclose &&
 			root != null &&
 			typeof (root as any).getWriter === "function"
 		) {
@@ -1278,7 +1278,7 @@ async function commitStream<
 		);
 	} else if (typeof tag === "string") {
 		const props = stripSpecialProps(el.props);
-		const {open, close, skipChildren} = adapter.arrangeStream!({
+		const {open, close, skipChildren} = adapter.enclose!({
 			tag,
 			tagName: getTagName(tag),
 			props,

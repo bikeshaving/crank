@@ -12,9 +12,9 @@
   htmlRenderer.render(<App />, writableStream);  // Promise<string>, streamed to the sink
   ```
 
-  Custom renderers opt in by implementing the new optional `arrangeStream`
-  adapter hook (the enter/exit split of `arrange`); renderers that don’t leave
-  it undefined and are unaffected.
+  Custom renderers opt in by implementing the new optional `enclose` adapter
+  hook (the enter/exit split of `arrange`); renderers that don’t leave it
+  undefined and are unaffected.
 
 ## [0.7.9] - 2026-03-31
 ### Performance

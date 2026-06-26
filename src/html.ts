@@ -239,7 +239,7 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 			node.value = result;
 		},
 
-		arrangeStream({
+		enclose({
 			tag,
 			props,
 			scope,
