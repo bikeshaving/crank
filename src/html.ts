@@ -249,30 +249,22 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 			props: Record<string, any>;
 			scope: string | undefined;
 			root: TextNode | undefined;
-		}): {open: string; close: string; skipChildren: boolean} {
+		}): {open: TextNode; close: TextNode} {
 			if (typeof tag !== "string") {
-				return {open: "", close: "", skipChildren: false};
+				return {open: {value: ""}, close: {value: ""}};
 			}
 
 			const isSVG = scope === "svg" || tag === "foreignObject";
-			const open = printOpen(tag, props, isSVG);
+			let open = printOpen(tag, props, isSVG);
 			if (voidTags.has(tag)) {
-				return {open, close: "", skipChildren: true};
+				return {open: {value: open}, close: {value: ""}};
 			} else if ("innerHTML" in props) {
-				return {
-					open: open + String(props["innerHTML"] ?? ""),
-					close: printClose(tag),
-					skipChildren: true,
-				};
+				open += String(props["innerHTML"] ?? "");
 			} else if ("dangerouslySetInnerHTML" in props) {
-				return {
-					open: open + (props["dangerouslySetInnerHTML"]?.__html ?? ""),
-					close: printClose(tag),
-					skipChildren: true,
-				};
+				open += props["dangerouslySetInnerHTML"]?.__html ?? "";
 			}
 
-			return {open, close: printClose(tag), skipChildren: false};
+			return {open: {value: open}, close: {value: printClose(tag)}};
 		},
 	};
 

@@ -825,14 +825,18 @@ export interface RenderAdapter<
 	}): void;
 
 	/**
-	 * Splits a host element's serialization into an opening part (emitted before
-	 * its children) and a closing part (emitted after), for streaming renderers.
+	 * Returns the nodes that enclose a host element's children: an opening node
+	 * (emitted before the children) and a closing node (after), for streaming
+	 * renderers.
 	 *
 	 * This is the enter/exit decomposition of `arrange`: where `arrange` produces
-	 * a finished node bottom-up, `enclose` lets the open tag flush before the
-	 * children resolve. `skipChildren` is true for elements whose content is
-	 * self-contained (void tags, innerHTML), in which case `open` carries it all
-	 * and the streaming commit does not descend.
+	 * a finished node bottom-up, `enclose` lets the opening node flush before the
+	 * children resolve. Like `create`/`text`/`raw`, it mints nodes — the
+	 * streaming commit `read`s them, so `read` stays the only projection to
+	 * `TResult`. For self-contained elements (void tags, innerHTML) the opening
+	 * node simply carries the whole content and the closing node is empty; the
+	 * commit still descends, which is a no-op since such elements have no
+	 * children.
 	 *
 	 * Optional. Renderers that don't implement it cannot stream and fall back to
 	 * atomic `render`. Targets that mutate in place (the DOM) leave it undefined.
@@ -843,7 +847,7 @@ export interface RenderAdapter<
 		props: Record<string, any>;
 		scope: TScope | undefined;
 		root: TRoot | undefined;
-	}): {open: TResult; close: TResult; skipChildren: boolean};
+	}): {open: TNode; close: TNode};
 
 	/**
 	 * Removes a node from its parent.
@@ -1169,7 +1173,7 @@ function renderRootStream<TNode, TScope, TRoot extends TNode | undefined, TResul
 	root: TRoot | undefined,
 	ret: Retainer<TNode, TScope>,
 	children: Children,
-	emit: (chunk: TResult) => void,
+	emit: (node: TNode) => void,
 ): Promise<void> {
 	// Kick off the diff (fan-out). We deliberately do not await its Promise.all
 	// join; commitStream awaits each child in document order instead.
@@ -1202,14 +1206,16 @@ function renderToSink<
 	const adapter = renderer.adapter;
 	const ret = getRootRetainer(renderer, bridge, {children, root: undefined});
 	const writer = sink.getWriter();
-	const chunks: Array<TResult> = [];
-	return renderRootStream(adapter, undefined, ret, children, (chunk) => {
-		chunks.push(chunk);
-		writer.write(chunk);
+	// enclose/text/raw mint nodes, so we collect nodes and let `read` project
+	// them — both per chunk (to the sink) and once at the end (the full result).
+	const nodes: Array<TNode> = [];
+	return renderRootStream(adapter, undefined, ret, children, (node) => {
+		nodes.push(node);
+		writer.write(adapter.read(node));
 	}).then(
 		() => {
 			writer.close();
-			return adapter.read(chunks as unknown as ElementValue<TNode>);
+			return adapter.read(nodes);
 		},
 		(err) => {
 			writer.abort(err);
@@ -1236,7 +1242,7 @@ async function commitStream<
 	// diff, so its open tag flushes without waiting on its (possibly async)
 	// descendants; those are awaited deeper.
 	diff: Promise<undefined> | undefined,
-	emit: (chunk: TResult) => void,
+	emit: (node: TNode) => void,
 ): Promise<void> {
 	const el = ret.el;
 	const tag = el.tag;
@@ -1278,24 +1284,30 @@ async function commitStream<
 		);
 	} else if (typeof tag === "string") {
 		const props = stripSpecialProps(el.props);
-		const {open, close, skipChildren} = adapter.enclose!({
+		const {open, close} = adapter.enclose!({
 			tag,
 			tagName: getTagName(tag),
 			props,
 			scope: ret.scope,
 			root,
 		});
+		// Always descend: for self-contained elements (void/innerHTML) `open`
+		// carries the content and there are no children, so this is a no-op.
 		emit(open);
-		if (!skipChildren) {
-			await commitStreamChildren(adapter, ret, ctx, ret.scope, root, ret, emit);
-		}
-
+		await commitStreamChildren(adapter, ret, ctx, ret.scope, root, ret, emit);
 		emit(close);
 	} else {
-		// Text, Raw, Copy: leaf values. Reuse the atomic commit to produce the
-		// value, then emit it.
+		// Text, Raw, Copy: leaf nodes. Reuse the atomic commit to produce the
+		// node value, then emit it.
 		commit(adapter, host, ret, ctx, scope, root, 0, [], undefined);
-		emit(adapter.read(getValue(ret)));
+		const value = getValue(ret);
+		if (Array.isArray(value)) {
+			for (let i = 0; i < value.length; i++) {
+				emit(value[i]);
+			}
+		} else if (value !== undefined) {
+			emit(value);
+		}
 	}
 }
 
@@ -1311,7 +1323,7 @@ async function commitStreamChildren<
 	scope: TScope | undefined,
 	root: TRoot | undefined,
 	parent: Retainer<TNode, TScope>,
-	emit: (chunk: TResult) => void,
+	emit: (node: TNode) => void,
 ): Promise<void> {
 	const children = wrap(parent.children);
 	const childDiffs = parent.childDiffs;
