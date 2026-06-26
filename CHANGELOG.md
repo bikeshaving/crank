@@ -2,19 +2,15 @@
 ## [Unreleased]
 ### New Features
 - **Streaming HTML rendering via a polymorphic `render()`** (#293)
-  `htmlRenderer.render()` now streams when given a writable sink as its second
+  `htmlRenderer.render()` streams when given a writable sink as its second
   argument, flushing HTML in document order as async parts resolve — the static
-  shell flushes before async content settles:
+  shell flushes before async content settles. It still resolves to the full
+  string, so the return type is always `string | Promise<string>`:
 
   ```js
   htmlRenderer.render(<App />);                  // string | Promise<string>
-  htmlRenderer.render(<App />, writableStream);  // Promise<string>, streamed
-  htmlRenderer.render(<App />, new Response());   // a streaming Response
+  htmlRenderer.render(<App />, writableStream);  // Promise<string>, streamed to the sink
   ```
-
-  Passing a `Response` returns a new streaming `Response` (status and headers
-  preserved, `content-type` defaulting to `text/html; charset=utf-8`), so it
-  drops straight into a fetch handler. The non-streaming `render()` is unchanged.
 
   Custom renderers opt in by implementing the new optional `arrangeStream`
   adapter hook (the enter/exit split of `arrange`); renderers that don’t leave

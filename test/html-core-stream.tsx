@@ -316,31 +316,14 @@ test("async error past a boundary rejects the stream (not yet recoverable)", asy
 	Assert.is(err!.message, "boom");
 });
 
-test("render(el, new Response()) returns a streaming Response", async () => {
-	function App() {
-		return (
-			<html>
-				<body>
-					<h1>hi</h1>
-				</body>
-			</html>
-		);
-	}
-
-	const res = renderer.render(<App />, new Response(null, {status: 201}));
-	Assert.instance(res, Response);
-	Assert.is(res.status, 201);
-	Assert.is(res.headers.get("content-type"), "text/html; charset=utf-8");
-	Assert.is(await res.text(), "<html><body><h1>hi</h1></body></html>");
-});
-
-test("render(el, Response) preserves an explicit content-type", async () => {
-	const res = renderer.render(
-		<p>x</p>,
-		new Response(null, {headers: {"content-type": "application/xhtml+xml"}}),
+test("render() returns string | Promise<string> with or without a sink", async () => {
+	// The contract: render always resolves to the HTML string. A sink only adds
+	// incremental flushing as a side effect.
+	Assert.is(renderer.render(<p>x</p>), "<p>x</p>");
+	Assert.is(
+		await renderer.render(<p>x</p>, recordingStream().writable),
+		"<p>x</p>",
 	);
-	Assert.is(res.headers.get("content-type"), "application/xhtml+xml");
-	Assert.is(await res.text(), "<p>x</p>");
 });
 
 test.run();

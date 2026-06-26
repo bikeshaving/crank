@@ -1,5 +1,5 @@
 import {Portal, Renderer} from "./crank.js";
-import type {Children, Context, ElementValue, RenderAdapter} from "./crank.js";
+import type {ElementValue, RenderAdapter} from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import {REACT_SVG_PROPS} from "./_svg.js";
 
@@ -279,47 +279,6 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 	constructor() {
 		super(impl);
-	}
-
-	// Polymorphic render(): a string by default, a streamed Promise<string> when
-	// given a WritableStream sink (handled by the base Renderer), and a streaming
-	// Response when given one — so `render(jsx`<${App} />`, new Response())` works
-	// directly in a fetch handler.
-	render(children: Children, root: Response): Response;
-	render(children: Children, root: WritableStream<string>): Promise<string>;
-	render(
-		children: Children,
-		root?: any,
-		bridge?: Context | undefined,
-	): string | Promise<string>;
-	render(children: Children, root?: any, bridge?: Context | undefined): any {
-		if (typeof Response !== "undefined" && root instanceof Response) {
-			// A Response body stream must yield bytes, so encode chunks on the way
-			// through. We stream into the transform's writable; the returned
-			// Response streams its readable side.
-			const encoder = new TextEncoder();
-			const {readable, writable} = new TransformStream<string, Uint8Array>({
-				transform(chunk, controller) {
-					controller.enqueue(encoder.encode(chunk));
-				},
-			});
-			// Swallow here so the body carries the failure.
-			(super.render(children, writable as any, bridge) as Promise<string>).catch(
-				() => {},
-			);
-			const headers = new Headers(root.headers);
-			if (!headers.has("content-type")) {
-				headers.set("content-type", "text/html; charset=utf-8");
-			}
-
-			return new Response(readable, {
-				status: root.status,
-				statusText: root.statusText,
-				headers,
-			});
-		}
-
-		return super.render(children, root, bridge);
 	}
 }
 
