@@ -825,29 +825,40 @@ export interface RenderAdapter<
 	}): void;
 
 	/**
-	 * Returns the nodes that enclose a host element's children: an opening node
-	 * (emitted before the children) and a closing node (after), for streaming
-	 * renderers.
+	 * Mints the opening node of a host element — emitted before its children, on
+	 * the way in — for streaming renderers. The enter half of the enter/exit
+	 * decomposition of `arrange`: where `arrange` produces a finished node
+	 * bottom-up, `open` lets the opening node flush before the children resolve.
 	 *
-	 * This is the enter/exit decomposition of `arrange`: where `arrange` produces
-	 * a finished node bottom-up, `enclose` lets the opening node flush before the
-	 * children resolve. Like `create`/`text`/`raw`, it mints nodes — the
-	 * streaming commit `read`s them, so `read` stays the only projection to
-	 * `TResult`. For self-contained elements (void tags, innerHTML) the opening
-	 * node simply carries the whole content and the closing node is empty; the
-	 * commit still descends, which is a no-op since such elements have no
-	 * children.
+	 * Like `create`/`text`/`raw`, it mints a node, so the streaming commit `read`s
+	 * it and `read` stays the only projection to `TResult`. For self-contained
+	 * elements (void tags, innerHTML) the opening node carries the whole content;
+	 * the commit still descends, a no-op since such elements have no children.
 	 *
-	 * Optional. Renderers that don't implement it cannot stream and fall back to
-	 * atomic `render`. Targets that mutate in place (the DOM) leave it undefined.
+	 * Optional, and paired with `close`. Renderers that don't implement both
+	 * cannot stream and fall back to atomic `render`. Targets that mutate in
+	 * place (the DOM) leave them undefined.
 	 */
-	enclose?(data: {
+	open?(data: {
 		tag: string | symbol;
 		tagName: string;
 		props: Record<string, any>;
 		scope: TScope | undefined;
 		root: TRoot | undefined;
-	}): {open: TNode; close: TNode};
+	}): TNode;
+
+	/**
+	 * Mints the closing node of a host element — emitted after its children, on
+	 * the way out. The exit half paired with `open`; empty for self-contained
+	 * elements (void tags). See `open`.
+	 */
+	close?(data: {
+		tag: string | symbol;
+		tagName: string;
+		props: Record<string, any>;
+		scope: TScope | undefined;
+		root: TRoot | undefined;
+	}): TNode;
 
 	/**
 	 * Removes a node from its parent.
@@ -986,11 +997,12 @@ export class Renderer<
 		root?: TRoot | undefined,
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
-		// Polymorphic: when the adapter implements `enclose` and `root` is a
+		// Polymorphic: when the adapter implements `open`/`close` and `root` is a
 		// writable sink, render incrementally into it in document order instead of
 		// returning a single value. The full result is still resolved.
 		if (
-			this.adapter.enclose &&
+			this.adapter.open &&
+			this.adapter.close &&
 			root != null &&
 			typeof (root as any).getWriter === "function"
 		) {
@@ -1298,19 +1310,19 @@ async function commitStream<
 			emit,
 		);
 	} else if (typeof tag === "string") {
-		const props = stripSpecialProps(el.props);
-		const {open, close} = adapter.enclose!({
+		const data = {
 			tag,
 			tagName: getTagName(tag),
-			props,
+			props: stripSpecialProps(el.props),
 			scope: ret.scope,
 			root,
-		});
-		// Always descend: for self-contained elements (void/innerHTML) `open`
-		// carries the content and there are no children, so this is a no-op.
-		emit(open);
+		};
+		// Emit the opening node, descend, then the closing node. Always descend:
+		// for self-contained elements (void/innerHTML) the opening node carries
+		// the content and there are no children, so this is a no-op.
+		emit(adapter.open!(data));
 		await commitStreamChildren(adapter, ret, ctx, ret.scope, root, ret, emit);
-		emit(close);
+		emit(adapter.close!(data));
 	} else {
 		// Text, Raw, Copy: leaf nodes. Reuse the atomic commit to produce the
 		// node value, then emit it.

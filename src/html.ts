@@ -242,7 +242,7 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 			node.value = result;
 		},
 
-		enclose({
+		open({
 			tag,
 			props,
 			scope,
@@ -252,22 +252,35 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 			props: Record<string, any>;
 			scope: string | undefined;
 			root: TextNode | undefined;
-		}): {open: TextNode; close: TextNode} {
+		}): TextNode {
 			if (typeof tag !== "string") {
-				return {open: {value: ""}, close: {value: ""}};
+				return {value: ""};
 			}
 
 			const isSVG = scope === "svg" || tag === "foreignObject";
-			let open = printOpen(tag, props, isSVG);
-			if (voidTags.has(tag)) {
-				return {open: {value: open}, close: {value: ""}};
-			} else if ("innerHTML" in props) {
-				open += String(props["innerHTML"] ?? "");
-			} else if ("dangerouslySetInnerHTML" in props) {
-				open += props["dangerouslySetInnerHTML"]?.__html ?? "";
+			let value = printOpen(tag, props, isSVG);
+			if (!voidTags.has(tag)) {
+				if ("innerHTML" in props) {
+					value += String(props["innerHTML"] ?? "");
+				} else if ("dangerouslySetInnerHTML" in props) {
+					value += props["dangerouslySetInnerHTML"]?.__html ?? "";
+				}
 			}
 
-			return {open: {value: open}, close: {value: printClose(tag)}};
+			return {value};
+		},
+
+		close({
+			tag,
+		}: {
+			tag: string | symbol;
+			tagName: string;
+			props: Record<string, any>;
+			scope: string | undefined;
+			root: TextNode | undefined;
+		}): TextNode {
+			// printClose is "" for void tags and non-strings.
+			return {value: typeof tag === "string" ? printClose(tag) : ""};
 		},
 	};
 
