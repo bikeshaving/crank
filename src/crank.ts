@@ -1225,8 +1225,14 @@ function renderToSink<
 	const adapter = renderer.adapter;
 	const ret = getRootRetainer(renderer, bridge, {children, root: undefined});
 	const writer = sink.getWriter();
-	// enclose/text/raw mint nodes, so we collect nodes and let `read` project
+	// open/close/text/raw mint nodes, so we collect nodes and let `read` project
 	// them — both per chunk (to the sink) and once at the end (the full result).
+	//
+	// Note: because render() resolves to the full result, every node is retained
+	// to the end. So this streams for latency (time-to-first-byte), not for
+	// bounded memory — the whole output is still held at once. A future
+	// void-returning variant could drop the accumulator for true memory
+	// streaming.
 	const nodes: Array<TNode> = [];
 	return renderRootStream(adapter, undefined, ret, children, (node) => {
 		nodes.push(node);
