@@ -1206,7 +1206,23 @@ function renderRootStream<
 		diff.then(NOOP, NOOP);
 	}
 
-	return commitStream(adapter, ret, ret, ctx, ret.scope, root, undefined, emit);
+	return commitStream(
+		adapter,
+		ret,
+		ret,
+		ctx,
+		ret.scope,
+		root,
+		undefined,
+		emit,
+	).then(() => {
+		// Mirror renderRoot's tail so the streaming path runs the same post-commit
+		// sequence: after() callbacks via flush, then cleanup() via unmount.
+		flush(adapter, root as TRoot);
+		if (typeof root !== "object" || root === null) {
+			unmount(adapter, ret, ctx, root, ret, false);
+		}
+	});
 }
 
 // Streams a render into a writable sink (the polymorphic render(children, sink)
@@ -1306,6 +1322,10 @@ async function commitStream<
 			}
 		}
 
+		// Collect the component's emitted nodes as its values, then run the same
+		// commit-time callbacks the atomic path runs (delegates, schedule/after,
+		// propagation) instead of skipping them.
+		const values: Array<TNode> = [];
 		await commitStreamChildren(
 			adapter,
 			host,
@@ -1313,8 +1333,14 @@ async function commitStream<
 			scope,
 			root,
 			ret,
-			emit,
+			(node) => {
+				values.push(node);
+				emit(node);
+			},
 		);
+		if (ret.ctx) {
+			runComponentCommitCallbacks(ret.ctx as ContextState<TNode>, values, []);
+		}
 	} else if (typeof tag === "string") {
 		const data = {
 			tag,
@@ -3690,6 +3716,22 @@ function commitComponent<TNode>(
 		return;
 	}
 
+	runComponentCommitCallbacks(ctx, values, schedulePromises);
+	// We always use getValue() instead of the unwrapping values because there
+	// are various ways in which the values could have been updated, especially
+	// if schedule callbacks call refresh() or async mounting is happening.
+	return getValue(ctx.ret, true);
+}
+
+// The lifecycle half of committing a component: event delegates, schedule
+// callbacks (with async deferral), propagation, fallback teardown, flags. Split
+// out of commitComponent so the streaming traversal can run the same callbacks
+// instead of skipping them. Takes the already-committed `values`.
+function runComponentCommitCallbacks<TNode>(
+	ctx: ContextState<TNode>,
+	values: Array<TNode>,
+	schedulePromises: Array<PromiseLike<unknown>>,
+): void {
 	addEventTargetDelegates(ctx.ctx, values);
 
 	// Execute schedule callbacks early to check for async deferral
@@ -3763,10 +3805,6 @@ function commitComponent<TNode>(
 	}
 
 	setFlag(ctx.ret, DidCommit);
-	// We always use getValue() instead of the unwrapping values because there
-	// are various ways in which the values could have been updated, especially
-	// if schedule callbacks call refresh() or async mounting is happening.
-	return getValue(ctx.ret, true);
 }
 
 /**
