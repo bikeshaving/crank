@@ -1011,7 +1011,9 @@ export class Renderer<
 		bridge?: Context | undefined,
 	): Promise<TResult> {
 		const ret = getRootRetainer(this, bridge, {children, root: undefined});
-		return renderStreamRoot(this.adapter, ret, children, write);
+		return Promise.resolve(
+			renderRoot(this.adapter, undefined, ret, children, write),
+		);
 	}
 }
 
@@ -1074,6 +1076,7 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	root: TRoot | undefined,
 	ret: Retainer<TNode, TScope>,
 	children: Children,
+	sink?: (chunk: string) => unknown,
 ): Promise<TResult> | TResult {
 	const commitLabel = "commit (" + getTagName(ret.el.tag) + ")";
 	markStart("diff");
@@ -1088,65 +1091,65 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	);
 
 	const schedulePromises: Array<PromiseLike<unknown>> = [];
+	const commitRoot = (): void => {
+		markStart(commitLabel);
+		commit(
+			adapter,
+			ret,
+			ret,
+			ret.ctx,
+			ret.scope,
+			root,
+			0,
+			schedulePromises,
+			undefined,
+		);
+		measureMark(commitLabel);
+	};
+
+	const finish = (): TResult => {
+		if (typeof root !== "object" || root === null) {
+			unmount(adapter, ret, ret.ctx, root, ret, false);
+		}
+		return adapter.read(unwrap(getChildValues(ret)));
+	};
+
+	const settle = (): Promise<TResult> | TResult =>
+		schedulePromises.length > 0
+			? Promise.all(schedulePromises).then(finish)
+			: finish();
+
+	// Streaming: commit, flush the resolved prefix, then await the next
+	// unresolved async component and commit again — so the shell flushes before
+	// async content settles. Atomic rendering is the degenerate case of this walk
+	// with no sink: it commits the (awaited) tree once and flushes nothing.
+	if (sink) {
+		let flushed = 0;
+		const drive = (): Promise<TResult> | TResult => {
+			commitRoot();
+			const {text, blocking} = serializePrefix(adapter, ret);
+			if (text.length > flushed) {
+				sink(text.slice(flushed));
+				flushed = text.length;
+			}
+
+			return blocking ? Promise.resolve(blocking).then(drive) : settle();
+		};
+
+		return drive();
+	}
+
 	if (isPromiseLike(diff)) {
 		return diff.then(() => {
 			measureMark("diff");
-			markStart(commitLabel);
-			commit(
-				adapter,
-				ret,
-				ret,
-				ret.ctx,
-				ret.scope,
-				root,
-				0,
-				schedulePromises,
-				undefined,
-			);
-			measureMark(commitLabel);
-			if (schedulePromises.length > 0) {
-				return Promise.all(schedulePromises).then(() => {
-					if (typeof root !== "object" || root === null) {
-						unmount(adapter, ret, ret.ctx, root, ret, false);
-					}
-					return adapter.read(unwrap(getChildValues(ret)));
-				});
-			}
-
-			if (typeof root !== "object" || root === null) {
-				unmount(adapter, ret, ret.ctx, root, ret, false);
-			}
-			return adapter.read(unwrap(getChildValues(ret)));
+			commitRoot();
+			return settle();
 		});
 	}
 
 	measureMark("diff");
-	markStart(commitLabel);
-	commit(
-		adapter,
-		ret,
-		ret,
-		ret.ctx,
-		ret.scope,
-		root,
-		0,
-		schedulePromises,
-		undefined,
-	);
-	measureMark(commitLabel);
-	if (schedulePromises.length > 0) {
-		return Promise.all(schedulePromises).then(() => {
-			if (typeof root !== "object" || root === null) {
-				unmount(adapter, ret, ret.ctx, root, ret, false);
-			}
-			return adapter.read(unwrap(getChildValues(ret)));
-		});
-	}
-
-	if (typeof root !== "object" || root === null) {
-		unmount(adapter, ret, ret.ctx, root, ret, false);
-	}
-	return adapter.read(unwrap(getChildValues(ret)));
+	commitRoot();
+	return settle();
 }
 
 /**
@@ -1226,45 +1229,6 @@ function serializePrefix<TNode, TScope, TRoot extends TNode | undefined>(
 	return {text, blocking};
 }
 
-/**
- * Streaming render. Reuses the ordinary synchronous `commit`, and after each
- * commit serializes and flushes the resolved prefix, then awaits the next
- * unresolved async component before committing again — so the shell flushes
- * before async content settles. Resolves to the full markup.
- */
-async function renderStreamRoot<
-	TNode,
-	TScope,
-	TRoot extends TNode | undefined,
-	TResult,
->(
-	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
-	ret: Retainer<TNode, TScope>,
-	children: Children,
-	write: (chunk: string) => unknown,
-): Promise<TResult> {
-	const schedulePromises: Array<PromiseLike<unknown>> = [];
-	diffChildren(adapter, undefined, ret, ret.ctx, ret.scope, ret, children);
-
-	let flushed = 0;
-	for (;;) {
-		commit(adapter, ret, ret, ret.ctx, ret.scope, undefined, 0, schedulePromises, undefined);
-		const {text, blocking} = serializePrefix(adapter, ret);
-		if (text.length > flushed) {
-			write(text.slice(flushed));
-			flushed = text.length;
-		}
-
-		if (!blocking) {
-			break;
-		}
-
-		await blocking;
-	}
-
-	unmount(adapter, ret, ret.ctx, undefined, ret, false);
-	return adapter.read(unwrap(getChildValues(ret)));
-}
 
 function diffChild<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
