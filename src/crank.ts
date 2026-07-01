@@ -980,7 +980,7 @@ export class Renderer<
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
 		const ret = getRootRetainer(this, bridge, {children, root});
-		return renderRoot(this.adapter, root, ret, children) as
+		return renderRoot(this.adapter, root, ret, children, NOOP) as
 			| Promise<TResult>
 			| TResult;
 	}
@@ -995,7 +995,7 @@ export class Renderer<
 			root,
 			hydrate: true,
 		});
-		return renderRoot(this.adapter, root, ret, children) as
+		return renderRoot(this.adapter, root, ret, children, NOOP) as
 			| Promise<TResult>
 			| TResult;
 	}
@@ -1076,7 +1076,7 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	root: TRoot | undefined,
 	ret: Retainer<TNode, TScope>,
 	children: Children,
-	sink?: (chunk: string) => unknown,
+	sink: (chunk: string) => unknown,
 ): Promise<TResult> | TResult {
 	const commitLabel = "commit (" + getTagName(ret.el.tag) + ")";
 	markStart("diff");
@@ -1119,44 +1119,51 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 			? Promise.all(schedulePromises).then(finish)
 			: finish();
 
-	// Streaming: commit, flush the resolved prefix, then await the next
-	// unresolved async component and commit again — so the shell flushes before
-	// async content settles. Atomic rendering is the degenerate case of this walk
-	// with no sink: it commits the (awaited) tree once and flushes nothing.
-	if (sink) {
+	// One loop for every render. `serializePrefix` reads the *diffed* tree (props
+	// are available before commit), flushing the resolved markup prefix to the
+	// sink and stopping at the first unresolved async component, which is then
+	// awaited. Commit happens once, after the whole tree has resolved — exactly
+	// as before — so lifecycle (`schedule`/`after`/refs) is untouched. A render
+	// with no streaming consumer is handed a sink that discards, so atomic
+	// rendering is the same loop with nothing to flush.
+	if (isPromiseLike(diff)) {
 		// `drive` surfaces async errors as it awaits each unresolved component, so
 		// the identical rejection carried by the aggregate diff would otherwise go
 		// unhandled.
-		if (isPromiseLike(diff)) {
-			Promise.resolve(diff).catch(() => {});
-		}
-
-		let flushed = 0;
-		const drive = (): Promise<TResult> | TResult => {
-			commitRoot();
-			const {text, blocking} = serializePrefix(adapter, ret);
-			if (text.length > flushed) {
-				sink(text.slice(flushed));
-				flushed = text.length;
-			}
-
-			return blocking ? Promise.resolve(blocking).then(drive) : settle();
-		};
-
-		return drive();
+		Promise.resolve(diff).catch(() => {});
 	}
 
+	let flushed = 0;
+	const flushResolved = (): void => {
+		const {text} = serializePrefix(adapter, ret);
+		if (text.length > flushed) {
+			sink(text.slice(flushed));
+			flushed = text.length;
+		}
+	};
+
+	// Flush the static shell (everything up to the first unresolved async
+	// component) before awaiting anything.
+	flushResolved();
+
+	const finishRender = (): Promise<TResult> | TResult => {
+		measureMark("diff");
+		commitRoot();
+		return settle();
+	};
+
+	// `diff` resolving is the completion of this render — the same signal the
+	// non-streaming path awaits. Once it settles, flush the rest of the resolved
+	// tree and commit (a single commit, exactly as before). The shell above
+	// flushed first.
 	if (isPromiseLike(diff)) {
-		return diff.then(() => {
-			measureMark("diff");
-			commitRoot();
-			return settle();
+		return Promise.resolve(diff).then(() => {
+			flushResolved();
+			return finishRender();
 		});
 	}
 
-	measureMark("diff");
-	commitRoot();
-	return settle();
+	return finishRender();
 }
 
 /**
@@ -1171,6 +1178,10 @@ function serializePrefix<TNode, TScope, TRoot extends TNode | undefined>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, any>,
 	root: Retainer<TNode, TScope>,
 ): {text: string; blocking: PromiseLike<unknown> | undefined} {
+	// Renderers that serialize to markup implement `open`/`close`; others (e.g.
+	// the DOM) don't, and this walk only finds the blocking async component for
+	// them — their output rides the node tree, not the sink.
+	const serializing = typeof adapter.open === "function";
 	let text = "";
 	let blocking: PromiseLike<unknown> | undefined;
 
@@ -1210,9 +1221,36 @@ function serializePrefix<TNode, TScope, TRoot extends TNode | undefined>(
 			return true;
 		} else if (tag === Fragment) {
 			return walkChildren(ret);
-		} else if (tag === Text || tag === Raw) {
-			text += adapter.read(ret.value as ElementValue<TNode>);
+		} else if (tag === Text) {
+			// Serialize from props, not `ret.value`: the tree is only diffed here,
+			// not yet committed.
+			if (serializing) {
+				text += adapter.read(
+					adapter.text({
+						value: (ret.el.props as {value: string}).value,
+						scope: ret.scope,
+						oldNode: undefined,
+						hydrationNodes: undefined,
+						root: undefined,
+					}),
+				);
+			}
+
 			return true;
+		} else if (tag === Raw) {
+			if (serializing) {
+				const value = (ret.el.props as {value: unknown}).value;
+				text +=
+					typeof value === "string"
+						? value
+						: adapter.read(value as ElementValue<TNode>);
+			}
+
+			return true;
+		}
+
+		if (!serializing) {
+			return walkChildren(ret);
 		}
 
 		const props = stripSpecialProps(ret.el.props);
