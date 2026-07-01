@@ -1,5 +1,10 @@
 import {Portal, Renderer} from "./crank.js";
-import type {ElementValue, RenderAdapter} from "./crank.js";
+import type {
+	Children,
+	Context,
+	ElementValue,
+	RenderAdapter,
+} from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import {REACT_SVG_PROPS} from "./_svg.js";
 
@@ -112,6 +117,28 @@ function printAttrs(props: Record<string, any>, isSVG?: boolean): string {
 	return attrs.join(" ");
 }
 
+function printOpen(
+	tag: string,
+	props: Record<string, any>,
+	isSVG: boolean,
+): string {
+	const attrs = printAttrs(props, isSVG);
+	return `<${tag}${attrs.length ? " " : ""}${attrs}>`;
+}
+
+// The markup a host element injects instead of walking child retainers:
+// dangerouslySetInnerHTML/innerHTML content. Undefined when the element's
+// contents come from its children.
+function printRawContents(props: Record<string, any>): string | undefined {
+	if ("innerHTML" in props) {
+		return props["innerHTML"];
+	} else if ("dangerouslySetInnerHTML" in props) {
+		return props["dangerouslySetInnerHTML"]?.__html ?? "";
+	}
+
+	return undefined;
+}
+
 /**
  * The equivalent of DOM Node for the HTML Renderer. Not to be confused with
  * the DOM's Text node. It's just an object with value string so that
@@ -131,23 +158,6 @@ function join(children: Array<TextNode | string>): string {
 	}
 
 	return result;
-}
-
-// The opening markup of a host element ("<div ...>"; the whole element for
-// void tags) and the closing markup ("</div>"; empty for void). Shared by
-// `arrange` (which assembles the full element) and the streaming read, which
-// emits them around the element's children.
-function printOpen(
-	tag: string,
-	props: Record<string, any>,
-	isSVG: boolean,
-): string {
-	const attrs = printAttrs(props, isSVG);
-	return `<${tag}${attrs.length ? " " : ""}${attrs}>`;
-}
-
-function printClose(tag: string): string {
-	return voidTags.has(tag) ? "" : `</${tag}>`;
 }
 
 export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
@@ -219,89 +229,146 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 				throw new Error(`Unknown tag: ${tagName}`);
 			}
 
-			const isSVG = scope === "svg" || tag === "foreignObject";
-			const open = printOpen(tag, props, isSVG);
+			const open = printOpen(tag, props, scope === "svg" || tag === "foreignObject");
 			let result: string;
 			if (voidTags.has(tag)) {
 				result = open;
 			} else {
-				const contents =
-					"innerHTML" in props
-						? props["innerHTML"]
-						: "dangerouslySetInnerHTML" in props
-							? (props["dangerouslySetInnerHTML"]?.__html ?? "")
-							: join(children);
-				result = `${open}${contents}${printClose(tag)}`;
+				const contents = printRawContents(props) ?? join(children);
+				result = `${open}${contents}</${tag}>`;
 			}
 
 			node.value = result;
 		},
 
+		// Streaming: `open` serializes the opening tag (plus any raw innerHTML
+		// contents, which have no child retainers to walk), and `close` the
+		// closing tag. Together with the children emitted in between, the stream
+		// reproduces exactly what `arrange` assembles into node.value.
 		open({
 			tag,
+			tagName,
 			props,
 			scope,
 		}: {
 			tag: string | symbol;
+			tagName: string;
 			props: Record<string, any>;
 			scope: string | undefined;
+			root: TextNode | undefined;
 		}): string {
 			if (typeof tag !== "string") {
-				return "";
+				throw new Error(`Unknown tag: ${tagName}`);
 			}
 
-			const open = printOpen(
-				tag,
-				props,
-				scope === "svg" || tag === "foreignObject",
-			);
-			// Elements whose content is markup rather than committed children carry
-			// it here, since the streaming read never descends into them.
-			const inner =
-				"innerHTML" in props
-					? props["innerHTML"]
-					: "dangerouslySetInnerHTML" in props
-						? (props["dangerouslySetInnerHTML"]?.__html ?? "")
-						: "";
-			return `${open}${inner}`;
+			const open = printOpen(tag, props, scope === "svg" || tag === "foreignObject");
+			if (voidTags.has(tag)) {
+				return open;
+			}
+
+			return open + (printRawContents(props) ?? "");
 		},
 
-		close({tag}: {tag: string | symbol}): string {
-			return typeof tag === "string" ? printClose(tag) : "";
+		close({
+			tag,
+			tagName,
+		}: {
+			tag: string | symbol;
+			tagName: string;
+			props: Record<string, any>;
+			scope: string | undefined;
+			root: TextNode | undefined;
+		}): string {
+			if (typeof tag !== "string") {
+				throw new Error(`Unknown tag: ${tagName}`);
+			}
+
+			return voidTags.has(tag) ? "" : `</${tag}>`;
 		},
 	};
+
+/**
+ * A destination for streaming HTML output: a write callback, a WHATWG
+ * WritableStream, or any object with a `write(chunk)` method (e.g. a Node.js
+ * Writable or http.ServerResponse).
+ */
+export type HTMLSink =
+	| ((chunk: string) => unknown)
+	| WritableStream<string>
+	| {write(chunk: string): unknown};
 
 export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 	constructor() {
 		super(impl);
 	}
 
-	render(children: any, dest?: any, bridge?: any): Promise<string> | string {
-		// A WritableStream in the second position selects streaming SSR (per #293);
-		// the render still resolves to the full string.
-		if (dest != null && typeof dest.getWriter === "function") {
-			const writer = dest.getWriter();
-			return this.renderStream(
-				children,
-				(chunk) => writer.write(chunk),
-				bridge,
-			).then(
-				(result) => writer.close().then(() => result),
-				(err) =>
-					writer.abort(err).then(
-						() => Promise.reject(err),
-						() => Promise.reject(err),
-					),
-			);
+	/**
+	 * Renders an element tree to an HTML string.
+	 *
+	 * @param children - The element tree to render.
+	 * @param rootOrDest - Either a root (an opaque key the renderer caches
+	 * renders against) or a streaming destination — a write callback, a WHATWG
+	 * WritableStream, or a Node-style writable. When a destination is given,
+	 * markup is written to it in document order as the tree commits, so the
+	 * static shell flushes before async components settle; the call still
+	 * resolves to the complete HTML string, and a WritableStream is closed once
+	 * the render settles.
+	 * @param bridge - An optional bridge context (see the base renderer).
+	 *
+	 * @returns The rendered HTML, or a promise of it when the tree renders
+	 * asynchronously or streams to a WritableStream.
+	 */
+	render(
+		children: Children,
+		rootOrDest?: any,
+		bridge?: Context | undefined,
+	): Promise<string> | string {
+		let root: any;
+		let dest: HTMLSink | undefined;
+		if (isSink(rootOrDest)) {
+			dest = rootOrDest;
+		} else {
+			root = rootOrDest;
 		}
 
-		// A plain writer-like sink is also accepted; the caller owns its lifetime.
-		if (dest != null && typeof dest.write === "function") {
-			return this.renderStream(children, (chunk) => dest.write(chunk), bridge);
+		if (dest == null) {
+			return super.render(children, root, bridge);
 		}
 
-		return super.render(children, dest, bridge);
+		let sink: (chunk: string) => unknown;
+		let finish: (() => unknown) | undefined;
+		if (typeof dest === "function") {
+			sink = dest;
+		} else if (typeof (dest as WritableStream<string>).getWriter === "function") {
+			const writer = (dest as WritableStream<string>).getWriter();
+			sink = (chunk) => writer.write(chunk);
+			finish = () => writer.close();
+		} else {
+			sink = (chunk) => (dest as {write(chunk: string): unknown}).write(chunk);
+		}
+
+		const result = super.render(children, root, bridge, sink);
+		if (finish) {
+			return Promise.resolve(result).then((html) => {
+				finish!();
+				return html;
+			});
+		}
+
+		return result;
 	}
+}
+
+// A streaming destination is a write callback or an object exposing a
+// WritableStream-style `getWriter` or a Node-style `write`. A root, by
+// contrast, is an opaque cache key with neither.
+function isSink(value: unknown): value is HTMLSink {
+	return (
+		typeof value === "function" ||
+		(value != null &&
+			(typeof (value as {getWriter?: unknown}).getWriter === "function" ||
+				typeof (value as {write?: unknown}).write === "function"))
+	);
 }
 
 export const renderer = new HTMLRenderer();

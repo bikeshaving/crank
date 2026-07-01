@@ -18,6 +18,27 @@ import {
 
 const NOOP = (): undefined => {};
 
+// The stream a render writes markup to, during commit. Host open/close and text
+// leaves append here as the walk visits them; `flushSink` hands the accumulated
+// markup to the real destination. `currentSink` buffers rather than writing
+// straight through so the synchronous run between two async boundaries arrives
+// as one chunk — the static shell flushes as a unit before the async content it
+// wraps. Set only for the lifetime of a streaming render.
+let currentSink: ((chunk: string) => unknown) | undefined;
+let flushSink: (() => void) | undefined;
+
+// Chains a maybe-async value: calls `fn` synchronously when `value` isn't a
+// promise, otherwise after it settles. This is how the commit walk stays
+// synchronous per node yet becomes a promise only when it hits pending async.
+function thenValue<T, U>(
+	value: T | Promise<T>,
+	fn: (value: T) => U,
+): U | Promise<U> {
+	return isPromiseLike(value)
+		? (value as Promise<T>).then(fn)
+		: fn(value as T);
+}
+
 /**
  * A type which represents all valid values for an element tag.
  */
@@ -270,9 +291,9 @@ export function createElement<TTag extends Tag>(
 	}
 
 	if (children.length > 1) {
-		props = {...(props as TagProps<TTag>), children};
+		props = {...props as TagProps<TTag>, children};
 	} else if (children.length === 1) {
-		props = {...(props as TagProps<TTag>), children: children[0]};
+		props = {...props as TagProps<TTag>, children: children[0]};
 	}
 
 	return new Element(tag, props as TagProps<TTag>);
@@ -819,11 +840,19 @@ export interface RenderAdapter<
 	}): void;
 
 	/**
-	 * The opening markup of a host element, produced pre-order. Together with
-	 * `close` this lets a streaming render emit a host's opening before its
-	 * children have resolved. Renderers that don't stream (e.g. the DOM) leave
-	 * these undefined; `arrange` remains the single source of truth for the
-	 * non-streaming path.
+	 * Serializes a host element's opening markup for streaming.
+	 *
+	 * Optional. When a renderer supports streaming (e.g. the HTML renderer), this
+	 * is called during commit, before the element's children are committed, and
+	 * its return value is written to the sink. Renderers that build a live node
+	 * tree (e.g. the DOM renderer) omit this, and streaming is a no-op for them.
+	 *
+	 * @param data.tag - The element tag
+	 * @param data.tagName - String representation of the tag
+	 * @param data.props - The element's props
+	 * @param data.scope - Current scope context
+	 * @param data.root - The root
+	 * @returns The opening markup to write to the sink
 	 */
 	open?(data: {
 		tag: string | symbol;
@@ -831,16 +860,28 @@ export interface RenderAdapter<
 		props: Record<string, any>;
 		scope: TScope | undefined;
 		root: TRoot | undefined;
-	}): TResult;
+	}): string;
 
-	/** The closing markup of a host element, produced post-order. See `open`. */
+	/**
+	 * Serializes a host element's closing markup for streaming.
+	 *
+	 * Optional. The streaming counterpart to {@link open}, called during commit
+	 * after the element's children have been committed and arranged.
+	 *
+	 * @param data.tag - The element tag
+	 * @param data.tagName - String representation of the tag
+	 * @param data.props - The element's props
+	 * @param data.scope - Current scope context
+	 * @param data.root - The root
+	 * @returns The closing markup to write to the sink
+	 */
 	close?(data: {
 		tag: string | symbol;
 		tagName: string;
 		props: Record<string, any>;
 		scope: TScope | undefined;
 		root: TRoot | undefined;
-	}): TResult;
+	}): string;
 
 	/**
 	 * Removes a node from its parent.
@@ -978,9 +1019,10 @@ export class Renderer<
 		children: Children,
 		root?: TRoot | undefined,
 		bridge?: Context | undefined,
+		sink?: ((chunk: string) => unknown) | undefined,
 	): Promise<TResult> | TResult {
 		const ret = getRootRetainer(this, bridge, {children, root});
-		return renderRoot(this.adapter, root, ret, children, NOOP) as
+		return renderRoot(this.adapter, root, ret, children, sink) as
 			| Promise<TResult>
 			| TResult;
 	}
@@ -995,25 +1037,9 @@ export class Renderer<
 			root,
 			hydrate: true,
 		});
-		return renderRoot(this.adapter, root, ret, children, NOOP) as
+		return renderRoot(this.adapter, root, ret, children) as
 			| Promise<TResult>
 			| TResult;
-	}
-
-	/**
-	 * Renders an element tree while flushing markup to `write` in document order
-	 * as it resolves (streaming SSR). Resolves to the full result, exactly as
-	 * `render` would. Requires an adapter that implements `open`/`close`.
-	 */
-	renderStream(
-		children: Children,
-		write: (chunk: string) => unknown,
-		bridge?: Context | undefined,
-	): Promise<TResult> {
-		const ret = getRootRetainer(this, bridge, {children, root: undefined});
-		return Promise.resolve(
-			renderRoot(this.adapter, undefined, ret, children, write),
-		);
 	}
 }
 
@@ -1076,7 +1102,7 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	root: TRoot | undefined,
 	ret: Retainer<TNode, TScope>,
 	children: Children,
-	sink: (chunk: string) => unknown,
+	sink?: ((chunk: string) => unknown) | undefined,
 ): Promise<TResult> | TResult {
 	const commitLabel = "commit (" + getTagName(ret.el.tag) + ")";
 	markStart("diff");
@@ -1090,188 +1116,66 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		children,
 	);
 
-	const schedulePromises: Array<PromiseLike<unknown>> = [];
-	const commitRoot = (): void => {
-		markStart(commitLabel);
-		commit(
-			adapter,
-			ret,
-			ret,
-			ret.ctx,
-			ret.scope,
-			root,
-			0,
-			schedulePromises,
-			undefined,
-		);
-		measureMark(commitLabel);
-	};
+	// The diff kicks off async resolution; the commit walk chains onto the
+	// per-component `inflight` promises as it reaches them (no pre-await here), so
+	// it emits the resolved shell before the async content settles.
+	if (isPromiseLike(diff)) {
+		Promise.resolve(diff).catch(() => {});
+	}
 
+	// The sink is set for the whole lifetime of the render — including the async
+	// tail, whose commit continuations emit to it too — and restored once the
+	// render settles. Markup buffers into `chunk` and is handed to the real sink
+	// at each async boundary (see `flushSink` uses in `commit`) and at the end,
+	// so each synchronous run arrives as a single write. (A single module-scoped
+	// sink means concurrent streaming renders to distinct sinks are unsupported.)
+	const prevSink = currentSink;
+	const prevFlush = flushSink;
+	let chunk = "";
+	if (sink) {
+		currentSink = (markup) => (chunk += markup);
+		flushSink = () => {
+			if (chunk) {
+				const pending = chunk;
+				chunk = "";
+				sink(pending);
+			}
+		};
+	} else {
+		currentSink = undefined;
+		flushSink = undefined;
+	}
+
+	const schedulePromises: Array<PromiseLike<unknown>> = [];
 	const finish = (): TResult => {
+		flushSink?.();
+		currentSink = prevSink;
+		flushSink = prevFlush;
 		if (typeof root !== "object" || root === null) {
 			unmount(adapter, ret, ret.ctx, root, ret, false);
 		}
 		return adapter.read(unwrap(getChildValues(ret)));
 	};
-
 	const settle = (): Promise<TResult> | TResult =>
 		schedulePromises.length > 0
 			? Promise.all(schedulePromises).then(finish)
 			: finish();
 
-	// One loop for every render. `serializePrefix` reads the *diffed* tree (props
-	// are available before commit), flushing the resolved markup prefix to the
-	// sink and stopping at the first unresolved async component, which is then
-	// awaited. Commit happens once, after the whole tree has resolved — exactly
-	// as before — so lifecycle (`schedule`/`after`/refs) is untouched. A render
-	// with no streaming consumer is handed a sink that discards, so atomic
-	// rendering is the same loop with nothing to flush.
-	if (isPromiseLike(diff)) {
-		// `drive` surfaces async errors as it awaits each unresolved component, so
-		// the identical rejection carried by the aggregate diff would otherwise go
-		// unhandled.
-		Promise.resolve(diff).catch(() => {});
-	}
-
-	let flushed = 0;
-	const flushResolved = (): void => {
-		const {text} = serializePrefix(adapter, ret);
-		if (text.length > flushed) {
-			sink(text.slice(flushed));
-			flushed = text.length;
-		}
-	};
-
-	// Flush the static shell (everything up to the first unresolved async
-	// component) before awaiting anything.
-	flushResolved();
-
-	const finishRender = (): Promise<TResult> | TResult => {
-		measureMark("diff");
-		commitRoot();
-		return settle();
-	};
-
-	// `diff` resolving is the completion of this render — the same signal the
-	// non-streaming path awaits. Once it settles, flush the rest of the resolved
-	// tree and commit (a single commit, exactly as before). The shell above
-	// flushed first.
-	if (isPromiseLike(diff)) {
-		return Promise.resolve(diff).then(() => {
-			flushResolved();
-			return finishRender();
-		});
-	}
-
-	return finishRender();
-}
-
-/**
- * Reads the committed tree in document order as markup, stopping at the first
- * async component that has not yet resolved. This is the streaming read: it
- * emits a host's opening (`open`) before descending and its closing (`close`)
- * after, so the static shell serializes before the async content it wraps.
- * Portals are skipped (their children belong to another root). Returns the
- * resolved-prefix markup and the pending diff blocking further progress, if any.
- */
-function serializePrefix<TNode, TScope, TRoot extends TNode | undefined>(
-	adapter: RenderAdapter<TNode, TScope, TRoot, any>,
-	root: Retainer<TNode, TScope>,
-): {text: string; blocking: PromiseLike<unknown> | undefined} {
-	// Renderers that serialize to markup implement `open`/`close`; others (e.g.
-	// the DOM) don't, and this walk only finds the blocking async component for
-	// them — their output rides the node tree, not the sink.
-	const serializing = typeof adapter.open === "function";
-	let text = "";
-	let blocking: PromiseLike<unknown> | undefined;
-
-	function walkChildren(parent: Retainer<TNode, TScope>): boolean {
-		const children = parent.children;
-		if (children === undefined) {
-			return true;
-		} else if (Array.isArray(children)) {
-			for (let i = 0; i < children.length; i++) {
-				if (!walk(children[i])) {
-					return false;
-				}
-			}
-
-			return true;
-		}
-
-		return walk(children as Retainer<TNode, TScope>);
-	}
-
-	function walk(ret: Retainer<TNode, TScope> | undefined): boolean {
-		if (ret == null) {
-			return true;
-		}
-
-		const tag = ret.el.tag;
-		if (typeof tag === "function") {
-			const inflight = getInflightDiff(ret);
-			if (inflight) {
-				blocking = inflight;
-				return false;
-			}
-
-			return walkChildren(ret);
-		} else if (tag === Portal) {
-			// Portal children stream into their own root, not this one.
-			return true;
-		} else if (tag === Fragment) {
-			return walkChildren(ret);
-		} else if (tag === Text) {
-			// Serialize from props, not `ret.value`: the tree is only diffed here,
-			// not yet committed.
-			if (serializing) {
-				text += adapter.read(
-					adapter.text({
-						value: (ret.el.props as {value: string}).value,
-						scope: ret.scope,
-						oldNode: undefined,
-						hydrationNodes: undefined,
-						root: undefined,
-					}),
-				);
-			}
-
-			return true;
-		} else if (tag === Raw) {
-			if (serializing) {
-				const value = (ret.el.props as {value: unknown}).value;
-				text +=
-					typeof value === "string"
-						? value
-						: adapter.read(value as ElementValue<TNode>);
-			}
-
-			return true;
-		}
-
-		if (!serializing) {
-			return walkChildren(ret);
-		}
-
-		const props = stripSpecialProps(ret.el.props);
-		const data = {
-			tag,
-			tagName: getTagName(tag),
-			props,
-			scope: ret.scope,
-			root: undefined,
-		};
-		text += adapter.open!(data);
-		if (!walkChildren(ret)) {
-			return false;
-		}
-
-		text += adapter.close!(data);
-		return true;
-	}
-
-	walkChildren(root);
-	return {text, blocking};
+	measureMark("diff");
+	markStart(commitLabel);
+	const value = commit(
+		adapter,
+		ret,
+		ret,
+		ret.ctx,
+		ret.scope,
+		root,
+		0,
+		schedulePromises,
+		undefined,
+	);
+	measureMark(commitLabel);
+	return thenValue(value, settle) as Promise<TResult> | TResult;
 }
 
 function diffChild<TNode, TScope, TRoot extends TNode | undefined, TResult>(
@@ -1768,7 +1672,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	index: number,
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
-): ElementValue<TNode> {
+): ElementValue<TNode> | Promise<ElementValue<TNode>> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
 		return getValue(ret);
 	}
@@ -1794,7 +1698,6 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		}
 	}
 
-	let value: ElementValue<TNode>;
 	let skippedHydrationNodes: Array<TNode> | undefined;
 	if (
 		hydrationNodes &&
@@ -1806,70 +1709,88 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		hydrationNodes = undefined;
 	}
 
-	if (typeof tag === "function") {
-		ret.ctx!.index = index;
-		value = commitComponent(ret.ctx!, schedulePromises, hydrationNodes);
-	} else {
-		if (tag === Fragment) {
-			value = commitChildren(
-				adapter,
-				host,
-				ctx,
-				scope,
-				root,
-				ret,
-				index,
-				schedulePromises,
-				hydrationNodes,
-			);
-		} else if (tag === Text) {
-			value = commitText(
-				adapter,
-				ret,
-				el as Element<Text>,
-				scope,
-				hydrationNodes,
-				root,
-			);
-		} else if (tag === Raw) {
-			value = commitRaw(adapter, host, ret, scope, hydrationNodes, root);
-		} else {
-			value = commitHost(
-				adapter,
-				ret,
-				ctx,
-				root,
-				schedulePromises,
-				hydrationNodes,
-			);
-		}
-
-		if (ret.fallback) {
+	// The synchronous tail: fallback teardown, hydration bookkeeping, ref. Runs
+	// once the node's value is known (which, for an async subtree, is later).
+	const finalize = (value: ElementValue<TNode>): ElementValue<TNode> => {
+		if (typeof tag !== "function" && ret.fallback) {
 			unmount(adapter, host, ctx, root, ret.fallback, false);
 			ret.fallback = undefined;
 		}
-	}
 
-	if (skippedHydrationNodes) {
-		skippedHydrationNodes.splice(
-			0,
-			value == null ? 0 : Array.isArray(value) ? value.length : 1,
+		if (skippedHydrationNodes) {
+			skippedHydrationNodes.splice(
+				0,
+				value == null ? 0 : Array.isArray(value) ? value.length : 1,
+			);
+		}
+
+		if (!getFlag(ret, DidCommit)) {
+			setFlag(ret, DidCommit);
+			if (
+				typeof tag !== "function" &&
+				tag !== Fragment &&
+				tag !== Portal &&
+				typeof el.props.ref === "function"
+			) {
+				el.props.ref(adapter.read(value));
+			}
+		}
+
+		return value;
+	};
+
+	if (typeof tag === "function") {
+		// Suspend at a still-resolving component: chain onto the diff's inflight
+		// promise (not an await), then commit it once its children have diffed.
+		const inflight = getInflightDiff(ret);
+		if (inflight) {
+			// Everything emitted up to this pending boundary is the resolved shell;
+			// hand it to the sink now rather than holding it until the async settles.
+			flushSink?.();
+			return inflight.then(() =>
+				commit(
+					adapter,
+					host,
+					ret,
+					ctx,
+					scope,
+					root,
+					index,
+					schedulePromises,
+					hydrationNodes,
+				),
+			);
+		}
+
+		ret.ctx!.index = index;
+		return thenValue(
+			commitComponent(ret.ctx!, schedulePromises, hydrationNodes),
+			finalize,
 		);
 	}
 
-	if (!getFlag(ret, DidCommit)) {
-		setFlag(ret, DidCommit);
-		if (
-			typeof tag !== "function" &&
-			tag !== Fragment &&
-			tag !== Portal &&
-			typeof el.props.ref === "function"
-		) {
-			el.props.ref(adapter.read(value));
-		}
+	let value: ElementValue<TNode> | Promise<ElementValue<TNode>>;
+	if (tag === Fragment) {
+		value = commitChildren(
+			adapter,
+			host,
+			ctx,
+			scope,
+			root,
+			ret,
+			index,
+			schedulePromises,
+			hydrationNodes,
+		);
+	} else if (tag === Text) {
+		value = commitText(adapter, ret, el as Element<Text>, scope, hydrationNodes, root);
+	} else if (tag === Raw) {
+		value = commitRaw(adapter, host, ret, scope, hydrationNodes, root);
+	} else {
+		value = commitHost(adapter, ret, ctx, root, schedulePromises, hydrationNodes);
 	}
 
-	return value;
+	return thenValue(value, finalize);
 }
 
 function commitChildren<
@@ -1887,8 +1808,9 @@ function commitChildren<
 	index: number,
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
-): Array<TNode> {
+): Array<TNode> | Promise<Array<TNode>> {
 	let values: Array<TNode> = [];
+	let idx = index;
 	const rawChildren = parent.children;
 	const isChildrenArray = Array.isArray(rawChildren);
 	const childrenLength =
@@ -1897,7 +1819,22 @@ function commitChildren<
 			: isChildrenArray
 				? (rawChildren as Array<any>).length
 				: 1;
-	for (let i = 0; i < childrenLength; i++) {
+
+	const collect = (value: ElementValue<TNode>): void => {
+		if (Array.isArray(value)) {
+			for (let j = 0; j < value.length; j++) {
+				values.push(value[j]);
+			}
+			idx += value.length;
+		} else if (value) {
+			values.push(value);
+			idx++;
+		}
+	};
+
+	// Commit one child. The fallback-chasing is synchronous; only the child's own
+	// commit may suspend, in which case `collect` runs after it settles.
+	const step = (i: number): void | Promise<void> => {
 		let child = isChildrenArray
 			? (rawChildren as Array<Retainer<TNode, TScope> | undefined>)[i]
 			: (rawChildren as Retainer<TNode, TScope> | undefined);
@@ -1987,46 +1924,52 @@ function commitChildren<
 		}
 
 		if (child) {
-			const value = commit(
-				adapter,
-				host,
-				child,
-				ctx,
-				scope,
-				root,
-				index,
-				schedulePromises,
-				hydrationNodes,
+			return thenValue(
+				commit(
+					adapter,
+					host,
+					child,
+					ctx,
+					scope,
+					root,
+					idx,
+					schedulePromises,
+					hydrationNodes,
+				),
+				collect,
 			);
+		}
+	};
 
-			if (Array.isArray(value)) {
-				for (let j = 0; j < value.length; j++) {
-					values.push(value[j]);
-				}
-				index += value.length;
-			} else if (value) {
-				values.push(value);
-				index++;
+	// Drive children in order, staying synchronous until a child suspends.
+	const drive = (i: number): void | Promise<void> => {
+		for (; i < childrenLength; i++) {
+			const r = step(i);
+			if (isPromiseLike(r)) {
+				return r.then(() => drive(i + 1));
 			}
 		}
-	}
+	};
 
-	if (parent.graveyard) {
-		for (let i = 0; i < parent.graveyard.length; i++) {
-			const child = parent.graveyard[i];
-			unmount(adapter, host, ctx, root, child, false);
+	const done = (): Array<TNode> => {
+		if (parent.graveyard) {
+			for (let i = 0; i < parent.graveyard.length; i++) {
+				unmount(adapter, host, ctx, root, parent.graveyard[i], false);
+			}
+
+			parent.graveyard = undefined;
 		}
 
-		parent.graveyard = undefined;
-	}
+		if (parent.lingerers) {
+			// a descendant component is unmounting asynchronously, so we overwrite
+			// values to include lingering DOM nodes.
+			values = getChildValues(parent);
+		}
 
-	if (parent.lingerers) {
-		// if parent.lingerers is set, a descendant component is unmounting
-		// asynchronously, so we overwrite values to include lingerering DOM nodes.
-		values = getChildValues(parent);
-	}
+		return values;
+	};
 
-	return values;
+	return thenValue(drive(0), done);
 }
 
 function commitText<TNode, TScope, TRoot extends TNode | undefined>(
@@ -2046,6 +1989,12 @@ function commitText<TNode, TScope, TRoot extends TNode | undefined>(
 	});
 
 	ret.value = value;
+	// A text leaf has no children to bracket, so it streams its serialized value
+	// in one piece, in document order between its siblings' markup.
+	if (currentSink !== undefined && root === undefined) {
+		currentSink(adapter.read(value) as string);
+	}
+
 	return value;
 }
 
@@ -2077,6 +2026,11 @@ function commitRaw<TNode, TScope, TRoot extends TNode | undefined>(
 	}
 
 	ret.oldProps = stripSpecialProps(ret.el.props);
+	// Like a text leaf, a raw node streams its serialized markup in one piece.
+	if (currentSink !== undefined && root === undefined) {
+		currentSink(adapter.read(ret.value) as string);
+	}
+
 	return ret.value;
 }
 
@@ -2087,7 +2041,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 	root: TRoot | undefined,
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
-): ElementValue<TNode> {
+): ElementValue<TNode> | Promise<ElementValue<TNode>> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
 		return getValue(ret);
 	}
@@ -2228,42 +2182,67 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 		});
 	}
 
-	if (!copyChildren) {
-		const children = commitChildren(
-			adapter,
-			ret,
-			ctx,
-			scope,
-			tag === Portal ? (node as TRoot) : root,
-			ret,
-			0,
-			schedulePromises,
-			hydrationMetaProp && !hydrationMetaProp.includes("children")
-				? undefined
-				: childHydrationNodes,
+	// Stream the opening markup before children commit; the closing after. The
+	// `root === undefined` guard keeps portal subtrees (committed into their own
+	// root) out of the main stream.
+	const streaming =
+		currentSink !== undefined && tag !== Portal && root === undefined;
+	if (streaming && adapter.open) {
+		currentSink!(
+			adapter.open({tag, tagName: getTagName(tag), props, scope, root}),
 		);
-
-		adapter.arrange({
-			tag,
-			tagName: getTagName(tag),
-			node: node,
-			props,
-			children,
-			oldProps,
-			scope,
-			root,
-		});
 	}
 
-	ret.oldProps = props;
-	if (tag === Portal) {
-		flush(adapter, ret.value as TRoot);
-		// The root passed to Portal elements are opaque to parents so we return
-		// undefined here.
-		return;
+	const finishHost = (): ElementValue<TNode> => {
+		if (streaming && adapter.close) {
+			currentSink!(
+				adapter.close({tag, tagName: getTagName(tag), props, scope, root}),
+			);
+		}
+
+		ret.oldProps = props;
+		if (tag === Portal) {
+			flush(adapter, ret.value as TRoot);
+			// The root passed to Portal elements is opaque to parents so we return
+			// undefined here.
+			return;
+		}
+
+		return node;
+	};
+
+	if (!copyChildren) {
+		return thenValue(
+			commitChildren(
+				adapter,
+				ret,
+				ctx,
+				scope,
+				tag === Portal ? (node as TRoot) : root,
+				ret,
+				0,
+				schedulePromises,
+				hydrationMetaProp && !hydrationMetaProp.includes("children")
+					? undefined
+					: childHydrationNodes,
+			),
+			(children) => {
+				adapter.arrange({
+					tag,
+					tagName: getTagName(tag),
+					node: node,
+					props,
+					children,
+					oldProps,
+					scope,
+					root,
+				});
+				return finishHost();
+			},
+		);
 	}
 
-	return node;
+	return finishHost();
 }
 
 class MetaProp {
@@ -3568,7 +3547,7 @@ function commitComponent<TNode>(
 	ctx: ContextState<TNode>,
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes?: Array<TNode> | undefined,
-): ElementValue<TNode> {
+): ElementValue<TNode> | Promise<ElementValue<TNode>> {
 	if (ctx.schedule) {
 		ctx.schedule.promise.then(() => {
 			commitComponent(ctx, []);
@@ -3577,18 +3556,30 @@ function commitComponent<TNode>(
 		return getValue(ctx.ret);
 	}
 
-	const values = commitChildren(
-		ctx.adapter,
-		ctx.host,
-		ctx,
-		ctx.scope,
-		ctx.root,
-		ctx.ret,
-		ctx.index,
-		schedulePromises,
-		hydrationNodes,
+	return thenValue(
+		commitChildren(
+			ctx.adapter,
+			ctx.host,
+			ctx,
+			ctx.scope,
+			ctx.root,
+			ctx.ret,
+			ctx.index,
+			schedulePromises,
+			hydrationNodes,
+		),
+		(values): ElementValue<TNode> => commitComponentCallbacks(ctx, values, schedulePromises),
 	);
+}
 
+// The synchronous tail of committing a component, once its children's values
+// are known: event delegates, schedule callbacks (with async deferral),
+// propagation, fallback teardown, flags.
+function commitComponentCallbacks<TNode>(
+	ctx: ContextState<TNode>,
+	values: Array<TNode>,
+	schedulePromises: Array<PromiseLike<unknown>>,
+): ElementValue<TNode> {
 	if (getFlag(ctx.ret, IsUnmounted)) {
 		return;
 	}
