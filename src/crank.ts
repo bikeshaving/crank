@@ -819,6 +819,30 @@ export interface RenderAdapter<
 	}): void;
 
 	/**
+	 * The opening markup of a host element, produced pre-order. Together with
+	 * `close` this lets a streaming render emit a host's opening before its
+	 * children have resolved. Renderers that don't stream (e.g. the DOM) leave
+	 * these undefined; `arrange` remains the single source of truth for the
+	 * non-streaming path.
+	 */
+	open?(data: {
+		tag: string | symbol;
+		tagName: string;
+		props: Record<string, any>;
+		scope: TScope | undefined;
+		root: TRoot | undefined;
+	}): TResult;
+
+	/** The closing markup of a host element, produced post-order. See `open`. */
+	close?(data: {
+		tag: string | symbol;
+		tagName: string;
+		props: Record<string, any>;
+		scope: TScope | undefined;
+		root: TRoot | undefined;
+	}): TResult;
+
+	/**
 	 * Removes a node from its parent.
 	 *
 	 * Called when an element is being unmounted. Should clean up the node
@@ -975,6 +999,20 @@ export class Renderer<
 			| Promise<TResult>
 			| TResult;
 	}
+
+	/**
+	 * Renders an element tree while flushing markup to `write` in document order
+	 * as it resolves (streaming SSR). Resolves to the full result, exactly as
+	 * `render` would. Requires an adapter that implements `open`/`close`.
+	 */
+	renderStream(
+		children: Children,
+		write: (chunk: string) => unknown,
+		bridge?: Context | undefined,
+	): Promise<TResult> {
+		const ret = getRootRetainer(this, bridge, {children, root: undefined});
+		return renderStreamRoot(this.adapter, ret, children, write);
+	}
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
@@ -1108,6 +1146,123 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	if (typeof root !== "object" || root === null) {
 		unmount(adapter, ret, ret.ctx, root, ret, false);
 	}
+	return adapter.read(unwrap(getChildValues(ret)));
+}
+
+/**
+ * Reads the committed tree in document order as markup, stopping at the first
+ * async component that has not yet resolved. This is the streaming read: it
+ * emits a host's opening (`open`) before descending and its closing (`close`)
+ * after, so the static shell serializes before the async content it wraps.
+ * Portals are skipped (their children belong to another root). Returns the
+ * resolved-prefix markup and the pending diff blocking further progress, if any.
+ */
+function serializePrefix<TNode, TScope, TRoot extends TNode | undefined>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, any>,
+	root: Retainer<TNode, TScope>,
+): {text: string; blocking: PromiseLike<unknown> | undefined} {
+	let text = "";
+	let blocking: PromiseLike<unknown> | undefined;
+
+	function walkChildren(parent: Retainer<TNode, TScope>): boolean {
+		const children = parent.children;
+		if (children === undefined) {
+			return true;
+		} else if (Array.isArray(children)) {
+			for (let i = 0; i < children.length; i++) {
+				if (!walk(children[i])) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		return walk(children as Retainer<TNode, TScope>);
+	}
+
+	function walk(ret: Retainer<TNode, TScope> | undefined): boolean {
+		if (ret == null) {
+			return true;
+		}
+
+		const tag = ret.el.tag;
+		if (typeof tag === "function") {
+			const inflight = getInflightDiff(ret);
+			if (inflight) {
+				blocking = inflight;
+				return false;
+			}
+
+			return walkChildren(ret);
+		} else if (tag === Portal) {
+			// Portal children stream into their own root, not this one.
+			return true;
+		} else if (tag === Fragment) {
+			return walkChildren(ret);
+		} else if (tag === Text || tag === Raw) {
+			text += adapter.read(ret.value as ElementValue<TNode>);
+			return true;
+		}
+
+		const props = stripSpecialProps(ret.el.props);
+		const data = {
+			tag,
+			tagName: getTagName(tag),
+			props,
+			scope: ret.scope,
+			root: undefined,
+		};
+		text += adapter.open!(data);
+		if (!walkChildren(ret)) {
+			return false;
+		}
+
+		text += adapter.close!(data);
+		return true;
+	}
+
+	walkChildren(root);
+	return {text, blocking};
+}
+
+/**
+ * Streaming render. Reuses the ordinary synchronous `commit`, and after each
+ * commit serializes and flushes the resolved prefix, then awaits the next
+ * unresolved async component before committing again — so the shell flushes
+ * before async content settles. Resolves to the full markup.
+ */
+async function renderStreamRoot<
+	TNode,
+	TScope,
+	TRoot extends TNode | undefined,
+	TResult,
+>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
+	ret: Retainer<TNode, TScope>,
+	children: Children,
+	write: (chunk: string) => unknown,
+): Promise<TResult> {
+	const schedulePromises: Array<PromiseLike<unknown>> = [];
+	diffChildren(adapter, undefined, ret, ret.ctx, ret.scope, ret, children);
+
+	let flushed = 0;
+	for (;;) {
+		commit(adapter, ret, ret, ret.ctx, ret.scope, undefined, 0, schedulePromises, undefined);
+		const {text, blocking} = serializePrefix(adapter, ret);
+		if (text.length > flushed) {
+			write(text.slice(flushed));
+			flushed = text.length;
+		}
+
+		if (!blocking) {
+			break;
+		}
+
+		await blocking;
+	}
+
+	unmount(adapter, ret, ret.ctx, undefined, ret, false);
 	return adapter.read(unwrap(getChildValues(ret)));
 }
 

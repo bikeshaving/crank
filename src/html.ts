@@ -133,6 +133,23 @@ function join(children: Array<TextNode | string>): string {
 	return result;
 }
 
+// The opening markup of a host element ("<div ...>"; the whole element for
+// void tags) and the closing markup ("</div>"; empty for void). Shared by
+// `arrange` (which assembles the full element) and the streaming read, which
+// emits them around the element's children.
+function printOpen(
+	tag: string,
+	props: Record<string, any>,
+	isSVG: boolean,
+): string {
+	const attrs = printAttrs(props, isSVG);
+	return `<${tag}${attrs.length ? " " : ""}${attrs}>`;
+}
+
+function printClose(tag: string): string {
+	return voidTags.has(tag) ? "" : `</${tag}>`;
+}
+
 export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 	{
 		scope({
@@ -202,32 +219,72 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 				throw new Error(`Unknown tag: ${tagName}`);
 			}
 
-			const attrs = printAttrs(
-				props,
-				scope === "svg" || tag === "foreignObject",
-			);
-			const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
+			const isSVG = scope === "svg" || tag === "foreignObject";
+			const open = printOpen(tag, props, isSVG);
 			let result: string;
 			if (voidTags.has(tag)) {
 				result = open;
 			} else {
-				const close = `</${tag}>`;
 				const contents =
 					"innerHTML" in props
 						? props["innerHTML"]
 						: "dangerouslySetInnerHTML" in props
 							? (props["dangerouslySetInnerHTML"]?.__html ?? "")
 							: join(children);
-				result = `${open}${contents}${close}`;
+				result = `${open}${contents}${printClose(tag)}`;
 			}
 
 			node.value = result;
+		},
+
+		open({
+			tag,
+			props,
+			scope,
+		}: {
+			tag: string | symbol;
+			props: Record<string, any>;
+			scope: string | undefined;
+		}): string {
+			if (typeof tag !== "string") {
+				return "";
+			}
+
+			const open = printOpen(tag, props, scope === "svg" || tag === "foreignObject");
+			// Elements whose content is markup rather than committed children carry
+			// it here, since the streaming read never descends into them.
+			const inner =
+				"innerHTML" in props
+					? props["innerHTML"]
+					: "dangerouslySetInnerHTML" in props
+						? (props["dangerouslySetInnerHTML"]?.__html ?? "")
+						: "";
+			return `${open}${inner}`;
+		},
+
+		close({tag}: {tag: string | symbol}): string {
+			return typeof tag === "string" ? printClose(tag) : "";
 		},
 	};
 
 export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 	constructor() {
 		super(impl);
+	}
+
+	render(
+		children: any,
+		root?: any,
+		bridge?: any,
+	): Promise<string> | string {
+		// A WritableStream (or any { write } sink) in the second position selects
+		// streaming; otherwise this is the ordinary render.
+		if (root != null && typeof root.write === "function") {
+			const stream = root;
+			return this.renderStream(children, (chunk) => stream.write(chunk), bridge);
+		}
+
+		return super.render(children, root, bridge);
 	}
 }
 
