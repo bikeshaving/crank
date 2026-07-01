@@ -1,7 +1,7 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 
-import {createElement} from "../src/crank.js";
+import {createElement, Portal} from "../src/crank.js";
 import type {Context} from "../src/crank.js";
 import {renderer} from "../src/html.js";
 
@@ -88,6 +88,97 @@ test("two async siblings both stream in document order", async () => {
 		'<ul><div class="slow">A</div><div class="slow">B</div></ul>',
 	);
 	Assert.is(sink.text(), result);
+});
+
+test("streams through a WritableStream and resolves to the string", async () => {
+	const {readable, writable} = new TransformStream<string, string>();
+	const reader = readable.getReader();
+	const chunks: Array<string> = [];
+	const drain = (async () => {
+		for (;;) {
+			const {done, value} = await reader.read();
+			if (done) break;
+			chunks.push(value);
+		}
+	})();
+
+	const result = await renderer.render(
+		<main>
+			<header>Shell</header>
+			<Slow ms={30}>Body</Slow>
+		</main>,
+		writable,
+	);
+	await drain;
+
+	const expected =
+		'<main><header>Shell</header><div class="slow">Body</div></main>';
+	Assert.is(result, expected);
+	Assert.is(chunks.join(""), expected);
+	Assert.ok(chunks.length >= 2, "expected incremental writes");
+});
+
+test("portal children are excluded from the stream", async () => {
+	const sink = collector();
+	const result = await renderer.render(
+		<div>
+			Before
+			<Portal root={{}}>
+				<span>Inside portal</span>
+			</Portal>
+			After
+		</div>,
+		sink,
+	);
+
+	Assert.is(result, "<div>BeforeAfter</div>");
+	Assert.is(sink.text(), result);
+});
+
+test("cleanup runs after a streaming render completes", async () => {
+	let cleaned = false;
+	function* Comp(this: Context) {
+		try {
+			while (true) {
+				yield <span>x</span>;
+			}
+		} finally {
+			cleaned = true;
+		}
+	}
+
+	const sink = collector();
+	await renderer.render(
+		<div>
+			<Comp />
+			<Slow ms={20}>done</Slow>
+		</div>,
+		sink,
+	);
+
+	Assert.ok(cleaned, "generator cleanup should run on teardown");
+});
+
+test("a rejected async component rejects the render", async () => {
+	async function Boom(): Promise<any> {
+		throw new Error("boom");
+	}
+
+	const sink = collector();
+	let error: Error | undefined;
+	try {
+		await renderer.render(
+			<div>
+				<Boom />
+			</div>,
+			sink,
+		);
+	} catch (err) {
+		error = err as Error;
+	}
+
+	Assert.ok(error, "expected the render to reject");
+	Assert.is(error!.message, "boom");
 });
 
 test.run();

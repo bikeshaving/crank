@@ -270,9 +270,9 @@ export function createElement<TTag extends Tag>(
 	}
 
 	if (children.length > 1) {
-		props = {...props as TagProps<TTag>, children};
+		props = {...(props as TagProps<TTag>), children};
 	} else if (children.length === 1) {
-		props = {...props as TagProps<TTag>, children: children[0]};
+		props = {...(props as TagProps<TTag>), children: children[0]};
 	}
 
 	return new Element(tag, props as TagProps<TTag>);
@@ -1124,6 +1124,13 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	// async content settles. Atomic rendering is the degenerate case of this walk
 	// with no sink: it commits the (awaited) tree once and flushes nothing.
 	if (sink) {
+		// `drive` surfaces async errors as it awaits each unresolved component, so
+		// the identical rejection carried by the aggregate diff would otherwise go
+		// unhandled.
+		if (isPromiseLike(diff)) {
+			Promise.resolve(diff).catch(() => {});
+		}
+
 		let flushed = 0;
 		const drive = (): Promise<TResult> | TResult => {
 			commitRoot();
@@ -1228,7 +1235,6 @@ function serializePrefix<TNode, TScope, TRoot extends TNode | undefined>(
 	walkChildren(root);
 	return {text, blocking};
 }
-
 
 function diffChild<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,

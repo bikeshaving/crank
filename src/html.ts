@@ -250,7 +250,11 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 				return "";
 			}
 
-			const open = printOpen(tag, props, scope === "svg" || tag === "foreignObject");
+			const open = printOpen(
+				tag,
+				props,
+				scope === "svg" || tag === "foreignObject",
+			);
 			// Elements whose content is markup rather than committed children carry
 			// it here, since the streaming read never descends into them.
 			const inner =
@@ -272,19 +276,31 @@ export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 		super(impl);
 	}
 
-	render(
-		children: any,
-		root?: any,
-		bridge?: any,
-	): Promise<string> | string {
-		// A WritableStream (or any { write } sink) in the second position selects
-		// streaming; otherwise this is the ordinary render.
-		if (root != null && typeof root.write === "function") {
-			const stream = root;
-			return this.renderStream(children, (chunk) => stream.write(chunk), bridge);
+	render(children: any, dest?: any, bridge?: any): Promise<string> | string {
+		// A WritableStream in the second position selects streaming SSR (per #293);
+		// the render still resolves to the full string.
+		if (dest != null && typeof dest.getWriter === "function") {
+			const writer = dest.getWriter();
+			return this.renderStream(
+				children,
+				(chunk) => writer.write(chunk),
+				bridge,
+			).then(
+				(result) => writer.close().then(() => result),
+				(err) =>
+					writer.abort(err).then(
+						() => Promise.reject(err),
+						() => Promise.reject(err),
+					),
+			);
 		}
 
-		return super.render(children, root, bridge);
+		// A plain writer-like sink is also accepted; the caller owns its lifetime.
+		if (dest != null && typeof dest.write === "function") {
+			return this.renderStream(children, (chunk) => dest.write(chunk), bridge);
+		}
+
+		return super.render(children, dest, bridge);
 	}
 }
 
