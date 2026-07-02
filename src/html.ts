@@ -133,6 +133,22 @@ function join(children: Array<TextNode | string>): string {
 	return result;
 }
 
+// The opening markup of a host element: `<tag attrs>`. For a void tag this is
+// the element's entire serialization (there is no close).
+function printOpen(
+	tag: string,
+	props: Record<string, any>,
+	scope: string | undefined,
+): string {
+	const attrs = printAttrs(props, scope === "svg" || tag === "foreignObject");
+	return `<${tag}${attrs.length ? " " : ""}${attrs}>`;
+}
+
+// The closing markup of a host element: `</tag>`, or "" for a void tag.
+function printClose(tag: string): string {
+	return voidTags.has(tag) ? "" : `</${tag}>`;
+}
+
 export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 	{
 		scope({
@@ -180,6 +196,52 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 			}
 		},
 
+		open({
+			tag,
+			tagName,
+			props,
+			scope,
+		}: {
+			tag: string | symbol;
+			tagName: string;
+			props: Record<string, any>;
+			scope: string | undefined;
+			root: TextNode | undefined;
+		}): TextNode {
+			if (tag === Portal) {
+				return {value: ""};
+			} else if (typeof tag !== "string") {
+				throw new Error(`Unknown tag: ${tagName}`);
+			}
+
+			return {value: printOpen(tag, props, scope)};
+		},
+
+		close({
+			tag,
+			props,
+		}: {
+			tag: string | symbol;
+			tagName: string;
+			props: Record<string, any>;
+			scope: string | undefined;
+			root: TextNode | undefined;
+		}): TextNode {
+			if (tag === Portal || typeof tag !== "string") {
+				return {value: ""};
+			}
+
+			// A host whose contents come from a prop rather than child retainers
+			// has no streamed children, so its content rides along with the close.
+			const inner =
+				"innerHTML" in props
+					? props["innerHTML"]
+					: "dangerouslySetInnerHTML" in props
+						? (props["dangerouslySetInnerHTML"]?.__html ?? "")
+						: undefined;
+			return {value: `${inner ?? ""}${printClose(tag)}`};
+		},
+
 		arrange({
 			tag,
 			tagName,
@@ -202,23 +264,18 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 				throw new Error(`Unknown tag: ${tagName}`);
 			}
 
-			const attrs = printAttrs(
-				props,
-				scope === "svg" || tag === "foreignObject",
-			);
-			const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
+			const open = printOpen(tag, props, scope);
 			let result: string;
 			if (voidTags.has(tag)) {
 				result = open;
 			} else {
-				const close = `</${tag}>`;
 				const contents =
 					"innerHTML" in props
 						? props["innerHTML"]
 						: "dangerouslySetInnerHTML" in props
 							? (props["dangerouslySetInnerHTML"]?.__html ?? "")
 							: join(children);
-				result = `${open}${contents}${close}`;
+				result = `${open}${contents}${printClose(tag)}`;
 			}
 
 			node.value = result;

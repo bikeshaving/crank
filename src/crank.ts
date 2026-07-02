@@ -819,6 +819,34 @@ export interface RenderAdapter<
 	}): void;
 
 	/**
+	 * The enter/exit split of {@link arrange} for streaming renderers: `open`
+	 * returns the value emitted when a host is entered (pre-order), `close` the
+	 * value emitted when it is exited (post-order). A renderer that defines both
+	 * opts into streaming; one that omits them (e.g. the DOM renderer) is
+	 * committed atomically through `arrange` and is unaffected.
+	 *
+	 * For a target whose result is a string, `open`/`close` are the opening and
+	 * closing markup; for other targets they mint whatever node brackets the
+	 * children. `arrange` composes the same primitives, so streamed and atomic
+	 * output are identical.
+	 */
+	open?(data: {
+		tag: string | symbol;
+		tagName: string;
+		props: Record<string, any>;
+		scope: TScope | undefined;
+		root: TRoot | undefined;
+	}): TNode;
+
+	close?(data: {
+		tag: string | symbol;
+		tagName: string;
+		props: Record<string, any>;
+		scope: TScope | undefined;
+		root: TRoot | undefined;
+	}): TNode;
+
+	/**
 	 * Removes a node from its parent.
 	 *
 	 * Called when an element is being unmounted. Should clean up the node
