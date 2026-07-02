@@ -1059,11 +1059,21 @@ function getRootRetainer<
 	return ret;
 }
 
+// A sink receives every committed node in document order as the commit walk
+// produces it. It is the one piece of state that distinguishes a streaming
+// render from an atomic one: render(el) supplies a discarding sink (the result
+// is still assembled bottom-up and returned by read), while render(el, stream)
+// supplies one that forwards each node to the stream as it lands. The commit
+// walk calls it unconditionally — there is no branch on which sink it is.
+type Sink<TNode> = (value: ElementValue<TNode>) => unknown;
+const DISCARD: Sink<any> = () => {};
+
 function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
 	ret: Retainer<TNode, TScope>,
 	children: Children,
+	sink: Sink<TNode> = DISCARD,
 ): Promise<TResult> | TResult {
 	const commitLabel = "commit (" + getTagName(ret.el.tag) + ")";
 	markStart("diff");
@@ -1092,6 +1102,7 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				0,
 				schedulePromises,
 				undefined,
+				sink,
 			);
 			measureMark(commitLabel);
 			if (schedulePromises.length > 0) {
@@ -1122,6 +1133,7 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		0,
 		schedulePromises,
 		undefined,
+		sink,
 	);
 	measureMark(commitLabel);
 	if (schedulePromises.length > 0) {
@@ -1633,6 +1645,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	index: number,
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
+	sink: Sink<TNode>,
 ): ElementValue<TNode> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
 		return getValue(ret);
@@ -1673,7 +1686,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 
 	if (typeof tag === "function") {
 		ret.ctx!.index = index;
-		value = commitComponent(ret.ctx!, schedulePromises, hydrationNodes);
+		value = commitComponent(ret.ctx!, schedulePromises, sink, hydrationNodes);
 	} else {
 		if (tag === Fragment) {
 			value = commitChildren(
@@ -1686,6 +1699,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				index,
 				schedulePromises,
 				hydrationNodes,
+				sink,
 			);
 		} else if (tag === Text) {
 			value = commitText(
@@ -1696,8 +1710,10 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				hydrationNodes,
 				root,
 			);
+			sink(value);
 		} else if (tag === Raw) {
 			value = commitRaw(adapter, host, ret, scope, hydrationNodes, root);
+			sink(value);
 		} else {
 			value = commitHost(
 				adapter,
@@ -1706,6 +1722,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				root,
 				schedulePromises,
 				hydrationNodes,
+				sink,
 			);
 		}
 
@@ -1752,6 +1769,7 @@ function commitChildren<
 	index: number,
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
+	sink: Sink<TNode>,
 ): Array<TNode> {
 	let values: Array<TNode> = [];
 	const rawChildren = parent.children;
@@ -1862,6 +1880,7 @@ function commitChildren<
 				index,
 				schedulePromises,
 				hydrationNodes,
+				sink,
 			);
 
 			if (Array.isArray(value)) {
@@ -1952,6 +1971,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 	root: TRoot | undefined,
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
+	sink: Sink<TNode>,
 ): ElementValue<TNode> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
 		return getValue(ret);
@@ -2094,6 +2114,23 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 	}
 
 	if (!copyChildren) {
+		// A host brackets its children: emit its opening node before descending
+		// (so the shell flushes ahead of async content) and its closing node
+		// after. arrange composes the same primitives to build the atomic value.
+		// Portal children belong to another root, so they never join this stream.
+		const childSink = tag === Portal ? DISCARD : sink;
+		if (tag !== Portal && adapter.open) {
+			sink(
+				adapter.open({
+					tag,
+					tagName: getTagName(tag),
+					props,
+					scope,
+					root,
+				}),
+			);
+		}
+
 		const children = commitChildren(
 			adapter,
 			ret,
@@ -2106,6 +2143,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 			hydrationMetaProp && !hydrationMetaProp.includes("children")
 				? undefined
 				: childHydrationNodes,
+			childSink,
 		);
 
 		adapter.arrange({
@@ -2118,6 +2156,18 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 			scope,
 			root,
 		});
+
+		if (tag !== Portal && adapter.close) {
+			sink(
+				adapter.close({
+					tag,
+					tagName: getTagName(tag),
+					props,
+					scope,
+					root,
+				}),
+			);
+		}
 	}
 
 	ret.oldProps = props;
@@ -2638,7 +2688,7 @@ export class Context<
 				return diff
 					.then(() => {
 						markStart(commitLabel);
-						const value = commitComponent(ctx, schedulePromises);
+						const value = commitComponent(ctx, schedulePromises, DISCARD);
 						measureMark(commitLabel);
 						return ctx.adapter.read(value);
 					})
@@ -2677,7 +2727,7 @@ export class Context<
 			}
 
 			markStart(commitLabel);
-			const result = ctx.adapter.read(commitComponent(ctx, schedulePromises));
+			const result = ctx.adapter.read(commitComponent(ctx, schedulePromises, DISCARD));
 			measureMark(commitLabel);
 			if (schedulePromises.length) {
 				return Promise.all(schedulePromises).then(() => {
@@ -3245,7 +3295,7 @@ async function pullComponent<TNode, TResult>(
 					if (
 						!(getFlag(ctx.ret, IsUpdating) || getFlag(ctx.ret, IsRefreshing))
 					) {
-						commitComponent(ctx, []);
+						commitComponent(ctx, [], DISCARD);
 					}
 				},
 				(err) => {
@@ -3432,11 +3482,12 @@ async function pullComponent<TNode, TResult>(
 function commitComponent<TNode>(
 	ctx: ContextState<TNode>,
 	schedulePromises: Array<PromiseLike<unknown>>,
+	sink: Sink<TNode>,
 	hydrationNodes?: Array<TNode> | undefined,
 ): ElementValue<TNode> {
 	if (ctx.schedule) {
 		ctx.schedule.promise.then(() => {
-			commitComponent(ctx, []);
+			commitComponent(ctx, [], DISCARD);
 			propagateComponent(ctx);
 		});
 		return getValue(ctx.ret);
@@ -3452,6 +3503,7 @@ function commitComponent<TNode>(
 		ctx.index,
 		schedulePromises,
 		hydrationNodes,
+		sink,
 	);
 
 	if (getFlag(ctx.ret, IsUnmounted)) {
@@ -3858,12 +3910,12 @@ function propagateError<TNode>(
 
 	if (isPromiseLike(diff)) {
 		return diff.then(
-			() => void commitComponent(parent, schedulePromises),
+			() => void commitComponent(parent, schedulePromises, DISCARD),
 			(err) => propagateError(parent, err, schedulePromises),
 		);
 	}
 
-	commitComponent(parent, schedulePromises);
+	commitComponent(parent, schedulePromises, DISCARD);
 }
 
 /**
