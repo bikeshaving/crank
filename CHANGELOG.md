@@ -1,4 +1,26 @@
 # Changelog
+## Unreleased
+### New Features
+- **Streaming HTML rendering** (#293)
+  `renderer.render(<App />, writableStream)` from `@b9g/crank/html` now streams
+  markup to a `WritableStream` in document order as async components resolve. The
+  static shell flushes before the async content it wraps settles (better
+  time-to-first-byte), and the call still resolves to the full HTML string, so
+  `render(<App />)` is unchanged.
+
+  ```js
+  import {renderer} from "@b9g/crank/html";
+
+  const {readable, writable} = new TransformStream();
+  renderer.render(<App />, writable);
+  return new Response(readable);
+  ```
+
+### New API
+- **Optional `open`/`close` adapter methods** — the enter/exit split of
+  `arrange`. A renderer that defines both opts into streaming; renderers that
+  omit them (e.g. the DOM renderer) are unaffected.
+
 ## [0.7.9] - 2026-03-31
 ### Performance
 - **Make User Timing API profiling opt-in via `setProfiling()`**

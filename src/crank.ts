@@ -270,9 +270,9 @@ export function createElement<TTag extends Tag>(
 	}
 
 	if (children.length > 1) {
-		props = {...props as TagProps<TTag>, children};
+		props = {...(props as TagProps<TTag>), children};
 	} else if (children.length === 1) {
-		props = {...props as TagProps<TTag>, children: children[0]};
+		props = {...(props as TagProps<TTag>), children: children[0]};
 	}
 
 	return new Element(tag, props as TagProps<TTag>);
@@ -983,6 +983,34 @@ export class Renderer<
 		root?: TRoot | undefined,
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
+		// Polymorphic on the second argument: a writable stream (duck-typed by
+		// getWriter, and only when the adapter can emit open/close) routes to a
+		// streaming render whose sink forwards each committed node as it lands.
+		// The result is still the full value, so render(el) is unchanged.
+		if (
+			root != null &&
+			typeof (root as any).getWriter === "function" &&
+			typeof this.adapter.open === "function"
+		) {
+			const adapter = this.adapter;
+			const writer = (root as any).getWriter();
+			const sink: Sink<TNode> = (value) => writer.write(adapter.read(value));
+			const ret = getRootRetainer(this, bridge, {children, root: undefined});
+			const result = renderRoot(adapter, undefined, ret, children, sink);
+			return Promise.resolve(result as Promise<TResult> | TResult).then(
+				(value) => writer.close().then(() => value),
+				(err) =>
+					Promise.resolve(writer.abort(err)).then(
+						() => {
+							throw err;
+						},
+						() => {
+							throw err;
+						},
+					),
+			);
+		}
+
 		const ret = getRootRetainer(this, bridge, {children, root});
 		return renderRoot(this.adapter, root, ret, children) as
 			| Promise<TResult>
@@ -1068,6 +1096,18 @@ function getRootRetainer<
 type Sink<TNode> = (value: ElementValue<TNode>) => unknown;
 const DISCARD: Sink<any> = () => {};
 
+// Continues a maybe-async value: applies fn now if the value is settled, or
+// after it resolves otherwise. The commit walk stays synchronous (returns a
+// value) whenever nothing along the spine is still inflight, and lifts into a
+// promise only where it must await — the single mechanism that makes atomic
+// rendering the degenerate, no-await case of the streaming walk.
+function andThen<T, U>(
+	value: T | Promise<T>,
+	fn: (value: T) => U | Promise<U>,
+): U | Promise<U> {
+	return isPromiseLike(value) ? value.then(fn) : fn(value);
+}
+
 function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -1087,68 +1127,65 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		children,
 	);
 
-	const schedulePromises: Array<PromiseLike<unknown>> = [];
-	if (isPromiseLike(diff)) {
-		return diff.then(() => {
-			measureMark("diff");
-			markStart(commitLabel);
-			commit(
-				adapter,
-				ret,
-				ret,
-				ret.ctx,
-				ret.scope,
-				root,
-				0,
-				schedulePromises,
-				undefined,
-				sink,
-			);
-			measureMark(commitLabel);
-			if (schedulePromises.length > 0) {
-				return Promise.all(schedulePromises).then(() => {
-					if (typeof root !== "object" || root === null) {
-						unmount(adapter, ret, ret.ctx, root, ret, false);
-					}
-					return adapter.read(unwrap(getChildValues(ret)));
-				});
-			}
-
-			if (typeof root !== "object" || root === null) {
-				unmount(adapter, ret, ret.ctx, root, ret, false);
-			}
-			return adapter.read(unwrap(getChildValues(ret)));
-		});
-	}
-
 	measureMark("diff");
-	markStart(commitLabel);
-	commit(
-		adapter,
-		ret,
-		ret,
-		ret.ctx,
-		ret.scope,
-		root,
-		0,
-		schedulePromises,
-		undefined,
-		sink,
-	);
-	measureMark(commitLabel);
-	if (schedulePromises.length > 0) {
-		return Promise.all(schedulePromises).then(() => {
-			if (typeof root !== "object" || root === null) {
-				unmount(adapter, ret, ret.ctx, root, ret, false);
-			}
-			return adapter.read(unwrap(getChildValues(ret)));
-		});
+
+	const finishRender = (): Promise<TResult> | TResult => {
+		measureMark(commitLabel);
+		if (schedulePromises.length > 0) {
+			return Promise.all(schedulePromises).then(() => {
+				if (typeof root !== "object" || root === null) {
+					unmount(adapter, ret, ret.ctx, root, ret, false);
+				}
+				return adapter.read(unwrap(getChildValues(ret)));
+			});
+		}
+
+		if (typeof root !== "object" || root === null) {
+			unmount(adapter, ret, ret.ctx, root, ret, false);
+		}
+		return adapter.read(unwrap(getChildValues(ret)));
+	};
+
+	const schedulePromises: Array<PromiseLike<unknown>> = [];
+	const runCommit = (): ElementValue<TNode> | Promise<ElementValue<TNode>> => {
+		markStart(commitLabel);
+		return commit(
+			adapter,
+			ret,
+			ret,
+			ret.ctx,
+			ret.scope,
+			root,
+			0,
+			schedulePromises,
+			undefined,
+			sink,
+		);
+	};
+
+	if (sink === DISCARD) {
+		// No stream is listening. Let the diff settle fully before committing, so
+		// a live root's concurrent renders resolve in enqueue order (the chase
+		// mechanism) before any of them commits. commit finds nothing inflight and
+		// runs synchronously — the atomic, buffered case.
+		if (isPromiseLike(diff)) {
+			return diff.then(() => andThen(runCommit(), finishRender));
+		}
+
+		return andThen(runCommit(), finishRender);
 	}
 
-	if (typeof root !== "object" || root === null) {
-		unmount(adapter, ret, ret.ctx, root, ret, false);
+	// A stream is listening. commit descends immediately — without waiting for
+	// the whole diff to settle — emitting each node to the sink and awaiting
+	// inflight children in place, so the shell flushes ahead of the async content
+	// it wraps. commit awaits the same inflight work the diff does; Promise.all
+	// consumes the diff's rejection alongside the commit's.
+	const committed = runCommit();
+	if (isPromiseLike(committed) || isPromiseLike(diff)) {
+		return Promise.all([committed, diff]).then(finishRender);
 	}
-	return adapter.read(unwrap(getChildValues(ret)));
+
+	return finishRender();
 }
 
 function diffChild<TNode, TScope, TRoot extends TNode | undefined, TResult>(
@@ -1646,7 +1683,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
 	sink: Sink<TNode>,
-): ElementValue<TNode> {
+): ElementValue<TNode> | Promise<ElementValue<TNode>> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
 		return getValue(ret);
 	}
@@ -1672,7 +1709,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		}
 	}
 
-	let value: ElementValue<TNode>;
+	let value: ElementValue<TNode> | Promise<ElementValue<TNode>>;
 	let skippedHydrationNodes: Array<TNode> | undefined;
 	if (
 		hydrationNodes &&
@@ -1725,33 +1762,35 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				sink,
 			);
 		}
+	}
 
-		if (ret.fallback) {
+	return andThen(value, (resolved) => {
+		if (typeof tag !== "function" && ret.fallback) {
 			unmount(adapter, host, ctx, root, ret.fallback, false);
 			ret.fallback = undefined;
 		}
-	}
 
-	if (skippedHydrationNodes) {
-		skippedHydrationNodes.splice(
-			0,
-			value == null ? 0 : Array.isArray(value) ? value.length : 1,
-		);
-	}
-
-	if (!getFlag(ret, DidCommit)) {
-		setFlag(ret, DidCommit);
-		if (
-			typeof tag !== "function" &&
-			tag !== Fragment &&
-			tag !== Portal &&
-			typeof el.props.ref === "function"
-		) {
-			el.props.ref(adapter.read(value));
+		if (skippedHydrationNodes) {
+			skippedHydrationNodes.splice(
+				0,
+				resolved == null ? 0 : Array.isArray(resolved) ? resolved.length : 1,
+			);
 		}
-	}
 
-	return value;
+		if (!getFlag(ret, DidCommit)) {
+			setFlag(ret, DidCommit);
+			if (
+				typeof tag !== "function" &&
+				tag !== Fragment &&
+				tag !== Portal &&
+				typeof el.props.ref === "function"
+			) {
+				el.props.ref(adapter.read(resolved));
+			}
+		}
+
+		return resolved;
+	});
 }
 
 function commitChildren<
@@ -1770,7 +1809,7 @@ function commitChildren<
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
 	sink: Sink<TNode>,
-): Array<TNode> {
+): Array<TNode> | Promise<Array<TNode>> {
 	let values: Array<TNode> = [];
 	const rawChildren = parent.children;
 	const isChildrenArray = Array.isArray(rawChildren);
@@ -1780,137 +1819,209 @@ function commitChildren<
 			: isChildrenArray
 				? (rawChildren as Array<any>).length
 				: 1;
-	for (let i = 0; i < childrenLength; i++) {
-		let child = isChildrenArray
-			? (rawChildren as Array<Retainer<TNode, TScope> | undefined>)[i]
-			: (rawChildren as Retainer<TNode, TScope> | undefined);
-		let schedulePromises1: Array<unknown> | undefined;
-		let isSchedulingFallback = false;
-		while (
-			child &&
-			((!getFlag(child, DidDiff) && child.fallback) ||
-				getFlag(child, IsScheduling))
-		) {
-			// If the child is scheduling, it is a component retainer so ctx will be
-			// defined.
-			if (getFlag(child, IsScheduling) && child.ctx!.schedule) {
-				(schedulePromises1 = schedulePromises1 || []).push(
-					child.ctx!.schedule.promise,
-				);
-				isSchedulingFallback = true;
+
+	const appendValue = (value: ElementValue<TNode>): void => {
+		if (Array.isArray(value)) {
+			for (let j = 0; j < value.length; j++) {
+				values.push(value[j]);
+			}
+			index += value.length;
+		} else if (value) {
+			values.push(value);
+			index++;
+		}
+	};
+
+	const finalize = (): Array<TNode> => {
+		if (parent.graveyard) {
+			for (let i = 0; i < parent.graveyard.length; i++) {
+				const child = parent.graveyard[i];
+				unmount(adapter, host, ctx, root, child, false);
 			}
 
-			if (!getFlag(child, DidDiff) && getFlag(child, DidCommit)) {
-				// If this child has not diffed but has committed, it means it is a
-				// fallback that is being resurrected.
-				for (const node of getChildValues(child)) {
-					adapter.remove({
-						node,
-						parentNode: host.value as TNode,
-						isNested: false,
-						root,
+			parent.graveyard = undefined;
+		}
+
+		if (parent.lingerers) {
+			// if parent.lingerers is set, a descendant component is unmounting
+			// asynchronously, so we overwrite values to include lingerering DOM nodes.
+			values = getChildValues(parent);
+		}
+
+		return values;
+	};
+
+	// A flat pass over the children in document order. It stays synchronous —
+	// running straight to finalize() — until it reaches a child whose diff is
+	// still inflight; there it awaits that child (its shell already flushed) and
+	// resumes the same pass from the next index, so no child is committed before
+	// its predecessor.
+	const commitFrom = (i: number): Array<TNode> | Promise<Array<TNode>> => {
+		for (; i < childrenLength; i++) {
+			let child = isChildrenArray
+				? (rawChildren as Array<Retainer<TNode, TScope> | undefined>)[i]
+				: (rawChildren as Retainer<TNode, TScope> | undefined);
+			let schedulePromises1: Array<unknown> | undefined;
+			let isSchedulingFallback = false;
+			while (
+				child &&
+				((!getFlag(child, DidDiff) && child.fallback) ||
+					getFlag(child, IsScheduling))
+			) {
+				// If the child is scheduling, it is a component retainer so ctx will be
+				// defined.
+				if (getFlag(child, IsScheduling) && child.ctx!.schedule) {
+					(schedulePromises1 = schedulePromises1 || []).push(
+						child.ctx!.schedule.promise,
+					);
+					isSchedulingFallback = true;
+				}
+
+				if (!getFlag(child, DidDiff) && getFlag(child, DidCommit)) {
+					// If this child has not diffed but has committed, it means it is a
+					// fallback that is being resurrected.
+					for (const node of getChildValues(child)) {
+						adapter.remove({
+							node,
+							parentNode: host.value as TNode,
+							isNested: false,
+							root,
+						});
+					}
+				}
+
+				child = child.fallback;
+				// When a scheduling component is mounting asynchronously but diffs
+				// immediately, it will cause previous async diffs to settle due to the
+				// chasing mechanism. This would cause earlier renders to resolve sooner
+				// than expected, because the render would be missing both its usual
+				// children and the children of the scheduling render. Therefore, we need
+				// to defer the settling of previous renders until either that render
+				// settles, or the scheduling component finally finishes scheduling.
+				//
+				// To do this, we take advantage of the fact that commits for aborted
+				// renders will still fire and walk the tree. During that commit walk,
+				// when we encounter a scheduling element, we push a race of the
+				// scheduling promise with the inflight diff of the async fallback
+				// fallback to schedulePromises to delay the initiator.
+				//
+				// However, we need to make sure we only use the inflight diffs for the
+				// fallback which we are trying to delay, in the case of multiple renders
+				// and fallbacks. To do this, we take advantage of the fact that when
+				// multiple renders race (e.g., render1->render2->render3->scheduling
+				// component), the chasing mechanism will call stale commits in reverse
+				// order.
+				//
+				// We can use this ordering to delay to find which fallbacks we need to
+				// add to the race. Each commit call progressively marks an additional
+				// fallback as a scheduling fallback, and does not contribute to the
+				// scheduling promises if it is further than the last seen level.
+				//
+				// This prevents promise contamination where newer renders settle early
+				// due to diffs from older renders.
+				if (schedulePromises1 && isSchedulingFallback && child) {
+					if (!getFlag(child, DidDiff)) {
+						const inflightDiff = getInflightDiff(child);
+						schedulePromises1.push(inflightDiff);
+					} else {
+						// If a scheduling component's fallback has already diffed, we do not
+						// need delay the render.
+						schedulePromises1 = undefined;
+					}
+
+					if (getFlag(child, IsSchedulingFallback)) {
+						// This fallback was marked by a more recent commit - keep processing
+						// deeper levels
+						isSchedulingFallback = true;
+					} else {
+						// First unmarked fallback we've encountered - mark it and stop
+						// contributing to schedulePromises1 for deeper levels.
+						setFlag(child, IsSchedulingFallback, true);
+						isSchedulingFallback = false;
+					}
+				}
+			}
+
+			if (schedulePromises1 && schedulePromises1.length > 1) {
+				schedulePromises.push(safeRace(schedulePromises1));
+			}
+
+			if (child) {
+				const child1 = child;
+				const i1 = i;
+				const commitChild = (): Array<TNode> | Promise<Array<TNode>> =>
+					andThen(
+						commit(
+							adapter,
+							host,
+							child1,
+							ctx,
+							scope,
+							root,
+							index,
+							schedulePromises,
+							hydrationNodes,
+							sink,
+						),
+						(value) => {
+							appendValue(value);
+							return commitFrom(i1 + 1);
+						},
+					);
+
+				// Awaiting the child's inflight diff here is what suspends the walk
+				// mid-traversal: the enclosing host's opening has already flushed, so
+				// its shell streams ahead of this still-resolving child. Once settled,
+				// the child's whole subtree is diffed, so committing it is synchronous.
+				// Only an async child hands control to the promise tail; a settled one
+				// appends and the flat loop continues, so a fully sync list never
+				// recurses.
+				//
+				// We await only a component whose own render is still inflight — not a
+				// host that merely contains one (its pendingDiff would suspend the walk
+				// too early and swallow the shell). Descending into such a host emits
+				// its opening node and recurses until it reaches the inflight component,
+				// which is where the walk actually suspends.
+				//
+				// This only happens while streaming. The atomic path commits after the
+				// diff has fully settled, and must ignore a component's inflight marker
+				// that has resolved but not yet cleared — awaiting it there would break
+				// the enqueue (chase) ordering of concurrent renders into a live root.
+				const inflight =
+					sink !== DISCARD && child.ctx && child.ctx.ret === child
+						? child.ctx.inflight && child.ctx.inflight[1]
+						: undefined;
+				if (isPromiseLike(inflight)) {
+					return inflight.then(commitChild);
+				}
+
+				const value = commit(
+					adapter,
+					host,
+					child1,
+					ctx,
+					scope,
+					root,
+					index,
+					schedulePromises,
+					hydrationNodes,
+					sink,
+				);
+				if (isPromiseLike(value)) {
+					return andThen(value, (resolved) => {
+						appendValue(resolved);
+						return commitFrom(i1 + 1);
 					});
 				}
-			}
 
-			child = child.fallback;
-			// When a scheduling component is mounting asynchronously but diffs
-			// immediately, it will cause previous async diffs to settle due to the
-			// chasing mechanism. This would cause earlier renders to resolve sooner
-			// than expected, because the render would be missing both its usual
-			// children and the children of the scheduling render. Therefore, we need
-			// to defer the settling of previous renders until either that render
-			// settles, or the scheduling component finally finishes scheduling.
-			//
-			// To do this, we take advantage of the fact that commits for aborted
-			// renders will still fire and walk the tree. During that commit walk,
-			// when we encounter a scheduling element, we push a race of the
-			// scheduling promise with the inflight diff of the async fallback
-			// fallback to schedulePromises to delay the initiator.
-			//
-			// However, we need to make sure we only use the inflight diffs for the
-			// fallback which we are trying to delay, in the case of multiple renders
-			// and fallbacks. To do this, we take advantage of the fact that when
-			// multiple renders race (e.g., render1->render2->render3->scheduling
-			// component), the chasing mechanism will call stale commits in reverse
-			// order.
-			//
-			// We can use this ordering to delay to find which fallbacks we need to
-			// add to the race. Each commit call progressively marks an additional
-			// fallback as a scheduling fallback, and does not contribute to the
-			// scheduling promises if it is further than the last seen level.
-			//
-			// This prevents promise contamination where newer renders settle early
-			// due to diffs from older renders.
-			if (schedulePromises1 && isSchedulingFallback && child) {
-				if (!getFlag(child, DidDiff)) {
-					const inflightDiff = getInflightDiff(child);
-					schedulePromises1.push(inflightDiff);
-				} else {
-					// If a scheduling component's fallback has already diffed, we do not
-					// need delay the render.
-					schedulePromises1 = undefined;
-				}
-
-				if (getFlag(child, IsSchedulingFallback)) {
-					// This fallback was marked by a more recent commit - keep processing
-					// deeper levels
-					isSchedulingFallback = true;
-				} else {
-					// First unmarked fallback we've encountered - mark it and stop
-					// contributing to schedulePromises1 for deeper levels.
-					setFlag(child, IsSchedulingFallback, true);
-					isSchedulingFallback = false;
-				}
+				appendValue(value);
 			}
 		}
 
-		if (schedulePromises1 && schedulePromises1.length > 1) {
-			schedulePromises.push(safeRace(schedulePromises1));
-		}
+		return finalize();
+	};
 
-		if (child) {
-			const value = commit(
-				adapter,
-				host,
-				child,
-				ctx,
-				scope,
-				root,
-				index,
-				schedulePromises,
-				hydrationNodes,
-				sink,
-			);
-
-			if (Array.isArray(value)) {
-				for (let j = 0; j < value.length; j++) {
-					values.push(value[j]);
-				}
-				index += value.length;
-			} else if (value) {
-				values.push(value);
-				index++;
-			}
-		}
-	}
-
-	if (parent.graveyard) {
-		for (let i = 0; i < parent.graveyard.length; i++) {
-			const child = parent.graveyard[i];
-			unmount(adapter, host, ctx, root, child, false);
-		}
-
-		parent.graveyard = undefined;
-	}
-
-	if (parent.lingerers) {
-		// if parent.lingerers is set, a descendant component is unmounting
-		// asynchronously, so we overwrite values to include lingerering DOM nodes.
-		values = getChildValues(parent);
-	}
-
-	return values;
+	return commitFrom(0);
 }
 
 function commitText<TNode, TScope, TRoot extends TNode | undefined>(
@@ -1972,7 +2083,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
 	sink: Sink<TNode>,
-): ElementValue<TNode> {
+): ElementValue<TNode> | Promise<ElementValue<TNode>> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
 		return getValue(ret);
 	}
@@ -2113,12 +2224,27 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 		});
 	}
 
+	const finishHost = (): ElementValue<TNode> => {
+		ret.oldProps = props;
+		if (tag === Portal) {
+			flush(adapter, ret.value as TRoot);
+			// The root passed to Portal elements are opaque to parents so we return
+			// undefined here.
+			return undefined;
+		}
+
+		return node;
+	};
+
 	if (!copyChildren) {
 		// A host brackets its children: emit its opening node before descending
 		// (so the shell flushes ahead of async content) and its closing node
 		// after. arrange composes the same primitives to build the atomic value.
-		// Portal children belong to another root, so they never join this stream.
-		const childSink = tag === Portal ? DISCARD : sink;
+		// A nested portal renders into a foreign root and contributes nothing to
+		// this result, so its children never join the stream — but the render's
+		// own root wrapper (a portal with no explicit root) carries the document.
+		const isForeignPortal = tag === Portal && ret.el.props.root != null;
+		const childSink = isForeignPortal ? DISCARD : sink;
 		if (tag !== Portal && adapter.open) {
 			sink(
 				adapter.open({
@@ -2146,39 +2272,35 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 			childSink,
 		);
 
-		adapter.arrange({
-			tag,
-			tagName: getTagName(tag),
-			node: node,
-			props,
-			children,
-			oldProps,
-			scope,
-			root,
+		return andThen(children, (resolvedChildren) => {
+			adapter.arrange({
+				tag,
+				tagName: getTagName(tag),
+				node: node,
+				props,
+				children: resolvedChildren,
+				oldProps,
+				scope,
+				root,
+			});
+
+			if (tag !== Portal && adapter.close) {
+				sink(
+					adapter.close({
+						tag,
+						tagName: getTagName(tag),
+						props,
+						scope,
+						root,
+					}),
+				);
+			}
+
+			return finishHost();
 		});
-
-		if (tag !== Portal && adapter.close) {
-			sink(
-				adapter.close({
-					tag,
-					tagName: getTagName(tag),
-					props,
-					scope,
-					root,
-				}),
-			);
-		}
 	}
 
-	ret.oldProps = props;
-	if (tag === Portal) {
-		flush(adapter, ret.value as TRoot);
-		// The root passed to Portal elements are opaque to parents so we return
-		// undefined here.
-		return;
-	}
-
-	return node;
+	return finishHost();
 }
 
 class MetaProp {
@@ -2727,7 +2849,9 @@ export class Context<
 			}
 
 			markStart(commitLabel);
-			const result = ctx.adapter.read(commitComponent(ctx, schedulePromises, DISCARD));
+			const result = ctx.adapter.read(
+				commitComponent(ctx, schedulePromises, DISCARD),
+			);
 			measureMark(commitLabel);
 			if (schedulePromises.length) {
 				return Promise.all(schedulePromises).then(() => {
@@ -3277,7 +3401,11 @@ async function pullComponent<TNode, TResult>(
 		return;
 	}
 
-	ctx.pull = {iterationP: undefined, diff: undefined, onChildError: undefined};
+	ctx.pull = {
+		iterationP: undefined,
+		diff: undefined,
+		onChildError: undefined,
+	};
 
 	// TODO: replace done with iteration
 	//let iteration: ChildrenIteratorResult | undefined;
@@ -3484,7 +3612,7 @@ function commitComponent<TNode>(
 	schedulePromises: Array<PromiseLike<unknown>>,
 	sink: Sink<TNode>,
 	hydrationNodes?: Array<TNode> | undefined,
-): ElementValue<TNode> {
+): ElementValue<TNode> | Promise<ElementValue<TNode>> {
 	if (ctx.schedule) {
 		ctx.schedule.promise.then(() => {
 			commitComponent(ctx, [], DISCARD);
@@ -3493,7 +3621,7 @@ function commitComponent<TNode>(
 		return getValue(ctx.ret);
 	}
 
-	const values = commitChildren(
+	const childValues = commitChildren(
 		ctx.adapter,
 		ctx.host,
 		ctx,
@@ -3506,87 +3634,89 @@ function commitComponent<TNode>(
 		sink,
 	);
 
-	if (getFlag(ctx.ret, IsUnmounted)) {
-		return;
-	}
-
-	addEventTargetDelegates(ctx.ctx, values);
-
-	// Execute schedule callbacks early to check for async deferral
-	const wasScheduling = getFlag(ctx.ret, IsScheduling);
-	let schedulePromises1: Array<PromiseLike<unknown>> | undefined;
-	const callbacks = scheduleMap.get(ctx);
-	if (callbacks) {
-		scheduleMap.delete(ctx);
-		setFlag(ctx.ret, IsScheduling);
-		const result = ctx.adapter.read(unwrap(values));
-		for (const callback of callbacks) {
-			const scheduleResult = callback(result);
-			if (isPromiseLike(scheduleResult)) {
-				(schedulePromises1 = schedulePromises1 || []).push(scheduleResult);
-			}
+	return andThen(childValues, (values) => {
+		if (getFlag(ctx.ret, IsUnmounted)) {
+			return undefined;
 		}
 
-		if (schedulePromises1 && !getFlag(ctx.ret, DidCommit)) {
-			const scheduleCallbacksP = Promise.all(schedulePromises1).then(() => {
-				setFlag(ctx.ret, IsScheduling, wasScheduling);
-				propagateComponent(ctx);
-				if (ctx.ret.fallback) {
-					unmount(
-						ctx.adapter,
-						ctx.host,
-						ctx.parent,
-						ctx.root,
-						ctx.ret.fallback,
-						false,
-					);
+		addEventTargetDelegates(ctx.ctx, values);
+
+		// Execute schedule callbacks early to check for async deferral
+		const wasScheduling = getFlag(ctx.ret, IsScheduling);
+		let schedulePromises1: Array<PromiseLike<unknown>> | undefined;
+		const callbacks = scheduleMap.get(ctx);
+		if (callbacks) {
+			scheduleMap.delete(ctx);
+			setFlag(ctx.ret, IsScheduling);
+			const result = ctx.adapter.read(unwrap(values));
+			for (const callback of callbacks) {
+				const scheduleResult = callback(result);
+				if (isPromiseLike(scheduleResult)) {
+					(schedulePromises1 = schedulePromises1 || []).push(scheduleResult);
 				}
+			}
 
-				ctx.ret.fallback = undefined;
-			});
+			if (schedulePromises1 && !getFlag(ctx.ret, DidCommit)) {
+				const scheduleCallbacksP = Promise.all(schedulePromises1).then(() => {
+					setFlag(ctx.ret, IsScheduling, wasScheduling);
+					propagateComponent(ctx);
+					if (ctx.ret.fallback) {
+						unmount(
+							ctx.adapter,
+							ctx.host,
+							ctx.parent,
+							ctx.root,
+							ctx.ret.fallback,
+							false,
+						);
+					}
 
-			let onAbort!: () => void;
-			const scheduleP = safeRace([
-				scheduleCallbacksP,
-				new Promise<void>((resolve) => (onAbort = resolve)),
-			]).finally(() => {
-				ctx.schedule = undefined;
-			});
+					ctx.ret.fallback = undefined;
+				});
 
-			ctx.schedule = {promise: scheduleP, onAbort};
-			schedulePromises.push(scheduleP);
+				let onAbort!: () => void;
+				const scheduleP = safeRace([
+					scheduleCallbacksP,
+					new Promise<void>((resolve) => (onAbort = resolve)),
+				]).finally(() => {
+					ctx.schedule = undefined;
+				});
+
+				ctx.schedule = {promise: scheduleP, onAbort};
+				schedulePromises.push(scheduleP);
+			} else {
+				setFlag(ctx.ret, IsScheduling, wasScheduling);
+			}
 		} else {
 			setFlag(ctx.ret, IsScheduling, wasScheduling);
 		}
-	} else {
-		setFlag(ctx.ret, IsScheduling, wasScheduling);
-	}
 
-	if (!getFlag(ctx.ret, IsScheduling)) {
-		if (!getFlag(ctx.ret, IsUpdating)) {
-			propagateComponent(ctx);
+		if (!getFlag(ctx.ret, IsScheduling)) {
+			if (!getFlag(ctx.ret, IsUpdating)) {
+				propagateComponent(ctx);
+			}
+
+			if (ctx.ret.fallback) {
+				unmount(
+					ctx.adapter,
+					ctx.host,
+					ctx.parent,
+					ctx.root,
+					ctx.ret.fallback,
+					false,
+				);
+			}
+
+			ctx.ret.fallback = undefined;
+			setFlag(ctx.ret, IsUpdating, false);
 		}
 
-		if (ctx.ret.fallback) {
-			unmount(
-				ctx.adapter,
-				ctx.host,
-				ctx.parent,
-				ctx.root,
-				ctx.ret.fallback,
-				false,
-			);
-		}
-
-		ctx.ret.fallback = undefined;
-		setFlag(ctx.ret, IsUpdating, false);
-	}
-
-	setFlag(ctx.ret, DidCommit);
-	// We always use getValue() instead of the unwrapping values because there
-	// are various ways in which the values could have been updated, especially
-	// if schedule callbacks call refresh() or async mounting is happening.
-	return getValue(ctx.ret, true);
+		setFlag(ctx.ret, DidCommit);
+		// We always use getValue() instead of the unwrapping values because there
+		// are various ways in which the values could have been updated, especially
+		// if schedule callbacks call refresh() or async mounting is happening.
+		return getValue(ctx.ret, true);
+	});
 }
 
 /**
