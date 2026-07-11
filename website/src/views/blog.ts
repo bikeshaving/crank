@@ -4,7 +4,7 @@ import {css} from "@emotion/css";
 import {NotFound} from "@b9g/http-errors";
 import {Root} from "../components/root.js";
 import {BlogContent} from "../components/blog-content.js";
-import {Marked} from "../components/marked.js";
+import {Marked} from "@b9g/crankdown";
 import {components} from "../components/marked-components.js";
 import {Giscus} from "../components/giscus.js";
 import {EditOnGitHub} from "../components/edit-on-github.js";

@@ -6,7 +6,7 @@ import {SerializeScript} from "../components/serialize-javascript.js";
 import {collectDocuments} from "../models/document.js";
 
 import {BlogCard} from "../components/blog-card.js";
-import {Marked} from "../components/marked.js";
+import {Marked} from "@b9g/crankdown";
 import {InlineCodeBlock} from "../components/inline-code-block.js";
 interface ViewProps {
 	url: string;

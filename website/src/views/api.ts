@@ -3,7 +3,7 @@ import {css} from "@emotion/css";
 
 import {Root} from "../components/root.js";
 import {Main} from "../components/sidebar.js";
-import {Marked} from "../components/marked.js";
+import {Marked} from "@b9g/crankdown";
 import {components} from "../components/marked-components.js";
 import {APISidebar, buildAPIModules} from "../components/api-sidebar.js";
 import {EditOnGitHub} from "../components/edit-on-github.js";
