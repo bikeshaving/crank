@@ -1,6 +1,6 @@
 {
   "name": "@b9g/crankdown",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Crank.js Markdown component powered by marked",
   "type": "module",
   "main": "./dist/src/index.cjs",
