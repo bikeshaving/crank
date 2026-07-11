@@ -1,0 +1,56 @@
+{
+  "name": "@b9g/crankdown",
+  "version": "0.1.1",
+  "description": "Crank.js Markdown component powered by marked",
+  "type": "module",
+  "main": "./dist/src/index.cjs",
+  "module": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bikeshaving/crank.git",
+    "directory": "packages/crankdown"
+  },
+  "license": "MIT",
+  "keywords": [
+    "crank",
+    "markdown",
+    "marked",
+    "jsx"
+  ],
+  "scripts": {
+    "build": "libuild build",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "publish": "libuild publish",
+    "prepublishOnly": "echo 'ERROR: Cannot publish from root directory. Use libuild publish instead.' && exit 1"
+  },
+  "peerDependencies": {
+    "@b9g/crank": ">=0.7.0",
+    "marked": ">=5.0.0"
+  },
+  "devDependencies": {
+    "@b9g/crank": "file:../../",
+    "@b9g/libuild": "^0.1.24",
+    "marked": "^18.0.0",
+    "typescript": "^5.9.3"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js",
+      "require": "./dist/src/index.cjs"
+    },
+    "./index": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js",
+      "require": "./dist/src/index.cjs"
+    },
+    "./index.js": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js",
+      "require": "./dist/src/index.cjs"
+    },
+    "./package.json": "./dist/package.json"
+  }
+}

@@ -1,0 +1,14 @@
+{
+	"include": ["src/**/*"],
+	"exclude": ["node_modules", "dist", "**/*.test.ts"],
+	"compilerOptions": {
+		"target": "ES2020",
+		"module": "ESNext",
+		"lib": ["esnext", "dom"],
+		"strict": true,
+		"moduleResolution": "bundler",
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"noEmit": true
+	}
+}
