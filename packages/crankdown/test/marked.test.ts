@@ -223,3 +223,36 @@ test("HTML entities are decoded in source", async () => {
 	const html = await render("Tom \\& Jerry");
 	expect(html).toContain("Tom &amp; Jerry");
 });
+
+// =============================================================================
+// VOID ELEMENTS IN RAW HTML BLOCKS
+// =============================================================================
+// A void element written without a trailing slash (<img>, not <img />) must not
+// open a stack frame — there is no closing tag to pop it, so everything after it
+// would be swallowed and dropped.
+test("bare void element in an HTML block does not swallow later content", async () => {
+	const html = await render(
+		[
+			"<figure>",
+			'<img src="/diagram.png" alt="a diagram">',
+			"<figcaption>A caption.</figcaption>",
+			"</figure>",
+			"",
+			"Content after the figure.",
+		].join("\n"),
+	);
+
+	expect(html).toContain("Content after the figure.");
+	expect(html).toContain('src="/diagram.png"');
+	expect(html).toContain("A caption.");
+});
+
+test("bare <br> and <hr> in an HTML block do not swallow later content", async () => {
+	const html = await render(
+		["<div>", "before<br>", "<hr>", "</div>", "", "Trailing paragraph."].join(
+			"\n",
+		),
+	);
+
+	expect(html).toContain("Trailing paragraph.");
+});

@@ -489,6 +489,18 @@ const rawContentTags = new Set([
 	"pre", "code", "script", "style", "textarea", "title", "svg", "math",
 ]);
 
+// Void elements have no closing tag. HTML allows them to be written without a
+// trailing slash (<img>, not <img />), in which case they look exactly like an
+// open tag — so they must never push a stack frame. Nothing would ever pop it,
+// and every subsequent element would be collected as its children and dropped.
+// They always pass through as raw markup rather than resolving against the
+// components map: an <img> or <link> in an HTML block is markup, not a
+// reference to the "image" or "link" token component.
+const voidTags = new Set([
+	"area", "base", "br", "col", "embed", "hr", "img", "input",
+	"link", "meta", "param", "source", "track", "wbr",
+]);
+
 function parseProps(attrs: string): Record<string, string | true> {
 	const props: Record<string, string | true> = {};
 	const re = /([\w-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'))?/g;
@@ -564,6 +576,12 @@ function parseJSX(
 	);
 	if (m) {
 		const [, tagName, attrs] = m;
+		// A void element has no closing tag, so it can never be popped. Emit it
+		// rather than opening a frame that would swallow the rest of the document.
+		if (voidTags.has(tagName)) {
+			return [[jsx`<${Raw} value=${html} />`], stack];
+		}
+
 		if (!rawContentTags.has(tagName)) {
 			return [
 				results,
