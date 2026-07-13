@@ -68,9 +68,7 @@ test("renders horizontal rules", async () => {
 });
 
 test("renders tables", async () => {
-	const html = await render(
-		"| a | b |\n| --- | --- |\n| 1 | 2 |",
-	);
+	const html = await render("| a | b |\n| --- | --- |\n| 1 | 2 |");
 	expect(html).toContain("<table>");
 	expect(html).toContain("<th");
 	expect(html).toContain("<td");
@@ -107,9 +105,7 @@ test("inline markdown inside <div>", async () => {
 });
 
 test("inline markdown inside <section>", async () => {
-	const html = await render(
-		"<section>\nA *styled* paragraph.\n</section>",
-	);
+	const html = await render("<section>\nA *styled* paragraph.\n</section>");
 	expect(html).toContain("<em>styled</em>");
 	expect(html).toContain("<section>");
 });
@@ -153,7 +149,7 @@ test("custom component overrides default rendering", async () => {
 		Marked({
 			markdown: "# Custom Heading",
 			components: {
-				heading({token, children}) {
+				heading({children}) {
 					return `<h1 class="custom">${children}</h1>` as any;
 				},
 			},
