@@ -427,9 +427,7 @@ function build(
 						checked: !!item.checked,
 					};
 
-					const first = item.tokens?.[0] as
-						| {tokens?: Array<Token>}
-						| undefined;
+					const first = item.tokens?.[0] as {tokens?: Array<Token>} | undefined;
 					if (first?.tokens?.length) {
 						first.tokens.unshift(checkmark as unknown as Token);
 					} else {
@@ -486,7 +484,14 @@ interface JSXStackFrame {
 }
 
 const rawContentTags = new Set([
-	"pre", "code", "script", "style", "textarea", "title", "svg", "math",
+	"pre",
+	"code",
+	"script",
+	"style",
+	"textarea",
+	"title",
+	"svg",
+	"math",
 ]);
 
 // Void elements have no closing tag. HTML allows them to be written without a
@@ -497,8 +502,20 @@ const rawContentTags = new Set([
 // components map: an <img> or <link> in an HTML block is markup, not a
 // reference to the "image" or "link" token component.
 const voidTags = new Set([
-	"area", "base", "br", "col", "embed", "hr", "img", "input",
-	"link", "meta", "param", "source", "track", "wbr",
+	"area",
+	"base",
+	"br",
+	"col",
+	"embed",
+	"hr",
+	"img",
+	"input",
+	"link",
+	"meta",
+	"param",
+	"source",
+	"track",
+	"wbr",
 ]);
 
 function parseProps(attrs: string): Record<string, string | true> {
@@ -607,7 +624,14 @@ function parseJSX(
 				);
 			} else {
 				results.push(
-					jsx`<${Raw} value=${"<" + tagName + Object.entries(frame.props).map(([k, v]) => v === true ? ` ${k}` : ` ${k}="${v}"`).join("") + ">"} />`,
+					jsx`<${Raw} value=${
+						"<" +
+						tagName +
+						Object.entries(frame.props)
+							.map(([k, v]) => (v === true ? ` ${k}` : ` ${k}="${v}"`))
+							.join("") +
+						">"
+					} />`,
 					...frame.children,
 					jsx`<${Raw} value=${html} />`,
 				);
