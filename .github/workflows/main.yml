@@ -80,6 +80,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install
+      # crankdown imports @b9g/crank/standalone, which resolves through crank's
+      # exports map into ./dist/. Build it before the website/crankdown build.
+      - run: bun run build
       - run: bun install
         working-directory: website
       - name: Install Bikeshed
