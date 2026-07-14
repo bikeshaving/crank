@@ -183,6 +183,12 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 									//   jsx` \
 									//   `
 									before = before.slice(0, -1);
+								} else if (before && end < span.length && span[end] !== "<") {
+									// Whitespace between two text runs is preserved verbatim, unlike
+									// JSX, which collapses it to a space. Whitespace touching an
+									// element, expression, or template edge is layout and gets
+									// stripped below, hence the guard: text before, text after.
+									before += newline;
 								} else {
 									before = before.replace(/\s*$/, "");
 								}
