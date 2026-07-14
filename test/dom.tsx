@@ -512,6 +512,7 @@ test("outside DOM mutations", () => {
 test("unknown attribute", () => {
 	renderer.render(
 		<div
+			// @ts-expect-error - arbitrary attributes (Crank passes unknown attrs through at runtime)
 			unknown="value"
 			unknown-attribute="value"
 			data-unknown-attribute="value"
@@ -613,6 +614,7 @@ test("uncontrolled props", () => {
 	Assert.is(input.value, "hello");
 	input.value = "world";
 	Assert.is(input.value, "world");
+	// @ts-expect-error - Crank's Copy sentinel used as a prop value to preserve the existing prop
 	renderer.render(<input value={Copy} />, document.body);
 });
 
@@ -1319,6 +1321,7 @@ test("className skipped when class is also present", () => {
 
 test("dangerouslySetInnerHTML sets innerHTML", () => {
 	renderer.render(
+		// @ts-expect-error - React-compat prop (Crank coerces dangerouslySetInnerHTML to innerHTML)
 		<div dangerouslySetInnerHTML={{__html: "<b>bold</b>"}} />,
 		document.body,
 	);
@@ -1327,6 +1330,7 @@ test("dangerouslySetInnerHTML sets innerHTML", () => {
 
 test("dangerouslySetInnerHTML does not insert children", () => {
 	renderer.render(
+		// @ts-expect-error - React-compat prop (Crank coerces dangerouslySetInnerHTML to innerHTML)
 		<div dangerouslySetInnerHTML={{__html: "<b>bold</b>"}} />,
 		document.body,
 	);
@@ -1337,10 +1341,12 @@ test("dangerouslySetInnerHTML does not insert children", () => {
 
 test("dangerouslySetInnerHTML updates", () => {
 	renderer.render(
+		// @ts-expect-error - React-compat prop (Crank coerces dangerouslySetInnerHTML to innerHTML)
 		<div dangerouslySetInnerHTML={{__html: "<b>first</b>"}} />,
 		document.body,
 	);
 	renderer.render(
+		// @ts-expect-error - React-compat prop (Crank coerces dangerouslySetInnerHTML to innerHTML)
 		<div dangerouslySetInnerHTML={{__html: "<i>second</i>"}} />,
 		document.body,
 	);

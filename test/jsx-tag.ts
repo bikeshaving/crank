@@ -136,10 +136,12 @@ test("string props", () => {
 	Assert.equal(jsx`<p class="foo" />`, createElement("p", {class: "foo"}));
 	Assert.equal(
 		jsx`<p f="foo" b="bar" />`,
+		// @ts-expect-error - arbitrary attributes (verifying jsx-template parser output)
 		createElement("p", {f: "foo", b: "bar"}),
 	);
 	Assert.equal(
 		jsx`<p f="'foo'" b='"bar"' />`,
+		// @ts-expect-error - arbitrary attributes (verifying jsx-template parser output)
 		createElement("p", {f: "'foo'", b: '"bar"'}),
 	);
 });
@@ -147,14 +149,17 @@ test("string props", () => {
 test("string escapes", () => {
 	Assert.equal(
 		jsx`<p a="a\"a\"a\"a" b='b\'b\'b\'b' />`,
+		// @ts-expect-error - arbitrary attributes (verifying jsx-template parser output)
 		createElement("p", {a: 'a"a"a"a', b: "b'b'b'b"}),
 	);
 	Assert.equal(
 		jsx`<p a="\\\"\'\a\b\\\"" />`,
+		// @ts-expect-error - arbitrary attributes (verifying jsx-template parser output)
 		createElement("p", {a: `\\"'a\b\\"`}),
 	);
 	Assert.equal(
 		jsx`<p a="hello\r\nworld" />`,
+		// @ts-expect-error - arbitrary attributes (verifying jsx-template parser output)
 		createElement("p", {a: "hello\r\nworld"}),
 	);
 });

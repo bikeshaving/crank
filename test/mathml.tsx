@@ -99,13 +99,21 @@ test("mixed content with foreignObject-like behavior", () => {
 						<mo>+</mo>
 						<mn>1</mn>
 					</mrow>
+					{/* MathML per-element content attributes (e.g. <annotation-xml>'s
+					    `encoding`) have no machine-readable spec source — BCD omits them —
+					    so the generator can't type them yet. */}
+					{/* @ts-expect-error - real attribute, not yet spec-sourceable */}
 					<annotation-xml encoding="MathML-Content">
-						{/* This would contain Content MathML */}
-						<apply xmlns="http://www.w3.org/1998/Math/MathML">
-							<plus />
-							<ci>x</ci>
-							<cn>1</cn>
-						</apply>
+						{/* Content MathML is legacy foreign markup, not part of the
+						    browser DOM element set the types model, so it's built with
+						    createElement rather than typed JSX. */}
+						{createElement(
+							"apply",
+							{xmlns: "http://www.w3.org/1998/Math/MathML"},
+							createElement("plus"),
+							createElement("ci", null, "x"),
+							createElement("cn", null, "1"),
+						)}
 					</annotation-xml>
 				</semantics>
 			</mrow>
@@ -215,6 +223,7 @@ test("non-string attribute values", () => {
 test("custom attributes and data attributes", () => {
 	renderer.render(
 		<math xmlns="http://www.w3.org/1998/Math/MathML">
+			{/* @ts-expect-error - arbitrary attribute (Crank passes unknown attrs through at runtime) */}
 			<mi data-variable="x" customAttr="value">
 				x
 			</mi>

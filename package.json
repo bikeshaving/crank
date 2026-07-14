@@ -9,6 +9,9 @@
   "main": "./dist/crank.cjs",
   "module": "./dist/crank.js",
   "types": "./dist/crank.d.ts",
+  "dependencies": {
+    "@b9g/jsx-web-types": "workspace:*"
+  },
   "devDependencies": {
     "@b9g/libuild": "^0.2.4",
     "@types/node": "^22.14.0",
@@ -40,6 +43,7 @@
     "build": "libuild build",
     "publish": "libuild publish",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
+    "publish:jsx-web-types": "cd packages/jsx-web-types && npm publish",
     "test": "npm run test:core && npm run test:eslint && npm run test:crankdown",
     "test:core": "playwright-test --runner uvu",
     "test:crankdown": "cd packages/crankdown && npm run typecheck && bun test",
