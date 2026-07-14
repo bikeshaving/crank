@@ -208,6 +208,7 @@ Read these two files for complete API coverage and idiomatic patterns:
 - [Password Strength](../examples/password-strength.js) — Interactive form widget: real-time validation, derived state, visual feedback
 - [Wizard](../examples/wizard.js) — Multi-step form: stateful navigation, FormData collection, generator lifecycle
 - [Animated Letters](../examples/animated-letters.js) — Animation: CSS transitions, exit animations, requestAnimationFrame
+- [Web Components](../examples/web-components.tsx) — Custom elements with `CrankHTMLElement`: shadow DOM, slots, `static styles`/`events`, form association
 
 ## Additional Guides (for deeper reading on specific topics)
 - [Getting Started](guides/01-getting-started.md)
