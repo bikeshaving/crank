@@ -60,6 +60,7 @@ const input = [
 	"src/jsx-tag.ts",
 	"src/html.ts",
 	"src/standalone.ts",
+	"src/web-components.ts",
 ];
 
 const ts = typescript2({
