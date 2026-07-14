@@ -62,6 +62,76 @@ test("newlines and whitespace", () => {
 	);
 });
 
+test("text-text newlines are preserved as a newline (#359)", () => {
+	// A newline between two text runs is preserved as a single newline. Unlike
+	// JSX, which collapses it to a space, the template has no formatter reflowing
+	// it, so the line break is the author's intent: it renders as a space in
+	// normal flow and as a real line break in a `<pre>`.
+	Assert.equal(
+		jsx`<p>alpha
+beta</p>`,
+		createElement("p", null, "alpha\n", "beta"),
+	);
+	// Everything between two text runs is preserved verbatim: the blank line
+	// stays two newlines, and the indentation before `three` is kept.
+	Assert.equal(
+		jsx`<p>one
+two
+
+   three</p>`,
+		createElement("p", null, "one\n", "two\n\n   ", "three"),
+	);
+	// A newline adjacent to an element is still stripped as layout: only the
+	// text-text break is kept.
+	Assert.equal(
+		jsx`<p>alpha
+<b>x</b>
+beta</p>`,
+		createElement("p", null, "alpha", createElement("b", null, "x"), "beta"),
+	);
+});
+
+test("preserves significant whitespace verbatim (diverges from JSX collapse)", () => {
+	// Interior spaces within a line are preserved, not collapsed.
+	Assert.equal(jsx`<p>a   b</p>`, createElement("p", null, "a   b"));
+	// A newline before an expression is stripped as layout — the expression
+	// boundary is structural, like an element.
+	Assert.equal(
+		jsx`<p>a
+${"X"}</p>`,
+		createElement("p", null, "a", "X"),
+	);
+	// Leading whitespace on the first line of a text run is preserved (it is not
+	// indentation following a newline); the break to the next line is kept.
+	Assert.equal(
+		jsx`<p>  Hello
+World</p>`,
+		createElement("p", null, "  Hello\n", "World"),
+	);
+	// Whitespace-only text between elements is preserved on a single line ...
+	Assert.equal(
+		jsx`<p><b>x</b>   <i>y</i></p>`,
+		createElement(
+			"p",
+			null,
+			createElement("b", null, "x"),
+			"   ",
+			createElement("i", null, "y"),
+		),
+	);
+	// ... and removed entirely when it spans a newline.
+	Assert.equal(
+		jsx`<p><b>x</b>
+<i>y</i></p>`,
+		createElement(
+			"p",
+			null,
+			createElement("b", null, "x"),
+			createElement("i", null, "y"),
+		),
+	);
+});
+
 test("string props", () => {
 	Assert.equal(jsx`<p class="foo" />`, createElement("p", {class: "foo"}));
 	Assert.equal(
