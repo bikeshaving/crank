@@ -112,21 +112,26 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 	test("string props", () => {
 		expect(jsx`<p class="foo" />`).toEqual(createElement("p", {class: "foo"}));
 		expect(jsx`<p f="foo" b="bar" />`).toEqual(
+			// @ts-expect-error - arbitrary attributes (verifying jsx-template parser output)
 			createElement("p", {f: "foo", b: "bar"}),
 		);
 		expect(jsx`<p f="'foo'" b='"bar"' />`).toEqual(
+			// @ts-expect-error - arbitrary attributes (verifying jsx-template parser output)
 			createElement("p", {f: "'foo'", b: '"bar"'}),
 		);
 	});
 
 	test("string escapes", () => {
 		expect(jsx`<p a="a\"a\"a\"a" b='b\'b\'b\'b' />`).toEqual(
+			// @ts-expect-error - arbitrary attributes (verifying jsx-template parser output)
 			createElement("p", {a: 'a"a"a"a', b: "b'b'b'b"}),
 		);
 		expect(jsx`<p a="\\\"\'\a\b\\\"" />`).toEqual(
+			// @ts-expect-error - arbitrary attributes (verifying jsx-template parser output)
 			createElement("p", {a: `\\"'a\b\\"`}),
 		);
 		expect(jsx`<p a="hello\r\nworld" />`).toEqual(
+			// @ts-expect-error - arbitrary attributes (verifying jsx-template parser output)
 			createElement("p", {a: "hello\r\nworld"}),
 		);
 	});
@@ -486,10 +491,10 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 			throw new Error("should have thrown");
 		} catch (e: any) {
 			expect(e).toBeInstanceOf(SyntaxError);
-			expect(e.message.includes("^")).toBeTruthy() /* includes caret pointer */;
+			expect(e.message.includes("^")).toBeTruthy(); /* includes caret pointer */
 			expect(
 				e.message.includes("|"),
-			).toBeTruthy() /* includes context gutter */;
+			).toBeTruthy(); /* includes context gutter */
 		}
 	});
 
@@ -505,11 +510,11 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 			expect(e).toBeInstanceOf(SyntaxError);
 			expect(
 				e.message.includes("Unmatched closing tag"),
-			).toBeTruthy() /* has base message */;
-			expect(e.message.includes("^")).toBeTruthy() /* includes caret pointer */;
+			).toBeTruthy(); /* has base message */
+			expect(e.message.includes("^")).toBeTruthy(); /* includes caret pointer */
 			expect(
 				e.message.includes("|"),
-			).toBeTruthy() /* includes context gutter */;
+			).toBeTruthy(); /* includes context gutter */
 		}
 	});
 
@@ -521,6 +526,7 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 			createElement("input", {"prop:value": "x"}),
 		);
 		expect(jsx`<use xlink:href="#icon" />`).toEqual(
+			// @ts-expect-error - xlink:href namespaced attr (verifying jsx-template parser output)
 			createElement("use", {"xlink:href": "#icon"}),
 		);
 		expect(jsx`<svg xmlns:xlink="http://www.w3.org/1999/xlink" />`).toEqual(
@@ -546,6 +552,7 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 		expect(jsx`<div style="color: red" href="https://example.com" />`).toEqual(
 			createElement("div", {
 				style: "color: red",
+				// @ts-expect-error - arbitrary attributes (verifying jsx-template parser output)
 				href: "https://example.com",
 			}),
 		);
