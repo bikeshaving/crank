@@ -30,10 +30,10 @@ function useVirtualizerBase<
 	const afterUpdate = () => {
 		virtualizer._willUpdate();
 		// TODO: Is this necessary?
-		_this.flush(afterUpdate);
+		_this.after(afterUpdate);
 	};
 
-	_this.flush(afterUpdate);
+	_this.after(afterUpdate);
 
 	return virtualizer;
 }
