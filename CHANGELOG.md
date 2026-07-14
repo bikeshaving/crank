@@ -16,6 +16,15 @@
   proxy-based hyperscript DSL) no longer causes circular references. The JSX
   automatic runtime also only assigns `key` when it is present.
 
+- **Fix `jsx` template dropping the break between adjacent text lines** (#359)
+  Whitespace between two text runs is now preserved verbatim, so multi-line
+  prose no longer loses the break at its line ends (`jsx\`<p>alpha⏎beta</p>\``
+  yields `alpha⏎beta`, not `alphabeta`). Unlike JSX, which collapses the run to a
+  single space, the template keeps the author’s whitespace (newlines, blank
+  lines, and the indentation between text): it renders as a space in normal flow
+  and as a real line break in a `<pre>`. Whitespace adjacent to an element, an
+  expression, or the template edge is still stripped as layout.
+
 ## [0.7.9] - 2026-03-31
 ### Performance
 - **Make User Timing API profiling opt-in via `setProfiling()`**
