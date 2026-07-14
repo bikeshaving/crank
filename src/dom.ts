@@ -17,6 +17,7 @@ const MATHML_NAMESPACE = "http://www.w3.org/1998/Math/MathML";
 const ELEMENT_NODE = 1;
 const TEXT_NODE = 3;
 const DOCUMENT_NODE = 9;
+const DOCUMENT_FRAGMENT_NODE = 11;
 
 function getRootDocument(root: Node | undefined): Document {
 	if (root && root.ownerDocument) {
@@ -866,14 +867,14 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 	},
 };
 
-export class DOMRenderer extends Renderer<Node, string, Element> {
+export class DOMRenderer extends Renderer<Node, string, Element | ShadowRoot> {
 	constructor() {
 		super(adapter);
 	}
 
 	render(
 		children: Children,
-		root: Element,
+		root: Element | ShadowRoot,
 		ctx?: Context,
 	): Promise<ElementValue<Node>> | ElementValue<Node> {
 		validateRoot(root);
@@ -882,7 +883,7 @@ export class DOMRenderer extends Renderer<Node, string, Element> {
 
 	hydrate(
 		children: Children,
-		root: Element,
+		root: Element | ShadowRoot,
 		ctx?: Context,
 	): Promise<ElementValue<Node>> | ElementValue<Node> {
 		validateRoot(root);
@@ -890,15 +891,18 @@ export class DOMRenderer extends Renderer<Node, string, Element> {
 	}
 }
 
-function validateRoot(root: unknown): asserts root is Element {
+function validateRoot(root: unknown): asserts root is Element | ShadowRoot {
 	if (
 		root == null ||
 		(typeof root === "object" && typeof (root as any).nodeType !== "number")
 	) {
 		throw new TypeError(`Render root is not a node. Received: ${String(root)}`);
-	} else if ((root as Node).nodeType !== ELEMENT_NODE) {
+	} else if (
+		(root as Node).nodeType !== ELEMENT_NODE &&
+		(root as Node).nodeType !== DOCUMENT_FRAGMENT_NODE
+	) {
 		throw new TypeError(
-			`Render root must be an element node. Received: ${String(root)}`,
+			`Render root must be an element or shadow root. Received: ${String(root)}`,
 		);
 	}
 }
