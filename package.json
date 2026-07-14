@@ -5,9 +5,12 @@
     "type": "git",
     "url": "https://github.com/bikeshaving/crank.git"
   },
-  "main": "crank.cjs",
-  "module": "crank.js",
+  "type": "module",
+  "main": "./dist/src/crank.cjs",
+  "module": "./dist/src/crank.js",
+  "types": "./dist/src/crank.d.ts",
   "devDependencies": {
+    "@b9g/libuild": "^0.1.24",
     "@types/node": "^22.14.0",
     "@types/sinon": "^17.0.4",
     "@typescript-eslint/eslint-plugin": "^8.29.1",
@@ -17,100 +20,11 @@
     "eslint-plugin-crank": "workspace:*",
     "eslint-plugin-prettier": "^5.2.6",
     "eslint-plugin-react": "^7.37.5",
-    "magic-string": "^0.30.17",
     "playwright-test": "^14.1.9",
     "prettier": "^3.5.3",
-    "rollup": "^4.39.0",
-    "rollup-plugin-typescript2": "^0.36.0",
-    "shx": "^0.3.4",
     "sinon": "^17.0.2",
     "typescript": "^5.8.3",
     "uvu": "^0.5.6"
-  },
-  "exports": {
-    ".": {
-      "import": "./dist/crank.js",
-      "require": "./dist/crank.cjs"
-    },
-    "./async": {
-      "import": "./dist/async.js",
-      "require": "./dist/async.cjs"
-    },
-    "./async.js": {
-      "import": "./dist/async.js",
-      "require": "./dist/async.cjs"
-    },
-    "./crank": {
-      "import": "./dist/crank.js",
-      "require": "./dist/crank.cjs"
-    },
-    "./crank.js": {
-      "import": "./dist/crank.js",
-      "require": "./dist/crank.cjs"
-    },
-    "./dom": {
-      "import": "./dist/dom.js",
-      "require": "./dist/dom.cjs"
-    },
-    "./dom.js": {
-      "import": "./dist/dom.js",
-      "require": "./dist/dom.cjs"
-    },
-    "./event-target": {
-      "import": "./dist/event-target.js",
-      "require": "./dist/event-target.cjs"
-    },
-    "./event-target.js": {
-      "import": "./dist/event-target.js",
-      "require": "./dist/event-target.cjs"
-    },
-    "./html": {
-      "import": "./dist/html.js",
-      "require": "./dist/html.cjs"
-    },
-    "./html.js": {
-      "import": "./dist/html.js",
-      "require": "./dist/html.cjs"
-    },
-    "./jsx-dev-runtime": {
-      "import": "./dist/jsx-runtime.js",
-      "require": "./dist/jsx-runtime.cjs"
-    },
-    "./jsx-dev-runtime.js": {
-      "import": "./dist/jsx-runtime.js",
-      "require": "./dist/jsx-runtime.cjs"
-    },
-    "./jsx-runtime": {
-      "import": "./dist/jsx-runtime.js",
-      "require": "./dist/jsx-runtime.cjs"
-    },
-    "./jsx-runtime.js": {
-      "import": "./dist/jsx-runtime.js",
-      "require": "./dist/jsx-runtime.cjs"
-    },
-    "./jsx-tag": {
-      "import": "./dist/jsx-tag.js",
-      "require": "./dist/jsx-tag.cjs"
-    },
-    "./jsx-tag.js": {
-      "import": "./dist/jsx-tag.js",
-      "require": "./dist/jsx-tag.cjs"
-    },
-    "./package.json": "./dist/package.json",
-    "./standalone": {
-      "import": "./dist/standalone.js",
-      "require": "./dist/standalone.cjs"
-    },
-    "./standalone.js": {
-      "import": "./dist/standalone.js",
-      "require": "./dist/standalone.cjs"
-    },
-    "./umd": {
-      "require": "./dist/umd.js"
-    },
-    "./umd.js": {
-      "require": "./dist/umd.js"
-    }
   },
   "bugs": {
     "url": "https://github.com/bikeshaving/crank/issues"
@@ -123,21 +37,17 @@
     "access": "public"
   },
   "scripts": {
-    "prebuild": "npm run clean",
-    "build": "bun --bun run rollup -c rollup.config.js",
-    "clean": "shx rm -rf dist",
+    "build": "libuild build",
+    "publish": "libuild publish",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
-    "preshipit": "npm run typecheck && npm run test && npm run build",
-    "shipit": "cd dist && npm publish",
     "test": "npm run test:core && npm run test:eslint && npm run test:crankdown",
     "test:core": "playwright-test --runner uvu",
     "test:crankdown": "cd packages/crankdown && npm run typecheck && bun test",
     "test:eslint": "cd packages/eslint-plugin-crank && bun test",
     "typecheck": "tsc --noEmit",
-    "skill": "npx @b9g/skillpack docs/SKILL.md -o skills/"
+    "skill": "npx @b9g/skillpack docs/SKILL.md -o skills/",
+    "prepublishOnly": "echo 'ERROR: Cannot publish from root directory. Use libuild publish instead.' && exit 1"
   },
-  "type": "module",
-  "types": "crank.d.ts",
   "workspaces": [
     "packages/*"
   ]
