@@ -29,6 +29,7 @@ test("onevent", () => {
 
 test("onevent camelCased", () => {
 	const mock = Sinon.fake();
+	// @ts-expect-error - React-compat camelCase event prop (native is lowercase onclick)
 	renderer.render(<button onClick={mock}>Click me</button>, document.body);
 
 	const button = document.body.firstChild as HTMLButtonElement;

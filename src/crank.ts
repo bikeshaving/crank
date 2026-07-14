@@ -4,6 +4,7 @@ import {
 	clearEventListeners,
 	removeEventTargetDelegates,
 } from "./event-target.js";
+import type {WebIntrinsicElements} from "@b9g/jsx-web-types";
 import {
 	arrayify,
 	isIteratorLike,
@@ -39,7 +40,11 @@ function getTagName(tag: Tag): string {
  * or a component function.
  */
 export type TagProps<TTag extends Tag> = TTag extends string
-	? JSX.IntrinsicElements[TTag]
+	? TTag extends keyof JSX.IntrinsicElements
+		? JSX.IntrinsicElements[TTag]
+		: // A string tag that isn't a known element or a custom element
+			// (no hyphen) — props can't be inferred, so stay permissive.
+			Record<string, unknown> & JSX.IntrinsicAttributes
 	: TTag extends Component<infer TProps>
 		? TProps & JSX.IntrinsicAttributes
 		: Record<string, unknown> & JSX.IntrinsicAttributes;
@@ -3842,8 +3847,33 @@ declare global {
 		// some reason.
 		// interface Element extends CrankElement {}
 
-		export interface IntrinsicElements {
-			[tag: string]: any;
+		// Crank-specific prop value conventions, layered onto the platform types
+		// via jsx-web-types' override hook rather than baked into the base library:
+		// `style` accepts a style object and `class` accepts a classnames-style
+		// object, in addition to plain strings.
+		interface PropOverrides {
+			style:
+				| string
+				| Readonly<Record<string, string | number | null | undefined>>
+				| null;
+			class:
+				| string
+				| Readonly<Record<string, boolean | null | undefined>>
+				| null;
+		}
+
+		export interface IntrinsicElements extends WebIntrinsicElements<
+			IntrinsicAttributes,
+			ElementChildrenAttribute,
+			PropOverrides
+		> {
+			// Crank's Fragment is the empty-string tag; it only carries children
+			// (and the shared IntrinsicAttributes like key/copy).
+			"": {};
+			// Custom-element tag names must contain a hyphen. Non-hyphenated tags
+			// that aren't standard elements are typos, so we let them error
+			// instead of silently accepting them.
+			[customElement: `${string}-${string}`]: any;
 		}
 
 		export interface IntrinsicAttributes {
@@ -3852,10 +3882,14 @@ declare global {
 			ref?: unknown;
 			copy?: unknown;
 			hydrate?: unknown;
+			// Crank's binding-prefix syntax: `prop:foo` forces a property and
+			// `attr:foo` forces an attribute, on any host element.
+			[propBinding: `prop:${string}`]: unknown;
+			[attrBinding: `attr:${string}`]: unknown;
 		}
 
 		export interface ElementChildrenAttribute {
-			children: {};
+			children: Children;
 		}
 	}
 }
