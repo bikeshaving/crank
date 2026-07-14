@@ -25,6 +25,22 @@
   and as a real line break in a `<pre>`. Whitespace adjacent to an element, an
   expression, or the template edge is still stripped as layout.
 
+### New API
+- **`@b9g/crank/web-components` — write Web Components with Crank**
+  A new subpath export with a `CrankHTMLElement` base class. Subclass it, declare
+  configuration as static fields (`observedAttributes`, `events`, `formAssociated`,
+  `shadowDOM`, `styles`), and write a `render` method that is a normal Crank
+  component: `this` is the element, `ctx` is an argument, and any of the four
+  component forms (sync, async, generator, async generator) is allowed. Light DOM
+  is the default; opt into shadow DOM with `static shadowDOM = true`. `static
+  events` generates typed `on<type>` handler properties, and `static styles` is
+  adopted once per class via `adoptedStyleSheets`. Form-associated elements get
+  re-rendering defaults for the four form callbacks.
+
+- **The DOM renderer now accepts a `ShadowRoot` as a render root**
+  `renderer.render(children, shadowRoot)` and `renderer.hydrate(...)` accept a
+  shadow root (or any document fragment) in addition to an element.
+
 ## [0.7.9] - 2026-03-31
 ### Performance
 - **Make User Timing API profiling opt-in via `setProfiling()`**

@@ -110,6 +110,14 @@
     },
     "./umd.js": {
       "require": "./dist/umd.js"
+    },
+    "./web-components": {
+      "import": "./dist/web-components.js",
+      "require": "./dist/web-components.cjs"
+    },
+    "./web-components.js": {
+      "import": "./dist/web-components.js",
+      "require": "./dist/web-components.cjs"
     }
   },
   "bugs": {
