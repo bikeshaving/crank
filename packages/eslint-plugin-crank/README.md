@@ -162,7 +162,7 @@ Reports duplicate props in JSX elements.
 
 #### `crank/no-deprecated-flush`
 
-Detects usage of the deprecated `context.flush()` method and suggests `context.refresh()`.
+Detects usage of the removed `context.flush()` method and autofixes it to `context.after()`.
 
 #### `crank/no-deprecated-special-props`
 

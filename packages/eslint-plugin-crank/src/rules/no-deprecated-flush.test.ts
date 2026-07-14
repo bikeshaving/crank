@@ -122,4 +122,32 @@ describe("no-deprecated-flush", () => {
 			],
 		});
 	});
+
+	it("should detect flush() on an aliased context (the helper-function idiom)", () => {
+		ruleTester.run("no-deprecated-flush", noDeprecatedFlush, {
+			valid: [
+				// not a context — must not flag unrelated .flush()
+				{code: "stream.flush();"},
+				{code: "buffer.flush();"},
+				{code: "writer.flush(data);"},
+			],
+			invalid: [
+				{
+					code: "function useThing(_this) { _this.flush(cb); }",
+					output: "function useThing(_this) { _this.after(cb); }",
+					errors: [{messageId: "useAfter"}],
+				},
+				{
+					code: "function useThing(ctx) { ctx.flush(cb); }",
+					output: "function useThing(ctx) { ctx.after(cb); }",
+					errors: [{messageId: "useAfter"}],
+				},
+				{
+					code: "function useThing(context) { context.flush(cb); }",
+					output: "function useThing(context) { context.after(cb); }",
+					errors: [{messageId: "useAfter"}],
+				},
+			],
+		});
+	});
 });
