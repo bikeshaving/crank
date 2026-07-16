@@ -2291,11 +2291,7 @@ const beforeMap = new WeakMap<ContextState, Set<Function>>();
 
 const cleanupMap = new WeakMap<ContextState, Set<Function>>();
 
-// Fires the registered before() callbacks for a component that is about to
-// re-render, then clears them (callbacks re-register on each render, like
-// schedule). Invoked synchronously when a re-render is requested — not when the
-// component re-runs — so in-flight async work can be aborted promptly.
-function runBeforeCallbacks(ctx: ContextState): void {
+function before(ctx: ContextState): void {
 	const callbacks = beforeMap.get(ctx);
 	if (callbacks) {
 		beforeMap.delete(ctx);
@@ -2587,7 +2583,7 @@ export class Context<
 		try {
 			setFlag(ctx.ret, IsRefreshing);
 			// An explicit re-render: fire before() callbacks first.
-			runBeforeCallbacks(ctx);
+			before(ctx);
 			diff = enqueueComponent(ctx);
 			if (isPromiseLike(diff)) {
 				return diff
@@ -2841,7 +2837,7 @@ function diffComponent<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 
 		// A mounted component is about to re-render (e.g. from a prop change or a
 		// parent re-render): fire its before() callbacks.
-		runBeforeCallbacks(ctx);
+		before(ctx);
 	} else {
 		ctx = ret.ctx = new ContextState(adapter, root, host, parent, scope, ret);
 	}
