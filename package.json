@@ -7,6 +7,9 @@
   },
   "main": "crank.cjs",
   "module": "crank.js",
+  "dependencies": {
+    "@b9g/jsx-web-types": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@types/sinon": "^17.0.4",
@@ -128,7 +131,8 @@
     "clean": "shx rm -rf dist",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "preshipit": "npm run typecheck && npm run test && npm run build",
-    "shipit": "cd dist && npm publish",
+    "shipit": "npm run shipit:jsx-web-types && cd dist && npm publish",
+    "shipit:jsx-web-types": "cd packages/jsx-web-types && npm publish",
     "test": "npm run test:core && npm run test:eslint && npm run test:crankdown",
     "test:core": "playwright-test --runner uvu",
     "test:crankdown": "cd packages/crankdown && npm run typecheck && bun test",

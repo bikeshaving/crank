@@ -490,6 +490,7 @@ test("copy prop can be used for uncontrolled input values", () => {
 						type="text"
 						copy={force ? false : "value"}
 						value={value}
+						// @ts-expect-error - handler types the event as InputEvent; the native oninput prop uses the base Event
 						oninput={(ev: InputEvent) => {
 							spy(ev);
 							value = (ev.target as HTMLInputElement).value;

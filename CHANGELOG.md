@@ -25,6 +25,15 @@
   and as a real line break in a `<pre>`. Whitespace adjacent to an element, an
   expression, or the template edge is still stripped as layout.
 
+### New Features
+- **Typed JSX intrinsic elements** (#60)
+  Crank's JSX now strongly types HTML, SVG, and MathML element attributes via
+  the new `@b9g/jsx-web-types` package: attribute autocomplete and checking, with
+  each attribute's MDN description shown on hover. Crank's special props
+  (`key`/`ref`/`prop:`/`attr:` and object `style`/`class`) and custom-element
+  tags are supported. A camelCase variant (`@b9g/jsx-web-types/camel-case`) is
+  available for React-style consumers.
+
 ## [0.7.9] - 2026-03-31
 ### Performance
 - **Make User Timing API profiling opt-in via `setProfiling()`**

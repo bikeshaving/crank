@@ -56,6 +56,7 @@ test("attrs", () => {
 	Assert.is(
 		renderer.render(
 			<Fragment>
+				{/* @ts-expect-error - arbitrary attribute (Crank passes unknown attrs through at runtime) */}
 				<input id="toggle" type="checkbox" checked data-checked foo={false} />
 				<label for="toggle" />
 			</Fragment>,
@@ -481,8 +482,11 @@ test("foreignObject resets SVG scope for children but not itself", () => {
 			// eslint-disable-next-line crank/no-react-svg-props
 			<svg viewBox="0 0 100 100">
 				{/* eslint-disable crank/no-react-svg-props */}
+				{/* @ts-expect-error - React-compat camelCase SVG attr (native: stroke-width) */}
 				<rect strokeWidth="2" />
+				{/* @ts-expect-error - React-compat camelCase SVG attr (native: clip-path) */}
 				<foreignObject x="0" y="0" width="100" height="100" clipPath="url(#c)">
+					{/* @ts-expect-error - React-compat camelCase prop on a plain div (not SVG-mapped) */}
 					<div strokeWidth="2" />
 				</foreignObject>
 				{/* eslint-enable crank/no-react-svg-props */}
@@ -496,6 +500,7 @@ test("foreignObject resets SVG scope for children but not itself", () => {
 
 test("dangerouslySetInnerHTML renders content", () => {
 	Assert.is(
+		// @ts-expect-error - React-compat prop (Crank coerces dangerouslySetInnerHTML to innerHTML)
 		renderer.render(<div dangerouslySetInnerHTML={{__html: "<b>bold</b>"}} />),
 		"<div><b>bold</b></div>",
 	);
@@ -503,6 +508,7 @@ test("dangerouslySetInnerHTML renders content", () => {
 
 test("dangerouslySetInnerHTML not rendered as attribute", () => {
 	const result = renderer.render(
+		// @ts-expect-error - React-compat prop (Crank coerces dangerouslySetInnerHTML to innerHTML)
 		<div dangerouslySetInnerHTML={{__html: "<em>hi</em>"}} />,
 	) as string;
 	Assert.ok(!result.includes("dangerouslySetInnerHTML"));
