@@ -26,7 +26,7 @@ const nodeRequire = createRequire(import.meta.url);
 // node_modules layout. require.resolve can land in a package store that omits
 // the bundled lib files (e.g. Bun's .bun store), so we also walk up from this
 // script looking for node_modules/typescript/lib, which handles hoisting.
-function resolveDomLib(): string {
+function resolveDOMLib(): string {
 	const candidates: string[] = [];
 	// Walk up from this script looking for a real node_modules/typescript/lib
 	// (handles package-local installs and monorepo hoisting). Preferred over
@@ -47,7 +47,7 @@ function resolveDomLib(): string {
 	}
 	throw new Error(`Could not locate lib.dom.d.ts. Tried:\n${candidates.join("\n")}`);
 }
-const DOM_LIB_PATH = resolveDomLib();
+const DOM_LIB_PATH = resolveDOMLib();
 // Resolve data files relative to this script, never the current directory.
 const DATA_DIR = Path.resolve(
 	Path.dirname(import.meta.url.replace("file://", "")),
@@ -181,12 +181,12 @@ async function extractMDNExample(url: string, $: cheerio.CheerioAPI): Promise<st
 	}
 	
 	// Check if this is a fragment URL (pointing to specific attribute within element page)
-	const isFragmentUrl = url.includes('#');
-	const fragment = isFragmentUrl ? url.split('#')[1] : null;
+	const isFragmentURL = url.includes('#');
+	const fragment = isFragmentURL ? url.split('#')[1] : null;
 	
 	// Try multiple selectors to find code examples
 	let selectors: string[];
-	if (isFragmentUrl && fragment) {
+	if (isFragmentURL && fragment) {
 		// For fragment URLs, look around the fragment target for attribute-specific examples
 		selectors = [
 			`#${fragment} + dd pre code`,  // Code in definition description
@@ -265,12 +265,12 @@ async function fetchMDNDescription(url: string): Promise<string | undefined> {
 		await extractMDNExample(url, $);
 		
 		// Check if this is a fragment URL (pointing to specific attribute within element page)
-		const isFragmentUrl = url.includes('#');
-		const fragment = isFragmentUrl ? url.split('#')[1] : null;
+		const isFragmentURL = url.includes('#');
+		const fragment = isFragmentURL ? url.split('#')[1] : null;
 		
 		// Try multiple selectors to find paragraphs
 		let selectors: string[];
-		if (isFragmentUrl && fragment) {
+		if (isFragmentURL && fragment) {
 			// For fragment URLs, look around the fragment target for attribute-specific content
 			selectors = [
 				`#${fragment} + dd`,  // Definition description right after the attribute term
@@ -357,8 +357,8 @@ async function analyzeMDNData(): Promise<Map<string, MarkupInfo>> {
 			if (attrName.includes("_")) continue;
 			
 			const compat = (attrData as any).__compat;
-			const mdnUrl = compat?.mdn_url;
-			if (mdnUrl) urlsToFetch.add(mdnUrl);
+			const mdnURL = compat?.mdn_url;
+			if (mdnURL) urlsToFetch.add(mdnURL);
 		}
 		
 		// Collect element-specific attribute URLs
@@ -369,8 +369,8 @@ async function analyzeMDNData(): Promise<Map<string, MarkupInfo>> {
 				if (attrName.includes("_")) continue;
 				
 				const compat = (attrData as any).__compat;
-				const mdnUrl = compat?.mdn_url;
-				if (mdnUrl) urlsToFetch.add(mdnUrl);
+				const mdnURL = compat?.mdn_url;
+				if (mdnURL) urlsToFetch.add(mdnURL);
 			}
 		}
 		
@@ -399,17 +399,17 @@ async function analyzeMDNData(): Promise<Map<string, MarkupInfo>> {
 
 			const compat = (attrData as any).__compat;
 			const status = compat?.status;
-			const mdnUrl = compat?.mdn_url;
+			const mdnURL = compat?.mdn_url;
 			
 			// Get cached description and example
-			const description = mdnUrl ? mdnDescriptionCache.get(mdnUrl) : undefined;
-			const example = mdnUrl ? mdnExampleCache.get(mdnUrl) : undefined;
+			const description = mdnURL ? mdnDescriptionCache.get(mdnURL) : undefined;
+			const example = mdnURL ? mdnExampleCache.get(mdnURL) : undefined;
 			
 			markupInfo.attributes.set(attrName, {
 				description,
 				deprecated: status?.deprecated || false,
 				experimental: status?.experimental || false,
-				mdnURL: mdnUrl,
+				mdnURL,
 				example
 			});
 		}
@@ -423,17 +423,17 @@ async function analyzeMDNData(): Promise<Map<string, MarkupInfo>> {
 
 				const compat = (attrData as any).__compat;
 				const status = compat?.status;
-				const mdnUrl = compat?.mdn_url;
+				const mdnURL = compat?.mdn_url;
 				
 				// Get cached description and example
-				const description = mdnUrl ? mdnDescriptionCache.get(mdnUrl) : undefined;
-				const example = mdnUrl ? mdnExampleCache.get(mdnUrl) : undefined;
+				const description = mdnURL ? mdnDescriptionCache.get(mdnURL) : undefined;
+				const example = mdnURL ? mdnExampleCache.get(mdnURL) : undefined;
 				
 				const attrInfo = {
 					description,
 					deprecated: status?.deprecated || false,
 					experimental: status?.experimental || false,
-					mdnURL: mdnUrl,
+					mdnURL,
 					example
 				};
 
@@ -718,14 +718,14 @@ async function generateAttributeInterfaces(
 					}
 					if (attrInfo.example) {
 						// Format HTML example with prettier
-						const formattedHtml = await prettier.format(attrInfo.example, {
+						const formattedHTML = await prettier.format(attrInfo.example, {
 							parser: 'html',
 							printWidth: 60,
 							tabWidth: 2,
 							htmlWhitespaceSensitivity: 'ignore'
 						});
 						// Clean up and prepare for JSDoc with proper asterisks
-						const cleanedExample = formattedHtml
+						const cleanedExample = formattedHTML
 							.trim()
 							.split('\n')
 							.map(line => ` * ${line}`)
@@ -764,14 +764,14 @@ async function generateAttributeInterfaces(
 							if (attrInfo.description) jsdocLines.push(attrInfo.description);
 							if (attrInfo.example) {
 								// Format HTML example with prettier
-								const formattedHtml = await prettier.format(attrInfo.example, {
+								const formattedHTML = await prettier.format(attrInfo.example, {
 									parser: 'html',
 									printWidth: 60,
 									tabWidth: 2,
 									htmlWhitespaceSensitivity: 'ignore'
 								});
 								// Clean up and prepare for JSDoc with proper asterisks
-								const cleanedExample = formattedHtml
+								const cleanedExample = formattedHTML
 									.trim()
 									.split('\n')
 									.map(line => ` * ${line}`)
