@@ -50,5 +50,109 @@
   },
   "workspaces": [
     "packages/*"
-  ]
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/src/crank.d.ts",
+      "import": "./dist/src/crank.js",
+      "require": "./dist/src/crank.cjs"
+    },
+    "./async": {
+      "types": "./dist/src/async.d.ts",
+      "import": "./dist/src/async.js",
+      "require": "./dist/src/async.cjs"
+    },
+    "./async.js": {
+      "types": "./dist/src/async.d.ts",
+      "import": "./dist/src/async.js",
+      "require": "./dist/src/async.cjs"
+    },
+    "./crank": {
+      "types": "./dist/src/crank.d.ts",
+      "import": "./dist/src/crank.js",
+      "require": "./dist/src/crank.cjs"
+    },
+    "./crank.js": {
+      "types": "./dist/src/crank.d.ts",
+      "import": "./dist/src/crank.js",
+      "require": "./dist/src/crank.cjs"
+    },
+    "./dom": {
+      "types": "./dist/src/dom.d.ts",
+      "import": "./dist/src/dom.js",
+      "require": "./dist/src/dom.cjs"
+    },
+    "./dom.js": {
+      "types": "./dist/src/dom.d.ts",
+      "import": "./dist/src/dom.js",
+      "require": "./dist/src/dom.cjs"
+    },
+    "./event-target": {
+      "types": "./dist/src/event-target.d.ts",
+      "import": "./dist/src/event-target.js",
+      "require": "./dist/src/event-target.cjs"
+    },
+    "./event-target.js": {
+      "types": "./dist/src/event-target.d.ts",
+      "import": "./dist/src/event-target.js",
+      "require": "./dist/src/event-target.cjs"
+    },
+    "./html": {
+      "types": "./dist/src/html.d.ts",
+      "import": "./dist/src/html.js",
+      "require": "./dist/src/html.cjs"
+    },
+    "./html.js": {
+      "types": "./dist/src/html.d.ts",
+      "import": "./dist/src/html.js",
+      "require": "./dist/src/html.cjs"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./dist/src/jsx-dev-runtime.d.ts",
+      "import": "./dist/src/jsx-dev-runtime.js",
+      "require": "./dist/src/jsx-dev-runtime.cjs"
+    },
+    "./jsx-dev-runtime.js": {
+      "types": "./dist/src/jsx-dev-runtime.d.ts",
+      "import": "./dist/src/jsx-dev-runtime.js",
+      "require": "./dist/src/jsx-dev-runtime.cjs"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/src/jsx-runtime.d.ts",
+      "import": "./dist/src/jsx-runtime.js",
+      "require": "./dist/src/jsx-runtime.cjs"
+    },
+    "./jsx-runtime.js": {
+      "types": "./dist/src/jsx-runtime.d.ts",
+      "import": "./dist/src/jsx-runtime.js",
+      "require": "./dist/src/jsx-runtime.cjs"
+    },
+    "./jsx-tag": {
+      "types": "./dist/src/jsx-tag.d.ts",
+      "import": "./dist/src/jsx-tag.js",
+      "require": "./dist/src/jsx-tag.cjs"
+    },
+    "./jsx-tag.js": {
+      "types": "./dist/src/jsx-tag.d.ts",
+      "import": "./dist/src/jsx-tag.js",
+      "require": "./dist/src/jsx-tag.cjs"
+    },
+    "./standalone": {
+      "types": "./dist/src/standalone.d.ts",
+      "import": "./dist/src/standalone.js",
+      "require": "./dist/src/standalone.cjs"
+    },
+    "./standalone.js": {
+      "types": "./dist/src/standalone.d.ts",
+      "import": "./dist/src/standalone.js",
+      "require": "./dist/src/standalone.cjs"
+    },
+    "./umd": {
+      "require": "./dist/src/umd.js"
+    },
+    "./umd.js": {
+      "require": "./dist/src/umd.js"
+    },
+    "./package.json": "./dist/package.json"
+  }
 }
