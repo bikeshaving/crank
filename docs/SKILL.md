@@ -131,7 +131,7 @@ import {jsx, html, Fragment, renderer, domRenderer, htmlRenderer, DOMRenderer, H
 
 ```js
 this.refresh(callback?)   // Mutate state and re-render
-this.before(callback)     // Run before the next re-render (e.g. abort stale async work)
+this.before(callback?)    // Run before the next re-render (e.g. abort stale async work)
 this.schedule(callback?)  // Run after this render commits (once)
 this.after(callback?)     // Run after every render commits
 this.cleanup(callback?)   // Run on unmount

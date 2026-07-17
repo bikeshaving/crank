@@ -2696,8 +2696,18 @@ export class Context<
 	 * The callback fires once per registration; re-register it on each render
 	 * (typically inside the `for...of`/`for await...of` loop). Unlike `refresh`,
 	 * `schedule`, and `after`, this hook never itself triggers a re-render.
+	 *
+	 * Called with no argument, returns a promise that resolves just before the
+	 * next re-render. It resolves with no value, since no render has happened
+	 * yet.
 	 */
-	before(callback: () => unknown): void {
+	before(): Promise<void>;
+	before(callback: () => unknown): void;
+	before(callback?: () => unknown): Promise<void> | void {
+		if (!callback) {
+			return new Promise<void>((resolve) => this.before(() => resolve()));
+		}
+
 		const ctx = this[_ContextState];
 		let callbacks = beforeMap.get(ctx);
 		if (!callbacks) {

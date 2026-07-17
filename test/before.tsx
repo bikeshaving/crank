@@ -152,4 +152,33 @@ test("fires before re-render for async generators (for await)", async () => {
 	Assert.equal(calls, ["child1", "before1", "child2"]);
 });
 
+test("the zero-arg form returns a promise that resolves before the next re-render", async () => {
+	let resolved = false;
+	let value: unknown = "unset";
+	function* Component(this: Context, {n}: {n: number}) {
+		let started = false;
+		for ({n} of this) {
+			if (!started) {
+				started = true;
+				this.before().then((v) => {
+					resolved = true;
+					value = v;
+				});
+			}
+
+			yield <span>{n}</span>;
+		}
+	}
+
+	renderer.render(<Component n={1} />, document.body);
+	await new Promise((resolve) => setTimeout(resolve));
+	// No re-render has happened, so the promise is still pending.
+	Assert.is(resolved, false);
+
+	renderer.render(<Component n={2} />, document.body);
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(resolved, true);
+	Assert.is(value, undefined);
+});
+
 test.run();
