@@ -25,6 +25,16 @@
   and as a real line break in a `<pre>`. Whitespace adjacent to an element, an
   expression, or the template edge is still stripped as layout.
 
+### Changed
+- **`window.Crank` (the UMD/CDN browser global) now ships authoring templates and a default renderer.**
+  The browser build exposes the `jsx`/`html` tagged templates and `Crank.renderer`
+  (the DOM renderer), so no-build `<script>` users can author and render without a
+  compiler. **Breaking:** `Crank.html` is now the `html` tagged template, not the
+  HTML-string renderer, and the `Crank.dom.*`/`Crank.html.*` namespaces are gone.
+  The renderers are now flat: `Crank.renderer` and `Crank.domRenderer` (DOM), and
+  `Crank.htmlRenderer` (server HTML), with `Crank.DOMRenderer`/`Crank.HTMLRenderer`
+  for the classes.
+
 ## [0.7.9] - 2026-03-31
 ### Performance
 - **Make User Timing API profiling opt-in via `setProfiling()`**
