@@ -2287,7 +2287,19 @@ const provisionMaps = new WeakMap<ContextState, Map<unknown, unknown>>();
 
 const scheduleMap = new WeakMap<ContextState, Set<Function>>();
 
+const beforeMap = new WeakMap<ContextState, Set<Function>>();
+
 const cleanupMap = new WeakMap<ContextState, Set<Function>>();
+
+function before(ctx: ContextState): void {
+	const callbacks = beforeMap.get(ctx);
+	if (callbacks) {
+		beforeMap.delete(ctx);
+		for (const callback of callbacks) {
+			callback();
+		}
+	}
+}
 
 // keys are roots
 const afterMapByRoot = new WeakMap<object, Map<ContextState, Set<Function>>>();
@@ -2570,6 +2582,8 @@ export class Context<
 		const schedulePromises: Array<PromiseLike<unknown>> = [];
 		try {
 			setFlag(ctx.ret, IsRefreshing);
+			// An explicit re-render: fire before() callbacks first.
+			before(ctx);
 			diff = enqueueComponent(ctx);
 			if (isPromiseLike(diff)) {
 				return diff
@@ -2668,6 +2682,37 @@ export class Context<
 		if (!callbacks) {
 			callbacks = new Set<Function>();
 			scheduleMap.set(ctx, callbacks);
+		}
+
+		callbacks.add(callback);
+	}
+
+	/**
+	 * Registers a callback which fires immediately before the component
+	 * re-renders, and only when it re-renders (not on the initial render). Useful
+	 * for cancelling in-flight async work from the previous render before it
+	 * becomes stale, e.g. aborting a fetch.
+	 *
+	 * The callback fires once per registration; re-register it on each render
+	 * (typically inside the `for...of`/`for await...of` loop). Unlike `refresh`,
+	 * `schedule`, and `after`, this hook never itself triggers a re-render.
+	 *
+	 * Called with no argument, returns a promise that resolves just before the
+	 * next re-render. It resolves with no value, since no render has happened
+	 * yet.
+	 */
+	before(): Promise<void>;
+	before(callback: () => unknown): void;
+	before(callback?: () => unknown): Promise<void> | void {
+		if (!callback) {
+			return new Promise<void>((resolve) => this.before(() => resolve()));
+		}
+
+		const ctx = this[_ContextState];
+		let callbacks = beforeMap.get(ctx);
+		if (!callbacks) {
+			callbacks = new Set<Function>();
+			beforeMap.set(ctx, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -2799,6 +2844,10 @@ function diffComponent<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				return diffComponent(adapter, root, host, parent, scope, ret);
 			});
 		}
+
+		// A mounted component is about to re-render (e.g. from a prop change or a
+		// parent re-render): fire its before() callbacks.
+		before(ctx);
 	} else {
 		ctx = ret.ctx = new ContextState(adapter, root, host, parent, scope, ret);
 	}
