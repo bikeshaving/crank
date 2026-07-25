@@ -26,7 +26,7 @@ Crank provides a `jsx` tagged template literal that runs directly in the browser
 <body>
   <div id="app"></div>
   <script type="module">
-    import {jsx, renderer} from "https://cdn.jsdelivr.net/npm/@b9g/crank/standalone.js";
+    import {jsx, renderer} from "https://cdn.jsdelivr.net/npm/@b9g/crank/standalone/+esm";
 
     function *Counter() {
       let count = 0;
