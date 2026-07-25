@@ -5,7 +5,7 @@
     "": {
       "name": "@b9g/crank",
       "devDependencies": {
-        "@b9g/libuild": "^0.2.2",
+        "@b9g/libuild": "^0.2.3",
         "@types/node": "^22.14.0",
         "@types/sinon": "^17.0.4",
         "@typescript-eslint/eslint-plugin": "^8.29.1",
@@ -99,7 +99,7 @@
 
     "@b9g/crankdown": ["@b9g/crankdown@workspace:packages/crankdown"],
 
-    "@b9g/libuild": ["@b9g/libuild@0.2.2", "", { "dependencies": { "commander": "^15.0.0", "esbuild": "^0.28.1", "expect": "^30.4.1", "glob": "^13.0.6" }, "peerDependencies": { "playwright": "^1.40.0", "typescript": "^5.0.0" }, "optionalPeers": ["playwright", "typescript"], "bin": { "libuild": "cli.js" } }, "sha512-R2pV+zIb1Maac3B+Vf+Ybqjd0cV4b697w471l6syLbr1wWI7sRe7BV7si/2iC+Ys5lxH4ORf6j9Dl6+JYO/+mQ=="],
+    "@b9g/libuild": ["@b9g/libuild@0.2.3", "", { "dependencies": { "commander": "^15.0.0", "esbuild": "^0.28.1", "expect": "^30.4.1", "glob": "^13.0.6" }, "peerDependencies": { "playwright": "^1.40.0", "typescript": "^5.0.0" }, "optionalPeers": ["playwright", "typescript"], "bin": { "libuild": "cli.js" } }, "sha512-2+a9fmYlKKpiFZIdDCF+7EHCtEw779EApLKnj5HC36DwyV5ob5MPNZLoRhudkg1Kdb0mKzqdubjm3fXzrJf06Q=="],
 
     "@babel/code-frame": ["@babel/code-frame@7.29.0", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.28.5", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw=="],
 
