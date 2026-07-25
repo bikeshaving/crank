@@ -2287,14 +2287,14 @@ const provisionMaps = new WeakMap<ContextState, Map<unknown, unknown>>();
 
 const scheduleMap = new WeakMap<ContextState, Set<Function>>();
 
-const beforeMap = new WeakMap<ContextState, Set<Function>>();
+const nextMap = new WeakMap<ContextState, Set<Function>>();
 
 const cleanupMap = new WeakMap<ContextState, Set<Function>>();
 
-function before(ctx: ContextState): void {
-	const callbacks = beforeMap.get(ctx);
+function next(ctx: ContextState): void {
+	const callbacks = nextMap.get(ctx);
 	if (callbacks) {
-		beforeMap.delete(ctx);
+		nextMap.delete(ctx);
 		for (const callback of callbacks) {
 			callback();
 		}
@@ -2582,8 +2582,8 @@ export class Context<
 		const schedulePromises: Array<PromiseLike<unknown>> = [];
 		try {
 			setFlag(ctx.ret, IsRefreshing);
-			// An explicit re-render: fire before() callbacks first.
-			before(ctx);
+			// An explicit re-render: fire next() callbacks first.
+			next(ctx);
 			diff = enqueueComponent(ctx);
 			if (isPromiseLike(diff)) {
 				return diff
@@ -2701,18 +2701,18 @@ export class Context<
 	 * next re-render. It resolves with no value, since no render has happened
 	 * yet.
 	 */
-	before(): Promise<void>;
-	before(callback: () => unknown): void;
-	before(callback?: () => unknown): Promise<void> | void {
+	next(): Promise<void>;
+	next(callback: () => unknown): void;
+	next(callback?: () => unknown): Promise<void> | void {
 		if (!callback) {
-			return new Promise<void>((resolve) => this.before(() => resolve()));
+			return new Promise<void>((resolve) => this.next(() => resolve()));
 		}
 
 		const ctx = this[_ContextState];
-		let callbacks = beforeMap.get(ctx);
+		let callbacks = nextMap.get(ctx);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			beforeMap.set(ctx, callbacks);
+			nextMap.set(ctx, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -2846,8 +2846,8 @@ function diffComponent<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		}
 
 		// A mounted component is about to re-render (e.g. from a prop change or a
-		// parent re-render): fire its before() callbacks.
-		before(ctx);
+		// parent re-render): fire its next() callbacks.
+		next(ctx);
 	} else {
 		ctx = ret.ctx = new ContextState(adapter, root, host, parent, scope, ret);
 	}

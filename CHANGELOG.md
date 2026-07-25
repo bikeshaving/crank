@@ -26,7 +26,7 @@
   expression, or the template edge is still stripped as layout.
 
 ### New API
-- **`Context.before(callback?)`** (#324)
+- **`Context.next(callback?)`** (#324)
   Registers a callback that fires immediately before a component re-renders, and
   only on re-renders (not the initial render). Useful for cancelling in-flight
   async work from the previous render before it becomes stale — e.g. aborting a

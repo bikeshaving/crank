@@ -4,7 +4,7 @@ import * as Sinon from "sinon";
 import {createElement, Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
-const test = suite("before");
+const test = suite("next");
 
 test.before.each(() => {
 	renderer.render(null, document.body);
@@ -20,7 +20,7 @@ test("does not fire on the initial render", () => {
 	const fn = Sinon.fake();
 	function* Component(this: Context) {
 		for ({} of this) {
-			this.before(fn);
+			this.next(fn);
 			yield <div>hello</div>;
 		}
 	}
@@ -37,7 +37,7 @@ test("fires before a re-render via refresh, in order", () => {
 		refresh = () => this.refresh();
 		let i = 0;
 		for ({} of this) {
-			this.before(() => calls.push("before"));
+			this.next(() => calls.push("next"));
 			i++;
 			calls.push("render" + i);
 			yield <div>{i}</div>;
@@ -47,16 +47,16 @@ test("fires before a re-render via refresh, in order", () => {
 	renderer.render(<Component />, document.body);
 	Assert.equal(calls, ["render1"]);
 	refresh();
-	Assert.equal(calls, ["render1", "before", "render2"]);
+	Assert.equal(calls, ["render1", "next", "render2"]);
 	refresh();
-	Assert.equal(calls, ["render1", "before", "render2", "before", "render3"]);
+	Assert.equal(calls, ["render1", "next", "render2", "next", "render3"]);
 });
 
 test("fires before a re-render driven by a prop change", () => {
 	const calls: Array<string> = [];
 	function* Child(this: Context, {n}: {n: number}) {
 		for ({n} of this) {
-			this.before(() => calls.push("before"));
+			this.next(() => calls.push("next"));
 			calls.push("child" + n);
 			yield <span>{n}</span>;
 		}
@@ -69,7 +69,7 @@ test("fires before a re-render driven by a prop change", () => {
 	renderer.render(<App n={1} />, document.body);
 	Assert.equal(calls, ["child1"]);
 	renderer.render(<App n={2} />, document.body);
-	Assert.equal(calls, ["child1", "before", "child2"]);
+	Assert.equal(calls, ["child1", "next", "child2"]);
 });
 
 test("fires once per registration", () => {
@@ -78,7 +78,7 @@ test("fires once per registration", () => {
 	function* Component(this: Context) {
 		refresh = () => this.refresh();
 		for ({} of this) {
-			this.before(fn);
+			this.next(fn);
 			yield <div />;
 		}
 	}
@@ -96,7 +96,7 @@ test("does not itself trigger a re-render", () => {
 	function* Component(this: Context) {
 		refresh = () => this.refresh();
 		for ({} of this) {
-			this.before(() => {});
+			this.next(() => {});
 			renders++;
 			yield <div />;
 		}
@@ -117,7 +117,7 @@ test("can abort in-flight work on re-render (AbortController)", () => {
 		controller = new AbortController();
 		let first = true;
 		for ({} of this) {
-			this.before(() => {
+			this.next(() => {
 				controller.abort();
 				controller = new AbortController();
 			});
@@ -140,7 +140,7 @@ test("fires before re-render for async generators (for await)", async () => {
 	const calls: Array<string> = [];
 	async function* Child(this: Context, {n}: {n: number}) {
 		for await ({n} of this) {
-			this.before(() => calls.push("before" + n));
+			this.next(() => calls.push("next" + n));
 			calls.push("child" + n);
 			yield <span>{n}</span>;
 		}
@@ -149,7 +149,7 @@ test("fires before re-render for async generators (for await)", async () => {
 	await renderer.render(<Child n={1} />, document.body);
 	Assert.equal(calls, ["child1"]);
 	await renderer.render(<Child n={2} />, document.body);
-	Assert.equal(calls, ["child1", "before1", "child2"]);
+	Assert.equal(calls, ["child1", "next1", "child2"]);
 });
 
 test("the zero-arg form returns a promise that resolves before the next re-render", async () => {
@@ -160,7 +160,7 @@ test("the zero-arg form returns a promise that resolves before the next re-rende
 		for ({n} of this) {
 			if (!started) {
 				started = true;
-				this.before().then((v) => {
+				this.next().then((v) => {
 					resolved = true;
 					value = v;
 				});
