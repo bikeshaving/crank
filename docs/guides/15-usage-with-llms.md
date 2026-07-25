@@ -58,7 +58,7 @@ A minimal template:
 <body>
   <div id="app"></div>
   <script type="module">
-    import {jsx, renderer} from "https://cdn.jsdelivr.net/npm/@b9g/crank/standalone/+esm";
+    import {jsx, renderer} from "https://cdn.jsdelivr.net/npm/@b9g/crank/standalone.js";
 
     function *Counter() {
       let count = 0;
