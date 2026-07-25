@@ -11,6 +11,6 @@
     "moduleResolution": "node",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "declaration": true
   }
 }
