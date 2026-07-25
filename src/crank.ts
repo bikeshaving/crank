@@ -2287,7 +2287,55 @@ const provisionMaps = new WeakMap<ContextState, Map<unknown, unknown>>();
 
 const scheduleMap = new WeakMap<ContextState, Set<Function>>();
 
+const staleMap = new WeakMap<ContextState, Set<Function>>();
+
+// Pending stale() successor resolvers, drained at the next commit (with the
+// successor render's result) or on unmount (with undefined).
+const successorResolverMap = new WeakMap<
+	ContextState,
+	Array<(result: unknown) => void>
+>();
+
 const cleanupMap = new WeakMap<ContextState, Set<Function>>();
+
+// A render is "retired" when it is superseded by a re-render or removed by an
+// unmount. Fire its stale() callbacks, handing each a promise for the successor
+// render's result — or undefined when the component unmounts (no successor).
+function retire(ctx: ContextState, isUnmount: boolean): void {
+	const callbacks = staleMap.get(ctx);
+	if (!callbacks) {
+		return;
+	}
+
+	staleMap.delete(ctx);
+	for (const callback of callbacks) {
+		if (isUnmount) {
+			callback(Promise.resolve(undefined));
+		} else {
+			let resolve!: (result: unknown) => void;
+			const successor = new Promise<unknown>((r) => (resolve = r));
+			let resolvers = successorResolverMap.get(ctx);
+			if (!resolvers) {
+				resolvers = [];
+				successorResolverMap.set(ctx, resolvers);
+			}
+
+			resolvers.push(resolve);
+			callback(successor);
+		}
+	}
+}
+
+// Resolve any pending stale() successor promises with the given result.
+function resolveSuccessors(ctx: ContextState, result: unknown): void {
+	const resolvers = successorResolverMap.get(ctx);
+	if (resolvers) {
+		successorResolverMap.delete(ctx);
+		for (const resolve of resolvers) {
+			resolve(result);
+		}
+	}
+}
 
 // keys are roots
 const afterMapByRoot = new WeakMap<object, Map<ContextState, Set<Function>>>();
@@ -2570,6 +2618,8 @@ export class Context<
 		const schedulePromises: Array<PromiseLike<unknown>> = [];
 		try {
 			setFlag(ctx.ret, IsRefreshing);
+			// An explicit re-render retires the current render: fire stale() first.
+			retire(ctx, false);
 			diff = enqueueComponent(ctx);
 			if (isPromiseLike(diff)) {
 				return diff
@@ -2668,6 +2718,43 @@ export class Context<
 		if (!callbacks) {
 			callbacks = new Set<Function>();
 			scheduleMap.set(ctx, callbacks);
+		}
+
+		callbacks.add(callback);
+	}
+
+	/**
+	 * Registers a callback which fires when the current render is *retired* —
+	 * superseded by a re-render, or removed when the component unmounts. Useful
+	 * for tearing down the retired render's in-flight async work before it goes
+	 * stale, e.g. aborting a fetch via `AbortController`, in both the re-render
+	 * and unmount cases with a single callback.
+	 *
+	 * The callback fires once per registration; re-register it on each render
+	 * (typically inside the `for...of`/`for await...of` loop). It never itself
+	 * triggers a re-render.
+	 *
+	 * The callback is passed a promise for the *successor* render's result: it
+	 * resolves with the next rendered value when the component re-renders, or
+	 * with `undefined` when the component unmounts (no successor). Called with no
+	 * argument, `stale()` returns that same successor promise directly.
+	 */
+	stale(): Promise<TResult | undefined>;
+	stale(callback: (successor: Promise<TResult | undefined>) => unknown): void;
+	stale(
+		callback?: (successor: Promise<TResult | undefined>) => unknown,
+	): Promise<TResult | undefined> | void {
+		if (!callback) {
+			return new Promise<TResult | undefined>((resolve) =>
+				this.stale((successor) => resolve(successor)),
+			);
+		}
+
+		const ctx = this[_ContextState];
+		let callbacks = staleMap.get(ctx);
+		if (!callbacks) {
+			callbacks = new Set<Function>();
+			staleMap.set(ctx, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -2799,6 +2886,10 @@ function diffComponent<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				return diffComponent(adapter, root, host, parent, scope, ret);
 			});
 		}
+
+		// A mounted component is about to re-render (e.g. from a prop change or a
+		// parent re-render), retiring the current render: fire its stale() callbacks.
+		retire(ctx, false);
 	} else {
 		ctx = ret.ctx = new ContextState(adapter, root, host, parent, scope, ret);
 	}
@@ -3461,7 +3552,10 @@ function commitComponent<TNode>(
 	// We always use getValue() instead of the unwrapping values because there
 	// are various ways in which the values could have been updated, especially
 	// if schedule callbacks call refresh() or async mounting is happening.
-	return getValue(ctx.ret, true);
+	const committed = getValue(ctx.ret, true);
+	// This render is the successor of a retired one: resolve its stale() promises.
+	resolveSuccessors(ctx, ctx.adapter.read(committed));
+	return committed;
 }
 
 /**
@@ -3559,6 +3653,11 @@ async function unmountComponent(
 	if (getFlag(ctx.ret, IsUnmounted)) {
 		return;
 	}
+
+	// Unmount retires the current render with no successor: fire stale()
+	// callbacks (undefined successor) and settle any dangling successor promises.
+	retire(ctx, true);
+	resolveSuccessors(ctx, undefined);
 
 	let cleanupPromises: Array<PromiseLike<unknown>> | undefined;
 	// TODO: think about errror handling for callbacks

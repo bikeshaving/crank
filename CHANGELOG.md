@@ -25,6 +25,17 @@
   and as a real line break in a `<pre>`. Whitespace adjacent to an element, an
   expression, or the template edge is still stripped as layout.
 
+### New API
+- **`Context.stale(callback?)`** (#324)
+  Registers a callback that fires when the current render is *retired* —
+  superseded by a re-render, or removed when the component unmounts — so a
+  single callback tears down the retired render's in-flight async work (e.g.
+  aborting a fetch via `AbortController`) in both cases. The callback receives a
+  promise for the successor render's result: it resolves with the next rendered
+  value on re-render, or `undefined` on unmount. Called with no argument,
+  `stale()` returns that promise directly. Re-register it on each render; it
+  never itself triggers a re-render.
+
 ### Changed
 - **`window.Crank` (the UMD/CDN browser global) now ships authoring templates and a default renderer.**
   The browser build exposes the `jsx`/`html` tagged templates and `Crank.renderer`
