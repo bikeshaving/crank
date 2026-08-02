@@ -2287,7 +2287,36 @@ const provisionMaps = new WeakMap<ContextState, Map<unknown, unknown>>();
 
 const scheduleMap = new WeakMap<ContextState, Set<Function>>();
 
+const interruptMap = new WeakMap<ContextState, Set<Function>>();
+
 const cleanupMap = new WeakMap<ContextState, Set<Function>>();
+
+// A component is "interrupted" when it is abandoned mid-execution, either
+// because a re-render superseded it or because it unmounted while still in
+// flight. Callbacks are disarmed once the component reaches its next checkpoint
+// (see checkpointComponent), so this only fires for work which never got there.
+function interrupt(ctx: ContextState): void {
+	const callbacks = interruptMap.get(ctx);
+	if (callbacks) {
+		interruptMap.delete(ctx);
+		for (const callback of callbacks) {
+			callback();
+		}
+	}
+}
+
+// Called whenever the runtime receives a value from a component — a yield, a
+// return, or a resolved async function component. Reaching a checkpoint means
+// the execution which registered any pending interrupt() callbacks completed,
+// so those callbacks are dropped rather than called.
+//
+// This deliberately happens here rather than at commit time: an async generator
+// resumes synchronously after a yield, while that yield's commit is deferred to
+// a microtask, so disarming at commit would wipe callbacks registered by the
+// execution which follows it.
+function checkpointComponent(ctx: ContextState): void {
+	interruptMap.delete(ctx);
+}
 
 // keys are roots
 const afterMapByRoot = new WeakMap<object, Map<ContextState, Set<Function>>>();
@@ -2570,6 +2599,9 @@ export class Context<
 		const schedulePromises: Array<PromiseLike<unknown>> = [];
 		try {
 			setFlag(ctx.ret, IsRefreshing);
+			// An explicit re-render supersedes the current render: if it never
+			// committed, it is interrupted.
+			interrupt(ctx);
 			diff = enqueueComponent(ctx);
 			if (isPromiseLike(diff)) {
 				return diff
@@ -2668,6 +2700,41 @@ export class Context<
 		if (!callbacks) {
 			callbacks = new Set<Function>();
 			scheduleMap.set(ctx, callbacks);
+		}
+
+		callbacks.add(callback);
+	}
+
+	/**
+	 * Registers a callback which fires when the current render is *interrupted* —
+	 * abandoned before it commits, because a re-render superseded it or because
+	 * the component unmounted while it was still in flight. Useful for tearing
+	 * down work the abandoned render started, e.g. aborting a fetch via
+	 * `AbortController`.
+	 *
+	 * A render which commits never interrupts, so the callback is discarded
+	 * rather than fired. Code which should run for every render belongs inline
+	 * after the `yield` instead.
+	 *
+	 * The callback fires at most once per registration; re-register it on each
+	 * render (typically inside the `for await...of` loop). It never itself
+	 * triggers a re-render.
+	 *
+	 * Called with no argument, returns a promise that resolves if the render is
+	 * interrupted.
+	 */
+	interrupt(): Promise<void>;
+	interrupt(callback: () => unknown): void;
+	interrupt(callback?: () => unknown): Promise<void> | void {
+		if (!callback) {
+			return new Promise<void>((resolve) => this.interrupt(() => resolve()));
+		}
+
+		const ctx = this[_ContextState];
+		let callbacks = interruptMap.get(ctx);
+		if (!callbacks) {
+			callbacks = new Set<Function>();
+			interruptMap.set(ctx, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -2799,6 +2866,10 @@ function diffComponent<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				return diffComponent(adapter, root, host, parent, scope, ret);
 			});
 		}
+
+		// A mounted component is about to re-render (e.g. from a prop change or a
+		// parent re-render), superseding the current render.
+		interrupt(ctx);
 	} else {
 		ctx = ret.ctx = new ContextState(adapter, root, host, parent, scope, ret);
 	}
@@ -2955,8 +3026,10 @@ function runComponent<TNode, TResult>(
 			return [
 				returned1.catch(NOOP),
 				returned1.then(
-					(returned) =>
-						diffComponentChildren<TNode, TResult>(ctx, returned, false),
+					(returned) => {
+						checkpointComponent(ctx);
+						return diffComponentChildren<TNode, TResult>(ctx, returned, false);
+					},
 					(err) => {
 						setFlag(ctx.ret, IsErrored);
 						throw err;
@@ -3009,6 +3082,7 @@ function runComponent<TNode, TResult>(
 			throw new Error("Mixed generator component");
 		}
 
+		checkpointComponent(ctx);
 		if (
 			getFlag(ctx.ret, IsInForOfLoop) &&
 			!getFlag(ctx.ret, NeedsToYield) &&
@@ -3069,6 +3143,7 @@ function runComponent<TNode, TResult>(
 			);
 			const diff = iteration.then(
 				(iteration) => {
+					checkpointComponent(ctx);
 					if (getFlag(ctx.ret, IsInForAwaitOfLoop)) {
 						// We have entered a for await...of loop, so we start pulling
 						pullComponent(ctx, iteration);
@@ -3191,6 +3266,7 @@ async function pullComponent<TNode, TResult>(
 			let iteration: ChildrenIteratorResult;
 			try {
 				iteration = await iterationP;
+				checkpointComponent(ctx);
 			} catch (err) {
 				done = true;
 				setFlag(ctx.ret, IsErrored);
@@ -3559,6 +3635,9 @@ async function unmountComponent(
 	if (getFlag(ctx.ret, IsUnmounted)) {
 		return;
 	}
+
+	// Unmounting abandons any render still in flight.
+	interrupt(ctx);
 
 	let cleanupPromises: Array<PromiseLike<unknown>> | undefined;
 	// TODO: think about errror handling for callbacks

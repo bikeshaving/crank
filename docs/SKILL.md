@@ -131,6 +131,7 @@ import {jsx, html, Fragment, renderer, domRenderer, htmlRenderer, DOMRenderer, H
 
 ```js
 this.refresh(callback?)   // Mutate state and re-render
+this.interrupt(callback?) // Fire if this async work is abandoned (e.g. abort a stale fetch)
 this.schedule(callback?)  // Run when this render's nodes exist, pre-DOM (once)
 this.after(callback?)     // Run after this render is in the DOM (once)
 this.cleanup(callback?)   // Run on unmount

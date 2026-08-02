@@ -25,6 +25,18 @@
   and as a real line break in a `<pre>`. Whitespace adjacent to an element, an
   expression, or the template edge is still stripped as layout.
 
+### New API
+- **`Context.interrupt(callback?)`** (#324)
+  Registers a callback that fires when the component is *interrupted* — abandoned
+  mid-execution because a re-render superseded it or because it unmounted while
+  still in flight — so a single callback tears down whatever the abandoned work
+  started (e.g. aborting a fetch via `AbortController`) in both cases. Callbacks
+  are disarmed once the component reaches its next `yield` or `return`, so work
+  that finishes is never interrupted, and sync components never are. Called with
+  no argument, `interrupt()` returns a promise that resolves if the component is
+  interrupted. Re-register it before each span of async work; it never itself
+  triggers a re-render.
+
 ### Changed
 - **`window.Crank` (the UMD/CDN browser global) now ships authoring templates and a default renderer.**
   The browser build exposes the `jsx`/`html` tagged templates and `Crank.renderer`
