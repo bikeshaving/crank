@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@b9g/crank": "file:../../",
-    "@b9g/libuild": "^0.2.17",
+    "@b9g/libuild": "^0.2.18",
     "marked": "^18.0.0",
     "typescript": "^5.9.3"
   },
