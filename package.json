@@ -10,7 +10,7 @@
   "module": "./dist/crank.js",
   "types": "./dist/crank.d.ts",
   "devDependencies": {
-    "@b9g/libuild": "^0.2.19",
+    "@b9g/libuild": "^0.2.16",
     "@types/node": "^22.14.0",
     "@types/sinon": "^17.0.4",
     "@typescript-eslint/eslint-plugin": "^8.29.1",
@@ -20,11 +20,10 @@
     "eslint-plugin-crank": "workspace:*",
     "eslint-plugin-prettier": "^5.2.6",
     "eslint-plugin-react": "^7.37.5",
-    "playwright-test": "^14.1.9",
+    "playwright": "^1.62.1",
     "prettier": "^3.5.3",
     "sinon": "^17.0.2",
-    "typescript": "^5.8.3",
-    "uvu": "^0.5.6"
+    "typescript": "^5.8.3"
   },
   "bugs": {
     "url": "https://github.com/bikeshaving/crank/issues"
@@ -41,7 +40,7 @@
     "publish": "libuild publish",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "test": "npm run test:core && npm run test:eslint && npm run test:crankdown",
-    "test:core": "playwright-test --runner uvu",
+    "test:core": "libuild test \"test/*.tsx\" \"test/*.ts\" --platform chromium",
     "test:crankdown": "cd packages/crankdown && npm run typecheck && bun test",
     "test:eslint": "cd packages/eslint-plugin-crank && bun test",
     "typecheck": "tsc --noEmit",

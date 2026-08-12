@@ -1,640 +1,570 @@
-import {suite} from "uvu";
-import * as Assert from "uvu/assert";
-
+import {describe, test, expect} from "@b9g/libuild/test";
 import {createElement} from "../src/crank.js";
 import {jsx} from "../src/jsx-tag.js";
 
-const test = suite("jsx");
+describe("jsx", () => {
+	test("single elements", () => {
+		expect(jsx`<p/>`).toEqual(createElement("p"));
+		expect(jsx`<p />`).toEqual(createElement("p"));
+		expect(jsx`<p></p>`).toEqual(createElement("p"));
+		expect(jsx`<p>hello world</p>`).toEqual(
+			createElement("p", null, "hello world"),
+		);
+	});
 
-test("single elements", () => {
-	Assert.equal(jsx`<p/>`, createElement("p"));
-	Assert.equal(jsx`<p />`, createElement("p"));
-	Assert.equal(jsx`<p></p>`, createElement("p"));
-	Assert.equal(
-		jsx`<p>hello world</p>`,
-		createElement("p", null, "hello world"),
-	);
-});
+	test("top-level strings", () => {
+		expect(jsx`hello world`).toEqual(createElement("", null, "hello world"));
+		expect(jsx`hello <p>world</p>`).toEqual(
+			createElement("", null, ...["hello ", createElement("p", null, "world")]),
+		);
+		expect(jsx`<p>hello</p> world`).toEqual(
+			createElement("", null, ...[createElement("p", null, "hello"), " world"]),
+		);
+		expect(jsx` hello<span> </span>world `).toEqual(
+			createElement(
+				"",
+				null,
+				...["hello", createElement("span", null, " "), "world"],
+			),
+		);
+	});
 
-test("top-level strings", () => {
-	Assert.equal(jsx`hello world`, createElement("", null, "hello world"));
-	Assert.equal(
-		jsx`hello <p>world</p>`,
-		createElement("", null, ...["hello ", createElement("p", null, "world")]),
-	);
-	Assert.equal(
-		jsx`<p>hello</p> world`,
-		createElement("", null, ...[createElement("p", null, "hello"), " world"]),
-	);
-	Assert.equal(
-		jsx` hello<span> </span>world `,
-		createElement(
-			"",
-			null,
-			...["hello", createElement("span", null, " "), "world"],
-		),
-	);
-});
-
-test("newlines and whitespace", () => {
-	// TODO: Figure out how to test this without fricking editors/linters or
-	// whatever getting in the way
-	Assert.equal(
-		jsx`
+	test("newlines and whitespace", () => {
+		// TODO: Figure out how to test this without fricking editors/linters or
+		// whatever getting in the way
+		expect(jsx`
 		<p/>
-	`,
-		createElement("p"),
-	);
-	Assert.equal(
-		jsx`
+	`).toEqual(createElement("p"));
+		expect(jsx`
 		<span>Hello</span> \
 		<span>World</span>
-	`,
-		createElement(
-			"",
-			null,
-			...[
-				createElement("span", null, "Hello"),
-				" ",
-				createElement("span", null, "World"),
-			],
-		),
-	);
-});
+	`).toEqual(
+			createElement(
+				"",
+				null,
+				...[
+					createElement("span", null, "Hello"),
+					" ",
+					createElement("span", null, "World"),
+				],
+			),
+		);
+	});
 
-test("text-text newlines are preserved as a newline (#359)", () => {
-	// A newline between two text runs is preserved as a single newline. Unlike
-	// JSX, which collapses it to a space, the template has no formatter reflowing
-	// it, so the line break is the author's intent: it renders as a space in
-	// normal flow and as a real line break in a `<pre>`.
-	Assert.equal(
-		jsx`<p>alpha
-beta</p>`,
-		createElement("p", null, "alpha\n", "beta"),
-	);
-	// Everything between two text runs is preserved verbatim: the blank line
-	// stays two newlines, and the indentation before `three` is kept.
-	Assert.equal(
-		jsx`<p>one
+	test("text-text newlines are preserved as a newline (#359)", () => {
+		// A newline between two text runs is preserved as a single newline. Unlike
+		// JSX, which collapses it to a space, the template has no formatter reflowing
+		// it, so the line break is the author's intent: it renders as a space in
+		// normal flow and as a real line break in a `<pre>`.
+		expect(jsx`<p>alpha
+beta</p>`).toEqual(createElement("p", null, "alpha\n", "beta"));
+		// Everything between two text runs is preserved verbatim: the blank line
+		// stays two newlines, and the indentation before `three` is kept.
+		expect(jsx`<p>one
 two
 
-   three</p>`,
-		createElement("p", null, "one\n", "two\n\n   ", "three"),
-	);
-	// A newline adjacent to an element is still stripped as layout: only the
-	// text-text break is kept.
-	Assert.equal(
-		jsx`<p>alpha
+   three</p>`).toEqual(
+			createElement("p", null, "one\n", "two\n\n   ", "three"),
+		);
+		// A newline adjacent to an element is still stripped as layout: only the
+		// text-text break is kept.
+		expect(jsx`<p>alpha
 <b>x</b>
-beta</p>`,
-		createElement("p", null, "alpha", createElement("b", null, "x"), "beta"),
-	);
-});
+beta</p>`).toEqual(
+			createElement("p", null, "alpha", createElement("b", null, "x"), "beta"),
+		);
+	});
 
-test("preserves significant whitespace verbatim (diverges from JSX collapse)", () => {
-	// Interior spaces within a line are preserved, not collapsed.
-	Assert.equal(jsx`<p>a   b</p>`, createElement("p", null, "a   b"));
-	// A newline before an expression is stripped as layout — the expression
-	// boundary is structural, like an element.
-	Assert.equal(
-		jsx`<p>a
-${"X"}</p>`,
-		createElement("p", null, "a", "X"),
-	);
-	// Leading whitespace on the first line of a text run is preserved (it is not
-	// indentation following a newline); the break to the next line is kept.
-	Assert.equal(
-		jsx`<p>  Hello
-World</p>`,
-		createElement("p", null, "  Hello\n", "World"),
-	);
-	// Whitespace-only text between elements is preserved on a single line ...
-	Assert.equal(
-		jsx`<p><b>x</b>   <i>y</i></p>`,
-		createElement(
-			"p",
-			null,
-			createElement("b", null, "x"),
-			"   ",
-			createElement("i", null, "y"),
-		),
-	);
-	// ... and removed entirely when it spans a newline.
-	Assert.equal(
-		jsx`<p><b>x</b>
-<i>y</i></p>`,
-		createElement(
-			"p",
-			null,
-			createElement("b", null, "x"),
-			createElement("i", null, "y"),
-		),
-	);
-});
+	test("preserves significant whitespace verbatim (diverges from JSX collapse)", () => {
+		// Interior spaces within a line are preserved, not collapsed.
+		expect(jsx`<p>a   b</p>`).toEqual(createElement("p", null, "a   b"));
+		// A newline before an expression is stripped as layout — the expression
+		// boundary is structural, like an element.
+		expect(jsx`<p>a
+${"X"}</p>`).toEqual(createElement("p", null, "a", "X"));
+		// Leading whitespace on the first line of a text run is preserved (it is not
+		// indentation following a newline); the break to the next line is kept.
+		expect(jsx`<p>  Hello
+World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
+		// Whitespace-only text between elements is preserved on a single line ...
+		expect(jsx`<p><b>x</b>   <i>y</i></p>`).toEqual(
+			createElement(
+				"p",
+				null,
+				createElement("b", null, "x"),
+				"   ",
+				createElement("i", null, "y"),
+			),
+		);
+		// ... and removed entirely when it spans a newline.
+		expect(jsx`<p><b>x</b>
+<i>y</i></p>`).toEqual(
+			createElement(
+				"p",
+				null,
+				createElement("b", null, "x"),
+				createElement("i", null, "y"),
+			),
+		);
+	});
 
-test("string props", () => {
-	Assert.equal(jsx`<p class="foo" />`, createElement("p", {class: "foo"}));
-	Assert.equal(
-		jsx`<p f="foo" b="bar" />`,
-		createElement("p", {f: "foo", b: "bar"}),
-	);
-	Assert.equal(
-		jsx`<p f="'foo'" b='"bar"' />`,
-		createElement("p", {f: "'foo'", b: '"bar"'}),
-	);
-});
+	test("string props", () => {
+		expect(jsx`<p class="foo" />`).toEqual(createElement("p", {class: "foo"}));
+		expect(jsx`<p f="foo" b="bar" />`).toEqual(
+			createElement("p", {f: "foo", b: "bar"}),
+		);
+		expect(jsx`<p f="'foo'" b='"bar"' />`).toEqual(
+			createElement("p", {f: "'foo'", b: '"bar"'}),
+		);
+	});
 
-test("string escapes", () => {
-	Assert.equal(
-		jsx`<p a="a\"a\"a\"a" b='b\'b\'b\'b' />`,
-		createElement("p", {a: 'a"a"a"a', b: "b'b'b'b"}),
-	);
-	Assert.equal(
-		jsx`<p a="\\\"\'\a\b\\\"" />`,
-		createElement("p", {a: `\\"'a\b\\"`}),
-	);
-	Assert.equal(
-		jsx`<p a="hello\r\nworld" />`,
-		createElement("p", {a: "hello\r\nworld"}),
-	);
-});
+	test("string escapes", () => {
+		expect(jsx`<p a="a\"a\"a\"a" b='b\'b\'b\'b' />`).toEqual(
+			createElement("p", {a: 'a"a"a"a', b: "b'b'b'b"}),
+		);
+		expect(jsx`<p a="\\\"\'\a\b\\\"" />`).toEqual(
+			createElement("p", {a: `\\"'a\b\\"`}),
+		);
+		expect(jsx`<p a="hello\r\nworld" />`).toEqual(
+			createElement("p", {a: "hello\r\nworld"}),
+		);
+	});
 
-test("fragment shorthand", () => {
-	Assert.equal(
-		jsx`
+	test("fragment shorthand", () => {
+		expect(jsx`
 		<p>
 			Hello \
 			<>world</>
 		</p>
-	`,
-		createElement("p", null, "Hello ", createElement("", null, "world")),
-	);
-});
+	`).toEqual(
+			createElement("p", null, "Hello ", createElement("", null, "world")),
+		);
+	});
 
-test("tag expressions", () => {
-	const T1 = "tag1";
-	const T2 = "tag2";
-	Assert.equal(
-		jsx`<${T1}>Hello world</${T1}>`,
-		createElement(T1, null, "Hello world"),
-	);
-	Assert.equal(
-		jsx`
+	test("tag expressions", () => {
+		const T1 = "tag1";
+		const T2 = "tag2";
+		expect(jsx`<${T1}>Hello world</${T1}>`).toEqual(
+			createElement(T1, null, "Hello world"),
+		);
+		expect(jsx`
 		<${T1}>
 			<${T2}>
 				Hello world
 			</${T2}>
 		</${T1}>
-	`,
-		createElement(T1, null, createElement(T2, null, "Hello world")),
-	);
-});
+	`).toEqual(createElement(T1, null, createElement(T2, null, "Hello world")));
+	});
 
-test("children expressions", () => {
-	const ex1 = "Hello";
-	const ex2 = "world";
-	Assert.equal(
-		jsx`
+	test("children expressions", () => {
+		const ex1 = "Hello";
+		const ex2 = "world";
+		expect(jsx`
 		<div>${ex1} ${ex2}</div>
-	`,
-		createElement("div", null, "Hello", " ", "world"),
-	);
-	Assert.equal(
-		jsx`
+	`).toEqual(createElement("div", null, "Hello", " ", "world"));
+		expect(jsx`
 		<div>${ex1}${ex2}</div>
-	`,
-		createElement("div", null, "Hello", "world"),
-	);
+	`).toEqual(createElement("div", null, "Hello", "world"));
 
-	Assert.equal(
-		jsx`
+		expect(jsx`
 		<div>
 			<span>${ex1} ${ex2}</span>
 		</div>
-	`,
-		createElement(
-			"div",
-			null,
-			createElement("span", null, "Hello", " ", "world"),
-		),
-	);
-
-	Assert.equal(
-		jsx`
-		<div><span>${null} ${undefined} ${true} ${false} ${1} ${2}</span></div>
-	`,
-		createElement(
-			"div",
-			null,
+	`).toEqual(
 			createElement(
-				"span",
+				"div",
 				null,
-				...[null, " ", undefined, " ", true, " ", false, " ", 1, " ", 2],
+				createElement("span", null, "Hello", " ", "world"),
 			),
-		),
-	);
+		);
 
-	Assert.equal(
-		jsx`
+		expect(jsx`
+		<div><span>${null} ${undefined} ${true} ${false} ${1} ${2}</span></div>
+	`).toEqual(
+			createElement(
+				"div",
+				null,
+				createElement(
+					"span",
+					null,
+					...[null, " ", undefined, " ", true, " ", false, " ", 1, " ", 2],
+				),
+			),
+		);
+
+		expect(jsx`
 		${"Hello"} <span>world</span>
-	`,
-		createElement("", null, "Hello", " ", createElement("span", null, "world")),
-	);
-});
+	`).toEqual(
+			createElement(
+				"",
+				null,
+				"Hello",
+				" ",
+				createElement("span", null, "world"),
+			),
+		);
+	});
 
-test("shorthand boolean props", () => {
-	Assert.equal(
-		jsx`
+	test("shorthand boolean props", () => {
+		expect(jsx`
 		<label><input type="checkbox" checked name="attendance" disabled />Present</label>
-	`,
-		createElement(
-			"label",
-			null,
-			createElement("input", {
-				type: "checkbox",
-				checked: true,
-				name: "attendance",
-				disabled: true,
-			}),
-			"Present",
-		),
-	);
-});
+	`).toEqual(
+			createElement(
+				"label",
+				null,
+				createElement("input", {
+					type: "checkbox",
+					checked: true,
+					name: "attendance",
+					disabled: true,
+				}),
+				"Present",
+			),
+		);
+	});
 
-test("prop expressions", () => {
-	Assert.equal(
-		jsx`
+	test("prop expressions", () => {
+		expect(jsx`
 		<div class=${"greeting"} style = ${{color: "red"}}>
 			Hello world
 		</div>
-	`,
-		createElement(
-			"div",
-			{class: "greeting", style: {color: "red"}},
-			"Hello world",
-		),
-	);
-});
+	`).toEqual(
+			createElement(
+				"div",
+				{class: "greeting", style: {color: "red"}},
+				"Hello world",
+			),
+		);
+	});
 
-test("spread prop expressions", () => {
-	const props = {
-		style: "color: red;",
-	};
-	Assert.equal(
-		jsx`<div class="greeting" ...${props}>Hello world</div>`,
-		createElement(
-			"div",
-			{class: "greeting", style: "color: red;"},
-			"Hello world",
-		),
-	);
-	Assert.equal(
-		jsx`<div class="greeting" ... ${props}>Hello world</div>`,
-		createElement(
-			"div",
-			{class: "greeting", style: "color: red;"},
-			"Hello world",
-		),
-	);
-	Assert.equal(
-		jsx`<div class="greeting" ...
-	${props}>Hello world</div>`,
-		createElement(
-			"div",
-			{class: "greeting", style: "color: red;"},
-			"Hello world",
-		),
-	);
-});
+	test("spread prop expressions", () => {
+		const props = {
+			style: "color: red;",
+		};
+		expect(jsx`<div class="greeting" ...${props}>Hello world</div>`).toEqual(
+			createElement(
+				"div",
+				{class: "greeting", style: "color: red;"},
+				"Hello world",
+			),
+		);
+		expect(jsx`<div class="greeting" ... ${props}>Hello world</div>`).toEqual(
+			createElement(
+				"div",
+				{class: "greeting", style: "color: red;"},
+				"Hello world",
+			),
+		);
+		expect(jsx`<div class="greeting" ...
+	${props}>Hello world</div>`).toEqual(
+			createElement(
+				"div",
+				{class: "greeting", style: "color: red;"},
+				"Hello world",
+			),
+		);
+	});
 
-test("asymmetric closing tags", () => {
-	const Component = "C";
-	Assert.equal(
-		jsx`
+	test("asymmetric closing tags", () => {
+		const Component = "C";
+		expect(jsx`
 		<${Component}>Hello world<//>
-	`,
-		createElement(Component, null, "Hello world"),
-	);
+	`).toEqual(createElement(Component, null, "Hello world"));
 
-	Assert.equal(
-		jsx`
+		expect(jsx`
 		<${Component}>
 			Hello world
 		<//Component>
-	`,
-		createElement(Component, null, "Hello world"),
-	);
-});
+	`).toEqual(createElement(Component, null, "Hello world"));
+	});
 
-test("weird identifiers", () => {
-	Assert.equal(
-		jsx`
+	test("weird identifiers", () => {
+		expect(jsx`
 		<$a $b$ _c>
 			<-custom-element -prop="foo" _-_="bar" />
 			<__ key=${1}/>
 		</$a>
-	`,
-		createElement(
-			"$a",
-			{$b$: true, _c: true},
-			...[
-				createElement("-custom-element", {"-prop": "foo", "_-_": "bar"}),
-				createElement("__", {key: 1}),
-			],
-		),
-	);
-});
+	`).toEqual(
+			createElement(
+				"$a",
+				{$b$: true, _c: true},
+				...[
+					createElement("-custom-element", {"-prop": "foo", "_-_": "bar"}),
+					createElement("__", {key: 1}),
+				],
+			),
+		);
+	});
 
-test("comments", () => {
-	Assert.equal(
-		jsx`
+	test("comments", () => {
+		expect(jsx`
 		<div>
 			<!--<span>Hello</span>--><span>world</span>
 		</div>
-	`,
-		createElement("div", null, createElement("span", null, "world")),
-	);
+	`).toEqual(createElement("div", null, createElement("span", null, "world")));
 
-	Assert.equal(
-		jsx`
+		expect(jsx`
 		<div>
 			<!--<span>Hello</span>--> <!--<span>world</span>-->
 		</div>
-	`,
-		createElement("div", null, " "),
-	);
-});
+	`).toEqual(createElement("div", null, " "));
+	});
 
-test("comment expressions", () => {
-	Assert.equal(
-		jsx`
+	test("comment expressions", () => {
+		expect(jsx`
 		<div>
 			<!--
 			<${"C"} value=${true} />
 			-->
 			Hello<!-- world-->
 		</div>
-	`,
-		createElement("div", null, "Hello"),
-	);
-});
+	`).toEqual(createElement("div", null, "Hello"));
+	});
 
-test("prop string expressions", () => {
-	Assert.equal(
-		jsx`
+	test("prop string expressions", () => {
+		expect(jsx`
 		<p class="${undefined} ${null} ${"a"}-${{a: "1"}}-" />
-	`,
-		createElement("p", {class: "  a-[object Object]-"}),
-	);
-	Assert.equal(
-		jsx`
+	`).toEqual(createElement("p", {class: "  a-[object Object]-"}));
+		expect(jsx`
 		<p class="a${1}\${2}\a${3}\"" />
-	`,
-		createElement("p", {class: 'a1${2}a3"'}),
-	);
-	// Don’t think too hard about escaping.
-	Assert.equal(
-		jsx`
+	`).toEqual(createElement("p", {class: 'a1${2}a3"'}));
+		// Don’t think too hard about escaping.
+		expect(jsx`
 		<p class="a\\${1}\\${2}\\\a${3}\"" />
-	`,
-		createElement("p", {class: 'a\\1\\2\\a3"'}),
-	);
-	Assert.equal(
-		jsx`
+	`).toEqual(createElement("p", {class: 'a\\1\\2\\a3"'}));
+		expect(jsx`
 		<p class="a${true}${false}${null}${undefined}b" />
-	`,
-		createElement("p", {class: "ab"}),
-	);
-});
+	`).toEqual(createElement("p", {class: "ab"}));
+	});
 
-test("unbalanced tags", () => {
-	Assert.throws(() => {
-		jsx`<span>`;
-	}, 'Unmatched opening tag "span"');
-	Assert.throws(() => {
-		jsx`</span>`;
-	}, 'Unmatched closing tag "span"');
-	Assert.throws(() => {
-		jsx`<div>uhhh</span>`;
-	}, 'Unmatched closing tag "span", expected "div"');
-});
+	test("unbalanced tags", () => {
+		expect(() => {
+			jsx`<span>`;
+		}).toThrow('Unmatched opening tag "span"');
+		expect(() => {
+			jsx`</span>`;
+		}).toThrow('Unmatched closing tag "span"');
+		expect(() => {
+			jsx`<div>uhhh</span>`;
+		}).toThrow('Unmatched closing tag "span", expected "div"');
+	});
 
-test("invalid characters", () => {
-	Assert.throws(() => {
-		jsx`<<>`;
-	}, "Unexpected text `<`");
-	Assert.throws(() => {
-		jsx`<p<></p>`;
-	}, "Unexpected text `<`");
-	Assert.throws(() => {
-		jsx`<p><</p>`;
-	}, "Unexpected text `</`");
-	Assert.throws(() => {
-		jsx`<p</p>`;
-	}, "Unexpected text `</`");
-	Assert.throws(() => {
-		jsx`<p ///></p>`;
-	}, "Unexpected text `//`");
-	Assert.throws(() => {
-		jsx`<p /p></p>`;
-		// debatable, but whatever
-	}, "Unexpected text `/`");
-	Assert.throws(() => {
-		jsx`<e p p<></e>`;
-	}, "Unexpected text `<`");
-	Assert.throws(() => {
-		jsx`<p class</p>`;
-	}, "Unexpected text `</`");
-	Assert.throws(() => {
-		jsx`<p<`;
-	}, "Unexpected text `<`");
-	Assert.throws(() => {
-		jsx`<p class=<`;
-	}, "Unexpected text `<`");
-	Assert.throws(() => {
-		jsx`<p class==></p>`;
-	}, "Unexpected text `=></p>`");
-	Assert.throws(() => {
-		jsx`<p class=</p>`;
-	}, "Unexpected text `</p>`");
-	Assert.throws(() => {
-		jsx`<p></p text>`;
-	}, "Unexpected text `text`");
-	Assert.throws(() => {
-		jsx`<p></p text`;
-	}, "Unexpected text `text`");
-	Assert.throws(() => {
-		jsx`<p><///p>`;
-	}, "Unexpected text `/p`");
-	Assert.throws(() => {
-		jsx`<foo="bar">`;
-	}, 'Unexpected text `="`');
-	Assert.throws(() => {
-		jsx`<foo="\">`;
-		// debatable, but whatever
-	}, 'Unexpected text `="\\"`');
-});
+	test("invalid characters", () => {
+		expect(() => {
+			jsx`<<>`;
+		}).toThrow("Unexpected text `<`");
+		expect(() => {
+			jsx`<p<></p>`;
+		}).toThrow("Unexpected text `<`");
+		expect(() => {
+			jsx`<p><</p>`;
+		}).toThrow("Unexpected text `</`");
+		expect(() => {
+			jsx`<p</p>`;
+		}).toThrow("Unexpected text `</`");
+		expect(() => {
+			jsx`<p ///></p>`;
+		}).toThrow("Unexpected text `//`");
+		expect(() => {
+			jsx`<p /p></p>`;
+			// debatable, but whatever
+		}).toThrow("Unexpected text `/`");
+		expect(() => {
+			jsx`<e p p<></e>`;
+		}).toThrow("Unexpected text `<`");
+		expect(() => {
+			jsx`<p class</p>`;
+		}).toThrow("Unexpected text `</`");
+		expect(() => {
+			jsx`<p<`;
+		}).toThrow("Unexpected text `<`");
+		expect(() => {
+			jsx`<p class=<`;
+		}).toThrow("Unexpected text `<`");
+		expect(() => {
+			jsx`<p class==></p>`;
+		}).toThrow("Unexpected text `=></p>`");
+		expect(() => {
+			jsx`<p class=</p>`;
+		}).toThrow("Unexpected text `</p>`");
+		expect(() => {
+			jsx`<p></p text>`;
+		}).toThrow("Unexpected text `text`");
+		expect(() => {
+			jsx`<p></p text`;
+		}).toThrow("Unexpected text `text`");
+		expect(() => {
+			jsx`<p><///p>`;
+		}).toThrow("Unexpected text `/p`");
+		expect(() => {
+			jsx`<foo="bar">`;
+		}).toThrow('Unexpected text `="`');
+		expect(() => {
+			jsx`<foo="\">`;
+			// debatable, but whatever
+		}).toThrow('Unexpected text `="\\"`');
+	});
 
-// TODO: more information
-test("invalid expressions", () => {
-	const exp = {foo: "bar"};
-	Assert.throws(() => {
-		jsx`<div ${exp}>`;
-	}, "Unexpected expression");
-	Assert.throws(() => {
-		jsx`<${"foo"}${"bar"}>`;
-	}, "Unexpected expression");
-	Assert.throws(() => {
-		jsx`<p class${undefined} />`;
-	}, "Unexpected expression");
-});
+	// TODO: more information
+	test("invalid expressions", () => {
+		const exp = {foo: "bar"};
+		expect(() => {
+			jsx`<div ${exp}>`;
+		}).toThrow("Unexpected expression");
+		expect(() => {
+			jsx`<${"foo"}${"bar"}>`;
+		}).toThrow("Unexpected expression");
+		expect(() => {
+			jsx`<p class${undefined} />`;
+		}).toThrow("Unexpected expression");
+	});
 
-test("unbalanced tags with expressions", () => {
-	function C() {}
-	function D() {}
-	Assert.throws(() => {
-		jsx`<${C}>`;
-	}, "Unmatched opening tag C()");
-	Assert.throws(() => {
-		jsx`</${C}>`;
-	}, "Unmatched closing tag C()");
-	Assert.throws(() => {
-		jsx`<${C}></${D}>`;
-	}, "Unmatched closing tag D(), expected C()");
-});
+	test("unbalanced tags with expressions", () => {
+		function C() {}
+		function D() {}
+		expect(() => {
+			jsx`<${C}>`;
+		}).toThrow("Unmatched opening tag C()");
+		expect(() => {
+			jsx`</${C}>`;
+		}).toThrow("Unmatched closing tag C()");
+		expect(() => {
+			jsx`<${C}></${D}>`;
+		}).toThrow("Unmatched closing tag D(), expected C()");
+	});
 
-test("unicode characters", () => {
-	// Test that Unicode characters are preserved, not escaped
-	Assert.equal(
-		jsx`<span>–</span>`, // en dash (U+2013)
-		createElement("span", null, "–"),
-	);
-	Assert.equal(
-		jsx`<span>…</span>`, // ellipsis (U+2026)
-		createElement("span", null, "…"),
-	);
+	test("unicode characters", () => {
+		// Test that Unicode characters are preserved, not escaped
+		expect(jsx`<span>–</span>`).toEqual(
+			// en dash (U+2013)
+			createElement("span", null, "–"),
+		);
+		expect(jsx`<span>…</span>`).toEqual(
+			// ellipsis (U+2026)
+			createElement("span", null, "…"),
+		);
 
-	// Test Unicode with template expressions
-	const date = "January 1, 2024";
-	const result3 = jsx`<span>– Published ${date}</span>`;
-	const expected3 = createElement("span", null, "– Published ", date);
-	Assert.equal(result3, expected3);
+		// Test Unicode with template expressions
+		const date = "January 1, 2024";
+		const result3 = jsx`<span>– Published ${date}</span>`;
+		const expected3 = createElement("span", null, "– Published ", date);
+		expect(result3).toEqual(expected3);
 
-	const url = "/blog/post";
-	const result5 = jsx`<a href=${url}>Read more…</a>`;
-	const expected5 = createElement("a", {href: url}, "Read more…");
-	Assert.equal(result5, expected5);
+		const url = "/blog/post";
+		const result5 = jsx`<a href=${url}>Read more…</a>`;
+		const expected5 = createElement("a", {href: url}, "Read more…");
+		expect(result5).toEqual(expected5);
 
-	// Test complex nested template like BlogContent component
-	const author = "John Doe";
-	const authorURL = "/author/john";
-	const publishDateDisplay = "January 1, 2024";
-	const complexResult = jsx`
+		// Test complex nested template like BlogContent component
+		const author = "John Doe";
+		const authorURL = "/author/john";
+		const publishDateDisplay = "January 1, 2024";
+		const complexResult = jsx`
 		<p>
 			${author && jsx`By <a href=${authorURL} rel="author">${author}</a>`} \
 			${publishDateDisplay && jsx`<span>– Published ${publishDateDisplay}</span>`}
 		</p>
 	`;
 
-	// Check that the Unicode dash is preserved in the nested span component
-	// Based on the actual structure: complexResult.props.children[2] is the span
-	const spanChild = complexResult.props.children[2];
+		// Check that the Unicode dash is preserved in the nested span component
+		// Based on the actual structure: complexResult.props.children[2] is the span
+		const spanChild = complexResult.props.children[2];
 
-	// Verify the Unicode em dash is preserved
-	Assert.equal(spanChild.props.children[0], "– Published ");
+		// Verify the Unicode em dash is preserved
+		expect(spanChild.props.children[0]).toEqual("– Published ");
 
-	// Test that cache key generation preserves Unicode
-	const spans = {raw: ["<span>– Published ", "</span>"]};
-	const cacheKey = JSON.stringify(spans.raw);
-	Assert.ok(cacheKey.includes("– Published"));
-});
+		// Test that cache key generation preserves Unicode
+		const spans = {raw: ["<span>– Published ", "</span>"]};
+		const cacheKey = JSON.stringify(spans.raw);
+		expect(cacheKey.includes("– Published")).toBeTruthy();
+	});
 
-test("error messages include context", () => {
-	try {
-		jsx`<div>\n  </span>`;
-		Assert.unreachable("should have thrown");
-	} catch (e: any) {
-		Assert.instance(e, SyntaxError);
-		Assert.ok(e.message.includes("^"), "includes caret pointer");
-		Assert.ok(e.message.includes("|"), "includes context gutter");
-	}
-});
+	test("error messages include context", () => {
+		try {
+			jsx`<div>\n  </span>`;
+			throw new Error("should have thrown");
+		} catch (e: any) {
+			expect(e).toBeInstanceOf(SyntaxError);
+			expect(e.message.includes("^")).toBeTruthy() /* includes caret pointer */;
+			expect(
+				e.message.includes("|"),
+			).toBeTruthy() /* includes context gutter */;
+		}
+	});
 
-test("multiline error messages include context", () => {
-	try {
-		jsx`
+	test("multiline error messages include context", () => {
+		try {
+			jsx`
 			<div>
 				</span>
 			</div>
 		`;
-		Assert.unreachable("should have thrown");
-	} catch (e: any) {
-		Assert.instance(e, SyntaxError);
-		Assert.ok(e.message.includes("Unmatched closing tag"), "has base message");
-		Assert.ok(e.message.includes("^"), "includes caret pointer");
-		Assert.ok(e.message.includes("|"), "includes context gutter");
-	}
-});
+			throw new Error("should have thrown");
+		} catch (e: any) {
+			expect(e).toBeInstanceOf(SyntaxError);
+			expect(
+				e.message.includes("Unmatched closing tag"),
+			).toBeTruthy() /* has base message */;
+			expect(e.message.includes("^")).toBeTruthy() /* includes caret pointer */;
+			expect(
+				e.message.includes("|"),
+			).toBeTruthy() /* includes context gutter */;
+		}
+	});
 
-test("namespaced prop names", () => {
-	Assert.equal(
-		jsx`<div attr:foo="bar" />`,
-		createElement("div", {"attr:foo": "bar"}),
-	);
-	Assert.equal(
-		jsx`<input prop:value="x" />`,
-		createElement("input", {"prop:value": "x"}),
-	);
-	Assert.equal(
-		jsx`<use xlink:href="#icon" />`,
-		createElement("use", {"xlink:href": "#icon"}),
-	);
-	Assert.equal(
-		jsx`<svg xmlns:xlink="http://www.w3.org/1999/xlink" />`,
-		createElement("svg", {
-			"xmlns:xlink": "http://www.w3.org/1999/xlink",
-		}),
-	);
-	Assert.equal(
-		jsx`<div attr:foo=${"bar"} />`,
-		createElement("div", {"attr:foo": "bar"}),
-	);
-});
+	test("namespaced prop names", () => {
+		expect(jsx`<div attr:foo="bar" />`).toEqual(
+			createElement("div", {"attr:foo": "bar"}),
+		);
+		expect(jsx`<input prop:value="x" />`).toEqual(
+			createElement("input", {"prop:value": "x"}),
+		);
+		expect(jsx`<use xlink:href="#icon" />`).toEqual(
+			createElement("use", {"xlink:href": "#icon"}),
+		);
+		expect(jsx`<svg xmlns:xlink="http://www.w3.org/1999/xlink" />`).toEqual(
+			createElement("svg", {
+				"xmlns:xlink": "http://www.w3.org/1999/xlink",
+			}),
+		);
+		expect(jsx`<div attr:foo=${"bar"} />`).toEqual(
+			createElement("div", {"attr:foo": "bar"}),
+		);
+	});
 
-test("namespaced tag names", () => {
-	Assert.equal(
-		jsx`<svg:circle r="5" />`,
-		createElement("svg:circle", {r: "5"}),
-	);
-});
+	test("namespaced tag names", () => {
+		expect(jsx`<svg:circle r="5" />`).toEqual(
+			createElement("svg:circle", {r: "5"}),
+		);
+	});
 
-test("colons in text and attribute values", () => {
-	Assert.equal(jsx`<p>ratio 3:1</p>`, createElement("p", null, "ratio 3:1"));
-	Assert.equal(
-		jsx`<div style="color: red" href="https://example.com" />`,
-		createElement("div", {
-			style: "color: red",
-			href: "https://example.com",
-		}),
-	);
-});
+	test("colons in text and attribute values", () => {
+		expect(jsx`<p>ratio 3:1</p>`).toEqual(
+			createElement("p", null, "ratio 3:1"),
+		);
+		expect(jsx`<div style="color: red" href="https://example.com" />`).toEqual(
+			createElement("div", {
+				style: "color: red",
+				href: "https://example.com",
+			}),
+		);
+	});
 
-test("invalid namespaced names", () => {
-	Assert.throws(() => {
-		jsx`<div :foo="1" />`;
-	}, "Invalid prop name `:foo`");
-	Assert.throws(() => {
-		jsx`<div foo:="1" />`;
-	}, "Invalid prop name `foo:`");
-	Assert.throws(() => {
-		jsx`<:foo />`;
-	}, "Invalid tag name `:foo`");
-	Assert.throws(() => {
-		jsx`<foo: />`;
-	}, "Invalid tag name `foo:`");
-	Assert.throws(() => {
-		jsx`<div a:b:c="1" />`;
-	}, "Invalid prop name `a:b:c`");
+	test("invalid namespaced names", () => {
+		expect(() => {
+			jsx`<div :foo="1" />`;
+		}).toThrow("Invalid prop name `:foo`");
+		expect(() => {
+			jsx`<div foo:="1" />`;
+		}).toThrow("Invalid prop name `foo:`");
+		expect(() => {
+			jsx`<:foo />`;
+		}).toThrow("Invalid tag name `:foo`");
+		expect(() => {
+			jsx`<foo: />`;
+		}).toThrow("Invalid tag name `foo:`");
+		expect(() => {
+			jsx`<div a:b:c="1" />`;
+		}).toThrow("Invalid prop name `a:b:c`");
+	});
 });
-
-test.run();

@@ -1,269 +1,269 @@
-import {suite} from "uvu";
-import * as Assert from "uvu/assert";
+import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import {createElement} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
-const test = suite("svg");
-test.before.each(() => {
-	renderer.render(null, document.body);
-	document.body.innerHTML = "";
+describe("svg", () => {
+	beforeEach(() => {
+		renderer.render(null, document.body);
+		document.body.innerHTML = "";
+	});
+
+	afterEach(() => {
+		renderer.render(null, document.body);
+		document.body.innerHTML = "";
+	});
+
+	test("simple", () => {
+		renderer.render(<svg>Hello world</svg>, document.body);
+		expect(document.body.firstChild instanceof SVGElement).toBeTruthy();
+		expect(document.body.firstChild!.firstChild instanceof Text).toBeTruthy();
+		expect(document.body.firstChild!.firstChild!.nodeValue).toBe("Hello world");
+	});
+
+	test("mdn example", () => {
+		renderer.render(
+			<svg
+				version="1.1"
+				baseProfile="full"
+				width="300"
+				height="200"
+				xmlns="http://www.w3.org/2000/svg"
+			>
+				<rect width="100%" height="100%" fill="red" />
+				<circle cx="150" cy="100" r="80" fill="green" />
+				<text x="150" y="125" font-size="60" text-anchor="middle" fill="white">
+					SVG
+				</text>
+			</svg>,
+			document.body,
+		);
+
+		let svgRoot = document.body.firstChild;
+		expect(document.body.firstChild instanceof SVGElement).toBeTruthy();
+
+		let rect = svgRoot!.childNodes[0] as SVGElement;
+		expect(rect instanceof SVGElement).toBeTruthy();
+		expect(rect.tagName).toBe("rect");
+		expect(rect.getAttribute("width")).toBe("100%");
+		expect(rect.getAttribute("height")).toBe("100%");
+		expect(rect.getAttribute("fill")).toBe("red");
+
+		let circle = svgRoot!.childNodes[1] as SVGElement;
+		expect(circle instanceof SVGElement).toBeTruthy();
+		expect(circle.tagName).toBe("circle");
+		expect(circle.getAttribute("cx")).toBe("150");
+		expect(circle.getAttribute("cy")).toBe("100");
+		expect(circle.getAttribute("r")).toBe("80");
+		expect(circle.getAttribute("fill")).toBe("green");
+
+		let text = svgRoot!.childNodes[2] as SVGElement;
+		expect(text instanceof SVGElement).toBeTruthy();
+		expect(text.tagName).toBe("text");
+		expect(text.getAttribute("x")).toBe("150");
+		expect(text.getAttribute("y")).toBe("125");
+		expect(text.getAttribute("font-size")).toBe("60");
+		expect(text.getAttribute("text-anchor")).toBe("middle");
+		expect(text.getAttribute("fill")).toBe("white");
+	});
+
+	test("foreignObject", () => {
+		renderer.render(
+			<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+				<foreignObject x="20" y="20" width="160" height="160">
+					<div xmlns="http://www.w3.org/1999/xhtml">
+						Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed mollis
+						mollis mi ut ultricies. Nullam magna ipsum, porta vel dui convallis,
+						rutrum imperdiet eros. Aliquam erat volutpat.
+					</div>
+				</foreignObject>
+			</svg>,
+			document.body,
+		);
+		expect(document.body.firstChild instanceof SVGElement).toBeTruthy();
+
+		const foreignObject = document.body.firstChild!.firstChild!;
+		expect(foreignObject instanceof SVGElement).toBeTruthy();
+		expect((foreignObject as Element).namespaceURI).toBe(
+			"http://www.w3.org/2000/svg",
+		);
+
+		const div = foreignObject.firstChild! as HTMLElement;
+		expect(div instanceof HTMLElement).toBeTruthy();
+		expect(div.namespaceURI).toBe("http://www.w3.org/1999/xhtml");
+	});
+
+	test("foreignObject children are HTML without explicit xmlns", () => {
+		renderer.render(
+			<svg viewBox="0 0 200 200">
+				<foreignObject x="20" y="20" width="160" height="160">
+					<div>
+						<p>Hello</p>
+					</div>
+				</foreignObject>
+			</svg>,
+			document.body,
+		);
+		const foreignObject = document.body.firstChild!.firstChild!;
+		expect(foreignObject instanceof SVGElement).toBeTruthy();
+
+		const div = foreignObject.firstChild! as Element;
+		expect(div instanceof HTMLDivElement).toBeTruthy();
+		expect(div.namespaceURI).toBe("http://www.w3.org/1999/xhtml");
+
+		const p = div.firstChild! as Element;
+		expect(p instanceof HTMLParagraphElement).toBeTruthy();
+		expect(p.namespaceURI).toBe("http://www.w3.org/1999/xhtml");
+	});
+
+	test("foreignObject itself gets SVG prop normalization", () => {
+		renderer.render(
+			<svg viewBox="0 0 200 200">
+				{/* eslint-disable-next-line crank/no-react-svg-props */}
+				<foreignObject clipPath="url(#clip)" colorInterpolation="sRGB">
+					<div>Hello</div>
+				</foreignObject>
+			</svg>,
+			document.body,
+		);
+		const foreignObject = document.body.firstChild!.firstChild! as SVGElement;
+		expect(foreignObject instanceof SVGElement).toBeTruthy();
+		// SVG props should be normalized on foreignObject itself
+		expect(foreignObject.getAttribute("clip-path")).toBe("url(#clip)");
+		expect(foreignObject.getAttribute("color-interpolation")).toBe("sRGB");
+	});
+
+	test("classes", () => {
+		renderer.render(
+			<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+				<rect class="rectClass" x="10" y="10" width="100" height="100" />
+				<circle class="circleClass" cx="40" cy="50" r="26" />
+			</svg>,
+			document.body,
+		);
+
+		const rect = document.body.firstChild!.firstChild as SVGElement;
+		const circle = rect.nextSibling as SVGElement;
+		expect(rect instanceof SVGElement).toBeTruthy();
+		expect(rect.tagName).toBe("rect");
+		expect(circle instanceof SVGElement).toBeTruthy();
+		expect(circle.tagName).toBe("circle");
+		expect(rect.getAttribute("class")).toBe("rectClass");
+		expect(circle.getAttribute("class")).toBe("circleClass");
+	});
+
+	test("g", () => {
+		renderer.render(
+			<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+				<g fill="white" stroke="green" stroke-width="5">
+					<path d="M10 10" />
+					<path d="M 10 10 H 90 V 90 H 10 L 10 10" />
+				</g>
+			</svg>,
+			document.body,
+		);
+
+		const g = document.body.firstChild!.firstChild as SVGElement;
+		expect(g instanceof SVGElement).toBeTruthy();
+		expect(g.tagName).toBe("g");
+		expect(g.childNodes[0] instanceof SVGElement).toBeTruthy();
+		expect(g.childNodes[1] instanceof SVGElement).toBeTruthy();
+	});
+
+	test("nested", () => {
+		renderer.render(
+			<svg width="750" height="500" style="background: gray">
+				<svg x="200" y="200">
+					<circle cx="50" cy="50" r="50" style="fill: red" />
+				</svg>
+			</svg>,
+			document.body,
+		);
+		const nested = document.body.firstChild!.firstChild as SVGElement;
+		expect(nested instanceof SVGElement).toBeTruthy();
+		expect(nested.tagName).toBe("svg");
+		expect(nested.firstChild instanceof SVGElement).toBeTruthy();
+		expect((nested.firstChild as SVGElement).tagName).toBe("circle");
+	});
+
+	test("non-string values", () => {
+		renderer.render(
+			<svg xmlns="http://www.w3.org/2000/svg">
+				<rect class="rectClass" x={10} y={20.5} width={5000} height={null} />
+			</svg>,
+			document.body,
+		);
+
+		const rect = document.body.firstChild!.firstChild! as SVGElement;
+		expect(rect instanceof SVGElement).toBeTruthy();
+		expect(rect.getAttribute("x")).toBe("10");
+		expect(rect.getAttribute("y")).toBe("20.5");
+		expect(rect.getAttribute("width")).toBe("5000");
+		expect(rect.getAttribute("height")).toBe(null);
+	});
+
+	test("custom attributes", () => {
+		renderer.render(
+			<svg xmlns="http://www.w3.org/2000/svg">
+				<circle cx="25" cy="10" r="5" data-foo="abc" barBaz={true} />
+			</svg>,
+			document.body,
+		);
+
+		const circle = document.body.firstChild!.firstChild! as SVGElement;
+		expect(circle instanceof SVGElement).toBeTruthy();
+		expect(circle.getAttribute("cx")).toBe("25");
+		expect(circle.getAttribute("cy")).toBe("10");
+		expect(circle.getAttribute("r")).toBe("5");
+		expect(circle.getAttribute("data-foo")).toBe("abc");
+		expect(circle.getAttribute("barBaz")).toBe("");
+		expect(circle.getAttribute("does-not-exist")).toBe(null);
+	});
+
+	/* eslint-disable crank/no-react-svg-props */
+	test("React-style camelCase SVG attributes", () => {
+		renderer.render(
+			<svg>
+				<path
+					strokeWidth="2"
+					strokeLinecap="round"
+					fillOpacity="0.5"
+					clipPath="url(#clip)"
+				/>
+			</svg>,
+			document.body,
+		);
+
+		const path = document.body.firstChild!.firstChild! as SVGElement;
+		expect(path instanceof SVGElement).toBeTruthy();
+		expect(path.getAttribute("stroke-width")).toBe("2");
+		expect(path.getAttribute("stroke-linecap")).toBe("round");
+		expect(path.getAttribute("fill-opacity")).toBe("0.5");
+		expect(path.getAttribute("clip-path")).toBe("url(#clip)");
+	});
+
+	test("React-style text SVG attributes", () => {
+		renderer.render(
+			<svg>
+				<text textAnchor="middle" dominantBaseline="central" />
+			</svg>,
+			document.body,
+		);
+
+		const text = document.body.firstChild!.firstChild! as SVGElement;
+		expect(text.getAttribute("text-anchor")).toBe("middle");
+		expect(text.getAttribute("dominant-baseline")).toBe("central");
+	});
+
+	test("SVG camelCase attributes that are already correct", () => {
+		renderer.render(
+			<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid">
+				<circle cx="50" cy="50" r="40" />
+			</svg>,
+			document.body,
+		);
+
+		const svg = document.body.firstChild! as SVGElement;
+		expect(svg.getAttribute("viewBox")).toBe("0 0 100 100");
+		expect(svg.getAttribute("preserveAspectRatio")).toBe("xMidYMid");
+	});
 });
-
-test.after.each(() => {
-	renderer.render(null, document.body);
-	document.body.innerHTML = "";
-});
-
-test("simple", () => {
-	renderer.render(<svg>Hello world</svg>, document.body);
-	Assert.ok(document.body.firstChild instanceof SVGElement);
-	Assert.ok(document.body.firstChild!.firstChild instanceof Text);
-	Assert.is(document.body.firstChild!.firstChild!.nodeValue, "Hello world");
-});
-
-test("mdn example", () => {
-	renderer.render(
-		<svg
-			version="1.1"
-			baseProfile="full"
-			width="300"
-			height="200"
-			xmlns="http://www.w3.org/2000/svg"
-		>
-			<rect width="100%" height="100%" fill="red" />
-			<circle cx="150" cy="100" r="80" fill="green" />
-			<text x="150" y="125" font-size="60" text-anchor="middle" fill="white">
-				SVG
-			</text>
-		</svg>,
-		document.body,
-	);
-
-	let svgRoot = document.body.firstChild;
-	Assert.ok(document.body.firstChild instanceof SVGElement);
-
-	let rect = svgRoot!.childNodes[0] as SVGElement;
-	Assert.ok(rect instanceof SVGElement);
-	Assert.is(rect.tagName, "rect");
-	Assert.is(rect.getAttribute("width"), "100%");
-	Assert.is(rect.getAttribute("height"), "100%");
-	Assert.is(rect.getAttribute("fill"), "red");
-
-	let circle = svgRoot!.childNodes[1] as SVGElement;
-	Assert.ok(circle instanceof SVGElement);
-	Assert.is(circle.tagName, "circle");
-	Assert.is(circle.getAttribute("cx"), "150");
-	Assert.is(circle.getAttribute("cy"), "100");
-	Assert.is(circle.getAttribute("r"), "80");
-	Assert.is(circle.getAttribute("fill"), "green");
-
-	let text = svgRoot!.childNodes[2] as SVGElement;
-	Assert.ok(text instanceof SVGElement);
-	Assert.is(text.tagName, "text");
-	Assert.is(text.getAttribute("x"), "150");
-	Assert.is(text.getAttribute("y"), "125");
-	Assert.is(text.getAttribute("font-size"), "60");
-	Assert.is(text.getAttribute("text-anchor"), "middle");
-	Assert.is(text.getAttribute("fill"), "white");
-});
-
-test("foreignObject", () => {
-	renderer.render(
-		<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-			<foreignObject x="20" y="20" width="160" height="160">
-				<div xmlns="http://www.w3.org/1999/xhtml">
-					Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed mollis
-					mollis mi ut ultricies. Nullam magna ipsum, porta vel dui convallis,
-					rutrum imperdiet eros. Aliquam erat volutpat.
-				</div>
-			</foreignObject>
-		</svg>,
-		document.body,
-	);
-	Assert.ok(document.body.firstChild instanceof SVGElement);
-
-	const foreignObject = document.body.firstChild!.firstChild!;
-	Assert.ok(foreignObject instanceof SVGElement);
-	Assert.is(foreignObject.namespaceURI, "http://www.w3.org/2000/svg");
-
-	const div = foreignObject.firstChild! as HTMLElement;
-	Assert.ok(div instanceof HTMLElement);
-	Assert.is(div.namespaceURI, "http://www.w3.org/1999/xhtml");
-});
-
-test("foreignObject children are HTML without explicit xmlns", () => {
-	renderer.render(
-		<svg viewBox="0 0 200 200">
-			<foreignObject x="20" y="20" width="160" height="160">
-				<div>
-					<p>Hello</p>
-				</div>
-			</foreignObject>
-		</svg>,
-		document.body,
-	);
-	const foreignObject = document.body.firstChild!.firstChild!;
-	Assert.ok(foreignObject instanceof SVGElement);
-
-	const div = foreignObject.firstChild! as Element;
-	Assert.ok(div instanceof HTMLDivElement);
-	Assert.is(div.namespaceURI, "http://www.w3.org/1999/xhtml");
-
-	const p = div.firstChild! as Element;
-	Assert.ok(p instanceof HTMLParagraphElement);
-	Assert.is(p.namespaceURI, "http://www.w3.org/1999/xhtml");
-});
-
-test("foreignObject itself gets SVG prop normalization", () => {
-	renderer.render(
-		<svg viewBox="0 0 200 200">
-			{/* eslint-disable-next-line crank/no-react-svg-props */}
-			<foreignObject clipPath="url(#clip)" colorInterpolation="sRGB">
-				<div>Hello</div>
-			</foreignObject>
-		</svg>,
-		document.body,
-	);
-	const foreignObject = document.body.firstChild!.firstChild! as SVGElement;
-	Assert.ok(foreignObject instanceof SVGElement);
-	// SVG props should be normalized on foreignObject itself
-	Assert.is(foreignObject.getAttribute("clip-path"), "url(#clip)");
-	Assert.is(foreignObject.getAttribute("color-interpolation"), "sRGB");
-});
-
-test("classes", () => {
-	renderer.render(
-		<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-			<rect class="rectClass" x="10" y="10" width="100" height="100" />
-			<circle class="circleClass" cx="40" cy="50" r="26" />
-		</svg>,
-		document.body,
-	);
-
-	const rect = document.body.firstChild!.firstChild as SVGElement;
-	const circle = rect.nextSibling as SVGElement;
-	Assert.ok(rect instanceof SVGElement);
-	Assert.is(rect.tagName, "rect");
-	Assert.ok(circle instanceof SVGElement);
-	Assert.is(circle.tagName, "circle");
-	Assert.is(rect.getAttribute("class"), "rectClass");
-	Assert.is(circle.getAttribute("class"), "circleClass");
-});
-
-test("g", () => {
-	renderer.render(
-		<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-			<g fill="white" stroke="green" stroke-width="5">
-				<path d="M10 10" />
-				<path d="M 10 10 H 90 V 90 H 10 L 10 10" />
-			</g>
-		</svg>,
-		document.body,
-	);
-
-	const g = document.body.firstChild!.firstChild as SVGElement;
-	Assert.ok(g instanceof SVGElement);
-	Assert.is(g.tagName, "g");
-	Assert.ok(g.childNodes[0] instanceof SVGElement);
-	Assert.ok(g.childNodes[1] instanceof SVGElement);
-});
-
-test("nested", () => {
-	renderer.render(
-		<svg width="750" height="500" style="background: gray">
-			<svg x="200" y="200">
-				<circle cx="50" cy="50" r="50" style="fill: red" />
-			</svg>
-		</svg>,
-		document.body,
-	);
-	const nested = document.body.firstChild!.firstChild as SVGElement;
-	Assert.ok(nested instanceof SVGElement);
-	Assert.is(nested.tagName, "svg");
-	Assert.ok(nested.firstChild instanceof SVGElement);
-	Assert.is((nested.firstChild as SVGElement).tagName, "circle");
-});
-
-test("non-string values", () => {
-	renderer.render(
-		<svg xmlns="http://www.w3.org/2000/svg">
-			<rect class="rectClass" x={10} y={20.5} width={5000} height={null} />
-		</svg>,
-		document.body,
-	);
-
-	const rect = document.body.firstChild!.firstChild! as SVGElement;
-	Assert.ok(rect instanceof SVGElement);
-	Assert.is(rect.getAttribute("x"), "10");
-	Assert.is(rect.getAttribute("y"), "20.5");
-	Assert.is(rect.getAttribute("width"), "5000");
-	Assert.is(rect.getAttribute("height"), null);
-});
-
-test("custom attributes", () => {
-	renderer.render(
-		<svg xmlns="http://www.w3.org/2000/svg">
-			<circle cx="25" cy="10" r="5" data-foo="abc" barBaz={true} />
-		</svg>,
-		document.body,
-	);
-
-	const circle = document.body.firstChild!.firstChild! as SVGElement;
-	Assert.ok(circle instanceof SVGElement);
-	Assert.is(circle.getAttribute("cx"), "25");
-	Assert.is(circle.getAttribute("cy"), "10");
-	Assert.is(circle.getAttribute("r"), "5");
-	Assert.is(circle.getAttribute("data-foo"), "abc");
-	Assert.is(circle.getAttribute("barBaz"), "");
-	Assert.is(circle.getAttribute("does-not-exist"), null);
-});
-
-/* eslint-disable crank/no-react-svg-props */
-test("React-style camelCase SVG attributes", () => {
-	renderer.render(
-		<svg>
-			<path
-				strokeWidth="2"
-				strokeLinecap="round"
-				fillOpacity="0.5"
-				clipPath="url(#clip)"
-			/>
-		</svg>,
-		document.body,
-	);
-
-	const path = document.body.firstChild!.firstChild! as SVGElement;
-	Assert.ok(path instanceof SVGElement);
-	Assert.is(path.getAttribute("stroke-width"), "2");
-	Assert.is(path.getAttribute("stroke-linecap"), "round");
-	Assert.is(path.getAttribute("fill-opacity"), "0.5");
-	Assert.is(path.getAttribute("clip-path"), "url(#clip)");
-});
-
-test("React-style text SVG attributes", () => {
-	renderer.render(
-		<svg>
-			<text textAnchor="middle" dominantBaseline="central" />
-		</svg>,
-		document.body,
-	);
-
-	const text = document.body.firstChild!.firstChild! as SVGElement;
-	Assert.is(text.getAttribute("text-anchor"), "middle");
-	Assert.is(text.getAttribute("dominant-baseline"), "central");
-});
-
-test("SVG camelCase attributes that are already correct", () => {
-	renderer.render(
-		<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid">
-			<circle cx="50" cy="50" r="40" />
-		</svg>,
-		document.body,
-	);
-
-	const svg = document.body.firstChild! as SVGElement;
-	Assert.is(svg.getAttribute("viewBox"), "0 0 100 100");
-	Assert.is(svg.getAttribute("preserveAspectRatio"), "xMidYMid");
-});
-
-test.run();

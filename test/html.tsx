@@ -1,512 +1,515 @@
-import {suite} from "uvu";
-import * as Assert from "uvu/assert";
+import {describe, test, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
 
 import {Copy, createElement, Fragment, Portal, Raw} from "../src/crank.js";
 import type {Children, Context} from "../src/crank.js";
 import {renderer} from "../src/html.js";
 
-const test = suite("html");
+describe("html", () => {
+	test("simple", () => {
+		expect(renderer.render(<h1>Hello world</h1>)).toBe("<h1>Hello world</h1>");
+	});
 
-test("simple", () => {
-	Assert.is(renderer.render(<h1>Hello world</h1>), "<h1>Hello world</h1>");
-});
+	test("multiple children", () => {
+		expect(
+			renderer.render(
+				<div>
+					<span>1</span>
+					<span>2</span>
+					<span>3</span>
+					<span>4</span>
+				</div>,
+			),
+		).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
+		);
+	});
 
-test("multiple children", () => {
-	Assert.is(
-		renderer.render(
-			<div>
-				<span>1</span>
-				<span>2</span>
-				<span>3</span>
-				<span>4</span>
-			</div>,
-		),
-		"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
-	);
-});
+	test("nested children", () => {
+		expect(
+			renderer.render(
+				<div id="1">
+					<div id="2">
+						<div id="3">Hi</div>
+					</div>
+				</div>,
+			),
+		).toBe('<div id="1"><div id="2"><div id="3">Hi</div></div></div>');
+	});
 
-test("nested children", () => {
-	Assert.is(
-		renderer.render(
-			<div id="1">
-				<div id="2">
-					<div id="3">Hi</div>
-				</div>
-			</div>,
-		),
-		'<div id="1"><div id="2"><div id="3">Hi</div></div></div>',
-	);
-});
+	test("boolean replaces nested children", () => {
+		expect(
+			renderer.render(
+				<div id="1">
+					<div id="2">
+						<div id="3">Hi</div>
+					</div>
+				</div>,
+			),
+		).toBe('<div id="1"><div id="2"><div id="3">Hi</div></div></div>');
+	});
 
-test("boolean replaces nested children", () => {
-	Assert.is(
-		renderer.render(
-			<div id="1">
-				<div id="2">
-					<div id="3">Hi</div>
-				</div>
-			</div>,
-		),
-		'<div id="1"><div id="2"><div id="3">Hi</div></div></div>',
-	);
-});
+	test("attrs", () => {
+		expect(
+			renderer.render(
+				<Fragment>
+					<input id="toggle" type="checkbox" checked data-checked foo={false} />
+					<label for="toggle" />
+				</Fragment>,
+			),
+		).toBe(
+			'<input id="toggle" type="checkbox" checked data-checked><label for="toggle"></label>',
+		);
+	});
 
-test("attrs", () => {
-	Assert.is(
-		renderer.render(
-			<Fragment>
-				<input id="toggle" type="checkbox" checked data-checked foo={false} />
-				<label for="toggle" />
-			</Fragment>,
-		),
-		'<input id="toggle" type="checkbox" checked data-checked><label for="toggle"></label>',
-	);
-});
+	test("styles", () => {
+		expect(
+			renderer.render(
+				<Fragment>
+					<div style={{color: "red"}} />
+					<img
+						src="x"
+						style={{xss: 'foo;" onerror="alert(\'hack\')" other="'}}
+					/>
+				</Fragment>,
+			),
+		).toBe(
+			'<div style="color:red;"></div><img src="x" style="xss:foo;&quot; onerror=&quot;alert(&#039;hack&#039;)&quot; other=&quot;;">',
+		);
+	});
 
-test("styles", () => {
-	Assert.is(
-		renderer.render(
-			<Fragment>
-				<div style={{color: "red"}} />
-				<img src="x" style={{xss: 'foo;" onerror="alert(\'hack\')" other="'}} />
-			</Fragment>,
-		),
-		'<div style="color:red;"></div><img src="x" style="xss:foo;&quot; onerror=&quot;alert(&#039;hack&#039;)&quot; other=&quot;;">',
-	);
-});
+	test("style null", () => {
+		expect(renderer.render(<div style={null} />)).toBe("<div></div>");
+	});
 
-test("style null", () => {
-	Assert.is(renderer.render(<div style={null} />), "<div></div>");
-});
+	test("styles string", () => {
+		expect(renderer.render(<div style="color: red;" />)).toBe(
+			'<div style="color: red;"></div>',
+		);
+	});
 
-test("styles string", () => {
-	Assert.is(
-		renderer.render(<div style="color: red;" />),
-		'<div style="color: red;"></div>',
-	);
-});
+	test("styles camelCase", () => {
+		expect(
+			renderer.render(
+				<div
+					style={{
+						fontSize: "16px",
+						backgroundColor: "red",
+						marginTop: "10px",
+						borderRadius: "4px",
+						WebkitTransform: "rotate(45deg)",
+					}}
+				/>,
+			),
+		).toBe(
+			'<div style="font-size:16px;background-color:red;margin-top:10px;border-radius:4px;-webkit-transform:rotate(45deg);"></div>',
+		);
 
-test("styles camelCase", () => {
-	Assert.is(
-		renderer.render(
-			<div
-				style={{
-					fontSize: "16px",
-					backgroundColor: "red",
-					marginTop: "10px",
-					borderRadius: "4px",
-					WebkitTransform: "rotate(45deg)",
-				}}
-			/>,
-		),
-		'<div style="font-size:16px;background-color:red;margin-top:10px;border-radius:4px;-webkit-transform:rotate(45deg);"></div>',
-	);
+		// Test mixed camelCase and kebab-case
+		expect(
+			renderer.render(
+				<div
+					style={{
+						fontSize: "16px",
+						"background-color": "blue",
+						marginTop: "5px",
+					}}
+				/>,
+			),
+		).toBe(
+			'<div style="font-size:16px;background-color:blue;margin-top:5px;"></div>',
+		);
+	});
 
-	// Test mixed camelCase and kebab-case
-	Assert.is(
-		renderer.render(
-			<div
-				style={{
-					fontSize: "16px",
-					"background-color": "blue",
-					marginTop: "5px",
-				}}
-			/>,
-		),
-		'<div style="font-size:16px;background-color:blue;margin-top:5px;"></div>',
-	);
-});
+	test("styles numeric values with px conversion", () => {
+		expect(
+			renderer.render(
+				<div
+					style={{
+						width: 100,
+						height: 200,
+						opacity: 0.5,
+						zIndex: 10,
+						fontSize: 16,
+					}}
+				/>,
+			),
+		).toBe(
+			'<div style="width:100px;height:200px;opacity:0.5;z-index:10;font-size:16px;"></div>',
+		);
+	});
 
-test("styles numeric values with px conversion", () => {
-	Assert.is(
-		renderer.render(
-			<div
-				style={{
-					width: 100,
-					height: 200,
-					opacity: 0.5,
-					zIndex: 10,
-					fontSize: 16,
-				}}
-			/>,
-		),
-		'<div style="width:100px;height:200px;opacity:0.5;z-index:10;font-size:16px;"></div>',
-	);
-});
+	test("class and className", () => {
+		expect(
+			renderer.render(
+				<Fragment>
+					<div class="class1 class2" />
+					<div className="class1 class2" />
+					<div className="hidden" class="override" />
+					<div class="override" className="hidden" />
+					<div className={null} />
+					<div class={undefined} />
+				</Fragment>,
+			),
+		).toBe(
+			'<div class="class1 class2"></div><div class="class1 class2"></div><div class="override"></div><div class="override"></div><div></div><div></div>',
+		);
+	});
 
-test("class and className", () => {
-	Assert.is(
-		renderer.render(
-			<Fragment>
-				<div class="class1 class2" />
-				<div className="class1 class2" />
-				<div className="hidden" class="override" />
-				<div class="override" className="hidden" />
-				<div className={null} />
-				<div class={undefined} />
-			</Fragment>,
-		),
-		'<div class="class1 class2"></div><div class="class1 class2"></div><div class="override"></div><div class="override"></div><div></div><div></div>',
-	);
-});
+	test("class object syntax", () => {
+		expect(
+			renderer.render(
+				<div class={{active: true, disabled: false, primary: true}} />,
+			),
+		).toBe('<div class="active primary"></div>');
+	});
 
-test("class object syntax", () => {
-	Assert.is(
-		renderer.render(
-			<div class={{active: true, disabled: false, primary: true}} />,
-		),
-		'<div class="active primary"></div>',
-	);
-});
+	test("class object syntax with space-separated keys", () => {
+		expect(
+			renderer.render(
+				<div
+					class={{
+						"w-5 h-5 rounded-full": true,
+						"bg-green-500 text-white": true,
+						"bg-gray-200 text-gray-400": false,
+					}}
+				/>,
+			),
+		).toBe('<div class="w-5 h-5 rounded-full bg-green-500 text-white"></div>');
+	});
 
-test("class object syntax with space-separated keys", () => {
-	Assert.is(
-		renderer.render(
-			<div
-				class={{
-					"w-5 h-5 rounded-full": true,
-					"bg-green-500 text-white": true,
-					"bg-gray-200 text-gray-400": false,
-				}}
-			/>,
-		),
-		'<div class="w-5 h-5 rounded-full bg-green-500 text-white"></div>',
-	);
-});
+	test("null", () => {
+		expect(renderer.render(null)).toBe("");
+	});
 
-test("null", () => {
-	Assert.is(renderer.render(null), "");
-});
+	test("callbacks are not rendered", () => {
+		expect(
+			renderer.render(
+				<div
+					onclick={() => {
+						// do nothing
+					}}
+				/>,
+			),
+		).toBe("<div></div>");
+	});
 
-test("callbacks are not rendered", () => {
-	Assert.is(
-		renderer.render(
-			<div
-				onclick={() => {
-					// do nothing
-				}}
-			/>,
-		),
-		"<div></div>",
-	);
-});
+	test("fragment", () => {
+		expect(
+			renderer.render(
+				<Fragment>
+					<span>1</span>
+					<span>2</span>
+				</Fragment>,
+			),
+		).toBe("<span>1</span><span>2</span>");
+	});
 
-test("fragment", () => {
-	Assert.is(
-		renderer.render(
-			<Fragment>
-				<span>1</span>
-				<span>2</span>
-			</Fragment>,
-		),
-		"<span>1</span><span>2</span>",
-	);
-});
+	test("array", () => {
+		expect(
+			renderer.render(
+				<div>
+					<span>1</span>
+					{[<span>2</span>, <span>3</span>]}
+					<span>4</span>
+				</div>,
+			),
+		).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
+		);
+	});
 
-test("array", () => {
-	Assert.is(
-		renderer.render(
-			<div>
-				<span>1</span>
-				{[<span>2</span>, <span>3</span>]}
-				<span>4</span>
-			</div>,
-		),
-		"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
-	);
-});
+	test("nested arrays", () => {
+		expect(
+			renderer.render(
+				<div>
+					<span>1</span>
+					{[<span>2</span>, [<span>3</span>, <span>4</span>], <span>5</span>]}
+					<span>6</span>
+				</div>,
+			),
+		).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>",
+		);
+	});
 
-test("nested arrays", () => {
-	Assert.is(
-		renderer.render(
-			<div>
-				<span>1</span>
-				{[<span>2</span>, [<span>3</span>, <span>4</span>], <span>5</span>]}
-				<span>6</span>
-			</div>,
-		),
-		"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>",
-	);
-});
+	test("keyed array", () => {
+		const spans = [
+			<span key="2">2</span>,
+			<span key="3">3</span>,
+			<span key="4">4</span>,
+		];
+		expect(
+			renderer.render(
+				<div>
+					<span>1</span>
+					{spans}
+					<span>5</span>
+				</div>,
+			),
+		).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>",
+		);
+	});
 
-test("keyed array", () => {
-	const spans = [
-		<span key="2">2</span>,
-		<span key="3">3</span>,
-		<span key="4">4</span>,
-	];
-	Assert.is(
-		renderer.render(
-			<div>
-				<span>1</span>
-				{spans}
-				<span>5</span>
-			</div>,
-		),
+	test("escaped text", () => {
+		expect(renderer.render(<div>{"< > & \" '"}</div>)).toBe(
+			"<div>&lt; &gt; &amp; &quot; &#039;</div>",
+		);
+	});
 
-		"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>",
-	);
-});
+	test("copied escaped text", () => {
+		const key = {};
+		expect(renderer.render(<div>{"< > & \" '"}</div>, key)).toBe(
+			"<div>&lt; &gt; &amp; &quot; &#039;</div>",
+		);
 
-test("escaped text", () => {
-	Assert.is(
-		renderer.render(<div>{"< > & \" '"}</div>),
-		"<div>&lt; &gt; &amp; &quot; &#039;</div>",
-	);
-});
+		expect(
+			renderer.render(
+				<div>
+					<Copy />
+				</div>,
+				key,
+			),
+		).toBe("<div>&lt; &gt; &amp; &quot; &#039;</div>");
+	});
 
-test("copied escaped text", () => {
-	const key = {};
-	Assert.is(
-		renderer.render(<div>{"< > & \" '"}</div>, key),
-		"<div>&lt; &gt; &amp; &quot; &#039;</div>",
-	);
+	test("raw html", () => {
+		const html = '<span id="raw">Hi</span>';
+		expect(
+			renderer.render(
+				<div>
+					Raw: <Raw value={html} />
+				</div>,
+			),
+		).toBe('<div>Raw: <span id="raw">Hi</span></div>');
+	});
 
-	Assert.is(
-		renderer.render(
-			<div>
-				<Copy />
-			</div>,
-			key,
-		),
-		"<div>&lt; &gt; &amp; &quot; &#039;</div>",
-	);
-});
-
-test("raw html", () => {
-	const html = '<span id="raw">Hi</span>';
-	Assert.is(
-		renderer.render(
-			<div>
-				Raw: <Raw value={html} />
-			</div>,
-		),
-		'<div>Raw: <span id="raw">Hi</span></div>',
-	);
-});
-
-test("sync generator components are cleaned up", () => {
-	const mock = Sinon.fake();
-	function* Component() {
-		let i = 0;
-		try {
-			while (true) {
-				yield <div>{i++}</div>;
+	test("sync generator components are cleaned up", () => {
+		const mock = Sinon.fake();
+		function* Component() {
+			let i = 0;
+			try {
+				while (true) {
+					yield <div>{i++}</div>;
+				}
+			} finally {
+				mock();
 			}
-		} finally {
-			mock();
 		}
-	}
 
-	Assert.is(renderer.render(<Component />), "<div>0</div>");
-	Assert.is(renderer.render(<Component />), "<div>0</div>");
-	Assert.is(mock.callCount, 2);
-});
+		expect(renderer.render(<Component />)).toBe("<div>0</div>");
+		expect(renderer.render(<Component />)).toBe("<div>0</div>");
+		expect(mock.callCount).toBe(2);
+	});
 
-test("async generator components are cleaned up", async () => {
-	const mock = Sinon.fake();
-	async function* Component(this: Context) {
-		let i = 0;
-		// TODO: investigate why using a while loop causes renderer.render to
-		// resolve to <div>1</div>
-		try {
-			for await (const _ of this) {
-				yield <div>{i++}</div>;
+	test("async generator components are cleaned up", async () => {
+		const mock = Sinon.fake();
+		async function* Component(this: Context) {
+			let i = 0;
+			// TODO: investigate why using a while loop causes renderer.render to
+			// resolve to <div>1</div>
+			try {
+				for await (const _ of this) {
+					yield <div>{i++}</div>;
+				}
+			} finally {
+				mock();
 			}
-		} finally {
-			mock();
 		}
-	}
 
-	Assert.is(await renderer.render(<Component />), "<div>0</div>");
-	Assert.is(await renderer.render(<Component />), "<div>0</div>");
-	await new Promise((resolve) => setTimeout(resolve));
-	Assert.is(mock.callCount, 2);
-});
+		expect(await renderer.render(<Component />)).toBe("<div>0</div>");
+		expect(await renderer.render(<Component />)).toBe("<div>0</div>");
+		await new Promise((resolve) => setTimeout(resolve));
+		expect(mock.callCount).toBe(2);
+	});
 
-test("stateful", () => {
-	const mock = Sinon.fake();
-	function* Component() {
-		let i = 0;
-		try {
-			while (true) {
-				yield <div>{i++}</div>;
+	test("stateful", () => {
+		const mock = Sinon.fake();
+		function* Component() {
+			let i = 0;
+			try {
+				while (true) {
+					yield <div>{i++}</div>;
+				}
+			} finally {
+				mock();
 			}
-		} finally {
-			mock();
 		}
-	}
 
-	const key = {};
-	Assert.is(renderer.render(<Component />, key), "<div>0</div>");
-	Assert.is(renderer.render(<Component />, key), "<div>1</div>");
-	Assert.is(mock.callCount, 0);
-	Assert.is(renderer.render(null, key), "");
-	Assert.is(mock.callCount, 1);
-});
+		const key = {};
+		expect(renderer.render(<Component />, key)).toBe("<div>0</div>");
+		expect(renderer.render(<Component />, key)).toBe("<div>1</div>");
+		expect(mock.callCount).toBe(0);
+		expect(renderer.render(null, key)).toBe("");
+		expect(mock.callCount).toBe(1);
+	});
 
-test("prop: prefix is not rendered", () => {
-	Assert.is(renderer.render(<div prop:foo="bar" />), "<div></div>");
-});
+	test("prop: prefix is not rendered", () => {
+		expect(renderer.render(<div prop:foo="bar" />)).toBe("<div></div>");
+	});
 
-test("attr: prefix renders correctly", () => {
-	renderer.render(<custom-el />, document.body);
-	Assert.is(
-		renderer.render(<div attr:attr="value" />),
-		'<div attr="value"></div>',
-	);
-});
+	test("attr: prefix renders correctly", () => {
+		renderer.render(<custom-el />, document.body);
+		expect(renderer.render(<div attr:attr="value" />)).toBe(
+			'<div attr="value"></div>',
+		);
+	});
 
-test("after callback called once", async () => {
-	let i = 0;
-	const fn = Sinon.fake();
-	async function Component(this: Context) {
-		this.after(fn);
-		return <span>{i++}</span>;
-	}
-
-	const result = await renderer.render(
-		<div>
-			<Component />
-		</div>,
-	);
-
-	Assert.is(result, "<div><span>0</span></div>");
-	Assert.is(fn.callCount, 1);
-
-	const result1 = await renderer.render(
-		<div>
-			<Component />
-		</div>,
-	);
-
-	Assert.is(result1, "<div><span>1</span></div>");
-	Assert.is(fn.callCount, 2);
-});
-
-test("refs work", () => {
-	let mock = Sinon.fake();
-	renderer.render(<div ref={mock}>Hello world</div>);
-
-	Assert.is(mock.callCount, 1);
-	Assert.is(mock.firstCall.args[0], "<div>Hello world</div>");
-});
-
-test("schedule allows for re-render", () => {
-	function* Child(this: Context, {children}: {children: Children}) {
-		for ({children} of this) {
-			yield children;
+	test("after callback called once", async () => {
+		let i = 0;
+		const fn = Sinon.fake();
+		async function Component(this: Context) {
+			this.after(fn);
+			return <span>{i++}</span>;
 		}
-	}
 
-	function* Component(this: Context) {
-		for ({} of this) {
-			this.schedule(() => this.refresh());
-			yield <div>Render 1</div>;
-			yield (
-				<Child>
-					<div>Render 2</div>
-				</Child>
-			);
+		const result = await renderer.render(
+			<div>
+				<Component />
+			</div>,
+		);
+
+		expect(result).toBe("<div><span>0</span></div>");
+		expect(fn.callCount).toBe(1);
+
+		const result1 = await renderer.render(
+			<div>
+				<Component />
+			</div>,
+		);
+
+		expect(result1).toBe("<div><span>1</span></div>");
+		expect(fn.callCount).toBe(2);
+	});
+
+	test("refs work", () => {
+		let mock = Sinon.fake();
+		renderer.render(<div ref={mock}>Hello world</div>);
+
+		expect(mock.callCount).toBe(1);
+		expect(mock.firstCall.args[0]).toBe("<div>Hello world</div>");
+	});
+
+	test("schedule allows for re-render", () => {
+		function* Child(this: Context, {children}: {children: Children}) {
+			for ({children} of this) {
+				yield children;
+			}
 		}
-	}
 
-	const result = renderer.render(<Component />);
-	Assert.is(result, "<div>Render 2</div>");
-});
-
-test("schedule with async children on second render", async () => {
-	async function Child(this: Context, {children}: {children: Children}) {
-		await new Promise((resolve) => setTimeout(resolve, 10));
-		return children;
-	}
-
-	function* Component(this: Context) {
-		for ({} of this) {
-			this.schedule(() => this.refresh());
-			yield <div>Render 1</div>;
-			yield (
-				<Child>
-					<div>Render 2</div>
-				</Child>
-			);
+		function* Component(this: Context) {
+			for ({} of this) {
+				this.schedule(() => this.refresh());
+				yield <div>Render 1</div>;
+				yield (
+					<Child>
+						<div>Render 2</div>
+					</Child>
+				);
+			}
 		}
-	}
 
-	const result = await renderer.render(<Component />);
-	Assert.is(result, "<div>Render 2</div>");
+		const result = renderer.render(<Component />);
+		expect(result).toBe("<div>Render 2</div>");
+	});
+
+	test("schedule with async children on second render", async () => {
+		async function Child(this: Context, {children}: {children: Children}) {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			return children;
+		}
+
+		function* Component(this: Context) {
+			for ({} of this) {
+				this.schedule(() => this.refresh());
+				yield <div>Render 1</div>;
+				yield (
+					<Child>
+						<div>Render 2</div>
+					</Child>
+				);
+			}
+		}
+
+		const result = await renderer.render(<Component />);
+		expect(result).toBe("<div>Render 2</div>");
+	});
+
+	test("htmlFor renders as for attribute", () => {
+		expect(renderer.render(<label htmlFor="email">Email</label>)).toBe(
+			'<label for="email">Email</label>',
+		);
+	});
+
+	test("htmlFor skipped when for is also present", () => {
+		expect(
+			renderer.render(
+				<label for="email" htmlFor="other">
+					Email
+				</label>,
+			),
+		).toBe('<label for="email">Email</label>');
+	});
+
+	test("Portal children are not included in HTML output", () => {
+		function MyPortal({children}: {children: Children}) {
+			return <Portal root={undefined}>{children}</Portal>;
+		}
+
+		const result = renderer.render(
+			<div>
+				Before
+				<MyPortal>
+					<span>Inside portal</span>
+				</MyPortal>
+				After
+			</div>,
+		);
+		// Portal children are dropped in the HTML renderer since there's no
+		// alternate root to render them into.
+		expect(result).toBe("<div>BeforeAfter</div>");
+	});
+
+	test("foreignObject resets SVG scope for children but not itself", () => {
+		expect(
+			renderer.render(
+				// eslint-disable-next-line crank/no-react-svg-props
+				<svg viewBox="0 0 100 100">
+					{/* eslint-disable crank/no-react-svg-props */}
+					<rect strokeWidth="2" />
+					<foreignObject
+						x="0"
+						y="0"
+						width="100"
+						height="100"
+						clipPath="url(#c)"
+					>
+						<div strokeWidth="2" />
+					</foreignObject>
+					{/* eslint-enable crank/no-react-svg-props */}
+				</svg>,
+			),
+		).toBe(
+			// rect and foreignObject get SVG prop mapping (stroke-width, clip-path)
+			// div inside foreignObject does NOT (strokeWidth stays as-is)
+			'<svg viewBox="0 0 100 100"><rect stroke-width="2"></rect><foreignObject x="0" y="0" width="100" height="100" clip-path="url(#c)"><div strokeWidth="2"></div></foreignObject></svg>',
+		);
+	});
+
+	test("dangerouslySetInnerHTML renders content", () => {
+		expect(
+			renderer.render(
+				<div dangerouslySetInnerHTML={{__html: "<b>bold</b>"}} />,
+			),
+		).toBe("<div><b>bold</b></div>");
+	});
+
+	test("dangerouslySetInnerHTML not rendered as attribute", () => {
+		const result = renderer.render(
+			<div dangerouslySetInnerHTML={{__html: "<em>hi</em>"}} />,
+		) as string;
+		expect(!result.includes("dangerouslySetInnerHTML")).toBeTruthy();
+		expect(result).toBe("<div><em>hi</em></div>");
+	});
 });
-
-test("htmlFor renders as for attribute", () => {
-	Assert.is(
-		renderer.render(<label htmlFor="email">Email</label>),
-		'<label for="email">Email</label>',
-	);
-});
-
-test("htmlFor skipped when for is also present", () => {
-	Assert.is(
-		renderer.render(
-			<label for="email" htmlFor="other">
-				Email
-			</label>,
-		),
-		'<label for="email">Email</label>',
-	);
-});
-
-test("Portal children are not included in HTML output", () => {
-	function MyPortal({children}: {children: Children}) {
-		return <Portal root={undefined}>{children}</Portal>;
-	}
-
-	const result = renderer.render(
-		<div>
-			Before
-			<MyPortal>
-				<span>Inside portal</span>
-			</MyPortal>
-			After
-		</div>,
-	);
-	// Portal children are dropped in the HTML renderer since there's no
-	// alternate root to render them into.
-	Assert.is(result, "<div>BeforeAfter</div>");
-});
-
-test("foreignObject resets SVG scope for children but not itself", () => {
-	Assert.is(
-		renderer.render(
-			// eslint-disable-next-line crank/no-react-svg-props
-			<svg viewBox="0 0 100 100">
-				{/* eslint-disable crank/no-react-svg-props */}
-				<rect strokeWidth="2" />
-				<foreignObject x="0" y="0" width="100" height="100" clipPath="url(#c)">
-					<div strokeWidth="2" />
-				</foreignObject>
-				{/* eslint-enable crank/no-react-svg-props */}
-			</svg>,
-		),
-		// rect and foreignObject get SVG prop mapping (stroke-width, clip-path)
-		// div inside foreignObject does NOT (strokeWidth stays as-is)
-		'<svg viewBox="0 0 100 100"><rect stroke-width="2"></rect><foreignObject x="0" y="0" width="100" height="100" clip-path="url(#c)"><div strokeWidth="2"></div></foreignObject></svg>',
-	);
-});
-
-test("dangerouslySetInnerHTML renders content", () => {
-	Assert.is(
-		renderer.render(<div dangerouslySetInnerHTML={{__html: "<b>bold</b>"}} />),
-		"<div><b>bold</b></div>",
-	);
-});
-
-test("dangerouslySetInnerHTML not rendered as attribute", () => {
-	const result = renderer.render(
-		<div dangerouslySetInnerHTML={{__html: "<em>hi</em>"}} />,
-	) as string;
-	Assert.ok(!result.includes("dangerouslySetInnerHTML"));
-	Assert.is(result, "<div><em>hi</em></div>");
-});
-
-test.run();

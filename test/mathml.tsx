@@ -1,270 +1,270 @@
-import {suite} from "uvu";
-import * as Assert from "uvu/assert";
+import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import {createElement} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
-const test = suite("mathml");
-test.before.each(() => {
-	renderer.render(null, document.body);
-	document.body.innerHTML = "";
-});
+describe("mathml", () => {
+	beforeEach(() => {
+		renderer.render(null, document.body);
+		document.body.innerHTML = "";
+	});
 
-test.after.each(() => {
-	renderer.render(null, document.body);
-	document.body.innerHTML = "";
-});
+	afterEach(() => {
+		renderer.render(null, document.body);
+		document.body.innerHTML = "";
+	});
 
-test("simple math element", () => {
-	renderer.render(<math>Hello world</math>, document.body);
-	const mathElement = document.body.firstChild as Element;
-	Assert.ok(mathElement instanceof Element);
-	// Check if MathMLElement is available in this environment
-	if (typeof MathMLElement !== "undefined") {
-		Assert.ok(mathElement instanceof MathMLElement);
-	}
-	Assert.is(mathElement.tagName, "math");
-	Assert.is(mathElement.namespaceURI, "http://www.w3.org/1998/Math/MathML");
-	Assert.ok(mathElement.firstChild instanceof Text);
-	Assert.is(mathElement.firstChild!.nodeValue, "Hello world");
-});
+	test("simple math element", () => {
+		renderer.render(<math>Hello world</math>, document.body);
+		const mathElement = document.body.firstChild as Element;
+		expect(mathElement instanceof Element).toBeTruthy();
+		// Check if MathMLElement is available in this environment
+		if (typeof MathMLElement !== "undefined") {
+			expect(mathElement instanceof MathMLElement).toBeTruthy();
+		}
+		expect(mathElement.tagName).toBe("math");
+		expect(mathElement.namespaceURI).toBe("http://www.w3.org/1998/Math/MathML");
+		expect(mathElement.firstChild instanceof Text).toBeTruthy();
+		expect(mathElement.firstChild!.nodeValue).toBe("Hello world");
+	});
 
-test("quadratic formula", () => {
-	renderer.render(
-		<math xmlns="http://www.w3.org/1998/Math/MathML">
-			<mrow>
-				<mi>x</mi>
-				<mo>=</mo>
-				<mfrac>
-					<mrow>
-						<mo>-</mo>
-						<mi>b</mi>
-						<mo>±</mo>
-						<msqrt>
-							<msup>
-								<mi>b</mi>
-								<mn>2</mn>
-							</msup>
-							<mo>-</mo>
-							<mn>4</mn>
-							<mi>a</mi>
-							<mi>c</mi>
-						</msqrt>
-					</mrow>
-					<mrow>
-						<mn>2</mn>
-						<mi>a</mi>
-					</mrow>
-				</mfrac>
-			</mrow>
-		</math>,
-		document.body,
-	);
-
-	const mathRoot = document.body.firstChild as Element;
-	Assert.ok(mathRoot instanceof Element);
-	if (typeof MathMLElement !== "undefined") {
-		Assert.ok(mathRoot instanceof MathMLElement);
-	}
-	Assert.is(mathRoot.tagName, "math");
-	Assert.is(mathRoot.namespaceURI, "http://www.w3.org/1998/Math/MathML");
-
-	// Check that child elements are also in MathML namespace
-	const mrow = mathRoot.firstChild as Element;
-	Assert.ok(mrow instanceof Element);
-	if (typeof MathMLElement !== "undefined") {
-		Assert.ok(mrow instanceof MathMLElement);
-	}
-	Assert.is(mrow.tagName, "mrow");
-	Assert.is(mrow.namespaceURI, "http://www.w3.org/1998/Math/MathML");
-
-	const mi = mrow.firstChild as Element;
-	Assert.ok(mi instanceof Element);
-	if (typeof MathMLElement !== "undefined") {
-		Assert.ok(mi instanceof MathMLElement);
-	}
-	Assert.is(mi.tagName, "mi");
-	Assert.is(mi.namespaceURI, "http://www.w3.org/1998/Math/MathML");
-	Assert.is(mi.textContent, "x");
-});
-
-test("mixed content with foreignObject-like behavior", () => {
-	renderer.render(
-		<math xmlns="http://www.w3.org/1998/Math/MathML">
-			<mrow>
-				<mi>f</mi>
-				<mo>=</mo>
-				<semantics>
-					<mrow>
-						<mi>x</mi>
-						<mo>+</mo>
-						<mn>1</mn>
-					</mrow>
-					<annotation-xml encoding="MathML-Content">
-						{/* This would contain Content MathML */}
-						<apply xmlns="http://www.w3.org/1998/Math/MathML">
-							<plus />
-							<ci>x</ci>
-							<cn>1</cn>
-						</apply>
-					</annotation-xml>
-				</semantics>
-			</mrow>
-		</math>,
-		document.body,
-	);
-
-	const mathRoot = document.body.firstChild as Element;
-	Assert.ok(mathRoot instanceof Element);
-	if (typeof MathMLElement !== "undefined") {
-		Assert.ok(mathRoot instanceof MathMLElement);
-	}
-	Assert.is(mathRoot.namespaceURI, "http://www.w3.org/1998/Math/MathML");
-
-	// Check semantics element
-	const semantics = mathRoot.querySelector("semantics");
-	Assert.ok(semantics instanceof Element);
-	if (typeof MathMLElement !== "undefined") {
-		Assert.ok(semantics instanceof MathMLElement);
-	}
-	Assert.is(semantics.namespaceURI, "http://www.w3.org/1998/Math/MathML");
-
-	// Check annotation-xml element
-	const annotationXml = mathRoot.querySelector("annotation-xml");
-	Assert.ok(annotationXml instanceof Element);
-	if (typeof MathMLElement !== "undefined") {
-		Assert.ok(annotationXml instanceof MathMLElement);
-	}
-	Assert.is(annotationXml.namespaceURI, "http://www.w3.org/1998/Math/MathML");
-});
-
-test("attributes work correctly", () => {
-	renderer.render(
-		<math xmlns="http://www.w3.org/1998/Math/MathML">
-			<mfrac linethickness="2px">
-				<mi>a</mi>
-				<mi>b</mi>
-			</mfrac>
-		</math>,
-		document.body,
-	);
-
-	const mfrac = document.body.firstChild!.firstChild as Element;
-	Assert.ok(mfrac instanceof Element);
-	if (typeof MathMLElement !== "undefined") {
-		Assert.ok(mfrac instanceof MathMLElement);
-	}
-	Assert.is(mfrac.tagName, "mfrac");
-	Assert.is(mfrac.getAttribute("linethickness"), "2px");
-});
-
-test("class attribute (not className)", () => {
-	renderer.render(
-		<math xmlns="http://www.w3.org/1998/Math/MathML">
-			<mi class="variable">x</mi>
-			<mo class="operator">+</mo>
-			<mn class="number">1</mn>
-		</math>,
-		document.body,
-	);
-
-	const mi = document.body.firstChild!.childNodes[0] as Element;
-	const mo = document.body.firstChild!.childNodes[1] as Element;
-	const mn = document.body.firstChild!.childNodes[2] as Element;
-
-	Assert.ok(mi instanceof Element);
-	if (typeof MathMLElement !== "undefined") {
-		Assert.ok(mi instanceof MathMLElement);
-	}
-	Assert.is(mi.tagName, "mi");
-	Assert.is(mi.getAttribute("class"), "variable");
-
-	Assert.ok(mo instanceof Element);
-	if (typeof MathMLElement !== "undefined") {
-		Assert.ok(mo instanceof MathMLElement);
-	}
-	Assert.is(mo.tagName, "mo");
-	Assert.is(mo.getAttribute("class"), "operator");
-
-	Assert.ok(mn instanceof Element);
-	if (typeof MathMLElement !== "undefined") {
-		Assert.ok(mn instanceof MathMLElement);
-	}
-	Assert.is(mn.tagName, "mn");
-	Assert.is(mn.getAttribute("class"), "number");
-});
-
-test("non-string attribute values", () => {
-	renderer.render(
-		<math xmlns="http://www.w3.org/1998/Math/MathML">
-			<mspace width={10} height={20.5} depth={null} />
-		</math>,
-		document.body,
-	);
-
-	const mspace = document.body.firstChild!.firstChild as Element;
-	Assert.ok(mspace instanceof Element);
-	if (typeof MathMLElement !== "undefined") {
-		Assert.ok(mspace instanceof MathMLElement);
-	}
-	Assert.is(mspace.tagName, "mspace");
-	Assert.is(mspace.getAttribute("width"), "10");
-	Assert.is(mspace.getAttribute("height"), "20.5");
-	Assert.is(mspace.getAttribute("depth"), null);
-});
-
-test("custom attributes and data attributes", () => {
-	renderer.render(
-		<math xmlns="http://www.w3.org/1998/Math/MathML">
-			<mi data-variable="x" customAttr="value">
-				x
-			</mi>
-		</math>,
-		document.body,
-	);
-
-	const mi = document.body.firstChild!.firstChild as Element;
-	Assert.ok(mi instanceof Element);
-	if (typeof MathMLElement !== "undefined") {
-		Assert.ok(mi instanceof MathMLElement);
-	}
-	Assert.is(mi.getAttribute("data-variable"), "x");
-	Assert.is(mi.getAttribute("customAttr"), "value");
-	Assert.is(mi.textContent, "x");
-});
-
-test("nested math elements", () => {
-	renderer.render(
-		<div>
-			<p>The solution is:</p>
+	test("quadratic formula", () => {
+		renderer.render(
 			<math xmlns="http://www.w3.org/1998/Math/MathML">
 				<mrow>
 					<mi>x</mi>
 					<mo>=</mo>
-					<mn>42</mn>
+					<mfrac>
+						<mrow>
+							<mo>-</mo>
+							<mi>b</mi>
+							<mo>±</mo>
+							<msqrt>
+								<msup>
+									<mi>b</mi>
+									<mn>2</mn>
+								</msup>
+								<mo>-</mo>
+								<mn>4</mn>
+								<mi>a</mi>
+								<mi>c</mi>
+							</msqrt>
+						</mrow>
+						<mrow>
+							<mn>2</mn>
+							<mi>a</mi>
+						</mrow>
+					</mfrac>
 				</mrow>
-			</math>
-			<p>That's the answer!</p>
-		</div>,
-		document.body,
-	);
+			</math>,
+			document.body,
+		);
 
-	const div = document.body.firstChild as Element;
-	Assert.ok(div instanceof HTMLElement);
-	Assert.is(div.tagName, "DIV");
+		const mathRoot = document.body.firstChild as Element;
+		expect(mathRoot instanceof Element).toBeTruthy();
+		if (typeof MathMLElement !== "undefined") {
+			expect(mathRoot instanceof MathMLElement).toBeTruthy();
+		}
+		expect(mathRoot.tagName).toBe("math");
+		expect(mathRoot.namespaceURI).toBe("http://www.w3.org/1998/Math/MathML");
 
-	const mathElement = div.childNodes[1] as Element;
-	Assert.ok(mathElement instanceof Element);
-	if (typeof MathMLElement !== "undefined") {
-		Assert.ok(mathElement instanceof MathMLElement);
-	}
-	Assert.is(mathElement.tagName, "math");
-	Assert.is(mathElement.namespaceURI, "http://www.w3.org/1998/Math/MathML");
+		// Check that child elements are also in MathML namespace
+		const mrow = mathRoot.firstChild as Element;
+		expect(mrow instanceof Element).toBeTruthy();
+		if (typeof MathMLElement !== "undefined") {
+			expect(mrow instanceof MathMLElement).toBeTruthy();
+		}
+		expect(mrow.tagName).toBe("mrow");
+		expect(mrow.namespaceURI).toBe("http://www.w3.org/1998/Math/MathML");
 
-	const mrow = mathElement.firstChild as Element;
-	if (typeof MathMLElement !== "undefined") {
-		Assert.ok(mrow instanceof MathMLElement);
-	}
-	Assert.is(mrow.namespaceURI, "http://www.w3.org/1998/Math/MathML");
+		const mi = mrow.firstChild as Element;
+		expect(mi instanceof Element).toBeTruthy();
+		if (typeof MathMLElement !== "undefined") {
+			expect(mi instanceof MathMLElement).toBeTruthy();
+		}
+		expect(mi.tagName).toBe("mi");
+		expect(mi.namespaceURI).toBe("http://www.w3.org/1998/Math/MathML");
+		expect(mi.textContent).toBe("x");
+	});
+
+	test("mixed content with foreignObject-like behavior", () => {
+		renderer.render(
+			<math xmlns="http://www.w3.org/1998/Math/MathML">
+				<mrow>
+					<mi>f</mi>
+					<mo>=</mo>
+					<semantics>
+						<mrow>
+							<mi>x</mi>
+							<mo>+</mo>
+							<mn>1</mn>
+						</mrow>
+						<annotation-xml encoding="MathML-Content">
+							{/* This would contain Content MathML */}
+							<apply xmlns="http://www.w3.org/1998/Math/MathML">
+								<plus />
+								<ci>x</ci>
+								<cn>1</cn>
+							</apply>
+						</annotation-xml>
+					</semantics>
+				</mrow>
+			</math>,
+			document.body,
+		);
+
+		const mathRoot = document.body.firstChild as Element;
+		expect(mathRoot instanceof Element).toBeTruthy();
+		if (typeof MathMLElement !== "undefined") {
+			expect(mathRoot instanceof MathMLElement).toBeTruthy();
+		}
+		expect(mathRoot.namespaceURI).toBe("http://www.w3.org/1998/Math/MathML");
+
+		// Check semantics element
+		const semantics = mathRoot.querySelector("semantics");
+		expect(semantics instanceof Element).toBeTruthy();
+		if (typeof MathMLElement !== "undefined") {
+			expect(semantics instanceof MathMLElement).toBeTruthy();
+		}
+		expect(semantics!.namespaceURI).toBe("http://www.w3.org/1998/Math/MathML");
+
+		// Check annotation-xml element
+		const annotationXml = mathRoot.querySelector("annotation-xml");
+		expect(annotationXml instanceof Element).toBeTruthy();
+		if (typeof MathMLElement !== "undefined") {
+			expect(annotationXml instanceof MathMLElement).toBeTruthy();
+		}
+		expect(annotationXml!.namespaceURI).toBe(
+			"http://www.w3.org/1998/Math/MathML",
+		);
+	});
+
+	test("attributes work correctly", () => {
+		renderer.render(
+			<math xmlns="http://www.w3.org/1998/Math/MathML">
+				<mfrac linethickness="2px">
+					<mi>a</mi>
+					<mi>b</mi>
+				</mfrac>
+			</math>,
+			document.body,
+		);
+
+		const mfrac = document.body.firstChild!.firstChild as Element;
+		expect(mfrac instanceof Element).toBeTruthy();
+		if (typeof MathMLElement !== "undefined") {
+			expect(mfrac instanceof MathMLElement).toBeTruthy();
+		}
+		expect(mfrac.tagName).toBe("mfrac");
+		expect(mfrac.getAttribute("linethickness")).toBe("2px");
+	});
+
+	test("class attribute (not className)", () => {
+		renderer.render(
+			<math xmlns="http://www.w3.org/1998/Math/MathML">
+				<mi class="variable">x</mi>
+				<mo class="operator">+</mo>
+				<mn class="number">1</mn>
+			</math>,
+			document.body,
+		);
+
+		const mi = document.body.firstChild!.childNodes[0] as Element;
+		const mo = document.body.firstChild!.childNodes[1] as Element;
+		const mn = document.body.firstChild!.childNodes[2] as Element;
+
+		expect(mi instanceof Element).toBeTruthy();
+		if (typeof MathMLElement !== "undefined") {
+			expect(mi instanceof MathMLElement).toBeTruthy();
+		}
+		expect(mi.tagName).toBe("mi");
+		expect(mi.getAttribute("class")).toBe("variable");
+
+		expect(mo instanceof Element).toBeTruthy();
+		if (typeof MathMLElement !== "undefined") {
+			expect(mo instanceof MathMLElement).toBeTruthy();
+		}
+		expect(mo.tagName).toBe("mo");
+		expect(mo.getAttribute("class")).toBe("operator");
+
+		expect(mn instanceof Element).toBeTruthy();
+		if (typeof MathMLElement !== "undefined") {
+			expect(mn instanceof MathMLElement).toBeTruthy();
+		}
+		expect(mn.tagName).toBe("mn");
+		expect(mn.getAttribute("class")).toBe("number");
+	});
+
+	test("non-string attribute values", () => {
+		renderer.render(
+			<math xmlns="http://www.w3.org/1998/Math/MathML">
+				<mspace width={10} height={20.5} depth={null} />
+			</math>,
+			document.body,
+		);
+
+		const mspace = document.body.firstChild!.firstChild as Element;
+		expect(mspace instanceof Element).toBeTruthy();
+		if (typeof MathMLElement !== "undefined") {
+			expect(mspace instanceof MathMLElement).toBeTruthy();
+		}
+		expect(mspace.tagName).toBe("mspace");
+		expect(mspace.getAttribute("width")).toBe("10");
+		expect(mspace.getAttribute("height")).toBe("20.5");
+		expect(mspace.getAttribute("depth")).toBe(null);
+	});
+
+	test("custom attributes and data attributes", () => {
+		renderer.render(
+			<math xmlns="http://www.w3.org/1998/Math/MathML">
+				<mi data-variable="x" customAttr="value">
+					x
+				</mi>
+			</math>,
+			document.body,
+		);
+
+		const mi = document.body.firstChild!.firstChild as Element;
+		expect(mi instanceof Element).toBeTruthy();
+		if (typeof MathMLElement !== "undefined") {
+			expect(mi instanceof MathMLElement).toBeTruthy();
+		}
+		expect(mi.getAttribute("data-variable")).toBe("x");
+		expect(mi.getAttribute("customAttr")).toBe("value");
+		expect(mi.textContent).toBe("x");
+	});
+
+	test("nested math elements", () => {
+		renderer.render(
+			<div>
+				<p>The solution is:</p>
+				<math xmlns="http://www.w3.org/1998/Math/MathML">
+					<mrow>
+						<mi>x</mi>
+						<mo>=</mo>
+						<mn>42</mn>
+					</mrow>
+				</math>
+				<p>That's the answer!</p>
+			</div>,
+			document.body,
+		);
+
+		const div = document.body.firstChild as Element;
+		expect(div instanceof HTMLElement).toBeTruthy();
+		expect(div.tagName).toBe("DIV");
+
+		const mathElement = div.childNodes[1] as Element;
+		expect(mathElement instanceof Element).toBeTruthy();
+		if (typeof MathMLElement !== "undefined") {
+			expect(mathElement instanceof MathMLElement).toBeTruthy();
+		}
+		expect(mathElement.tagName).toBe("math");
+		expect(mathElement.namespaceURI).toBe("http://www.w3.org/1998/Math/MathML");
+
+		const mrow = mathElement.firstChild as Element;
+		if (typeof MathMLElement !== "undefined") {
+			expect(mrow instanceof MathMLElement).toBeTruthy();
+		}
+		expect(mrow.namespaceURI).toBe("http://www.w3.org/1998/Math/MathML");
+	});
 });
-
-test.run();

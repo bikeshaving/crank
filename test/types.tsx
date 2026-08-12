@@ -1,5 +1,5 @@
+import {test} from "@b9g/libuild/test";
 /* eslint @typescript-eslint/no-unused-vars: "off" */
-import {suite} from "uvu";
 import {Component, Context, createElement} from "../src/crank.js";
 
 declare global {
@@ -15,8 +15,6 @@ declare global {
 type MyProps = {
 	message: string;
 };
-
-const test = suite("types");
 
 let elem: any;
 test("createElement", () => {
@@ -347,5 +345,3 @@ test("loose typings", () => {
 	elem = <MyAsyncGeneratorComponent />;
 	elem = <MyAsyncGeneratorComponent message={"message"} />;
 });
-
-test.run();
