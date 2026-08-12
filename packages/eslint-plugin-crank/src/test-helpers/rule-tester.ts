@@ -1,10 +1,11 @@
 import {RuleTester} from "eslint";
-import {createRequire} from "module";
+import * as tsParser from "@typescript-eslint/parser";
 
-// Override RuleTester's internal describe/it to avoid nesting issues with bun:test.
-// bun:test does not allow describe() inside it(), but RuleTester.run() calls
-// this.constructor.describe/it internally. Bypassing them makes RuleTester run
-// assertions synchronously within the outer it() block.
+// Override RuleTester's internal describe/it to avoid nesting issues with the
+// test runner. bun:test (and @b9g/libuild/test) do not allow describe() inside
+// it(), but RuleTester.run() calls this.constructor.describe/it internally.
+// Bypassing them makes RuleTester run assertions synchronously within the
+// outer it() block.
 (RuleTester as any).describe = function (_text: string, fn: () => void) {
 	fn();
 };
@@ -16,9 +17,6 @@ import {createRequire} from "module";
  * Creates a RuleTester configured for TypeScript with JSX support
  */
 export function createTsRuleTester(): RuleTester {
-	const require = createRequire(import.meta.url);
-	const tsParser = require("@typescript-eslint/parser");
-
 	return new RuleTester({
 		languageOptions: {
 			parser: tsParser,

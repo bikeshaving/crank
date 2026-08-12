@@ -1,4 +1,4 @@
-import {describe, it} from "bun:test";
+import {describe, it} from "@b9g/libuild/test";
 import {jsxUsesVars} from "./jsx-uses-vars.js";
 import {createJsRuleTester} from "../test-helpers/rule-tester.js";
 

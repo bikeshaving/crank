@@ -1,4 +1,4 @@
-import {describe, it} from "bun:test";
+import {describe, it} from "@b9g/libuild/test";
 import {preferPropsIterator} from "./prefer-props-iterator.js";
 import {createTsRuleTester} from "../test-helpers/rule-tester.js";
 

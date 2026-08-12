@@ -1,4 +1,4 @@
-import {test, expect} from "bun:test";
+import {test, expect} from "@b9g/libuild/test";
 import {renderer} from "@b9g/crank/html";
 import {Marked} from "../src/index.ts";
 

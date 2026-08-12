@@ -1,4 +1,4 @@
-import {describe, it} from "bun:test";
+import {describe, it} from "@b9g/libuild/test";
 import {propDestructuringConsistency} from "./prop-destructuring-consistency.js";
 import {
 	createJsRuleTester,
