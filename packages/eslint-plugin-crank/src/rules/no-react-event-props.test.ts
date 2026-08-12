@@ -1,4 +1,4 @@
-import {describe, it} from "bun:test";
+import {describe, it} from "@b9g/libuild/test";
 import {noReactEventProps} from "./no-react-event-props.js";
 import {createTsRuleTester} from "../test-helpers/rule-tester.js";
 

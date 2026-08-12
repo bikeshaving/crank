@@ -8,7 +8,7 @@
 		"sourceMap": true,
 		"module": "ESNext",
 		"target": "ES2022",
-		"moduleResolution": "node",
+		"moduleResolution": "bundler",
 		"allowSyntheticDefaultImports": true,
 		"esModuleInterop": true,
 		"skipLibCheck": true,

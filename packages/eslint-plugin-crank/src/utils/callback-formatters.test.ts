@@ -1,4 +1,4 @@
-import {describe, it, expect} from "bun:test";
+import {describe, it, expect} from "@b9g/libuild/test";
 import {
 	extractCallbackBodyWithoutRefresh,
 	formatCallbackBodyWithIndentation,

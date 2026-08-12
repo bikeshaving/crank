@@ -1,4 +1,4 @@
-import {describe, it} from "bun:test";
+import {describe, it} from "@b9g/libuild/test";
 import {requireCleanupForTimers} from "./require-cleanup-for-timers.js";
 import {
 	createTsRuleTester,
@@ -105,7 +105,7 @@ describe("require-cleanup-for-timers", () => {
 		});
 	});
 
-	describe.each([
+	for (const {timerType, clearFunction, varName, componentName, action} of [
 		{
 			timerType: "setInterval",
 			clearFunction: "clearInterval",
@@ -120,9 +120,8 @@ describe("require-cleanup-for-timers", () => {
 			componentName: "Component",
 			action: 'console.log("Done")',
 		},
-	])(
-		"invalid cases - $timerType without cleanup",
-		({timerType, clearFunction, varName, componentName, action}) => {
+	]) {
+		describe(`invalid cases - ${timerType} without cleanup`, () => {
 			it(`should detect ${timerType} without any cleanup call`, () => {
 				ruleTester.run("require-cleanup-for-timers", requireCleanupForTimers, {
 					valid: [],
@@ -221,8 +220,8 @@ describe("require-cleanup-for-timers", () => {
 					],
 				});
 			});
-		},
-	);
+		});
+	}
 
 	describe("multiple timers", () => {
 		it("should detect multiple timers without cleanup", () => {

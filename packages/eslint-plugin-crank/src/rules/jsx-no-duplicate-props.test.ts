@@ -1,4 +1,4 @@
-import {describe, it} from "bun:test";
+import {describe, it} from "@b9g/libuild/test";
 import {jsxNoDuplicateProps} from "./jsx-no-duplicate-props.js";
 import {createJsRuleTester} from "../test-helpers/rule-tester.js";
 
