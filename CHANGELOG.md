@@ -25,16 +25,6 @@
   and as a real line break in a `<pre>`. Whitespace adjacent to an element, an
   expression, or the template edge is still stripped as layout.
 
-- **`jsx` template tag now accepts colons in prop and tag names.**
-  `attr:`/`prop:` prefixes and other XML namespace prefixes (`xlink:href`,
-  `xmlns:xlink`, a namespaced tag like `svg:circle`) previously threw a parse
-  error (“Unexpected text `:`”) even though the DOM and HTML renderers already
-  understood them. The template tag now parses these to the same props object
-  compiled JSX produces. A leading, trailing, or repeated colon (`:foo`,
-  `foo:`, `a:b:c`) is a parse error, since none of those forms are meaningful
-  namespaced names; colons in text and quoted attribute values (`3:1`,
-  `style="color: red"`) are unaffected.
-
 ### Changed
 - **`window.Crank` (the UMD/CDN browser global) now ships authoring templates and a default renderer.**
   The browser build exposes the `jsx`/`html` tagged templates and `Crank.renderer`
@@ -44,6 +34,18 @@
   The renderers are now flat: `Crank.renderer` and `Crank.domRenderer` (DOM), and
   `Crank.htmlRenderer` (server HTML), with `Crank.DOMRenderer`/`Crank.HTMLRenderer`
   for the classes.
+
+## [0.7.10] - 2026-08-12
+### Bug Fixes
+- **`jsx` template tag now accepts colons in prop and tag names.**
+  `attr:`/`prop:` prefixes and other XML namespace prefixes (`xlink:href`,
+  `xmlns:xlink`, a namespaced tag like `svg:circle`) previously threw a parse
+  error (“Unexpected text `:`”) even though the DOM and HTML renderers already
+  understood them. The template tag now parses these to the same props object
+  compiled JSX produces. A leading, trailing, or repeated colon (`:foo`,
+  `foo:`, `a:b:c`) is a parse error, since none of those forms are meaningful
+  namespaced names; colons in text and quoted attribute values (`3:1`,
+  `style="color: red"`) are unaffected.
 
 ## [0.7.9] - 2026-03-31
 ### Performance
