@@ -15,10 +15,6 @@ import {renderer} from "../src/dom.js";
 describe("hydration", () => {
 	let consoleWarn: Sinon.SinonStub;
 	let container: HTMLDivElement;
-	// libuild's browser runner has no test.skip, so these stay registered as no-ops
-	// rather than being deleted. They were already disabled under uvu.
-	const skip = (_name: string, _fn: () => unknown): void => {};
-
 	beforeEach(() => {
 		document.body.innerHTML = "";
 		container = document.createElement("div");
@@ -512,14 +508,14 @@ describe("hydration", () => {
 		);
 	});
 
-	skip("warns when style should be empty string during hydration", () => {
+	test.skip("warns when style should be empty string during hydration", () => {
 		container.innerHTML = `<div style="color: red"></div>`;
 		renderer.hydrate(<div style="" />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(/Expected "style" to be ""/);
 	});
 
-	skip("warns when style value mismatches during hydration", () => {
+	test.skip("warns when style value mismatches during hydration", () => {
 		container.innerHTML = `<div style="color: red"></div>`;
 		renderer.hydrate(<div style="color: blue" />, container);
 		expect(consoleWarn.callCount).toBe(1);
@@ -592,7 +588,7 @@ describe("hydration", () => {
 		);
 	});
 
-	skip("warns when style property value mismatches during hydration", () => {
+	test.skip("warns when style property value mismatches during hydration", () => {
 		container.innerHTML = `<div style="color: red"></div>`;
 		renderer.hydrate(<div style={{color: "blue"}} />, container);
 		expect(consoleWarn.callCount).toBe(1);
