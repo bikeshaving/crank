@@ -15,6 +15,18 @@
   renderer works with custom DOM implementations (e.g. termdom) which don’t
   install the browser globals.
 
+- **A self-refresh() during an async generator's execution no longer flashes the superseded children into the DOM on newer Safari.**
+  When an async generator component calls `refresh()` before its next `yield`
+  has committed, the yielded children are stale: the refresh immediately
+  resumes the generator, and only the fresh children should commit. Crank
+  relied on unspecified microtask ordering for this, and JavaScriptCore as of
+  Safari 26 resolves `.finally()` two ticks faster than V8, which flipped the
+  race: the stale children briefly committed and the render promise resolved
+  with them. The superseded children are now skipped explicitly, on every
+  engine. External re-renders are unaffected: an update requested while a
+  render is in flight still coalesces into the enqueued render, and the
+  in-flight render still commits its own children.
+
 - **`createElement` no longer mutates the caller's props object** (#356)
   Children are spread into a fresh props object instead of being assigned onto
   the passed-in props, so reusing a props object across calls (e.g. a
