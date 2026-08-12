@@ -1,112 +1,120 @@
+import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 /// <ref lib="dom" />
-import {suite} from "uvu";
-import * as Assert from "uvu/assert";
 import {createElement, Text} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 import * as Sinon from "sinon";
 
-const test = suite("Text");
-test.before.each(() => {
-	renderer.render(null, document.body);
-	document.body.innerHTML = "";
+describe("Text", () => {
+	beforeEach(() => {
+		renderer.render(null, document.body);
+		document.body.innerHTML = "";
+	});
+
+	afterEach(() => {
+		renderer.render(null, document.body);
+		document.body.innerHTML = "";
+	});
+
+	test("render text element", () => {
+		const element = <Text value="Hello, World!" />;
+		const root = document.createElement("div");
+		renderer.render(element, root);
+		expect(root.innerHTML).toBe("Hello, World!");
+	});
+
+	test("component which returns string produces text node", () => {
+		function Component({text}: {text: string}) {
+			return text;
+		}
+
+		const result = renderer.render(
+			<Component text="Hello, Crank!" />,
+			document.body,
+		);
+
+		expect(result).toBeInstanceOf(globalThis.Text);
+		expect((result as globalThis.Text).data).toBe("Hello, Crank!");
+		expect(document.body.innerHTML).toBe("Hello, Crank!");
+
+		const result1 = renderer.render(
+			<Component text="Hello again, Crank!" />,
+			document.body,
+		);
+		expect(result1).toBeInstanceOf(globalThis.Text);
+		expect((result1 as globalThis.Text).data).toBe("Hello again, Crank!");
+		expect(result).toBe(result1);
+	});
+
+	test("component which returns array of strings produces multiple text nodes", () => {
+		function Component({children}: {children: Array<string>}) {
+			return children;
+		}
+
+		const result = renderer.render(
+			<Component>{["Hello, ", "Crank!"]}</Component>,
+			document.body,
+		) as Array<globalThis.Text>;
+
+		expect(document.body.childNodes.length).toBe(2);
+		expect(document.body.childNodes[0]).toBeInstanceOf(globalThis.Text);
+		expect((document.body.childNodes[0] as globalThis.Text).data).toBe(
+			"Hello, ",
+		);
+		expect(document.body.childNodes[1]).toBeInstanceOf(globalThis.Text);
+		expect((document.body.childNodes[1] as globalThis.Text).data).toBe(
+			"Crank!",
+		);
+		expect(result).toBeInstanceOf(Array);
+		expect(result.length).toBe(2);
+
+		expect(result[0]).toBe(document.body.childNodes[0]);
+		expect(result[1]).toBe(document.body.childNodes[1]);
+
+		const result1 = renderer.render(
+			<Component>{["Hello ", "again, ", "Crank!"]}</Component>,
+			document.body,
+		) as Array<globalThis.Text>;
+
+		expect(document.body.childNodes.length).toBe(3);
+		expect(document.body.childNodes[0]).toBeInstanceOf(globalThis.Text);
+		expect((document.body.childNodes[0] as globalThis.Text).data).toBe(
+			"Hello ",
+		);
+		expect(document.body.childNodes[1]).toBeInstanceOf(globalThis.Text);
+		expect((document.body.childNodes[1] as globalThis.Text).data).toBe(
+			"again, ",
+		);
+		expect(document.body.childNodes[2]).toBeInstanceOf(globalThis.Text);
+		expect((document.body.childNodes[2] as globalThis.Text).data).toBe(
+			"Crank!",
+		);
+		expect(result1).toBeInstanceOf(Array);
+		expect(result1.length).toBe(3);
+		expect(result[0]).toBe(result1[0]);
+		expect(result[1]).toBe(result1[1]);
+		expect(result1[2]).toBe(document.body.childNodes[2]);
+	});
+
+	test("Text element with ref prop", () => {
+		const ref = Sinon.mock();
+		const root = document.createElement("div");
+		renderer.render(
+			<div>
+				<Text value="Hello, Ref!" ref={ref} />
+			</div>,
+			root,
+		);
+		expect(root.innerHTML).toBe("<div>Hello, Ref!</div>");
+		expect(ref.callCount).toBe(1);
+		expect(ref.firstCall.args[0]).toBeInstanceOf(globalThis.Text);
+		expect((ref.firstCall.args[0] as globalThis.Text).data).toBe("Hello, Ref!");
+		renderer.render(
+			<div>
+				<Text value="Hello again, Ref!" ref={ref} />
+			</div>,
+			root,
+		);
+		expect(root.innerHTML).toBe("<div>Hello again, Ref!</div>");
+		expect(ref.callCount).toBe(1);
+	});
 });
-
-test.after.each(() => {
-	renderer.render(null, document.body);
-	document.body.innerHTML = "";
-});
-
-test("render text element", () => {
-	const element = <Text value="Hello, World!" />;
-	const root = document.createElement("div");
-	renderer.render(element, root);
-	Assert.is(root.innerHTML, "Hello, World!");
-});
-
-test("component which returns string produces text node", () => {
-	function Component({text}: {text: string}) {
-		return text;
-	}
-
-	const result = renderer.render(
-		<Component text="Hello, Crank!" />,
-		document.body,
-	);
-
-	Assert.instance(result, globalThis.Text);
-	Assert.is((result as globalThis.Text).data, "Hello, Crank!");
-	Assert.is(document.body.innerHTML, "Hello, Crank!");
-
-	const result1 = renderer.render(
-		<Component text="Hello again, Crank!" />,
-		document.body,
-	);
-	Assert.instance(result1, globalThis.Text);
-	Assert.is((result1 as globalThis.Text).data, "Hello again, Crank!");
-	Assert.is(result, result1);
-});
-
-test("component which returns array of strings produces multiple text nodes", () => {
-	function Component({children}: {children: Array<string>}) {
-		return children;
-	}
-
-	const result = renderer.render(
-		<Component>{["Hello, ", "Crank!"]}</Component>,
-		document.body,
-	) as Array<globalThis.Text>;
-
-	Assert.is(document.body.childNodes.length, 2);
-	Assert.instance(document.body.childNodes[0], globalThis.Text);
-	Assert.is((document.body.childNodes[0] as globalThis.Text).data, "Hello, ");
-	Assert.instance(document.body.childNodes[1], globalThis.Text);
-	Assert.is((document.body.childNodes[1] as globalThis.Text).data, "Crank!");
-	Assert.instance(result, Array);
-	Assert.is(result.length, 2);
-
-	Assert.is(result[0], document.body.childNodes[0]);
-	Assert.is(result[1], document.body.childNodes[1]);
-
-	const result1 = renderer.render(
-		<Component>{["Hello ", "again, ", "Crank!"]}</Component>,
-		document.body,
-	) as Array<globalThis.Text>;
-
-	Assert.is(document.body.childNodes.length, 3);
-	Assert.instance(document.body.childNodes[0], globalThis.Text);
-	Assert.is((document.body.childNodes[0] as globalThis.Text).data, "Hello ");
-	Assert.instance(document.body.childNodes[1], globalThis.Text);
-	Assert.is((document.body.childNodes[1] as globalThis.Text).data, "again, ");
-	Assert.instance(document.body.childNodes[2], globalThis.Text);
-	Assert.is((document.body.childNodes[2] as globalThis.Text).data, "Crank!");
-	Assert.instance(result1, Array);
-	Assert.is(result1.length, 3);
-	Assert.is(result[0], result1[0]);
-	Assert.is(result[1], result1[1]);
-	Assert.is(result1[2], document.body.childNodes[2]);
-});
-
-test("Text element with ref prop", () => {
-	const ref = Sinon.mock();
-	const root = document.createElement("div");
-	renderer.render(
-		<div>
-			<Text value="Hello, Ref!" ref={ref} />
-		</div>,
-		root,
-	);
-	Assert.is(root.innerHTML, "<div>Hello, Ref!</div>");
-	Assert.is(ref.callCount, 1);
-	Assert.instance(ref.firstCall.args[0], globalThis.Text);
-	Assert.is((ref.firstCall.args[0] as globalThis.Text).data, "Hello, Ref!");
-	renderer.render(
-		<div>
-			<Text value="Hello again, Ref!" ref={ref} />
-		</div>,
-		root,
-	);
-	Assert.is(root.innerHTML, "<div>Hello again, Ref!</div>");
-	Assert.is(ref.callCount, 1);
-});
-
-test.run();

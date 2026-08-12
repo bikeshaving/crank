@@ -43,11 +43,10 @@ jobs:
       - uses: actions/checkout@v2
       - uses: oven-sh/setup-bun@v2
       - run: bun install
-      - name: Install WebKit dependencies
-        if: matrix.browser == 'webkit'
-        run: bunx playwright install-deps webkit
+      - name: Install browser
+        run: bunx playwright install --with-deps ${{ matrix.browser }}
       - name: Run core tests
-        run: bun run test:core -- --browser ${{ matrix.browser }}
+        run: bunx libuild test "test/*.tsx" "test/*.ts" --platform ${{ matrix.browser }}
       - name: Run eslint plugin tests
         run: bun run test:eslint
 
