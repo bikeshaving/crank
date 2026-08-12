@@ -26,6 +26,17 @@
   expression, or the template edge is still stripped as layout.
 
 ### New API
+- **`Context.before(callback)`** (#324)
+  Registers a callback that fires immediately before a re-render mutates the DOM,
+  while the rendered output still reflects the previous render. It receives the
+  current (pre-mutation) value, so a component can capture what the commit is
+  about to destroy: a scroll offset, the focused element, a text selection, the
+  value of an uncontrolled input. Keep the snapshot in a local variable and
+  restore it from `schedule` or `after`. It does not fire on the initial render,
+  because there is nothing to capture yet, and it never itself triggers a
+  re-render. Unlike the other lifecycle methods there is no promise-returning
+  form: the value is a live node, accurate only for the duration of the call.
+
 - **`Context.interrupt(callback?)`** (#324)
   Registers a callback that fires when the component is *interrupted* — abandoned
   mid-execution because a re-render superseded it or because it unmounted while

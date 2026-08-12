@@ -2287,9 +2287,27 @@ const provisionMaps = new WeakMap<ContextState, Map<unknown, unknown>>();
 
 const scheduleMap = new WeakMap<ContextState, Set<Function>>();
 
+const beforeMap = new WeakMap<ContextState, Set<Function>>();
+
 const interruptMap = new WeakMap<ContextState, Set<Function>>();
 
 const cleanupMap = new WeakMap<ContextState, Set<Function>>();
+
+// Called at the top of a re-render's commit, after the new children have been
+// diffed but before anything in this component's subtree touches the DOM. This
+// is the last moment the rendered output still reflects the previous render, so
+// callbacks read state which the commit is about to destroy — scroll offsets,
+// focus, selection, the value of an uncontrolled input.
+function before<TNode>(ctx: ContextState<TNode>): void {
+	const callbacks = beforeMap.get(ctx);
+	if (callbacks) {
+		beforeMap.delete(ctx);
+		const value = ctx.adapter.read(getValue(ctx.ret));
+		for (const callback of callbacks) {
+			callback(value);
+		}
+	}
+}
 
 // A component is "interrupted" when it is abandoned mid-execution, either
 // because a re-render superseded it or because it unmounted while still in
@@ -2700,6 +2718,36 @@ export class Context<
 		if (!callbacks) {
 			callbacks = new Set<Function>();
 			scheduleMap.set(ctx, callbacks);
+		}
+
+		callbacks.add(callback);
+	}
+
+	/**
+	 * Registers a callback which fires immediately before a re-render mutates
+	 * the DOM, while the rendered output still reflects the previous render.
+	 * Useful for capturing state the commit is about to destroy — a scroll
+	 * offset, the focused element, a text selection, the value of an
+	 * uncontrolled input — so it can be restored in `schedule` or `after`.
+	 *
+	 * The callback receives the current (pre-mutation) rendered value. Keep the
+	 * snapshot in a local variable; there is no need to return it.
+	 *
+	 * Does not fire on the initial render, because there is nothing to capture
+	 * yet. Fires once per callback and update, so re-register it on each render.
+	 * It never itself triggers a re-render.
+	 *
+	 * Unlike `schedule`, `after` and `cleanup`, there is no promise-returning
+	 * form: the value is only accurate for the duration of the call. A promise
+	 * would resolve in a microtask, after the DOM has already been mutated, and
+	 * the value it carried would be a live node reflecting the new render.
+	 */
+	before(callback: (value: TResult) => unknown): void {
+		const ctx = this[_ContextState];
+		let callbacks = beforeMap.get(ctx);
+		if (!callbacks) {
+			callbacks = new Set<Function>();
+			beforeMap.set(ctx, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -3443,6 +3491,18 @@ function commitComponent<TNode>(
 			propagateComponent(ctx);
 		});
 		return getValue(ctx.ret);
+	}
+
+	// A before() callback registered during a render fires as that render
+	// commits, reading the output of the one before it. The initial commit has no
+	// previous output, so its callbacks are discarded rather than fired —
+	// otherwise they would linger and fire against the second render. DidCommit
+	// is set at the end of this function, so it is still false the first time
+	// through.
+	if (getFlag(ctx.ret, DidCommit)) {
+		before(ctx);
+	} else {
+		beforeMap.delete(ctx);
 	}
 
 	const values = commitChildren(
