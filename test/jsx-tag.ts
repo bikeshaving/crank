@@ -576,4 +576,65 @@ test("multiline error messages include context", () => {
 	}
 });
 
+test("namespaced prop names", () => {
+	Assert.equal(
+		jsx`<div attr:foo="bar" />`,
+		createElement("div", {"attr:foo": "bar"}),
+	);
+	Assert.equal(
+		jsx`<input prop:value="x" />`,
+		createElement("input", {"prop:value": "x"}),
+	);
+	Assert.equal(
+		jsx`<use xlink:href="#icon" />`,
+		createElement("use", {"xlink:href": "#icon"}),
+	);
+	Assert.equal(
+		jsx`<svg xmlns:xlink="http://www.w3.org/1999/xlink" />`,
+		createElement("svg", {
+			"xmlns:xlink": "http://www.w3.org/1999/xlink",
+		}),
+	);
+	Assert.equal(
+		jsx`<div attr:foo=${"bar"} />`,
+		createElement("div", {"attr:foo": "bar"}),
+	);
+});
+
+test("namespaced tag names", () => {
+	Assert.equal(
+		jsx`<svg:circle r="5" />`,
+		createElement("svg:circle", {r: "5"}),
+	);
+});
+
+test("colons in text and attribute values", () => {
+	Assert.equal(jsx`<p>ratio 3:1</p>`, createElement("p", null, "ratio 3:1"));
+	Assert.equal(
+		jsx`<div style="color: red" href="https://example.com" />`,
+		createElement("div", {
+			style: "color: red",
+			href: "https://example.com",
+		}),
+	);
+});
+
+test("invalid namespaced names", () => {
+	Assert.throws(() => {
+		jsx`<div :foo="1" />`;
+	}, "Invalid prop name `:foo`");
+	Assert.throws(() => {
+		jsx`<div foo:="1" />`;
+	}, "Invalid prop name `foo:`");
+	Assert.throws(() => {
+		jsx`<:foo />`;
+	}, "Invalid tag name `:foo`");
+	Assert.throws(() => {
+		jsx`<foo: />`;
+	}, "Invalid tag name `foo:`");
+	Assert.throws(() => {
+		jsx`<div a:b:c="1" />`;
+	}, "Invalid prop name `a:b:c`");
+});
+
 test.run();

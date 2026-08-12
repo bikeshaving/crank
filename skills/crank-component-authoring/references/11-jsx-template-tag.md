@@ -220,6 +220,17 @@ jsx`<div ...${obj}>`
 
 Escape sequences (`\n`, `\t`, `\xNN`, `\uNNNN`, `\u{N...}`) are processed within quoted strings, just like JavaScript.
 
+Prop and tag names may contain a single namespacing colon, matching compiled JSX:
+
+```js
+jsx`<div attr:foo="bar" />`               // attr: prefix, handled by the renderer
+jsx`<input prop:value=${val} />`          // prop: prefix, works with expressions too
+jsx`<use xlink:href="#icon" />`           // arbitrary XML namespace prefixes
+jsx`<svg:circle r="5" />`                 // namespaced tag names
+```
+
+A colon elsewhere — leading (`:foo`), trailing (`foo:`), or repeated (`a:b:c`) — is a parse error rather than being silently accepted. Colons inside text or quoted attribute values (`<p>3:1</p>`, `style="color: red"`) are unaffected.
+
 ## Children and Comments
 
 Between opening and closing tags, the template accepts text, `${expressions}`, and nested elements. HTML-style comments are also supported — their contents are ignored, including any expressions:
@@ -269,6 +280,9 @@ jsx`
 
   <!-- boolean, string, interpolated string, expression, and spread props -->
   <input disabled type="text" class="a ${b} c" value=${val} ...${props} />
+
+  <!-- namespaced props and tags -->
+  <svg:circle attr:foo="bar" prop:value=${val} xlink:href="#icon" />
 
   <!-- conditional child -->
   ${show && jsx`<${Alert} message=${msg} />`}
