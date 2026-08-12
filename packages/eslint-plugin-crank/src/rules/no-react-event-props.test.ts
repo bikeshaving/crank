@@ -32,7 +32,7 @@ describe("no-react-event-props", () => {
 	});
 
 	describe("should detect and fix React-style camelCase event handlers", () => {
-		it.each([
+		for (const {event, correct, code, output} of [
 			{
 				event: "onClick",
 				correct: "onclick",
@@ -57,169 +57,183 @@ describe("no-react-event-props", () => {
 				code: `<form onSubmit={handleSubmit}>Submit</form>`,
 				output: `<form onsubmit={handleSubmit}>Submit</form>`,
 			},
-		])("should fix $event to $correct", ({event, correct, code, output}) => {
-			ruleTester.run("no-react-event-props", noReactEventProps, {
-				valid: [],
-				invalid: [
-					{
-						code,
-						output,
-						errors: [
-							{
-								messageId: "noReactEventProp",
-								data: {react: event, standard: correct},
-							},
-						],
-					},
-				],
+		]) {
+			it(`should fix ${event} to ${correct}`, () => {
+				ruleTester.run("no-react-event-props", noReactEventProps, {
+					valid: [],
+					invalid: [
+						{
+							code,
+							output,
+							errors: [
+								{
+									messageId: "noReactEventProp",
+									data: {react: event, standard: correct},
+								},
+							],
+						},
+					],
+				});
 			});
-		});
+		}
 	});
 
 	describe("keyboard events", () => {
-		it.each([
+		for (const {camel, lower} of [
 			{camel: "onKeyDown", lower: "onkeydown"},
 			{camel: "onKeyUp", lower: "onkeyup"},
 			{camel: "onKeyPress", lower: "onkeypress"},
-		])("should detect and fix $camel", ({camel, lower}) => {
-			ruleTester.run("no-react-event-props", noReactEventProps, {
-				valid: [],
-				invalid: [
-					{
-						code: `<input ${camel}={handleKey} />`,
-						output: `<input ${lower}={handleKey} />`,
-						errors: [
-							{
-								messageId: "noReactEventProp",
-								data: {react: camel, standard: lower},
-							},
-						],
-					},
-				],
+		]) {
+			it(`should detect and fix ${camel}`, () => {
+				ruleTester.run("no-react-event-props", noReactEventProps, {
+					valid: [],
+					invalid: [
+						{
+							code: `<input ${camel}={handleKey} />`,
+							output: `<input ${lower}={handleKey} />`,
+							errors: [
+								{
+									messageId: "noReactEventProp",
+									data: {react: camel, standard: lower},
+								},
+							],
+						},
+					],
+				});
 			});
-		});
+		}
 	});
 
 	describe("mouse events", () => {
-		it.each([
+		for (const {camel, lower} of [
 			{camel: "onMouseDown", lower: "onmousedown"},
 			{camel: "onMouseUp", lower: "onmouseup"},
 			{camel: "onMouseOver", lower: "onmouseover"},
 			{camel: "onMouseOut", lower: "onmouseout"},
 			{camel: "onMouseEnter", lower: "onmouseenter"},
 			{camel: "onMouseLeave", lower: "onmouseleave"},
-		])("should detect and fix $camel", ({camel, lower}) => {
-			ruleTester.run("no-react-event-props", noReactEventProps, {
-				valid: [],
-				invalid: [
-					{
-						code: `<div ${camel}={handleMouse} />`,
-						output: `<div ${lower}={handleMouse} />`,
-						errors: [
-							{
-								messageId: "noReactEventProp",
-								data: {react: camel, standard: lower},
-							},
-						],
-					},
-				],
+		]) {
+			it(`should detect and fix ${camel}`, () => {
+				ruleTester.run("no-react-event-props", noReactEventProps, {
+					valid: [],
+					invalid: [
+						{
+							code: `<div ${camel}={handleMouse} />`,
+							output: `<div ${lower}={handleMouse} />`,
+							errors: [
+								{
+									messageId: "noReactEventProp",
+									data: {react: camel, standard: lower},
+								},
+							],
+						},
+					],
+				});
 			});
-		});
+		}
 	});
 
 	describe("focus/blur events", () => {
-		it.each([
+		for (const {camel, lower, handler} of [
 			{camel: "onFocus", lower: "onfocus", handler: "handleFocus"},
 			{camel: "onBlur", lower: "onblur", handler: "handleBlur"},
-		])("should detect and fix $camel", ({camel, lower, handler}) => {
-			ruleTester.run("no-react-event-props", noReactEventProps, {
-				valid: [],
-				invalid: [
-					{
-						code: `<input ${camel}={${handler}} />`,
-						output: `<input ${lower}={${handler}} />`,
-						errors: [
-							{
-								messageId: "noReactEventProp",
-								data: {react: camel, standard: lower},
-							},
-						],
-					},
-				],
+		]) {
+			it(`should detect and fix ${camel}`, () => {
+				ruleTester.run("no-react-event-props", noReactEventProps, {
+					valid: [],
+					invalid: [
+						{
+							code: `<input ${camel}={${handler}} />`,
+							output: `<input ${lower}={${handler}} />`,
+							errors: [
+								{
+									messageId: "noReactEventProp",
+									data: {react: camel, standard: lower},
+								},
+							],
+						},
+					],
+				});
 			});
-		});
+		}
 	});
 
 	describe("touch events", () => {
-		it.each([
+		for (const {camel, lower} of [
 			{camel: "onTouchStart", lower: "ontouchstart"},
 			{camel: "onTouchMove", lower: "ontouchmove"},
 			{camel: "onTouchEnd", lower: "ontouchend"},
-		])("should detect and fix $camel", ({camel, lower}) => {
-			ruleTester.run("no-react-event-props", noReactEventProps, {
-				valid: [],
-				invalid: [
-					{
-						code: `<div ${camel}={handleTouch} />`,
-						output: `<div ${lower}={handleTouch} />`,
-						errors: [
-							{
-								messageId: "noReactEventProp",
-								data: {react: camel, standard: lower},
-							},
-						],
-					},
-				],
+		]) {
+			it(`should detect and fix ${camel}`, () => {
+				ruleTester.run("no-react-event-props", noReactEventProps, {
+					valid: [],
+					invalid: [
+						{
+							code: `<div ${camel}={handleTouch} />`,
+							output: `<div ${lower}={handleTouch} />`,
+							errors: [
+								{
+									messageId: "noReactEventProp",
+									data: {react: camel, standard: lower},
+								},
+							],
+						},
+					],
+				});
 			});
-		});
+		}
 	});
 
 	describe("drag events", () => {
-		it.each([
+		for (const {camel, lower, handler} of [
 			{camel: "onDragStart", lower: "ondragstart", handler: "handleDrag"},
 			{camel: "onDragEnd", lower: "ondragend", handler: "handleDrag"},
 			{camel: "onDrop", lower: "ondrop", handler: "handleDrop"},
-		])("should detect and fix $camel", ({camel, lower, handler}) => {
-			ruleTester.run("no-react-event-props", noReactEventProps, {
-				valid: [],
-				invalid: [
-					{
-						code: `<div ${camel}={${handler}} />`,
-						output: `<div ${lower}={${handler}} />`,
-						errors: [
-							{
-								messageId: "noReactEventProp",
-								data: {react: camel, standard: lower},
-							},
-						],
-					},
-				],
+		]) {
+			it(`should detect and fix ${camel}`, () => {
+				ruleTester.run("no-react-event-props", noReactEventProps, {
+					valid: [],
+					invalid: [
+						{
+							code: `<div ${camel}={${handler}} />`,
+							output: `<div ${lower}={${handler}} />`,
+							errors: [
+								{
+									messageId: "noReactEventProp",
+									data: {react: camel, standard: lower},
+								},
+							],
+						},
+					],
+				});
 			});
-		});
+		}
 	});
 
 	describe("media events", () => {
-		it.each([
+		for (const {camel, lower, handler} of [
 			{camel: "onPlay", lower: "onplay", handler: "handlePlay"},
 			{camel: "onPause", lower: "onpause", handler: "handlePause"},
 			{camel: "onEnded", lower: "onended", handler: "handleEnded"},
-		])("should detect and fix $camel", ({camel, lower, handler}) => {
-			ruleTester.run("no-react-event-props", noReactEventProps, {
-				valid: [],
-				invalid: [
-					{
-						code: `<video ${camel}={${handler}} />`,
-						output: `<video ${lower}={${handler}} />`,
-						errors: [
-							{
-								messageId: "noReactEventProp",
-								data: {react: camel, standard: lower},
-							},
-						],
-					},
-				],
+		]) {
+			it(`should detect and fix ${camel}`, () => {
+				ruleTester.run("no-react-event-props", noReactEventProps, {
+					valid: [],
+					invalid: [
+						{
+							code: `<video ${camel}={${handler}} />`,
+							output: `<video ${lower}={${handler}} />`,
+							errors: [
+								{
+									messageId: "noReactEventProp",
+									data: {react: camel, standard: lower},
+								},
+							],
+						},
+					],
+				});
 			});
-		});
+		}
 	});
 
 	it("should handle multiple event handlers in one component", () => {
