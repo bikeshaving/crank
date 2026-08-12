@@ -10,7 +10,7 @@
   "module": "./dist/crank.js",
   "types": "./dist/crank.d.ts",
   "devDependencies": {
-    "@b9g/libuild": "^0.2.16",
+    "@b9g/libuild": "^0.2.17",
     "@types/node": "^22.14.0",
     "@types/sinon": "^17.0.4",
     "@typescript-eslint/eslint-plugin": "^8.29.1",
@@ -40,7 +40,7 @@
     "publish": "libuild publish",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "test": "npm run test:core && npm run test:eslint && npm run test:crankdown",
-    "test:core": "libuild test \"test/*.tsx\" \"test/*.ts\" --platform chromium",
+    "test:core": "libuild test test/ --platform chromium",
     "test:crankdown": "cd packages/crankdown && npm run typecheck && bun test",
     "test:eslint": "cd packages/eslint-plugin-crank && bun test",
     "typecheck": "tsc --noEmit",
