@@ -179,6 +179,9 @@ jsx`
   <!-- boolean, string, interpolated string, expression, and spread props -->
   <input disabled type="text" class="a ${b} c" value=${val} ...${props} />
 
+  <!-- namespaced props and tags -->
+  <svg:circle attr:foo="bar" prop:value=${val} xlink:href="#icon" />
+
   <!-- conditional child -->
   ${show && jsx`<${Alert} message=${msg} />`}
 
@@ -200,7 +203,7 @@ Multiple root elements are supported — the template tag automatically wraps th
 
 Read these two files for complete API coverage and idiomatic patterns:
 1. [Component Specification](references/spec.bs) — complete API reference: all component types, lifecycle, context methods, reconciliation, async behavior, special props, JSX modes
-2. [Style Guide](references/12-crank-style-guide.md) — do/don't patterns: component structure, state updates, props, cleanup, refs, error handling
+2. [Style Guide](references/12-crank-style-guide.md) — do/don’t patterns: component structure, state updates, props, cleanup, refs, error handling
 
 ## Examples (consult as needed for the relevant task)
 - [Greeting](references/greeting.js) — Hello world: functional components, props, composition

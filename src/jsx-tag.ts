@@ -122,7 +122,7 @@ export interface ParseResult {
  * the end of a span.
  */
 const CHILDREN_RE =
-	/((?:\r|\n|\r\n)\s*)|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*([-_$\w]*))/g;
+	/((?:\r|\n|\r\n)\s*)|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*([-_$\w:]*))/g;
 
 /**
  * Matches props after element tags.
@@ -134,7 +134,7 @@ const CHILDREN_RE =
  * Group 5: prop value string
  */
 const PROPS_RE =
-	/\s*(?:(\/?\s*>)|(\.\.\.\s*)|(?:([-_$\w]+)\s*(=)?\s*(?:("(\\"|[\S\s])*?(?:"|$)|'(?:\\'|[\S\s])*?(?:'|$)))?))/g;
+	/\s*(?:(\/?\s*>)|(\.\.\.\s*)|(?:([-_$\w:]+)\s*(=)?\s*(?:("(\\"|[\S\s])*?(?:"|$)|'(?:\\'|[\S\s])*?(?:'|$)))?))/g;
 
 const CLOSING_BRACKET_RE = />/g;
 
@@ -143,6 +143,38 @@ const CLOSING_SINGLE_QUOTE_RE = /[^\\]?'/g;
 const CLOSING_DOUBLE_QUOTE_RE = /[^\\]?"/g;
 
 const CLOSING_COMMENT_RE = /-->/g;
+
+/**
+ * Validates a tag or prop name which may contain a single namespacing colon
+ * (e.g. `attr:foo`, `svg:circle`). Throws if the colon is leading, trailing,
+ * or repeated, since none of those forms are meaningful namespaced names.
+ */
+function validateName(
+	name: string,
+	kind: "tag" | "prop",
+	spans: ArrayLike<string>,
+	spanIndex: number,
+	charIndex: number,
+): void {
+	if (name.indexOf(":") === -1) {
+		return;
+	}
+
+	if (
+		name.startsWith(":") ||
+		name.endsWith(":") ||
+		name.indexOf(":") !== name.lastIndexOf(":")
+	) {
+		throw new SyntaxError(
+			formatSyntaxError(
+				`Invalid ${kind} name \`${name}\``,
+				spans,
+				spanIndex,
+				charIndex,
+			),
+		);
+	}
+}
 
 export function parse(spans: ArrayLike<string>): ParseResult {
 	let matcher = CHILDREN_RE;
@@ -201,6 +233,10 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 								matcher = CLOSING_COMMENT_RE;
 							}
 						} else if (tag) {
+							if (tagName) {
+								validateName(tagName, "tag", spans, s, match.index);
+							}
+
 							if (closingSlash) {
 								element.close = {
 									type: "tag",
@@ -322,6 +358,7 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 								);
 							}
 						} else if (name) {
+							validateName(name, "prop", spans, s, match.index);
 							let value: ParseValue | ParsePropString;
 							if (string == null) {
 								if (!equals) {
