@@ -326,6 +326,13 @@ const NeedsToYield = 1 << 15;
 const PropsAvailable = 1 << 16;
 const IsSchedulingRefresh = 1 << 17;
 
+/**
+ * A flag which indicates that refresh() was called while a run of the
+ * component was already in flight, meaning the in-flight run's yielded
+ * children are stale before they have committed.
+ */
+const IsSupersededByRefresh = 1 << 18;
+
 function getFlag(ret: Retainer<unknown>, flag: number): boolean {
 	return !!(ret.f & flag);
 }
@@ -2570,6 +2577,12 @@ export class Context<
 		const schedulePromises: Array<PromiseLike<unknown>> = [];
 		try {
 			setFlag(ctx.ret, IsRefreshing);
+			if (ctx.inflight) {
+				// This refresh supersedes the in-flight run: the component itself has
+				// declared that whatever that run yields is already stale.
+				setFlag(ctx.ret, IsSupersededByRefresh);
+			}
+
 			diff = enqueueComponent(ctx);
 			if (isPromiseLike(diff)) {
 				return diff
@@ -2921,6 +2934,9 @@ function runComponent<TNode, TResult>(
 	const ret = ctx.ret;
 	const initial = !ctx.iterator;
 	const tagName = getTagName(ret.el.tag);
+	// Each run starts unsuperseded; the flag describes the run in flight, and a
+	// rejected diff would otherwise leave it set for the next run.
+	setFlag(ctx.ret, IsSupersededByRefresh, false);
 	if (initial) {
 		setFlag(ctx.ret, IsExecuting);
 		clearEventListeners(ctx.ctx);
@@ -3067,8 +3083,13 @@ function runComponent<TNode, TResult>(
 				() => measureMark(tagName),
 				() => measureMark(tagName),
 			);
+			// The block chain below adopts this via a closure rather than deriving
+			// from diff, because in the superseded branch diff resolves with the
+			// enqueued run's diff, and the enqueued run only starts once the block
+			// settles — deriving the block from diff would deadlock.
+			let childDiff: Promise<undefined> | undefined;
 			const diff = iteration.then(
-				(iteration) => {
+				(iteration): Promise<undefined> | undefined => {
 					if (getFlag(ctx.ret, IsInForAwaitOfLoop)) {
 						// We have entered a for await...of loop, so we start pulling
 						pullComponent(ctx, iteration);
@@ -3091,12 +3112,33 @@ function runComponent<TNode, TResult>(
 						setFlag(ctx.ret, IsAsyncGen, false);
 						ctx.iterator = undefined;
 					}
-					return diffComponentChildren<TNode, TResult>(
+
+					if (getFlag(ctx.ret, IsSupersededByRefresh) && !iteration.done) {
+						// The component refreshed itself while this iteration was still
+						// pending, so the yielded children are stale before they have
+						// committed. Skip diffing them and resolve with the enqueued
+						// run's diff instead, so the parent's commit waits for the fresh
+						// children rather than racing them. The relative order of the
+						// two microtask chains depends on how many ticks the engine
+						// gives promise combinators (JavaScriptCore resolves .finally()
+						// two ticks faster than V8 as of Safari 26), so without this the
+						// stale children never appear on some engines and flash into the
+						// DOM on others.
+						//
+						// External updates deliberately do not take this branch: a
+						// re-render requested while a run is in flight coalesces into
+						// the enqueued run, but the in-flight run still commits its own
+						// children (see the "for...of enqueues" test).
+						setFlag(ctx.ret, IsSupersededByRefresh, false);
+						return ctx.enqueued ? ctx.enqueued[1] : undefined;
+					}
+
+					return (childDiff = diffComponentChildren<TNode, TResult>(
 						ctx,
 						// Children can be void so we eliminate that here
 						iteration.value as Children,
 						!iteration.done,
-					);
+					));
 				},
 				(err) => {
 					setFlag(ctx.ret, IsErrored);
@@ -3104,7 +3146,16 @@ function runComponent<TNode, TResult>(
 				},
 			);
 
-			return [diff.catch(NOOP), diff];
+			// This reaction is registered after diff's, so childDiff is assigned
+			// by the time it runs.
+			const block = iteration
+				.then(
+					() => childDiff,
+					() => undefined,
+				)
+				.catch(NOOP);
+
+			return [block, diff];
 		}
 	}
 }
