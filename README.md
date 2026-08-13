@@ -51,20 +51,19 @@ async function UserProfile({userId}) {
 await renderer.render(<UserProfile />, document.body);
 ```
 
-### Why Developers Choose Crank
+### Why Crank?
 
-- **Intuitive**: Uses `async`/`await` for loading states and generator functions for lifecycles. Updates are just execution and control flow makes sense
-- **Fast**: Comparable to React in benchmarks, lightweight with zero dependencies
-- **Flexible**: Write build-free vanilla JavaScript with template literals or write ergonomic JSX
-- **Transparent**: State lives in function scope. Explicit re-execution means no mysterious why did you render bugs.
-- **Future-proof**: Built on stable JavaScript features, not evolving framework abstractions
+Crank leans on the language instead of reinventing it. State is a local
+variable, held in a generator’s scope. Updates are re-execution: calling
+`refresh()` runs the loop again. A loading state is an `async` function,
+awaited. Setup is the code before the loop; cleanup is the code after it.
+There are no hooks, no dependency arrays, no compiler, and no rules about
+what you can call where — control flow is the lifecycle.
 
-### The "Just JavaScript" Promise, Delivered
-
-Other frameworks claim to be "just JavaScript" but ask you to think in terms of
-effects, dependencies, and framework-specific patterns. Crank actually delivers
-on that promise — your components are literally just functions that use standard
-JavaScript control flow.
+Because components are plain functions and generators, everything you already
+know about JavaScript applies. Closures hold state, modules share logic, and
+`try`/`finally` handles teardown. If you can read JavaScript, you can read a
+Crank component.
 
 ## Installation
 
