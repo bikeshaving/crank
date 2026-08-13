@@ -10,7 +10,7 @@
   "module": "./dist/crank.js",
   "types": "./dist/crank.d.ts",
   "devDependencies": {
-    "@b9g/libuild": "^0.2.18",
+    "@b9g/libuild": "^0.2.19",
     "@types/node": "^22.14.0",
     "@types/sinon": "^17.0.4",
     "@typescript-eslint/eslint-plugin": "^8.29.1",
