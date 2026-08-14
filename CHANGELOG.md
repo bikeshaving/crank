@@ -10,6 +10,11 @@
     deprecated `Context.value` getter.
 
 ### Bug Fixes
+- **The DOM renderer no longer relies on the `Node`/`Element` globals** (#381)
+  `nodeType` constants are inlined and the Portal root is duck-typed, so the
+  renderer works with custom DOM implementations (e.g. termdom) which don’t
+  install the browser globals.
+
 - **`createElement` no longer mutates the caller's props object** (#356)
   Children are spread into a fresh props object instead of being assigned onto
   the passed-in props, so reusing a props object across calls (e.g. a
