@@ -2287,7 +2287,54 @@ const provisionMaps = new WeakMap<ContextState, Map<unknown, unknown>>();
 
 const scheduleMap = new WeakMap<ContextState, Set<Function>>();
 
+const beforeMap = new WeakMap<ContextState, Set<Function>>();
+
+const interruptMap = new WeakMap<ContextState, Set<Function>>();
+
 const cleanupMap = new WeakMap<ContextState, Set<Function>>();
+
+// Called at the top of a re-render's commit, after the new children have been
+// diffed but before anything in this component's subtree touches the DOM. This
+// is the last moment the rendered output still reflects the previous render, so
+// callbacks read state which the commit is about to destroy — scroll offsets,
+// focus, selection, the value of an uncontrolled input.
+function before<TNode>(ctx: ContextState<TNode>): void {
+	const callbacks = beforeMap.get(ctx);
+	if (callbacks) {
+		beforeMap.delete(ctx);
+		const value = ctx.adapter.read(getValue(ctx.ret));
+		for (const callback of callbacks) {
+			callback(value);
+		}
+	}
+}
+
+// A component is "interrupted" when it is abandoned mid-execution, either
+// because a re-render superseded it or because it unmounted while still in
+// flight. Callbacks are disarmed once the component reaches its next checkpoint
+// (see checkpointComponent), so this only fires for work which never got there.
+function interrupt(ctx: ContextState): void {
+	const callbacks = interruptMap.get(ctx);
+	if (callbacks) {
+		interruptMap.delete(ctx);
+		for (const callback of callbacks) {
+			callback();
+		}
+	}
+}
+
+// Called whenever the runtime receives a value from a component — a yield, a
+// return, or a resolved async function component. Reaching a checkpoint means
+// the execution which registered any pending interrupt() callbacks completed,
+// so those callbacks are dropped rather than called.
+//
+// This deliberately happens here rather than at commit time: an async generator
+// resumes synchronously after a yield, while that yield's commit is deferred to
+// a microtask, so disarming at commit would wipe callbacks registered by the
+// execution which follows it.
+function checkpointComponent(ctx: ContextState): void {
+	interruptMap.delete(ctx);
+}
 
 // keys are roots
 const afterMapByRoot = new WeakMap<object, Map<ContextState, Set<Function>>>();
@@ -2570,6 +2617,9 @@ export class Context<
 		const schedulePromises: Array<PromiseLike<unknown>> = [];
 		try {
 			setFlag(ctx.ret, IsRefreshing);
+			// An explicit re-render supersedes the current render: if it never
+			// committed, it is interrupted.
+			interrupt(ctx);
 			diff = enqueueComponent(ctx);
 			if (isPromiseLike(diff)) {
 				return diff
@@ -2668,6 +2718,71 @@ export class Context<
 		if (!callbacks) {
 			callbacks = new Set<Function>();
 			scheduleMap.set(ctx, callbacks);
+		}
+
+		callbacks.add(callback);
+	}
+
+	/**
+	 * Registers a callback which fires immediately before a re-render mutates
+	 * the DOM, while the rendered output still reflects the previous render.
+	 * Useful for capturing state the commit is about to destroy — a scroll
+	 * offset, the focused element, a text selection, the value of an
+	 * uncontrolled input — so it can be restored in `schedule` or `after`.
+	 *
+	 * The callback receives the current (pre-mutation) rendered value. Keep the
+	 * snapshot in a local variable; there is no need to return it.
+	 *
+	 * Does not fire on the initial render, because there is nothing to capture
+	 * yet. Fires once per callback and update, so re-register it on each render.
+	 * It never itself triggers a re-render.
+	 *
+	 * Unlike `schedule`, `after` and `cleanup`, there is no promise-returning
+	 * form: the value is only accurate for the duration of the call. A promise
+	 * would resolve in a microtask, after the DOM has already been mutated, and
+	 * the value it carried would be a live node reflecting the new render.
+	 */
+	before(callback: (value: TResult) => unknown): void {
+		const ctx = this[_ContextState];
+		let callbacks = beforeMap.get(ctx);
+		if (!callbacks) {
+			callbacks = new Set<Function>();
+			beforeMap.set(ctx, callbacks);
+		}
+
+		callbacks.add(callback);
+	}
+
+	/**
+	 * Registers a callback which fires when the current render is *interrupted* —
+	 * abandoned before it commits, because a re-render superseded it or because
+	 * the component unmounted while it was still in flight. Useful for tearing
+	 * down work the abandoned render started, e.g. aborting a fetch via
+	 * `AbortController`.
+	 *
+	 * A render which commits never interrupts, so the callback is discarded
+	 * rather than fired. Code which should run for every render belongs inline
+	 * after the `yield` instead.
+	 *
+	 * The callback fires at most once per registration; re-register it on each
+	 * render (typically inside the `for await...of` loop). It never itself
+	 * triggers a re-render.
+	 *
+	 * Called with no argument, returns a promise that resolves if the render is
+	 * interrupted.
+	 */
+	interrupt(): Promise<void>;
+	interrupt(callback: () => unknown): void;
+	interrupt(callback?: () => unknown): Promise<void> | void {
+		if (!callback) {
+			return new Promise<void>((resolve) => this.interrupt(() => resolve()));
+		}
+
+		const ctx = this[_ContextState];
+		let callbacks = interruptMap.get(ctx);
+		if (!callbacks) {
+			callbacks = new Set<Function>();
+			interruptMap.set(ctx, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -2799,6 +2914,10 @@ function diffComponent<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				return diffComponent(adapter, root, host, parent, scope, ret);
 			});
 		}
+
+		// A mounted component is about to re-render (e.g. from a prop change or a
+		// parent re-render), superseding the current render.
+		interrupt(ctx);
 	} else {
 		ctx = ret.ctx = new ContextState(adapter, root, host, parent, scope, ret);
 	}
@@ -2955,8 +3074,10 @@ function runComponent<TNode, TResult>(
 			return [
 				returned1.catch(NOOP),
 				returned1.then(
-					(returned) =>
-						diffComponentChildren<TNode, TResult>(ctx, returned, false),
+					(returned) => {
+						checkpointComponent(ctx);
+						return diffComponentChildren<TNode, TResult>(ctx, returned, false);
+					},
 					(err) => {
 						setFlag(ctx.ret, IsErrored);
 						throw err;
@@ -3009,6 +3130,7 @@ function runComponent<TNode, TResult>(
 			throw new Error("Mixed generator component");
 		}
 
+		checkpointComponent(ctx);
 		if (
 			getFlag(ctx.ret, IsInForOfLoop) &&
 			!getFlag(ctx.ret, NeedsToYield) &&
@@ -3069,6 +3191,7 @@ function runComponent<TNode, TResult>(
 			);
 			const diff = iteration.then(
 				(iteration) => {
+					checkpointComponent(ctx);
 					if (getFlag(ctx.ret, IsInForAwaitOfLoop)) {
 						// We have entered a for await...of loop, so we start pulling
 						pullComponent(ctx, iteration);
@@ -3191,6 +3314,7 @@ async function pullComponent<TNode, TResult>(
 			let iteration: ChildrenIteratorResult;
 			try {
 				iteration = await iterationP;
+				checkpointComponent(ctx);
 			} catch (err) {
 				done = true;
 				setFlag(ctx.ret, IsErrored);
@@ -3367,6 +3491,18 @@ function commitComponent<TNode>(
 			propagateComponent(ctx);
 		});
 		return getValue(ctx.ret);
+	}
+
+	// A before() callback registered during a render fires as that render
+	// commits, reading the output of the one before it. The initial commit has no
+	// previous output, so its callbacks are discarded rather than fired —
+	// otherwise they would linger and fire against the second render. DidCommit
+	// is set at the end of this function, so it is still false the first time
+	// through.
+	if (getFlag(ctx.ret, DidCommit)) {
+		before(ctx);
+	} else {
+		beforeMap.delete(ctx);
 	}
 
 	const values = commitChildren(
@@ -3559,6 +3695,9 @@ async function unmountComponent(
 	if (getFlag(ctx.ret, IsUnmounted)) {
 		return;
 	}
+
+	// Unmounting abandons any render still in flight.
+	interrupt(ctx);
 
 	let cleanupPromises: Array<PromiseLike<unknown>> | undefined;
 	// TODO: think about errror handling for callbacks
