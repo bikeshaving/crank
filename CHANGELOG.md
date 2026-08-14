@@ -1,6 +1,11 @@
 # Changelog
 ## [0.7.11] - 2026-08-12
 ### Bug Fixes
+- **The DOM renderer no longer relies on the `Node`/`Element` globals** (#381)
+  `nodeType` constants are inlined and the Portal root is duck-typed, so the
+  renderer works with custom DOM implementations (e.g. termdom) which don’t
+  install the browser globals.
+
 - **A self-`refresh()` during an async generator's execution no longer flashes the superseded children into the DOM on newer Safari.**
   When an async generator component calls `refresh()` before its next `yield`
   has committed, the yielded children are stale: the refresh immediately
