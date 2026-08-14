@@ -117,10 +117,12 @@ test("foreignObject children are HTML without explicit xmlns", () => {
 test("foreignObject itself gets SVG prop normalization", () => {
 	renderer.render(
 		<svg viewBox="0 0 200 200">
-			{/* eslint-disable-next-line crank/no-react-svg-props */}
+			{/* eslint-disable crank/no-react-svg-props */}
+			{/* @ts-expect-error - React-compat camelCase SVG attrs (native: clip-path, color-interpolation) */}
 			<foreignObject clipPath="url(#clip)" colorInterpolation="sRGB">
 				<div>Hello</div>
 			</foreignObject>
+			{/* eslint-enable crank/no-react-svg-props */}
 		</svg>,
 		document.body,
 	);
@@ -203,6 +205,7 @@ test("non-string values", () => {
 test("custom attributes", () => {
 	renderer.render(
 		<svg xmlns="http://www.w3.org/2000/svg">
+			{/* @ts-expect-error - arbitrary attribute (Crank passes unknown attrs through at runtime) */}
 			<circle cx="25" cy="10" r="5" data-foo="abc" barBaz={true} />
 		</svg>,
 		document.body,
@@ -223,6 +226,7 @@ test("React-style camelCase SVG attributes", () => {
 	renderer.render(
 		<svg>
 			<path
+				// @ts-expect-error - React-compat camelCase SVG attrs (native: stroke-width, etc.)
 				strokeWidth="2"
 				strokeLinecap="round"
 				fillOpacity="0.5"
@@ -243,6 +247,7 @@ test("React-style camelCase SVG attributes", () => {
 test("React-style text SVG attributes", () => {
 	renderer.render(
 		<svg>
+			{/* @ts-expect-error - React-compat camelCase SVG attrs (native: text-anchor, dominant-baseline) */}
 			<text textAnchor="middle" dominantBaseline="central" />
 		</svg>,
 		document.body,
