@@ -12,12 +12,18 @@ import {REACT_SVG_PROPS} from "./_svg.js";
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const MATHML_NAMESPACE = "http://www.w3.org/1998/Math/MathML";
 
+// Node.ELEMENT_NODE and friends, inlined so this module works with DOM
+// implementations which do not install the Node/Element globals.
+const ELEMENT_NODE = 1;
+const TEXT_NODE = 3;
+const DOCUMENT_NODE = 9;
+
 function getRootDocument(root: Node | undefined): Document {
 	if (root && root.ownerDocument) {
 		return root.ownerDocument;
 	}
 
-	if (root && root.nodeType === Node.DOCUMENT_NODE) {
+	if (root && root.nodeType === DOCUMENT_NODE) {
 		return root as unknown as Document;
 	}
 
@@ -536,7 +542,10 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 	}): string | undefined {
 		switch (tag) {
 			case Portal: {
-				const ns = root instanceof Element ? root.namespaceURI : null;
+				const ns =
+					root && root.nodeType === ELEMENT_NODE
+						? (root as Element).namespaceURI
+						: null;
 				xmlns =
 					ns === SVG_NAMESPACE
 						? SVG_NAMESPACE
@@ -614,7 +623,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		if (
 			node == null ||
 			(typeof tag === "string" &&
-				(node.nodeType !== Node.ELEMENT_NODE ||
+				(node.nodeType !== ELEMENT_NODE ||
 					tag.toLowerCase() !== (node as Element).tagName.toLowerCase()))
 		) {
 			console.warn(`Expected <${tagName}> while hydrating but found: `, node);
@@ -646,7 +655,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		quietProps: Set<string> | undefined;
 		isHydrating: boolean;
 	}): void {
-		if (node.nodeType !== Node.ELEMENT_NODE) {
+		if (node.nodeType !== ELEMENT_NODE) {
 			throw new TypeError(`Cannot patch node: ${String(node)}`);
 		} else if (props.class && props.className) {
 			console.error(
@@ -761,7 +770,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		const doc = getRootDocument(root);
 		if (hydrationNodes != null) {
 			let node = hydrationNodes.shift();
-			if (!node || node.nodeType !== Node.TEXT_NODE) {
+			if (!node || node.nodeType !== TEXT_NODE) {
 				console.warn(`Expected "${value}" while hydrating but found:`, node);
 			} else {
 				// value is a text node, check if it matches the expected text
@@ -886,7 +895,7 @@ function validateRoot(root: unknown): asserts root is Element {
 		(typeof root === "object" && typeof (root as any).nodeType !== "number")
 	) {
 		throw new TypeError(`Render root is not a node. Received: ${String(root)}`);
-	} else if ((root as Node).nodeType !== Node.ELEMENT_NODE) {
+	} else if ((root as Node).nodeType !== ELEMENT_NODE) {
 		throw new TypeError(
 			`Render root must be an element node. Received: ${String(root)}`,
 		);
