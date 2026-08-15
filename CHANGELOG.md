@@ -1,5 +1,5 @@
 # Changelog
-## [0.7.11] - 2026-08-12
+## [0.7.11] - 2026-08-14
 ### Bug Fixes
 - **The DOM renderer no longer relies on the `Node`/`Element` globals** (#381)
   `nodeType` constants are inlined and the Portal root is duck-typed, so the
