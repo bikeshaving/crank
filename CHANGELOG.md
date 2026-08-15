@@ -1,37 +1,24 @@
 # Changelog
 ## [0.7.11] - 2026-08-14
 ### Bug Fixes
-- **The DOM renderer no longer relies on the `Node`/`Element` globals** (#381)
-  `nodeType` constants are inlined and the Portal root is duck-typed, so the
-  renderer works with custom DOM implementations (e.g. termdom) which don’t
-  install the browser globals.
+- **Stop reading the `Node`/`Element` globals in the DOM renderer** (#381)
+  `nodeType` constants are inlined, so custom DOM implementations (e.g.
+  termdom) which don’t install the browser globals now work.
 
-- **A self-`refresh()` during an async generator's execution no longer flashes the superseded children into the DOM on newer Safari.**
-  When an async generator component calls `refresh()` before its next `yield`
-  has committed, the yielded children are stale: the refresh immediately
-  resumes the generator, and only the fresh children should commit. Crank
-  relied on unspecified microtask ordering for this, and JavaScriptCore as of
-  Safari 26 resolves `.finally()` two ticks faster than V8, which flipped the
-  race: the stale children briefly committed and the render promise resolved
-  with them. The superseded children are now skipped explicitly, on every
-  engine. External re-renders are unaffected: an update requested while a
-  render is in flight still coalesces into the enqueued render, and the
-  in-flight render still commits its own children.
+- **Skip superseded children when `refresh()` is called mid-render** (#379)
+  Safari 26 resolves `.finally()` in fewer microtask ticks, which let an async
+  generator’s stale `yield` flash into the DOM when the component refreshed
+  before it committed. The stale children are now skipped explicitly, on every
+  engine. External re-renders still coalesce as before.
 
-- **`createElement` no longer mutates the caller's props object** (#356)
-  Children are spread into a fresh props object instead of being assigned onto
-  the passed-in props, so reusing a props object across calls (e.g. a
-  proxy-based hyperscript DSL) no longer causes circular references. The JSX
-  automatic runtime also only assigns `key` when it is present.
+- **Stop mutating the caller’s props object in `createElement`** (#356)
+  Reusing a props object across calls (e.g. a proxy-based hyperscript DSL) no
+  longer causes circular references.
 
-- **Fix `jsx` template dropping the break between adjacent text lines** (#359)
-  Whitespace between two text runs is now preserved verbatim, so multi-line
-  prose no longer loses the break at its line ends (`jsx\`<p>alpha⏎beta</p>\``
-  yields `alpha⏎beta`, not `alphabeta`). Unlike JSX, which collapses the run to a
-  single space, the template keeps the author’s whitespace (newlines, blank
-  lines, and the indentation between text): it renders as a space in normal flow
-  and as a real line break in a `<pre>`. Whitespace adjacent to an element, an
-  expression, or the template edge is still stripped as layout.
+- **Preserve line breaks between adjacent text lines in the `jsx` template** (#359)
+  Multi-line prose no longer loses the whitespace at its line ends
+  (`alpha⏎beta` no longer renders as `alphabeta`). Whitespace adjacent to
+  elements, expressions, or the template edge is still stripped as layout.
 
 ## [0.7.10] - 2026-08-12
 ### Bug Fixes
