@@ -1,6 +1,7 @@
-import {describe, test, expect} from "@b9g/libuild/test";
+import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import {createElement} from "../src/crank.js";
 import {jsx} from "../src/jsx-tag.js";
+import {renderer} from "../src/dom.js";
 
 describe("jsx", () => {
 	test("single elements", () => {
@@ -566,5 +567,92 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 		expect(() => {
 			jsx`<div a:b:c="1" />`;
 		}).toThrow("Invalid prop name `a:b:c`");
+	});
+});
+
+describe("jsx static caching", () => {
+	beforeEach(() => {
+		renderer.render(null, document.body);
+		document.body.innerHTML = "";
+	});
+
+	afterEach(() => {
+		renderer.render(null, document.body);
+		document.body.innerHTML = "";
+	});
+
+	test("static templates return the same element", () => {
+		const el1 = jsx`<div class="a"><span>hello</span></div>`;
+		const el2 = jsx`<div class="a"><span>hello</span></div>`;
+		expect(el1).toBe(el2);
+	});
+
+	test("static subtrees are shared between calls", () => {
+		const el1 = jsx`<div>${1}<span class="s">static</span></div>`;
+		const el2 = jsx`<div>${2}<span class="s">static</span></div>`;
+		expect(el1).not.toBe(el2);
+		expect((el1.props.children as any)[0]).toEqual(1);
+		expect((el2.props.children as any)[0]).toEqual(2);
+		expect((el1.props.children as any)[1]).toBe((el2.props.children as any)[1]);
+	});
+
+	test("dynamic props are not cached", () => {
+		const el1 = jsx`<div class=${"a"} />`;
+		const el2 = jsx`<div class=${"b"} />`;
+		expect(el1).not.toBe(el2);
+		expect(el1.props.class).toEqual("a");
+		expect(el2.props.class).toEqual("b");
+	});
+
+	test("interpolated prop strings are not cached", () => {
+		const el1 = jsx`<div class="a ${"b"}" />`;
+		const el2 = jsx`<div class="a ${"c"}" />`;
+		expect(el1).not.toBe(el2);
+		expect(el1.props.class).toEqual("a b");
+		expect(el2.props.class).toEqual("a c");
+	});
+
+	test("spread props are not cached", () => {
+		const el1 = jsx`<div ...${{class: "a"}} />`;
+		const el2 = jsx`<div ...${{class: "b"}} />`;
+		expect(el1).not.toBe(el2);
+		expect(el1.props.class).toEqual("a");
+		expect(el2.props.class).toEqual("b");
+	});
+
+	test("comment expressions do not prevent caching", () => {
+		const el1 = jsx`<div><!-- ${1} --></div>`;
+		const el2 = jsx`<div><!-- ${2} --></div>`;
+		expect(el1).toBe(el2);
+	});
+
+	test("static templates are skipped on re-render", () => {
+		renderer.render(jsx`<div class="a">hello</div>`, document.body);
+		const div = document.body.firstChild as HTMLElement;
+		expect(div.className).toEqual("a");
+		div.setAttribute("class", "changed");
+		renderer.render(jsx`<div class="a">hello</div>`, document.body);
+		expect(document.body.firstChild).toBe(div);
+		expect(div.getAttribute("class")).toEqual("changed");
+	});
+
+	test("different templates still patch", () => {
+		renderer.render(jsx`<div class="a">hello</div>`, document.body);
+		const div = document.body.firstChild as HTMLElement;
+		renderer.render(jsx`<div class="b">hello</div>`, document.body);
+		expect(document.body.firstChild).toBe(div);
+		expect(div.className).toEqual("b");
+	});
+
+	test("static subtrees render correctly inside dynamic templates", () => {
+		for (const i of [1, 2]) {
+			renderer.render(
+				jsx`<div><p>${i}</p><span class="s">static</span></div>`,
+				document.body,
+			);
+			expect(document.body.innerHTML).toEqual(
+				`<div><p>${i}</p><span class="s">static</span></div>`,
+			);
+		}
 	});
 });
