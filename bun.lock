@@ -5,7 +5,7 @@
     "": {
       "name": "@b9g/crank",
       "devDependencies": {
-        "@b9g/libuild": "^0.2.19",
+        "@b9g/libuild": "^0.2.20",
         "@types/node": "^22.14.0",
         "@types/sinon": "^17.0.4",
         "@typescript-eslint/eslint-plugin": "^8.29.1",
@@ -46,7 +46,7 @@
       "version": "0.1.3",
       "devDependencies": {
         "@b9g/crank": "file:../../",
-        "@b9g/libuild": "^0.2.19",
+        "@b9g/libuild": "^0.2.20",
         "marked": "^18.0.0",
         "typescript": "^5.9.3",
       },
@@ -66,7 +66,7 @@
       "name": "eslint-plugin-crank",
       "version": "0.2.2",
       "devDependencies": {
-        "@b9g/libuild": "^0.2.19",
+        "@b9g/libuild": "^0.2.20",
         "@eslint/js": "^9.37.0",
         "@tsconfig/recommended": "^1.0.10",
         "@types/node": "^20.0.0",
@@ -91,13 +91,15 @@
 
     "@astrojs/telemetry": ["@astrojs/telemetry@3.1.0", "", { "dependencies": { "ci-info": "^4.0.0", "debug": "^4.3.4", "dlv": "^1.1.3", "dset": "^3.1.3", "is-docker": "^3.0.0", "is-wsl": "^3.0.0", "which-pm-runs": "^1.1.0" } }, "sha512-/ca/+D8MIKEC8/A9cSaPUqQNZm+Es/ZinRv0ZAzvu2ios7POQSsVD+VOj7/hypWNsNM3T7RpfgNq7H2TU1KEHA=="],
 
+    "@b9g/async-context": ["@b9g/async-context@0.2.1", "", {}, "sha512-Pga+sVg8yVR1Z40BkeK/OWKNJeXlA2XhZWusx6g7dM956biRSTfdInS29Z3WIfvdXi8YsgSzTOiOhcQlD8U2pw=="],
+
     "@b9g/crank": ["@b9g/crank@root:", {}],
 
     "@b9g/crank-codemods": ["@b9g/crank-codemods@workspace:packages/crank-codemods"],
 
     "@b9g/crankdown": ["@b9g/crankdown@workspace:packages/crankdown"],
 
-    "@b9g/libuild": ["@b9g/libuild@0.2.19", "", { "dependencies": { "commander": "^15.0.0", "esbuild": "^0.28.1", "expect": "^30.4.1", "glob": "^13.0.6", "pretty-format": "^30.4.1" }, "peerDependencies": { "playwright": "^1.40.0", "typescript": "^5.0.0" }, "optionalPeers": ["playwright", "typescript"], "bin": { "libuild": "cli.js" } }, "sha512-pqBEIAO2yIRyIpxM87F3Q5Kmvo0OZq9YVjupZ4+BwiuBHIRF3xs8mJYVpNbjugoC3fy3l5croA2tsJlmN8vlWQ=="],
+    "@b9g/libuild": ["@b9g/libuild@0.2.20", "", { "dependencies": { "@b9g/async-context": "^0.2.1", "commander": "^15.0.0", "esbuild": "^0.28.1", "expect": "^30.4.1", "glob": "^13.0.6", "pretty-format": "^30.4.1" }, "peerDependencies": { "playwright": "^1.40.0", "typescript": "^5.0.0 || ^6.0.0" }, "optionalPeers": ["playwright", "typescript"], "bin": { "libuild": "cli.js" } }, "sha512-Q9PnAQFbZzzTHK6HYx9zYwQ0C75hZv+CHMMCXGlCyGOr7yk44fBiDiruWo2akHQx7gZKwRYGaR25dry94TvyiQ=="],
 
     "@babel/code-frame": ["@babel/code-frame@7.29.0", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.28.5", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw=="],
 
@@ -1447,7 +1449,7 @@
 
     "zwitch": ["zwitch@2.0.4", "", {}, "sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A=="],
 
-    "@b9g/crankdown/@b9g/crank": ["@b9g/crank@0.6.1", "", {}, "sha512-NE5uuOMYeNdRLLGSXeM5EpyUvaNjcZmPUEs34ahnXhmlogv9yV3ymoX/RQFf63jTOvTP/wzN+vvNEfkq4sS+2g=="],
+    "@b9g/crankdown/@b9g/crank": ["@b9g/crank@root:", {}],
 
     "@babel/helper-compilation-targets/lru-cache": ["lru-cache@5.1.1", "", { "dependencies": { "yallist": "^3.0.2" } }, "sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w=="],
 
