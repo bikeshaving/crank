@@ -3,6 +3,7 @@ import * as Assert from "uvu/assert";
 
 import {createElement} from "../src/crank.js";
 import {jsx} from "../src/jsx-tag.js";
+import {renderer} from "../src/dom.js";
 
 const test = suite("jsx");
 
@@ -637,4 +638,132 @@ test("invalid namespaced names", () => {
 	}, "Invalid prop name `a:b:c`");
 });
 
+const cachingTest = suite("jsx static caching");
+
+cachingTest.before.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
+
+cachingTest("static templates return the same element", () => {
+	const el1 = jsx`<div class="a"><span>hello</span></div>`;
+	const el2 = jsx`<div class="a"><span>hello</span></div>`;
+	Assert.is(el1, el2);
+});
+
+cachingTest("static subtrees are shared between calls", () => {
+	const el1 = jsx`<div>${1}<span class="s">static</span></div>`;
+	const el2 = jsx`<div>${2}<span class="s">static</span></div>`;
+	Assert.is.not(el1, el2);
+	Assert.equal((el1.props.children as any)[0], 1);
+	Assert.equal((el2.props.children as any)[0], 2);
+	Assert.is((el1.props.children as any)[1], (el2.props.children as any)[1]);
+});
+
+cachingTest("dynamic props are not cached", () => {
+	const el1 = jsx`<div class=${"a"} />`;
+	const el2 = jsx`<div class=${"b"} />`;
+	Assert.is.not(el1, el2);
+	Assert.equal(el1.props.class, "a");
+	Assert.equal(el2.props.class, "b");
+});
+
+cachingTest("interpolated prop strings are not cached", () => {
+	const el1 = jsx`<div class="a ${"b"}" />`;
+	const el2 = jsx`<div class="a ${"c"}" />`;
+	Assert.is.not(el1, el2);
+	Assert.equal(el1.props.class, "a b");
+	Assert.equal(el2.props.class, "a c");
+});
+
+cachingTest("spread props are not cached", () => {
+	const el1 = jsx`<div ...${{class: "a"}} />`;
+	const el2 = jsx`<div ...${{class: "b"}} />`;
+	Assert.is.not(el1, el2);
+	Assert.equal(el1.props.class, "a");
+	Assert.equal(el2.props.class, "b");
+});
+
+cachingTest("comment expressions do not prevent caching", () => {
+	const el1 = jsx`<div><!-- ${1} --></div>`;
+	const el2 = jsx`<div><!-- ${2} --></div>`;
+	Assert.is(el1, el2);
+});
+
+cachingTest("static templates are skipped on re-render", () => {
+	renderer.render(jsx`<div class="a">hello</div>`, document.body);
+	const div = document.body.firstChild as HTMLElement;
+	Assert.equal(div.className, "a");
+	div.setAttribute("class", "changed");
+	renderer.render(jsx`<div class="a">hello</div>`, document.body);
+	Assert.is(document.body.firstChild, div);
+	Assert.equal(div.getAttribute("class"), "changed");
+});
+
+cachingTest("different templates still patch", () => {
+	renderer.render(jsx`<div class="a">hello</div>`, document.body);
+	const div = document.body.firstChild as HTMLElement;
+	renderer.render(jsx`<div class="b">hello</div>`, document.body);
+	Assert.is(document.body.firstChild, div);
+	Assert.equal(div.className, "b");
+});
+
+cachingTest("static subtrees render correctly inside dynamic templates", () => {
+	for (const i of [1, 2]) {
+		renderer.render(
+			jsx`<div><p>${i}</p><span class="s">static</span></div>`,
+			document.body,
+		);
+		Assert.equal(
+			document.body.innerHTML,
+			`<div><p>${i}</p><span class="s">static</span></div>`,
+		);
+	}
+});
+
+cachingTest("the same cached element renders at multiple positions", () => {
+	const items = [1, 2, 3].map(() => jsx`<li class="s">item</li>`);
+	Assert.is(items[0], items[1]);
+	Assert.is(items[1], items[2]);
+	for (let i = 0; i < 2; i++) {
+		renderer.render(jsx`<ul>${items}</ul>`, document.body);
+		Assert.equal(
+			document.body.innerHTML,
+			`<ul><li class="s">item</li><li class="s">item</li><li class="s">item</li></ul>`,
+		);
+	}
+});
+
+cachingTest("cached elements can be unmounted and remounted", () => {
+	renderer.render(jsx`<div class="a">hello</div>`, document.body);
+	renderer.render(null, document.body);
+	Assert.equal(document.body.innerHTML, "");
+	renderer.render(jsx`<div class="a">hello</div>`, document.body);
+	Assert.equal(document.body.innerHTML, `<div class="a">hello</div>`);
+});
+
+cachingTest("cached elements render into multiple roots", () => {
+	const root1 = document.createElement("div");
+	const root2 = document.createElement("div");
+	document.body.appendChild(root1);
+	document.body.appendChild(root2);
+	try {
+		renderer.render(jsx`<p class="s">shared</p>`, root1);
+		renderer.render(jsx`<p class="s">shared</p>`, root2);
+		Assert.equal(root1.innerHTML, `<p class="s">shared</p>`);
+		Assert.equal(root2.innerHTML, `<p class="s">shared</p>`);
+		Assert.is.not(root1.firstChild, root2.firstChild);
+		renderer.render(jsx`<p class="s">shared</p>`, root1);
+		renderer.render(jsx`<p class="s">shared</p>`, root2);
+		Assert.equal(root1.innerHTML, `<p class="s">shared</p>`);
+		Assert.equal(root2.innerHTML, `<p class="s">shared</p>`);
+	} finally {
+		renderer.render(null, root1);
+		renderer.render(null, root2);
+		root1.remove();
+		root2.remove();
+	}
+});
+
 test.run();
+cachingTest.run();
