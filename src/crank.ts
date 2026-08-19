@@ -253,6 +253,24 @@ export function createElement<TTag extends Tag>(
 	return new Element(tag, props as TagProps<TTag>);
 }
 
+/**
+ * Brands elements produced by the same source, e.g. the same node of a jsx
+ * template tag. Retainers are only reused between elements with the same
+ * brand, so the previous occupant of a rendered position always comes from
+ * the same source. Elements created directly are unbranded.
+ */
+const BrandSymbol = Symbol.for("crank.ElementBrand");
+
+export function brandElement(el: Element, brand: unknown): void {
+	// Non-enumerable so brands stay invisible to deep equality, spreads and
+	// serialization.
+	Object.defineProperty(el, BrandSymbol, {value: brand, writable: true});
+}
+
+function getBrand(el: Element): unknown {
+	return (el as any)[BrandSymbol];
+}
+
 /** Clones a given element, shallowly copying the props object. */
 export function cloneElement<TTag extends Tag>(
 	el: Element<TTag>,
@@ -1127,7 +1145,11 @@ function diffChild<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		) {
 			childCopied = true;
 		} else {
-			if (ret && ret.el.tag === child.tag) {
+			if (
+				ret &&
+				ret.el.tag === child.tag &&
+				getBrand(ret.el) === getBrand(child)
+			) {
 				ret.el = child;
 				if (child.props.copy && typeof child.props.copy !== "string") {
 					childCopied = true;
@@ -1139,7 +1161,10 @@ function diffChild<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 					candidate;
 					predecessor = candidate, candidate = candidate.fallback
 				) {
-					if (candidate.el.tag === child.tag) {
+					if (
+						candidate.el.tag === child.tag &&
+						getBrand(candidate.el) === getBrand(child)
+					) {
 						const clone = cloneRetainer(candidate);
 						setFlag(clone, IsResurrecting);
 						predecessor.fallback = clone;
@@ -1344,7 +1369,11 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				// re-rendering.
 				childCopied = true;
 			} else {
-				if (ret && ret.el.tag === child.tag) {
+				if (
+					ret &&
+					ret.el.tag === child.tag &&
+					getBrand(ret.el) === getBrand(child)
+				) {
 					ret.el = child;
 					if (child.props.copy && typeof child.props.copy !== "string") {
 						childCopied = true;
@@ -1359,7 +1388,10 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 						candidate;
 						predecessor = candidate, candidate = candidate.fallback
 					) {
-						if (candidate.el.tag === child.tag) {
+						if (
+							candidate.el.tag === child.tag &&
+							getBrand(candidate.el) === getBrand(child)
+						) {
 							// If we find a retainer in the fallback chain with the same tag,
 							// we reuse it rather than creating a new retainer to preserve
 							// state. This behavior is useful for when a Suspense component
@@ -1929,7 +1961,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 		}
 
 		if (typeof ret.el.props.copy === "string") {
-			const copyMetaProp = new MetaProp("copy", ret.el.props.copy);
+			const copyMetaProp = getMetaProp("copy", ret.el.props.copy);
 			if (copyMetaProp.include) {
 				for (const propName of copyMetaProp.props) {
 					if (propName in oldProps) {
@@ -2083,6 +2115,18 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 	}
 
 	return node;
+}
+
+const metaPropCache = new Map<string, MetaProp>();
+function getMetaProp(propName: string, propValue: string): MetaProp {
+	const key = propName + " " + propValue;
+	let metaProp = metaPropCache.get(key);
+	if (metaProp == null) {
+		metaProp = new MetaProp(propName, propValue);
+		metaPropCache.set(key, metaProp);
+	}
+
+	return metaProp;
 }
 
 class MetaProp {

@@ -1,4 +1,4 @@
-import {createElement} from "./crank.js";
+import {brandElement, createElement} from "./crank.js";
 import type {Element} from "./crank.js";
 
 const cache = new Map<string, ParseResult>();
@@ -68,6 +68,14 @@ export interface ParseElement {
 // call, which lets renderers skip them by identity on re-renders.
 const staticElements = new WeakSet<ParseElement>();
 const builtElements = new WeakMap<ParseElement, Element>();
+
+// For host elements with a mix of static and dynamic parts, the value of an
+// auto-injected copy prop naming the static parts. This is sound because
+// every built element is branded with its parse tree node, and renderers only
+// reuse retainers between elements with the same brand.
+const copyLists = new WeakMap<ParseElement, string>();
+
+const SPECIAL_PROPS = new Set(["key", "ref", "copy", "hydrate", "children"]);
 
 export interface ParseValue {
 	type: "value";
@@ -620,38 +628,71 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 function markStatic(el: ParseElement, targets: Set<object>): boolean {
 	let isStatic =
 		!targets.has(el.open) && (el.close === null || !targets.has(el.close));
+	let hasSpread = false;
+	let hasCopy = false;
+	const staticProps: Array<string> = [];
 	for (let i = 0; i < el.props.length; i++) {
 		const prop = el.props[i];
 		if (prop.type === "value") {
 			// spread prop
 			isStatic = false;
-		} else if (targets.has(prop) || targets.has(prop.value)) {
-			isStatic = false;
-		} else if (prop.value.type === "propString") {
+			hasSpread = true;
+			continue;
+		}
+
+		let propIsStatic = !targets.has(prop) && !targets.has(prop.value);
+		if (prop.value.type === "propString") {
 			for (let j = 0; j < prop.value.parts.length; j++) {
 				const part = prop.value.parts[j];
 				if (typeof part === "object" && targets.has(part)) {
-					isStatic = false;
+					propIsStatic = false;
 				}
 			}
+		}
+
+		if (!propIsStatic) {
+			isStatic = false;
+		}
+
+		if (prop.name === "copy") {
+			hasCopy = true;
+		} else if (propIsStatic && !SPECIAL_PROPS.has(prop.name)) {
+			staticProps.push(prop.name);
 		}
 	}
 
 	// Children are always visited so nested static subtrees are marked even
 	// when an ancestor is dynamic.
+	let childrenAreStatic = true;
 	for (let i = 0; i < el.children.length; i++) {
 		const child = el.children[i];
 		if (child.type === "element") {
 			if (!markStatic(child, targets)) {
 				isStatic = false;
+				childrenAreStatic = false;
 			}
 		} else if (targets.has(child)) {
 			isStatic = false;
+			childrenAreStatic = false;
 		}
 	}
 
 	if (isStatic) {
 		staticElements.add(el);
+	} else if (
+		typeof el.open.value === "string" &&
+		el.open.value !== "" &&
+		!targets.has(el.open) &&
+		!hasSpread &&
+		!hasCopy
+	) {
+		if (childrenAreStatic && el.children.length) {
+			staticProps.push("children");
+		}
+
+		if (staticProps.length && (globalThis as any).__NO_COPY__ !== true) {
+			copyLists.set(el, staticProps.join(" "));
+		}
 	}
 
 	return isStatic;
@@ -754,7 +795,14 @@ function build(parsed: ParseElement, spans?: ArrayLike<string>): Element {
 		}
 	}
 
+	const copyList = copyLists.get(parsed);
+	if (copyList) {
+		props = props || {};
+		props.copy = copyList;
+	}
+
 	const el = createElement(parsed.open.value, props, ...children);
+	brandElement(el, parsed);
 	if (staticElements.has(parsed)) {
 		builtElements.set(parsed, el);
 	}

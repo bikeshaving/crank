@@ -232,7 +232,7 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 	`).toEqual(
 			createElement(
 				"div",
-				{class: "greeting", style: {color: "red"}},
+				{class: "greeting", style: {color: "red"}, copy: "children"},
 				"Hello world",
 			),
 		);
@@ -288,7 +288,7 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 	`).toEqual(
 			createElement(
 				"$a",
-				{$b$: true, _c: true},
+				{$b$: true, _c: true, copy: "$b$ _c"},
 				...[
 					createElement("-custom-element", {"-prop": "foo", "_-_": "bar"}),
 					createElement("__", {key: 1}),
@@ -453,7 +453,11 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 
 		const url = "/blog/post";
 		const result5 = jsx`<a href=${url}>Read more…</a>`;
-		const expected5 = createElement("a", {href: url}, "Read more…");
+		const expected5 = createElement(
+			"a",
+			{href: url, copy: "children"},
+			"Read more…",
+		);
 		expect(result5).toEqual(expected5);
 
 		// Test complex nested template like BlogContent component
@@ -636,12 +640,99 @@ describe("jsx static caching", () => {
 		expect(div.getAttribute("class")).toEqual("changed");
 	});
 
-	test("different templates still patch", () => {
+	test("switching templates remounts", () => {
 		renderer.render(jsx`<div class="a">hello</div>`, document.body);
 		const div = document.body.firstChild as HTMLElement;
 		renderer.render(jsx`<div class="b">hello</div>`, document.body);
+		expect(document.body.firstChild).not.toBe(div);
+		expect(document.body.innerHTML).toEqual(`<div class="b">hello</div>`);
+	});
+
+	test("static props are injected as a copy prop", () => {
+		const el = jsx`<div class="static" data-i=${1}>text ${2}</div>`;
+		expect(el.props.copy).toEqual("class");
+	});
+
+	test("static children are injected as a copy prop", () => {
+		const el = jsx`<div class=${"dynamic"}><span>static</span></div>`;
+		expect(el.props.copy).toEqual("children");
+	});
+
+	test("static props are skipped on re-render", () => {
+		renderer.render(
+			jsx`<div class="static" data-i=${1}>x</div>`,
+			document.body,
+		);
+		const div = document.body.firstChild as HTMLElement;
+		expect(div.className).toEqual("static");
+		div.setAttribute("class", "changed");
+		renderer.render(
+			jsx`<div class="static" data-i=${2}>x</div>`,
+			document.body,
+		);
+		expect(document.body.firstChild).toBe(div);
+		expect(div.getAttribute("data-i")).toEqual("2");
+		expect(div.getAttribute("class")).toEqual("changed");
+	});
+
+	test("static children are skipped while props patch", () => {
+		renderer.render(
+			jsx`<div class=${"a"}><span>static</span></div>`,
+			document.body,
+		);
+		const div = document.body.firstChild as HTMLElement;
+		const span = div.firstChild;
+		renderer.render(
+			jsx`<div class=${"b"}><span>static</span></div>`,
+			document.body,
+		);
 		expect(document.body.firstChild).toBe(div);
 		expect(div.className).toEqual("b");
+		expect(div.firstChild).toBe(span);
+	});
+
+	test("user copy props are not overridden", () => {
+		const el = jsx`<div copy="class" class="a" id=${"x"} />`;
+		expect(el.props.copy).toEqual("class");
+	});
+
+	test("components keep state within the same template", () => {
+		function* Counter() {
+			let i = 0;
+			while (true) {
+				i++;
+				yield jsx`<span>${i}</span>`;
+			}
+		}
+
+		const ctxs: Array<any> = [];
+		function* Wrapper(this: any) {
+			ctxs.push(this);
+			while (true) {
+				yield jsx`<div><${Counter} /></div>`;
+			}
+		}
+
+		renderer.render(jsx`<${Wrapper} />`, document.body);
+		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
+		ctxs[0].refresh();
+		expect(document.body.innerHTML).toEqual("<div><span>2</span></div>");
+	});
+
+	test("switching templates remounts components", () => {
+		function* Counter() {
+			let i = 0;
+			while (true) {
+				i++;
+				yield jsx`<span>${i}</span>`;
+			}
+		}
+
+		renderer.render(jsx`<div><${Counter} /></div>`, document.body);
+		renderer.render(jsx`<div><${Counter} /></div>`, document.body);
+		expect(document.body.innerHTML).toEqual("<div><span>2</span></div>");
+		renderer.render(jsx`<div id="b"><${Counter} /></div>`, document.body);
+		expect(document.body.innerHTML).toEqual('<div id="b"><span>1</span></div>');
 	});
 
 	test("static subtrees render correctly inside dynamic templates", () => {
