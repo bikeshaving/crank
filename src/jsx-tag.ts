@@ -63,6 +63,12 @@ export interface ParseElement {
 	children: Array<ParseElement | ParseValue>;
 }
 
+// Subtrees which contain no expressions, as marked by parse(). build() creates
+// each static subtree once and returns the same element instance on every
+// call, which lets renderers skip them by identity on re-renders.
+const staticElements = new WeakSet<ParseElement>();
+const builtElements = new WeakMap<ParseElement, Element>();
+
 export interface ParseValue {
 	type: "value";
 	value: any;
@@ -599,10 +605,64 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 		element = element.children[0];
 	}
 
+	const targetSet = new Set<object>();
+	for (let i = 0; i < targets.length; i++) {
+		const target = targets[i];
+		if (target) {
+			targetSet.add(target);
+		}
+	}
+
+	markStatic(element, targetSet);
 	return {element, targets, spans};
 }
 
+function markStatic(el: ParseElement, targets: Set<object>): boolean {
+	let isStatic =
+		!targets.has(el.open) && (el.close === null || !targets.has(el.close));
+	for (let i = 0; i < el.props.length; i++) {
+		const prop = el.props[i];
+		if (prop.type === "value") {
+			// spread prop
+			isStatic = false;
+		} else if (targets.has(prop) || targets.has(prop.value)) {
+			isStatic = false;
+		} else if (prop.value.type === "propString") {
+			for (let j = 0; j < prop.value.parts.length; j++) {
+				const part = prop.value.parts[j];
+				if (typeof part === "object" && targets.has(part)) {
+					isStatic = false;
+				}
+			}
+		}
+	}
+
+	// Children are always visited so nested static subtrees are marked even
+	// when an ancestor is dynamic.
+	for (let i = 0; i < el.children.length; i++) {
+		const child = el.children[i];
+		if (child.type === "element") {
+			if (!markStatic(child, targets)) {
+				isStatic = false;
+			}
+		} else if (targets.has(child)) {
+			isStatic = false;
+		}
+	}
+
+	if (isStatic) {
+		staticElements.add(el);
+	}
+
+	return isStatic;
+}
+
 function build(parsed: ParseElement, spans?: ArrayLike<string>): Element {
+	const built = builtElements.get(parsed);
+	if (built) {
+		return built;
+	}
+
 	if (
 		parsed.close !== null &&
 		parsed.close.slash !== "//" &&
@@ -694,7 +754,12 @@ function build(parsed: ParseElement, spans?: ArrayLike<string>): Element {
 		}
 	}
 
-	return createElement(parsed.open.value, props, ...children);
+	const el = createElement(parsed.open.value, props, ...children);
+	if (staticElements.has(parsed)) {
+		builtElements.set(parsed, el);
+	}
+
+	return el;
 }
 
 function formatTagForError(tag: unknown): string {
