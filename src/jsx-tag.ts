@@ -61,12 +61,13 @@ export interface ParseElement {
 	// ParseValue is used to represent spread props.
 	props: Array<ParseProp | ParseValue>;
 	children: Array<ParseElement | ParseValue>;
-	// Set in parse() when the subtree contains no expressions. build() returns
-	// the same element instance for static subtrees, which lets renderers skip
-	// them by identity on re-renders.
-	static?: boolean;
-	built?: Element;
 }
+
+// Subtrees which contain no expressions, as marked by parse(). build() creates
+// each static subtree once and returns the same element instance on every
+// call, which lets renderers skip them by identity on re-renders.
+const staticElements = new WeakSet<ParseElement>();
+const builtElements = new WeakMap<ParseElement, Element>();
 
 export interface ParseValue {
 	type: "value";
@@ -649,13 +650,17 @@ function markStatic(el: ParseElement, targets: Set<object>): boolean {
 		}
 	}
 
-	el.static = isStatic;
+	if (isStatic) {
+		staticElements.add(el);
+	}
+
 	return isStatic;
 }
 
 function build(parsed: ParseElement, spans?: ArrayLike<string>): Element {
-	if (parsed.static && parsed.built) {
-		return parsed.built;
+	const built = builtElements.get(parsed);
+	if (built) {
+		return built;
 	}
 
 	if (
@@ -750,8 +755,8 @@ function build(parsed: ParseElement, spans?: ArrayLike<string>): Element {
 	}
 
 	const el = createElement(parsed.open.value, props, ...children);
-	if (parsed.static) {
-		parsed.built = el;
+	if (staticElements.has(parsed)) {
+		builtElements.set(parsed, el);
 	}
 
 	return el;
