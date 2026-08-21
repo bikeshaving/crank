@@ -630,6 +630,7 @@ function markStatic(el: ParseElement, targets: Set<object>): boolean {
 		!targets.has(el.open) && (el.close === null || !targets.has(el.close));
 	let hasSpread = false;
 	let hasCopy = false;
+	let hasDynamicProps = false;
 	const staticProps: Array<string> = [];
 	for (let i = 0; i < el.props.length; i++) {
 		const prop = el.props[i];
@@ -652,6 +653,9 @@ function markStatic(el: ParseElement, targets: Set<object>): boolean {
 
 		if (!propIsStatic) {
 			isStatic = false;
+			if (!SPECIAL_PROPS.has(prop.name)) {
+				hasDynamicProps = true;
+			}
 		}
 
 		if (prop.name === "copy") {
@@ -686,12 +690,18 @@ function markStatic(el: ParseElement, targets: Set<object>): boolean {
 		!hasSpread &&
 		!hasCopy
 	) {
-		if (childrenAreStatic && el.children.length) {
-			staticProps.push("children");
-		}
+		if (!hasDynamicProps && staticProps.length && !childrenAreStatic) {
+			// The common case of a host element whose props are all static but
+			// whose children are dynamic.
+			copyLists.set(el, "!children");
+		} else {
+			if (childrenAreStatic && el.children.length) {
+				staticProps.push("children");
+			}
 
-		if (staticProps.length && (globalThis as any).__NO_COPY__ !== true) {
-			copyLists.set(el, staticProps.join(" "));
+			if (staticProps.length) {
+				copyLists.set(el, staticProps.join(" "));
+			}
 		}
 	}
 

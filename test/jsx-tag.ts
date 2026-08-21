@@ -288,7 +288,7 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 	`).toEqual(
 			createElement(
 				"$a",
-				{$b$: true, _c: true, copy: "$b$ _c"},
+				{$b$: true, _c: true, copy: "!children"},
 				...[
 					createElement("-custom-element", {"-prop": "foo", "_-_": "bar"}),
 					createElement("__", {key: 1}),
@@ -745,5 +745,32 @@ describe("jsx static caching", () => {
 				`<div><p>${i}</p><span class="s">static</span></div>`,
 			);
 		}
+	});
+});
+
+describe("jsx copy shortcuts", () => {
+	beforeEach(() => {
+		renderer.render(null, document.body);
+		document.body.innerHTML = "";
+	});
+
+	afterEach(() => {
+		renderer.render(null, document.body);
+		document.body.innerHTML = "";
+	});
+
+	test("all-static props with dynamic children emit !children", () => {
+		const el = jsx`<div class="a" title="t">${1}</div>`;
+		expect(el.props.copy).toEqual("!children");
+	});
+
+	test("!children skips props while children patch", () => {
+		renderer.render(jsx`<div class="a" title="t">${1}</div>`, document.body);
+		const div = document.body.firstChild as HTMLElement;
+		div.setAttribute("class", "changed");
+		renderer.render(jsx`<div class="a" title="t">${2}</div>`, document.body);
+		expect(document.body.firstChild).toBe(div);
+		expect(div.textContent).toEqual("2");
+		expect(div.getAttribute("class")).toEqual("changed");
 	});
 });

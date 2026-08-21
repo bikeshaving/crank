@@ -1961,24 +1961,38 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 		}
 
 		if (typeof ret.el.props.copy === "string") {
-			const copyMetaProp = getMetaProp("copy", ret.el.props.copy);
-			if (copyMetaProp.include) {
-				for (const propName of copyMetaProp.props) {
-					if (propName in oldProps) {
-						props[propName] = oldProps[propName];
-						(copyProps = copyProps || new Set()).add(propName);
-					}
+			const copyValue = ret.el.props.copy;
+			// Shortcuts for the two most common copy strings, so they skip
+			// MetaProp parsing entirely.
+			if (copyValue === "children") {
+				copyChildren = true;
+			} else if (copyValue === "!children") {
+				// Children are already stripped from oldProps, so this copies
+				// every prop.
+				for (const propName in oldProps) {
+					props[propName] = oldProps[propName];
+					(copyProps = copyProps || new Set()).add(propName);
 				}
 			} else {
-				for (const propName in oldProps) {
-					if (!copyMetaProp.props.has(propName)) {
-						props[propName] = oldProps[propName];
-						(copyProps = copyProps || new Set()).add(propName);
+				const copyMetaProp = getMetaProp("copy", copyValue);
+				if (copyMetaProp.include) {
+					for (const propName of copyMetaProp.props) {
+						if (propName in oldProps) {
+							props[propName] = oldProps[propName];
+							(copyProps = copyProps || new Set()).add(propName);
+						}
+					}
+				} else {
+					for (const propName in oldProps) {
+						if (!copyMetaProp.props.has(propName)) {
+							props[propName] = oldProps[propName];
+							(copyProps = copyProps || new Set()).add(propName);
+						}
 					}
 				}
-			}
 
-			copyChildren = copyMetaProp.includes("children");
+				copyChildren = copyMetaProp.includes("children");
+			}
 		}
 	}
 
