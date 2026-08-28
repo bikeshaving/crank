@@ -3,6 +3,7 @@ import type {Context} from "@b9g/crank/standalone";
 import serializeJavascript from "serialize-javascript";
 
 let nextID = 0;
+
 export function* SerializeScript(
 	this: Context,
 	{name, value, ...scriptProps}: any,

@@ -94,7 +94,7 @@ function canFit(piece: Piece, field: Field): boolean {
   return true;
 }
 
-function squaresOf(piece: Piece): [x: number, y: number][] {
+function squaresOf(piece: Piece): Array<[x: number, y: number]> {
   const squares = [];
   for (let r = 0; r < piece.tet.length; r++) {
     const row = piece.tet[r];

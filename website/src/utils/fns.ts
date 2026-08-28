@@ -1,6 +1,6 @@
 export function debounce(fn: Function, wait: number, immediate?: boolean) {
 	let timeout: any = null;
-	return function (this: unknown, ...args: Array<unknown>) {
+	return function (this: unknown, ...args: unknown[]) {
 		const later = () => {
 			timeout = null;
 			if (!immediate) {

@@ -3,13 +3,14 @@
 // Can't import from "xstate":
 // https://github.com/statelyai/xstate/pull/2318#issuecomment-864795216
 import {Machine, assign} from "xstate@4/dist/xstate.web.js";
-import {Context, createElement} from "@b9g/crank";
+import type {Context} from "@b9g/crank";
+import {createElement} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 
 const not =
   (fn) =>
-  (...args) =>
-    !fn.apply(null, args);
+    (...args) =>
+      !fn.apply(null, args);
 const isZero = (context, event) => event.key === 0;
 const isNotZero = not(isZero);
 const isMinus = (context, event) => event.operator === "-";
@@ -406,13 +407,27 @@ function isOperator(label: string): boolean {
 }
 
 function buttonDescription(label: string): string {
-  if (Number.isInteger(+label)) return `NUMBER ${label}`;
-  if (isOperator(label)) return `OPERATOR ${label}`;
-  if (label === "C") return "CLEAR_EVERYTHING";
-  if (label === "CE") return "CLEAR_ENTRY";
-  if (label === ".") return "DECIMAL_POINT";
-  if (label === "%") return "PERCENTAGE";
-  if (label === "=") return "EQUALS";
+  if (Number.isInteger(+label)) {
+    return `NUMBER ${label}`;
+  }
+  if (isOperator(label)) {
+    return `OPERATOR ${label}`;
+  }
+  if (label === "C") {
+    return "CLEAR_EVERYTHING";
+  }
+  if (label === "CE") {
+    return "CLEAR_ENTRY";
+  }
+  if (label === ".") {
+    return "DECIMAL_POINT";
+  }
+  if (label === "%") {
+    return "PERCENTAGE";
+  }
+  if (label === "=") {
+    return "EQUALS";
+  }
   return "";
 }
 

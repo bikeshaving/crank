@@ -9,11 +9,11 @@ export function Sidebar({
 	title,
 	url,
 }: {
-	docs: Array<DocInfo>;
+	docs: DocInfo[];
 	url: string;
 	title: string;
 }) {
-	const links: Array<Element> = [];
+	const links: Element[] = [];
 	for (const doc of docs) {
 		if (doc.attributes.publish) {
 			links.push(jsx`

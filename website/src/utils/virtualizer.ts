@@ -1,10 +1,9 @@
+import type {PartialKeys, VirtualizerOptions} from "@tanstack/virtual-core";
 import {
 	elementScroll,
 	observeElementRect,
 	observeElementOffset,
-	PartialKeys,
 	Virtualizer,
-	VirtualizerOptions,
 } from "@tanstack/virtual-core";
 export * from "@tanstack/virtual-core";
 import type {Context} from "@b9g/crank";

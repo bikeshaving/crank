@@ -181,6 +181,7 @@ describe("hydration", () => {
 		const button2 = div.childNodes[1] as HTMLButtonElement;
 		const onclick1 = Sinon.fake();
 		const onclick2 = Sinon.fake();
+
 		async function Component() {
 			await new Promise((resolve) => setTimeout(resolve, 5));
 			return (
@@ -218,6 +219,7 @@ describe("hydration", () => {
 		const button2 = div.childNodes[1] as HTMLButtonElement;
 		const onclick1 = Sinon.fake();
 		const onclick2 = Sinon.fake();
+
 		async function Slow() {
 			await new Promise((resolve) => setTimeout(resolve, 5));
 			return <button onclick={onclick1}>Slow</button>;
@@ -477,7 +479,7 @@ describe("hydration", () => {
 	});
 
 	test("warns when attribute present but should be missing during hydration", () => {
-		container.innerHTML = `<div foo="bar"></div>`;
+		container.innerHTML = "<div foo=\"bar\"></div>";
 		renderer.hydrate(<div foo={null} />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(
@@ -486,21 +488,21 @@ describe("hydration", () => {
 	});
 
 	test("warns when attribute missing but should be present during hydration", () => {
-		container.innerHTML = `<div></div>`;
+		container.innerHTML = "<div></div>";
 		renderer.hydrate(<div foo={true} />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(/Expected "foo" to be ""/);
 	});
 
 	test("warns when attribute value mismatches during hydration", () => {
-		container.innerHTML = `<div foo="baz"></div>`;
+		container.innerHTML = "<div foo=\"baz\"></div>";
 		renderer.hydrate(<div foo="bar" />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(/Expected "foo" to be "bar"/);
 	});
 
 	test("warns when style present but should be missing during hydration", () => {
-		container.innerHTML = `<div style="color: red"></div>`;
+		container.innerHTML = "<div style=\"color: red\"></div>";
 		renderer.hydrate(<div style={null} />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(
@@ -509,14 +511,14 @@ describe("hydration", () => {
 	});
 
 	test.skip("warns when style should be empty string during hydration", () => {
-		container.innerHTML = `<div style="color: red"></div>`;
+		container.innerHTML = "<div style=\"color: red\"></div>";
 		renderer.hydrate(<div style="" />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(/Expected "style" to be ""/);
 	});
 
 	test.skip("warns when style value mismatches during hydration", () => {
-		container.innerHTML = `<div style="color: red"></div>`;
+		container.innerHTML = "<div style=\"color: red\"></div>";
 		renderer.hydrate(<div style="color: blue" />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(
@@ -525,7 +527,7 @@ describe("hydration", () => {
 	});
 
 	test("warns when class present but should be missing during hydration", () => {
-		container.innerHTML = `<div class="foo"></div>`;
+		container.innerHTML = "<div class=\"foo\"></div>";
 		renderer.hydrate(<div class={null} />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(
@@ -534,14 +536,14 @@ describe("hydration", () => {
 	});
 
 	test("warns when class should be empty string during hydration", () => {
-		container.innerHTML = `<div class="foo"></div>`;
+		container.innerHTML = "<div class=\"foo\"></div>";
 		renderer.hydrate(<div class="" />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(/Expected "class" to be ""/);
 	});
 
 	test("warns when class value mismatches during hydration", () => {
-		container.innerHTML = `<div class="foo"></div>`;
+		container.innerHTML = "<div class=\"foo\"></div>";
 		renderer.hydrate(<div class="bar" />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(
@@ -550,7 +552,7 @@ describe("hydration", () => {
 	});
 
 	test("warns when innerHTML mismatches during hydration", () => {
-		container.innerHTML = `<div>baz</div>`;
+		container.innerHTML = "<div>baz</div>";
 		renderer.hydrate(<div innerHTML="bar" />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(
@@ -559,7 +561,7 @@ describe("hydration", () => {
 	});
 
 	test("warns when style property present but should be missing during hydration", () => {
-		container.innerHTML = `<div style="color: red"></div>`;
+		container.innerHTML = "<div style=\"color: red\"></div>";
 		renderer.hydrate(<div style={{color: null}} />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(
@@ -568,7 +570,7 @@ describe("hydration", () => {
 	});
 
 	test("warns when id mismatches during hydration", () => {
-		container.innerHTML = `<div id="server"></div>`;
+		container.innerHTML = "<div id=\"server\"></div>";
 		renderer.hydrate(<div id="client" />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(
@@ -577,7 +579,7 @@ describe("hydration", () => {
 	});
 
 	test("warns when input type and value mismatches during hydration", () => {
-		container.innerHTML = `<input type="email" value="server">`;
+		container.innerHTML = "<input type=\"email\" value=\"server\">";
 		renderer.hydrate(<input type="text" value="client" />, container);
 		expect(consoleWarn.callCount).toBe(2);
 		expect(consoleWarn.firstCall.args[0]).toMatch(
@@ -589,7 +591,7 @@ describe("hydration", () => {
 	});
 
 	test.skip("warns when style property value mismatches during hydration", () => {
-		container.innerHTML = `<div style="color: red"></div>`;
+		container.innerHTML = "<div style=\"color: red\"></div>";
 		renderer.hydrate(<div style={{color: "blue"}} />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(
@@ -598,7 +600,7 @@ describe("hydration", () => {
 	});
 
 	test("hydrate={true} can be used to continue hydration", () => {
-		container.innerHTML = `<button>Click</button>Hello`;
+		container.innerHTML = "<button>Click</button>Hello";
 		const button = container.firstChild as HTMLButtonElement;
 		renderer.hydrate(
 			<Fragment>
@@ -607,12 +609,12 @@ describe("hydration", () => {
 			</Fragment>,
 			container,
 		);
-		expect(container.innerHTML).toBe(`<button>Click</button>Hello`);
+		expect(container.innerHTML).toBe("<button>Click</button>Hello");
 		expect(container.firstChild).toBe(button);
 	});
 
 	test("hydrate={false} can be used to disable hydration", () => {
-		container.innerHTML = `Before <button id="server">Server</button>After`;
+		container.innerHTML = "Before <button id=\"server\">Server</button>After";
 		const button = container.firstChild as HTMLButtonElement;
 		renderer.hydrate(
 			<Fragment>
@@ -625,14 +627,14 @@ describe("hydration", () => {
 			container,
 		);
 		expect(container.innerHTML).toBe(
-			`Before <button id="client">Client</button>After`,
+			"Before <button id=\"client\">Client</button>After",
 		);
 		expect(button === document.getElementById("client")).toBeFalsy();
 		expect(consoleWarn.callCount).toBe(0);
 	});
 
 	test("portals are not hydrated by default", () => {
-		container.innerHTML = `<div id="app">Before After</div><div id="portal"><button>Server</button></div>`;
+		container.innerHTML = "<div id=\"app\">Before After</div><div id=\"portal\"><button>Server</button></div>";
 		const app = document.getElementById("app")!;
 		const portal = document.getElementById("portal")!;
 		const button = portal.firstChild as HTMLButtonElement;
@@ -648,10 +650,10 @@ describe("hydration", () => {
 			app,
 		);
 		expect(container.innerHTML).toBe(
-			`<div id="app">Before After</div><div id="portal"><button>Client</button><button>Server</button></div>`,
+			"<div id=\"app\">Before After</div><div id=\"portal\"><button>Client</button><button>Server</button></div>",
 		);
 		expect(portal.innerHTML).toBe(
-			`<button>Client</button><button>Server</button>`,
+			"<button>Client</button><button>Server</button>",
 		);
 		button.click();
 		expect(onclick.callCount).toBe(0);
@@ -660,7 +662,7 @@ describe("hydration", () => {
 
 	test("hydrate={true} can be used to hydrate a nested portal", () => {
 		const onclick = Sinon.fake();
-		container.innerHTML = `<div id="app">Before After</div><div id="portal"><button>Click</button></div>`;
+		container.innerHTML = "<div id=\"app\">Before After</div><div id=\"portal\"><button>Click</button></div>";
 		const app = document.getElementById("app")!;
 		const portal = document.getElementById("portal")!;
 		const button = portal.firstChild as HTMLButtonElement;
@@ -676,10 +678,10 @@ describe("hydration", () => {
 		);
 
 		expect(container.innerHTML).toBe(
-			`<div id="app">Before After</div><div id="portal"><button>Click</button></div>`,
+			"<div id=\"app\">Before After</div><div id=\"portal\"><button>Click</button></div>",
 		);
 		expect(portal.firstChild).toBe(button);
-		expect(portal.innerHTML).toBe(`<button>Click</button>`);
+		expect(portal.innerHTML).toBe("<button>Click</button>");
 		button.click();
 		expect(onclick.callCount).toBe(1);
 		expect(consoleWarn.callCount).toBe(0);
@@ -687,7 +689,7 @@ describe("hydration", () => {
 
 	test("hydrate={true} can be used to start hydration", () => {
 		const onclick = Sinon.fake();
-		container.innerHTML = `<div id="portal"><button>Click</button></div>`;
+		container.innerHTML = "<div id=\"portal\"><button>Click</button></div>";
 		const portal = document.getElementById("portal")!;
 		const button = portal.firstChild as HTMLButtonElement;
 		renderer.render(
@@ -702,17 +704,17 @@ describe("hydration", () => {
 		);
 
 		expect(container.innerHTML).toBe(
-			`<div id="app">Before After</div><div id="portal"><button>Click</button></div>`,
+			"<div id=\"app\">Before After</div><div id=\"portal\"><button>Click</button></div>",
 		);
 		expect(portal.firstChild).toBe(button);
-		expect(portal.innerHTML).toBe(`<button>Click</button>`);
+		expect(portal.innerHTML).toBe("<button>Click</button>");
 		button.click();
 		expect(onclick.callCount).toBe(1);
 		expect(consoleWarn.callCount).toBe(0);
 	});
 
 	test("hydrate={false} can be used to disable hydration for a fragment", () => {
-		container.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
+		container.innerHTML = "<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>";
 		const app = document.getElementById("app")!;
 		const button1 = container.querySelector(
 			"button:nth-child(1)",
@@ -731,7 +733,7 @@ describe("hydration", () => {
 			app,
 		);
 		expect(container.innerHTML).toBe(
-			`<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`,
+			"<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>",
 		);
 		expect(
 			button1 === container.querySelector("button:nth-child(1)"),
@@ -743,7 +745,7 @@ describe("hydration", () => {
 	});
 
 	test("hydrate={false} can be used to disable hydration for a component", () => {
-		container.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
+		container.innerHTML = "<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>";
 		const app = document.getElementById("app")!;
 		const button1 = container.querySelector(
 			"button:nth-child(1)",
@@ -767,7 +769,7 @@ describe("hydration", () => {
 			app,
 		);
 		expect(container.innerHTML).toBe(
-			`<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`,
+			"<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>",
 		);
 		expect(
 			button1 === container.querySelector("button:nth-child(1)"),
@@ -779,7 +781,7 @@ describe("hydration", () => {
 	});
 
 	test("hydrate={false} can be used to disable hydration for a Raw node", () => {
-		container.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
+		container.innerHTML = "<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>";
 		const app = document.getElementById("app")!;
 		const button1 = container.querySelector(
 			"button:nth-child(1)",
@@ -800,7 +802,7 @@ describe("hydration", () => {
 			app,
 		);
 		expect(container.innerHTML).toBe(
-			`<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`,
+			"<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>",
 		);
 		expect(
 			button1 === container.querySelector("button:nth-child(1)"),
@@ -812,7 +814,7 @@ describe("hydration", () => {
 	});
 
 	test("hydrate={false} can be used to disable hydration for Text", () => {
-		container.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
+		container.innerHTML = "<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>";
 		const app = document.getElementById("app")!;
 		const text1 = (
 			container.querySelector("button:nth-child(1)") as HTMLButtonElement
@@ -835,23 +837,23 @@ describe("hydration", () => {
 			app,
 		);
 		expect(container.innerHTML).toBe(
-			`<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`,
+			"<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>",
 		);
 		expect(
 			text1 ===
-				(container.querySelector("button:nth-child(1)") as HTMLButtonElement)
-					.firstChild,
+			(container.querySelector("button:nth-child(1)") as HTMLButtonElement)
+				.firstChild,
 		).toBeFalsy();
 		expect(
 			text2 ===
-				(container.querySelector("button:nth-child(2)") as HTMLButtonElement)
-					.firstChild,
+			(container.querySelector("button:nth-child(2)") as HTMLButtonElement)
+				.firstChild,
 		).toBeFalsy();
 		expect(consoleWarn.callCount).toBe(0);
 	});
 
 	test("hydration meta-prop can suppress specific property warnings (exclusive)", () => {
-		container.innerHTML = `<div id="server" class="old-class"></div>`;
+		container.innerHTML = "<div id=\"server\" class=\"old-class\"></div>";
 		renderer.hydrate(
 			<div id="client" class="new-class" hydrate="!id" />,
 			container,
@@ -863,7 +865,7 @@ describe("hydration", () => {
 	});
 
 	test("hydration meta-prop can suppress multiple property warnings (exclusive)", () => {
-		container.innerHTML = `<div id="server" class="old-class" data-test="old"></div>`;
+		container.innerHTML = "<div id=\"server\" class=\"old-class\" data-test=\"old\"></div>";
 		renderer.hydrate(
 			<div
 				id="client"
@@ -880,7 +882,7 @@ describe("hydration", () => {
 	});
 
 	test("hydration meta-prop can suppress all but specified property warnings (inclusive)", () => {
-		container.innerHTML = `<div id="server" class="old-class" data-test="old"></div>`;
+		container.innerHTML = "<div id=\"server\" class=\"old-class\" data-test=\"old\"></div>";
 		renderer.hydrate(
 			<div id="client" class="new-class" data-test="new" hydrate="id" />,
 			container,
@@ -892,7 +894,7 @@ describe("hydration", () => {
 	});
 
 	test("hydration meta-prop can suppress style property warnings", () => {
-		container.innerHTML = `<div style="color: red; background: blue"></div>`;
+		container.innerHTML = "<div style=\"color: red; background: blue\"></div>";
 		renderer.hydrate(
 			<div style={{color: "green", background: "blue"}} hydrate="!style" />,
 			container,
@@ -901,7 +903,7 @@ describe("hydration", () => {
 	});
 
 	test("hydration meta-prop with spaces and mixed syntax", () => {
-		container.innerHTML = `<div id="server" class="old" data-foo="old" data-bar="old"></div>`;
+		container.innerHTML = "<div id=\"server\" class=\"old\" data-foo=\"old\" data-bar=\"old\"></div>";
 		renderer.hydrate(
 			<div
 				id="client"
@@ -922,7 +924,7 @@ describe("hydration", () => {
 	});
 
 	test("hydration meta-prop can disable children hydration with !children", () => {
-		container.innerHTML = `<div><span>Server Content</span><button>Server Button</button></div>`;
+		container.innerHTML = "<div><span>Server Content</span><button>Server Button</button></div>";
 		const serverSpan = container.querySelector("span") as HTMLSpanElement;
 		const serverButton = container.querySelector("button") as HTMLButtonElement;
 
@@ -937,7 +939,7 @@ describe("hydration", () => {
 
 		// Children should be fully re-rendered (not hydrated)
 		expect(container.innerHTML).toBe(
-			`<div><span>Client Content</span><button>Client Button</button></div>`,
+			"<div><span>Client Content</span><button>Client Button</button></div>",
 		);
 		expect(container.querySelector("span") === serverSpan).toBeFalsy();
 		expect(container.querySelector("button") === serverButton).toBeFalsy();
@@ -951,7 +953,7 @@ describe("hydration", () => {
 	});
 
 	test("hydration meta-prop inclusive mode shows warnings only for specified props", () => {
-		container.innerHTML = `<div class="server" id="server"><span>Server Content</span></div>`;
+		container.innerHTML = "<div class=\"server\" id=\"server\"><span>Server Content</span></div>";
 
 		renderer.hydrate(
 			<div class="client" id="client" hydrate="class">
@@ -966,12 +968,12 @@ describe("hydration", () => {
 			/Expected "class" to be "client"/,
 		);
 		expect(container.innerHTML).toBe(
-			`<div class="client" id="client"><span>Client Content</span></div>`,
+			"<div class=\"client\" id=\"client\"><span>Client Content</span></div>",
 		);
 	});
 
 	test("warns when class object doesn't match server classes during hydration", () => {
-		container.innerHTML = `<div class="server-class other-class"></div>`;
+		container.innerHTML = "<div class=\"server-class other-class\"></div>";
 		renderer.hydrate(
 			<div class={{"client-class": true, active: true}} />,
 			container,
@@ -983,7 +985,7 @@ describe("hydration", () => {
 	});
 
 	test("warns when class object expects missing class during hydration", () => {
-		container.innerHTML = `<div class="existing"></div>`;
+		container.innerHTML = "<div class=\"existing\"></div>";
 		renderer.hydrate(
 			<div class={{existing: true, missing: true}} />,
 			container,
@@ -995,7 +997,7 @@ describe("hydration", () => {
 	});
 
 	test("warns when class object encounters unexpected server class during hydration", () => {
-		container.innerHTML = `<div class="expected unexpected"></div>`;
+		container.innerHTML = "<div class=\"expected unexpected\"></div>";
 		renderer.hydrate(<div class={{expected: true}} />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(
@@ -1004,7 +1006,7 @@ describe("hydration", () => {
 	});
 
 	test("no warning class object matches", () => {
-		container.innerHTML = `<div class="active primary"></div>`;
+		container.innerHTML = "<div class=\"active primary\"></div>";
 		renderer.hydrate(
 			<div class={{active: true, primary: true, disabled: false}} />,
 			container,
@@ -1013,7 +1015,7 @@ describe("hydration", () => {
 	});
 
 	test("no warning when prop is a coerced number", () => {
-		container.innerHTML = `<div tabindex="3"></div>`;
+		container.innerHTML = "<div tabindex=\"3\"></div>";
 		renderer.hydrate(<div tabindex={3} />, container);
 
 		expect(consoleWarn.callCount).toBe(0);

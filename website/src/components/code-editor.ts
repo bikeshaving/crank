@@ -9,7 +9,7 @@ import type {ContentAreaElement} from "@b9g/revise/contentarea.js";
 
 import type {Token} from "prismjs";
 
-//import {parser} from "@lezer/javascript";
+// import {parser} from "@lezer/javascript";
 import {ContentArea} from "./contentarea.js";
 import {tokenize} from "../utils/prism.js";
 
@@ -181,7 +181,7 @@ export function* CodeEditor(
 		});
 	});
 
-	let editHistory = new EditHistory();
+	const editHistory = new EditHistory();
 	{
 		// history stuff
 		const undo = () => {
@@ -414,7 +414,7 @@ interface SelectionRange {
 	selectionDirection: string;
 }
 
-/*** Revise Logic ***/
+/** * Revise Logic ***/
 async function checkpointEditHistory(ctx: Context, editHistory: EditHistory) {
 	const contentArea = (
 		(await new Promise((resolve) => ctx.schedule(resolve))) as any
@@ -439,7 +439,7 @@ async function checkpointEditHistory(ctx: Context, editHistory: EditHistory) {
 			(oldSelectionRange.selectionStart !== newSelectionRange.selectionStart ||
 				oldSelectionRange.selectionEnd !== newSelectionRange.selectionEnd ||
 				oldSelectionRange.selectionDirection !==
-					newSelectionRange.selectionDirection)
+				newSelectionRange.selectionDirection)
 		) {
 			editHistory.checkpoint();
 		}

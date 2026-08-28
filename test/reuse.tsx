@@ -48,6 +48,7 @@ describe("reuse", () => {
 
 	test("reused function component", () => {
 		const fn = Sinon.fake();
+
 		function Component() {
 			fn();
 			return <span>1</span>;
@@ -70,6 +71,7 @@ describe("reuse", () => {
 
 	test("reused generator component", () => {
 		const fn = Sinon.fake();
+
 		function* Component() {
 			fn();
 			while (true) {
