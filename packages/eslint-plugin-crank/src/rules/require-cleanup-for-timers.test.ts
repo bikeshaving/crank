@@ -133,7 +133,7 @@ describe("require-cleanup-for-timers", () => {
                   ${action};
                 }, 1000);
 
-                ${timerType === "setInterval" ? `for (const _ of this) {\n                  yield <div>Tick</div>;\n                }` : `yield <div>Hello</div>;`}
+                ${timerType === "setInterval" ? "for (const _ of this) {\n                  yield <div>Tick</div>;\n                }" : "yield <div>Hello</div>;"}
               }
             `,
 							errors: [

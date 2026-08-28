@@ -219,7 +219,7 @@ function AntiHero() {
 	`;
 }
 
-function BlogSection({posts}: {posts: Array<any>}) {
+function BlogSection({posts}: {posts: any[]}) {
 	return jsx`
 		<div class=${css`
 			max-width: 1200px;

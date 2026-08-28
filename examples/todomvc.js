@@ -125,8 +125,12 @@ function* TodoItem({todo}) {
 function* TodoList({todos, filter}) {
   for ({todos, filter} of this) {
     const filteredTodos = todos.filter((todo) => {
-      if (filter === "active") return !todo.completed;
-      if (filter === "completed") return todo.completed;
+      if (filter === "active") {
+        return !todo.completed;
+      }
+      if (filter === "completed") {
+        return todo.completed;
+      }
       return true;
     });
 
@@ -199,14 +203,18 @@ function* App() {
   this.addEventListener("todotoggle", (ev) => {
     this.refresh(() => {
       const todo = todos.find((t) => t.id === ev.detail.id);
-      if (todo) todo.completed = ev.detail.completed;
+      if (todo) {
+        todo.completed = ev.detail.completed;
+      }
     });
   });
 
   this.addEventListener("todoedit", (ev) => {
     this.refresh(() => {
       const todo = todos.find((t) => t.id === ev.detail.id);
-      if (todo) todo.title = ev.detail.title;
+      if (todo) {
+        todo.title = ev.detail.title;
+      }
     });
   });
 

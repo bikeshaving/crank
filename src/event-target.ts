@@ -64,7 +64,7 @@ export class CustomEventTarget<
 > implements EventTarget {
 	declare static dispatchEventOnSelf: typeof _dispatchEventOnSelf;
 	declare [_parent]: TParent | null;
-	declare [_listeners]: Array<EventListenerRecord>;
+	declare [_listeners]: EventListenerRecord[];
 	declare [_delegates]: Set<EventTarget>;
 	constructor(parent: TParent | null = null) {
 		this[_parent] = parent;
@@ -155,7 +155,7 @@ export class CustomEventTarget<
 	}
 
 	dispatchEvent(ev: Event): boolean {
-		const path: Array<CustomEventTarget> = [];
+		const path: CustomEventTarget[] = [];
 		for (let parent = this[_parent]; parent; parent = parent[_parent]) {
 			path.push(parent);
 		}
@@ -280,7 +280,7 @@ CustomEventTarget.dispatchEventOnSelf = _dispatchEventOnSelf;
 
 export function addEventTargetDelegates<T extends CustomEventTarget>(
 	target: T,
-	delegates: Array<unknown>,
+	delegates: unknown[],
 	include: (target1: T) => boolean = (target1) => target === target1,
 ): void {
 	for (
@@ -304,7 +304,7 @@ export function addEventTargetDelegates<T extends CustomEventTarget>(
 
 export function removeEventTargetDelegates<T extends CustomEventTarget>(
 	target: T,
-	delegates: Array<unknown>,
+	delegates: unknown[],
 	include: (target1: T) => boolean = (target1) => target === target1,
 ): void {
 	for (

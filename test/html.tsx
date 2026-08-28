@@ -287,6 +287,7 @@ describe("html", () => {
 
 	test("sync generator components are cleaned up", () => {
 		const mock = Sinon.fake();
+
 		function* Component() {
 			let i = 0;
 			try {
@@ -305,6 +306,7 @@ describe("html", () => {
 
 	test("async generator components are cleaned up", async () => {
 		const mock = Sinon.fake();
+
 		async function* Component(this: Context) {
 			let i = 0;
 			// TODO: investigate why using a while loop causes renderer.render to
@@ -326,6 +328,7 @@ describe("html", () => {
 
 	test("stateful", () => {
 		const mock = Sinon.fake();
+
 		function* Component() {
 			let i = 0;
 			try {
@@ -359,6 +362,7 @@ describe("html", () => {
 	test("after callback called once", async () => {
 		let i = 0;
 		const fn = Sinon.fake();
+
 		async function Component(this: Context) {
 			this.after(fn);
 			return <span>{i++}</span>;
@@ -384,7 +388,7 @@ describe("html", () => {
 	});
 
 	test("refs work", () => {
-		let mock = Sinon.fake();
+		const mock = Sinon.fake();
 		renderer.render(<div ref={mock}>Hello world</div>);
 
 		expect(mock.callCount).toBe(1);
@@ -474,7 +478,7 @@ describe("html", () => {
 	test("foreignObject resets SVG scope for children but not itself", () => {
 		expect(
 			renderer.render(
-				// eslint-disable-next-line crank/no-react-svg-props
+
 				<svg viewBox="0 0 100 100">
 					{/* eslint-disable crank/no-react-svg-props */}
 					<rect strokeWidth="2" />

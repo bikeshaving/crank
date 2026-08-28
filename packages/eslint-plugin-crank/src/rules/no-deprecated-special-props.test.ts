@@ -8,14 +8,14 @@ describe("no-deprecated-special-props", () => {
 	it("should allow modern prop syntax", () => {
 		ruleTester.run("no-deprecated-special-props", noDeprecatedSpecialProps, {
 			valid: [
-				{code: `<div key={id} />`},
-				{code: `<div ref={myRef} />`},
-				{code: `<div copy />`},
-				{code: `<Component key={id} ref={myRef} />`},
+				{code: "<div key={id} />"},
+				{code: "<div ref={myRef} />"},
+				{code: "<div copy />"},
+				{code: "<Component key={id} ref={myRef} />"},
 				// Regular props should not be flagged
-				{code: `<div class="foo" />`},
-				{code: `<div id="bar" />`},
-				{code: `<div data-crank-foo="bar" />`},
+				{code: "<div class=\"foo\" />"},
+				{code: "<div id=\"bar\" />"},
+				{code: "<div data-crank-foo=\"bar\" />"},
 			],
 			invalid: [],
 		});
@@ -26,8 +26,8 @@ describe("no-deprecated-special-props", () => {
 			valid: [],
 			invalid: [
 				{
-					code: `<div static />`,
-					output: `<div copy />`,
+					code: "<div static />",
+					output: "<div copy />",
 					errors: [
 						{
 							messageId: "useModernProp",
@@ -36,8 +36,8 @@ describe("no-deprecated-special-props", () => {
 					],
 				},
 				{
-					code: `<div static>{content}</div>`,
-					output: `<div copy>{content}</div>`,
+					code: "<div static>{content}</div>",
+					output: "<div copy>{content}</div>",
 					errors: [{messageId: "useModernProp"}],
 				},
 			],
@@ -49,8 +49,8 @@ describe("no-deprecated-special-props", () => {
 			valid: [],
 			invalid: [
 				{
-					code: `<Component crank-key={id} />`,
-					output: `<Component key={id} />`,
+					code: "<Component crank-key={id} />",
+					output: "<Component key={id} />",
 					errors: [
 						{
 							messageId: "useModernProp",
@@ -59,8 +59,8 @@ describe("no-deprecated-special-props", () => {
 					],
 				},
 				{
-					code: `<div crank-ref={myRef} />`,
-					output: `<div ref={myRef} />`,
+					code: "<div crank-ref={myRef} />",
+					output: "<div ref={myRef} />",
 					errors: [
 						{
 							messageId: "useModernProp",
@@ -69,8 +69,8 @@ describe("no-deprecated-special-props", () => {
 					],
 				},
 				{
-					code: `<div crank-copy />`,
-					output: `<div copy />`,
+					code: "<div crank-copy />",
+					output: "<div copy />",
 					errors: [
 						{
 							messageId: "useModernProp",
@@ -79,8 +79,8 @@ describe("no-deprecated-special-props", () => {
 					],
 				},
 				{
-					code: `<div crank-static />`,
-					output: `<div copy />`,
+					code: "<div crank-static />",
+					output: "<div copy />",
 					errors: [
 						{
 							messageId: "useModernProp",
@@ -100,8 +100,8 @@ describe("no-deprecated-special-props", () => {
 			valid: [],
 			invalid: [
 				{
-					code: `<Component c-key={id} />`,
-					output: `<Component key={id} />`,
+					code: "<Component c-key={id} />",
+					output: "<Component key={id} />",
 					errors: [
 						{
 							messageId: "useModernProp",
@@ -110,13 +110,13 @@ describe("no-deprecated-special-props", () => {
 					],
 				},
 				{
-					code: `<div c-ref={myRef} />`,
-					output: `<div ref={myRef} />`,
+					code: "<div c-ref={myRef} />",
+					output: "<div ref={myRef} />",
 					errors: [{messageId: "useModernProp"}],
 				},
 				{
-					code: `<div c-static />`,
-					output: `<div copy />`,
+					code: "<div c-static />",
+					output: "<div copy />",
 					errors: [{messageId: "useModernProp"}],
 				},
 			],
@@ -128,8 +128,8 @@ describe("no-deprecated-special-props", () => {
 			valid: [],
 			invalid: [
 				{
-					code: `<Component $key={id} />`,
-					output: `<Component key={id} />`,
+					code: "<Component $key={id} />",
+					output: "<Component key={id} />",
 					errors: [
 						{
 							messageId: "useModernProp",
@@ -138,18 +138,18 @@ describe("no-deprecated-special-props", () => {
 					],
 				},
 				{
-					code: `<div $ref={myRef} />`,
-					output: `<div ref={myRef} />`,
+					code: "<div $ref={myRef} />",
+					output: "<div ref={myRef} />",
 					errors: [{messageId: "useModernProp"}],
 				},
 				{
-					code: `<div $copy />`,
-					output: `<div copy />`,
+					code: "<div $copy />",
+					output: "<div copy />",
 					errors: [{messageId: "useModernProp"}],
 				},
 				{
-					code: `<div $static />`,
-					output: `<div copy />`,
+					code: "<div $static />",
+					output: "<div copy />",
 					errors: [{messageId: "useModernProp"}],
 				},
 			],
@@ -161,8 +161,8 @@ describe("no-deprecated-special-props", () => {
 			valid: [],
 			invalid: [
 				{
-					code: `<Component crank-key={id} crank-ref={myRef} />`,
-					output: `<Component key={id} ref={myRef} />`,
+					code: "<Component crank-key={id} crank-ref={myRef} />",
+					output: "<Component key={id} ref={myRef} />",
 					errors: [
 						{
 							messageId: "useModernProp",

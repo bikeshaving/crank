@@ -124,7 +124,7 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 			createElement("p", {a: 'a"a"a"a', b: "b'b'b'b"}),
 		);
 		expect(jsx`<p a="\\\"\'\a\b\\\"" />`).toEqual(
-			createElement("p", {a: `\\"'a\b\\"`}),
+			createElement("p", {a: "\\\"'a\b\\\""}),
 		);
 		expect(jsx`<p a="hello\r\nworld" />`).toEqual(
 			createElement("p", {a: "hello\r\nworld"}),
@@ -422,7 +422,9 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 
 	test("unbalanced tags with expressions", () => {
 		function C() {}
+
 		function D() {}
+
 		expect(() => {
 			jsx`<${C}>`;
 		}).toThrow("Unmatched opening tag C()");
@@ -486,10 +488,10 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 			throw new Error("should have thrown");
 		} catch (e: any) {
 			expect(e).toBeInstanceOf(SyntaxError);
-			expect(e.message.includes("^")).toBeTruthy() /* includes caret pointer */;
+			expect(e.message.includes("^")).toBeTruthy();
 			expect(
 				e.message.includes("|"),
-			).toBeTruthy() /* includes context gutter */;
+			).toBeTruthy();
 		}
 	});
 
@@ -505,11 +507,11 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 			expect(e).toBeInstanceOf(SyntaxError);
 			expect(
 				e.message.includes("Unmatched closing tag"),
-			).toBeTruthy() /* has base message */;
-			expect(e.message.includes("^")).toBeTruthy() /* includes caret pointer */;
+			).toBeTruthy();
+			expect(e.message.includes("^")).toBeTruthy();
 			expect(
 				e.message.includes("|"),
-			).toBeTruthy() /* includes context gutter */;
+			).toBeTruthy();
 		}
 	});
 

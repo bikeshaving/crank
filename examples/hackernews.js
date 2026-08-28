@@ -106,39 +106,47 @@ function Story({story, index}) {
       >
         {story.title}
       </a>
-      {story.domain ? (
-        <span style="color: #666; font-size: 13px;"> ({story.domain})</span>
-      ) : null}
+      {story.domain
+        ? (
+          <span style="color: #666; font-size: 13px;"> ({story.domain})</span>
+        )
+        : null}
       <div style="color: #666; margin: 2px 0 0 0; font-size: 13px;">
         {story.points != null ? <span>{story.points} points</span> : null}
-        {story.user ? (
-          <span>
-            {story.points != null ? " by " : ""}
-            <a
-              href={`#/user/${story.user}`}
-              style="color: #666; text-decoration: none;"
-            >
-              {story.user}
-            </a>
-          </span>
-        ) : null}
-        {story.time_ago ? (
-          <span>
-            {story.points != null || story.user ? " | " : ""}
-            {story.time_ago}
-          </span>
-        ) : null}
-        {!isJob && story.comments_count != null ? (
-          <span>
-            {" | "}
-            <a
-              href={`#/item/${story.id}`}
-              style="color: #666; text-decoration: none;"
-            >
-              {story.comments_count} comments
-            </a>
-          </span>
-        ) : null}
+        {story.user
+          ? (
+            <span>
+              {story.points != null ? " by " : ""}
+              <a
+                href={`#/user/${story.user}`}
+                style="color: #666; text-decoration: none;"
+              >
+                {story.user}
+              </a>
+            </span>
+          )
+          : null}
+        {story.time_ago
+          ? (
+            <span>
+              {story.points != null || story.user ? " | " : ""}
+              {story.time_ago}
+            </span>
+          )
+          : null}
+        {!isJob && story.comments_count != null
+          ? (
+            <span>
+              {" | "}
+              <a
+                href={`#/item/${story.id}`}
+                style="color: #666; text-decoration: none;"
+              >
+                {story.comments_count} comments
+              </a>
+            </span>
+          )
+          : null}
       </div>
     </li>
   );
@@ -149,27 +157,31 @@ function Pager({type, page, hasNext}) {
   const nextDisabled = !hasNext;
   return (
     <div style="text-align: center; margin: 10px 0; padding: 10px;">
-      {prevDisabled ? (
-        <span style="color: #ccc; margin-right: 10px;">Previous</span>
-      ) : (
-        <a
-          href={`#/${type}/${page - 1}`}
-          style="color: #ff6600; text-decoration: none; margin-right: 10px;"
-        >
-          Previous
-        </a>
-      )}
+      {prevDisabled
+        ? (
+          <span style="color: #ccc; margin-right: 10px;">Previous</span>
+        )
+        : (
+          <a
+            href={`#/${type}/${page - 1}`}
+            style="color: #ff6600; text-decoration: none; margin-right: 10px;"
+          >
+            Previous
+          </a>
+        )}
       <span style="color: #666;">page {page}</span>
-      {nextDisabled ? (
-        <span style="color: #ccc; margin-left: 10px;">Next</span>
-      ) : (
-        <a
-          href={`#/${type}/${page + 1}`}
-          style="color: #ff6600; text-decoration: none; margin-left: 10px;"
-        >
-          Next
-        </a>
-      )}
+      {nextDisabled
+        ? (
+          <span style="color: #ccc; margin-left: 10px;">Next</span>
+        )
+        : (
+          <a
+            href={`#/${type}/${page + 1}`}
+            style="color: #ff6600; text-decoration: none; margin-left: 10px;"
+          >
+            Next
+          </a>
+        )}
     </div>
   );
 }
@@ -263,57 +275,69 @@ async function Item({id}) {
   const isJob = item.type === "job";
   return (
     <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
-      {titleHref ? (
-        <a
-          href={titleHref}
-          target="_blank"
-          style="text-decoration: none; color: #000;"
-        >
+      {titleHref
+        ? (
+          <a
+            href={titleHref}
+            target="_blank"
+            style="text-decoration: none; color: #000;"
+          >
+            <h2 style="margin: 0 0 4px;">{item.title}</h2>
+          </a>
+        )
+        : (
           <h2 style="margin: 0 0 4px;">{item.title}</h2>
-        </a>
-      ) : (
-        <h2 style="margin: 0 0 4px;">{item.title}</h2>
-      )}
-      {item.domain ? (
-        <p style="color: #666; margin: 0 0 4px; font-size: 13px;">
-          {item.domain}
-        </p>
-      ) : null}
+        )}
+      {item.domain
+        ? (
+          <p style="color: #666; margin: 0 0 4px; font-size: 13px;">
+            {item.domain}
+          </p>
+        )
+        : null}
       <p style="color: #666; margin: 0 0 12px; font-size: 13px;">
         {item.points != null ? <span>{item.points} points</span> : null}
-        {item.user ? (
-          <span>
-            {item.points != null ? " by " : ""}
-            <a
-              href={`#/user/${item.user}`}
-              style="color: #666; text-decoration: none;"
-            >
-              <strong>{item.user}</strong>
-            </a>
-          </span>
-        ) : null}
-        {item.time_ago ? (
-          <span>
-            {item.points != null || item.user ? " | " : ""}
-            {item.time_ago}
-          </span>
-        ) : null}
+        {item.user
+          ? (
+            <span>
+              {item.points != null ? " by " : ""}
+              <a
+                href={`#/user/${item.user}`}
+                style="color: #666; text-decoration: none;"
+              >
+                <strong>{item.user}</strong>
+              </a>
+            </span>
+          )
+          : null}
+        {item.time_ago
+          ? (
+            <span>
+              {item.points != null || item.user ? " | " : ""}
+              {item.time_ago}
+            </span>
+          )
+          : null}
       </p>
-      {item.content ? (
-        <div style="margin: 0 0 16px; padding: 12px; background: #f6f6f0; font-size: 14px; line-height: 1.5; overflow-wrap: break-word;">
-          <Raw value={item.content} />
-        </div>
-      ) : null}
-      {!isJob && item.comments && item.comments.length > 0 ? (
-        <Fragment>
-          <p style="color: #666; font-size: 13px; margin: 0 0 8px;">
-            {item.comments_count} comments
-          </p>
-          {item.comments.map((comment) => (
-            <Comment comment={comment} key={comment.id} />
-          ))}
-        </Fragment>
-      ) : null}
+      {item.content
+        ? (
+          <div style="margin: 0 0 16px; padding: 12px; background: #f6f6f0; font-size: 14px; line-height: 1.5; overflow-wrap: break-word;">
+            <Raw value={item.content} />
+          </div>
+        )
+        : null}
+      {!isJob && item.comments && item.comments.length > 0
+        ? (
+          <Fragment>
+            <p style="color: #666; font-size: 13px; margin: 0 0 8px;">
+              {item.comments_count} comments
+            </p>
+            {item.comments.map((comment) => (
+              <Comment comment={comment} key={comment.id} />
+            ))}
+          </Fragment>
+        )
+        : null}
     </div>
   );
 }
@@ -346,16 +370,18 @@ async function UserProfile({username}) {
             </td>
             <td>{user.karma}</td>
           </tr>
-          {user.about ? (
-            <tr>
-              <td style="color: #666; padding: 2px 12px 2px 0; vertical-align: top;">
-                About:
-              </td>
-              <td style="line-height: 1.5; overflow-wrap: break-word;">
-                <Raw value={user.about} />
-              </td>
-            </tr>
-          ) : null}
+          {user.about
+            ? (
+              <tr>
+                <td style="color: #666; padding: 2px 12px 2px 0; vertical-align: top;">
+                  About:
+                </td>
+                <td style="line-height: 1.5; overflow-wrap: break-word;">
+                  <Raw value={user.about} />
+                </td>
+              </tr>
+            )
+            : null}
         </tbody>
       </table>
     </div>

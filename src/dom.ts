@@ -1,10 +1,7 @@
+import type {Children, Context, ElementValue, RenderAdapter} from "./crank.js";
 import {
-	Children,
-	Context,
-	ElementValue,
 	Portal,
 	Renderer,
-	RenderAdapter,
 } from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import {REACT_SVG_PROPS} from "./_svg.js";
@@ -109,7 +106,7 @@ function emitHydrationWarning(
 				const origin = win.location.origin;
 				if (
 					new URL(expectedValue, origin).href ===
-					new URL(actualValue, origin).href
+						new URL(actualValue, origin).href
 				) {
 					// attrs which are URLs will often be resolved to their full
 					// href in the DOM, so we squash these errors
@@ -204,7 +201,7 @@ function patchProp(
 			} else if (typeof value === "string") {
 				if (style.cssText !== value) {
 					// TODO: Fix hydration warnings for styles
-					//if (isHydrating) {
+					// if (isHydrating) {
 					//	emitHydrationWarning(
 					//		name,
 					//		quietProps,
@@ -212,7 +209,7 @@ function patchProp(
 					//		style.cssText,
 					//		element,
 					//	);
-					//}
+					// }
 
 					style.cssText = value;
 				}
@@ -226,7 +223,9 @@ function patchProp(
 				// First pass: remove styles present in oldValue but not in value
 				if (oldValue) {
 					for (const styleName in oldValue) {
-						if (value && styleName in value) continue;
+						if (value && styleName in value) {
+							continue;
+						}
 						const cssName = camelToKebabCase(styleName);
 						if (isHydrating && style.getPropertyValue(cssName) !== "") {
 							emitHydrationWarning(
@@ -262,7 +261,7 @@ function patchProp(
 							const formattedValue = formatStyleValue(cssName, styleValue);
 							if (style.getPropertyValue(cssName) !== formattedValue) {
 								// TODO: hydration warnings for style props
-								//if (isHydrating) {
+								// if (isHydrating) {
 								//	emitHydrationWarning(
 								//		name,
 								//		quietProps,
@@ -271,7 +270,7 @@ function patchProp(
 								//		element,
 								//		`style.${styleName}`,
 								//	);
-								//}
+								// }
 								style.setProperty(cssName, formattedValue);
 							}
 						}
@@ -283,7 +282,9 @@ function patchProp(
 		}
 		case "class":
 		case "className":
-			if (name === "className" && "class" in props) break;
+			if (name === "className" && "class" in props) {
+				break;
+			}
 			if (value === true) {
 				if (isHydrating && element.getAttribute("class") !== "") {
 					emitHydrationWarning(
@@ -328,7 +329,9 @@ function patchProp(
 				// Remove pass: iterate oldValue for classes to remove
 				if (oldValue) {
 					for (const classNames in oldValue) {
-						if (value && value[classNames]) continue;
+						if (value && value[classNames]) {
+							continue;
+						}
 						const classes = classNames.split(/\s+/).filter(Boolean);
 						element.classList.remove(...classes);
 					}
@@ -337,7 +340,9 @@ function patchProp(
 				// Add pass: iterate value for classes to add
 				if (value) {
 					for (const classNames in value) {
-						if (!value[classNames]) continue;
+						if (!value[classNames]) {
+							continue;
+						}
 						const classes = classNames.split(/\s+/).filter(Boolean);
 						element.classList.add(...classes);
 						for (const className of classes) {
@@ -420,7 +425,9 @@ function patchProp(
 			break;
 		}
 		case "htmlFor":
-			if ("for" in props) break;
+			if ("for" in props) {
+				break;
+			}
 			if (value == null || value === false) {
 				element.removeAttribute("for");
 			} else {
@@ -458,7 +465,7 @@ function patchProp(
 				// For URL properties like src and href, the DOM property returns the
 				// resolved absolute URL. We need to resolve the prop value the same way
 				// to compare correctly.
-				let domValue = (element as any)[name];
+				const domValue = (element as any)[name];
 				let propValue = value;
 				if (
 					(name === "src" || name === "href") &&
@@ -604,7 +611,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		tagName: string;
 		node: Node | undefined;
 		root: Node | undefined;
-	}): Array<Node> | undefined {
+	}): Node[] | undefined {
 		if (typeof tag !== "string" && tag !== Portal) {
 			throw new Error(`Unknown tag: ${tagName}`);
 		}
@@ -669,8 +676,10 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		const isMathML = xmlns === MATHML_NAMESPACE;
 		// First pass: iterate oldProps to handle removals
 		if (oldProps) {
-			for (let name in oldProps) {
-				if (name in props) continue;
+			for (const name in oldProps) {
+				if (name in props) {
+					continue;
+				}
 				patchProp(
 					element,
 					name,
@@ -686,7 +695,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 			}
 		}
 		// Second pass: iterate props to handle additions and updates
-		for (let name in props) {
+		for (const name in props) {
 			patchProp(
 				element,
 				name,
@@ -711,7 +720,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		tag: string | symbol;
 		node: Node;
 		props: Record<string, any>;
-		children: Array<Node>;
+		children: Node[];
 		root: Node | undefined;
 	}): void {
 		if (tag === Portal && (node == null || typeof node.nodeType !== "number")) {
@@ -764,13 +773,13 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		root,
 	}: {
 		value: string;
-		hydrationNodes: Array<Node> | undefined;
+		hydrationNodes: Node[] | undefined;
 		oldNode: Node | undefined;
 		root: Node | undefined;
 	}): Node {
 		const doc = getRootDocument(root);
 		if (hydrationNodes != null) {
-			let node = hydrationNodes.shift();
+			const node = hydrationNodes.shift();
 			if (!node || node.nodeType !== TEXT_NODE) {
 				console.warn(`Expected "${value}" while hydrating but found:`, node);
 			} else {
@@ -819,10 +828,10 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 	}: {
 		value: string | Node;
 		scope: string | undefined;
-		hydrationNodes: Array<Node> | undefined;
+		hydrationNodes: Node[] | undefined;
 		root: Node | undefined;
 	}): ElementValue<Node> {
-		let nodes: Array<Node>;
+		let nodes: Node[];
 		if (typeof value === "string") {
 			const doc = getRootDocument(root);
 			const el =

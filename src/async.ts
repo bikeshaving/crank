@@ -157,10 +157,10 @@ interface SuspenseListController {
 	timeout?: number;
 	revealOrder?: "forwards" | "backwards" | "together";
 	tail?: "collapsed" | "hidden";
-	register(ctx: Context): Promise<Array<SuspenseListItem>>;
-	isHead(ctx: Context, items: Array<SuspenseListItem>): boolean;
-	scheduleFallback(ctx: Context, items: Array<SuspenseListItem>): Promise<void>;
-	scheduleChildren(ctx: Context, items: Array<SuspenseListItem>): Promise<void>;
+	register(ctx: Context): Promise<SuspenseListItem[]>;
+	isHead(ctx: Context, items: SuspenseListItem[]): boolean;
+	scheduleFallback(ctx: Context, items: SuspenseListItem[]): Promise<void>;
+	scheduleChildren(ctx: Context, items: SuspenseListItem[]): Promise<void>;
 }
 
 declare global {
@@ -223,7 +223,7 @@ export function* SuspenseList(
 ): Generator<Children> {
 	let finishRegistration: () => void;
 	let registering: Promise<void> | null = null;
-	let items: Array<SuspenseListItem> = [];
+	let items: SuspenseListItem[] = [];
 	const controller: SuspenseListController = {
 		timeout,
 		revealOrder,
@@ -252,7 +252,7 @@ export function* SuspenseList(
 			return [];
 		},
 
-		isHead(ctx: Context, suspenseItems: Array<SuspenseListItem>): boolean {
+		isHead(ctx: Context, suspenseItems: SuspenseListItem[]): boolean {
 			const index = suspenseItems.findIndex((item) => item.ctx === ctx);
 			if (index === -1) {
 				return false;
@@ -268,7 +268,7 @@ export function* SuspenseList(
 
 		async scheduleFallback(
 			ctx: Context,
-			suspenseItems: Array<SuspenseListItem>,
+			suspenseItems: SuspenseListItem[],
 		) {
 			const index = suspenseItems.findIndex((item) => item.ctx === ctx);
 			if (index === -1) {
@@ -286,7 +286,7 @@ export function* SuspenseList(
 
 		async scheduleChildren(
 			ctx: Context,
-			suspenseItems: Array<SuspenseListItem>,
+			suspenseItems: SuspenseListItem[],
 		) {
 			const index = suspenseItems.findIndex((item) => item.ctx === ctx);
 			if (index === -1) {

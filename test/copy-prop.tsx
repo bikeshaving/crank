@@ -2,7 +2,8 @@ import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
 
 import {hangs} from "./utils.js";
-import {createElement, Context} from "../src/crank.js";
+import type {Context} from "../src/crank.js";
+import {createElement} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("copy-prop", () => {
@@ -60,6 +61,7 @@ describe("copy-prop", () => {
 
 	test("component refresh", () => {
 		let ctx!: Context;
+
 		function Greeting(this: Context, {name}: any) {
 			ctx = this;
 			return <div>Hello {name}</div>;
@@ -107,6 +109,7 @@ describe("copy-prop", () => {
 
 	test("async component refresh", async () => {
 		let ctx!: Context;
+
 		async function Greeting(this: Context, {name}: any) {
 			ctx = this;
 			await new Promise((resolve) => setTimeout(resolve));
@@ -133,6 +136,7 @@ describe("copy-prop", () => {
 
 	test("inflight", async () => {
 		let resolve!: () => void;
+
 		async function Greeting(this: Context, {name}: any) {
 			await new Promise<void>((resolve1) => (resolve = resolve1));
 			return <div>Hello {name}</div>;
@@ -153,6 +157,7 @@ describe("copy-prop", () => {
 
 	test("generator component", async () => {
 		let ctx!: Context;
+
 		function* Greeting(this: Context, {name}: {name: string}) {
 			ctx = this;
 			let i = 0;
@@ -185,6 +190,7 @@ describe("copy-prop", () => {
 		}
 
 		let ctx!: Context;
+
 		function* Greeting(this: Context, {name}: any) {
 			ctx = this;
 			let i = 0;
@@ -475,6 +481,7 @@ describe("copy-prop", () => {
 
 	test("copy prop can be used for uncontrolled input values", () => {
 		const spy = Sinon.spy();
+
 		function* Component(this: Context<typeof Component>, {}: {}) {
 			let force = false;
 			let value = "Hello";

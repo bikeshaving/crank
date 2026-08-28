@@ -1,7 +1,8 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
 
-import {createElement, Child, Context, Element} from "../src/crank.js";
+import type {Child, Context, Element} from "../src/crank.js";
+import {createElement} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("races", () => {
@@ -142,6 +143,7 @@ describe("races", () => {
 
 	test("slow vs fast in async generator updated via renderer.render", async () => {
 		const slowFn = Sinon.fake();
+
 		async function Slow(): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 200));
 			slowFn();
@@ -149,6 +151,7 @@ describe("races", () => {
 		}
 
 		const fastFn = Sinon.fake();
+
 		async function Fast(): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			fastFn();
@@ -195,6 +198,7 @@ describe("races", () => {
 		}
 
 		let ctx!: Context;
+
 		async function* Component(this: Context): AsyncGenerator<Child> {
 			ctx = this;
 			let i = 0;
@@ -278,6 +282,7 @@ describe("races", () => {
 		}
 
 		const slowFn = Sinon.fake();
+
 		async function* Slow(
 			this: Context,
 			{i}: {i: number},
@@ -439,6 +444,7 @@ describe("races", () => {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			return <span>Fast</span>;
 		}
+
 		const p1 = renderer.render(<Fast />, document.body);
 		const p2 = renderer.render(
 			<div>

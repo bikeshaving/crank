@@ -60,6 +60,7 @@ describe("warnings", () => {
 
 	test("for of with multiple yields is fine when scheduling", () => {
 		let ctx: Context;
+
 		function* Component(this: Context): Generator<Child> {
 			ctx = this;
 			let renderCount = 0;
@@ -110,6 +111,7 @@ describe("warnings", () => {
 
 	test("for of with multiple yields is fine when scheduling in async generator component", async () => {
 		let ctx: Context;
+
 		async function* Component(this: Context): AsyncGenerator<Child> {
 			ctx = this;
 			let renderCount = 0;
@@ -242,6 +244,7 @@ describe("warnings", () => {
 		function TestComponent() {
 			return <div>Test</div>;
 		}
+
 		renderer.render(<TestComponent copy="!children" />, document.body);
 		expect(mock.callCount).toBe(1);
 		expect(mock.firstCall.args[0]).toMatch(
@@ -253,6 +256,7 @@ describe("warnings", () => {
 		function TestComponent() {
 			return <div>Test</div>;
 		}
+
 		renderer.render(<TestComponent hydrate="!children" />, document.body);
 		expect(mock.callCount).toBe(1);
 		expect(mock.firstCall.args[0]).toMatch(

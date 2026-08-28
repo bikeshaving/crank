@@ -38,17 +38,17 @@ describe("svg", () => {
 			document.body,
 		);
 
-		let svgRoot = document.body.firstChild;
+		const svgRoot = document.body.firstChild;
 		expect(document.body.firstChild instanceof SVGElement).toBeTruthy();
 
-		let rect = svgRoot!.childNodes[0] as SVGElement;
+		const rect = svgRoot!.childNodes[0] as SVGElement;
 		expect(rect instanceof SVGElement).toBeTruthy();
 		expect(rect.tagName).toBe("rect");
 		expect(rect.getAttribute("width")).toBe("100%");
 		expect(rect.getAttribute("height")).toBe("100%");
 		expect(rect.getAttribute("fill")).toBe("red");
 
-		let circle = svgRoot!.childNodes[1] as SVGElement;
+		const circle = svgRoot!.childNodes[1] as SVGElement;
 		expect(circle instanceof SVGElement).toBeTruthy();
 		expect(circle.tagName).toBe("circle");
 		expect(circle.getAttribute("cx")).toBe("150");
@@ -56,7 +56,7 @@ describe("svg", () => {
 		expect(circle.getAttribute("r")).toBe("80");
 		expect(circle.getAttribute("fill")).toBe("green");
 
-		let text = svgRoot!.childNodes[2] as SVGElement;
+		const text = svgRoot!.childNodes[2] as SVGElement;
 		expect(text instanceof SVGElement).toBeTruthy();
 		expect(text.tagName).toBe("text");
 		expect(text.getAttribute("x")).toBe("150");

@@ -13,10 +13,10 @@ describe("prefer-refresh-callback", () => {
 			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
 				valid: [
 					{
-						code: `this.refresh(() => count++);`,
+						code: "this.refresh(() => count++);",
 					},
 					{
-						code: `this.refresh(() => { count++; });`,
+						code: "this.refresh(() => { count++; });",
 					},
 					{
 						code: `this.refresh(() => { 
@@ -25,13 +25,13 @@ describe("prefer-refresh-callback", () => {
             });`,
 					},
 					{
-						code: `someOtherObject.refresh();`,
+						code: "someOtherObject.refresh();",
 					},
 					{
-						code: `this.someOtherMethod();`,
+						code: "this.someOtherMethod();",
 					},
 					{
-						code: `this.refresh(callback);`,
+						code: "this.refresh(callback);",
 					},
 				],
 				invalid: [],
@@ -42,7 +42,7 @@ describe("prefer-refresh-callback", () => {
 			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
 				valid: [
 					{
-						code: `this.refresh();`,
+						code: "this.refresh();",
 					},
 				],
 				invalid: [],

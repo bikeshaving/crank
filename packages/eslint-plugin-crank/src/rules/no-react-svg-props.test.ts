@@ -39,20 +39,20 @@ describe("no-react-svg-props", () => {
 				},
 				// camelCase attributes in non-SVG elements should not be flagged
 				{
-					code: `<div strokeWidth="2">Not SVG</div>`,
+					code: "<div strokeWidth=\"2\">Not SVG</div>",
 				},
 				{
-					code: `<button fillOpacity="0.5">Not SVG</button>`,
+					code: "<button fillOpacity=\"0.5\">Not SVG</button>",
 				},
 				{
-					code: `<Component strokeDasharray="5,5" />`,
+					code: "<Component strokeDasharray=\"5,5\" />",
 				},
 			],
 			invalid: [
 				// stroke attributes
 				{
-					code: `<svg><path strokeWidth="2" /></svg>`,
-					output: `<svg><path stroke-width="2" /></svg>`,
+					code: "<svg><path strokeWidth=\"2\" /></svg>",
+					output: "<svg><path stroke-width=\"2\" /></svg>",
 					errors: [
 						{
 							messageId: "noReactSvgProp",
@@ -61,8 +61,8 @@ describe("no-react-svg-props", () => {
 					],
 				},
 				{
-					code: `<svg><line strokeDasharray="5,5" /></svg>`,
-					output: `<svg><line stroke-dasharray="5,5" /></svg>`,
+					code: "<svg><line strokeDasharray=\"5,5\" /></svg>",
+					output: "<svg><line stroke-dasharray=\"5,5\" /></svg>",
 					errors: [
 						{
 							messageId: "noReactSvgProp",
@@ -71,8 +71,8 @@ describe("no-react-svg-props", () => {
 					],
 				},
 				{
-					code: `<svg><path strokeLinecap="round" /></svg>`,
-					output: `<svg><path stroke-linecap="round" /></svg>`,
+					code: "<svg><path strokeLinecap=\"round\" /></svg>",
+					output: "<svg><path stroke-linecap=\"round\" /></svg>",
 					errors: [
 						{
 							messageId: "noReactSvgProp",
@@ -81,8 +81,8 @@ describe("no-react-svg-props", () => {
 					],
 				},
 				{
-					code: `<svg><polygon strokeLinejoin="miter" /></svg>`,
-					output: `<svg><polygon stroke-linejoin="miter" /></svg>`,
+					code: "<svg><polygon strokeLinejoin=\"miter\" /></svg>",
+					output: "<svg><polygon stroke-linejoin=\"miter\" /></svg>",
 					errors: [
 						{
 							messageId: "noReactSvgProp",
@@ -91,8 +91,8 @@ describe("no-react-svg-props", () => {
 					],
 				},
 				{
-					code: `<svg><circle strokeOpacity="0.5" /></svg>`,
-					output: `<svg><circle stroke-opacity="0.5" /></svg>`,
+					code: "<svg><circle strokeOpacity=\"0.5\" /></svg>",
+					output: "<svg><circle stroke-opacity=\"0.5\" /></svg>",
 					errors: [
 						{
 							messageId: "noReactSvgProp",
@@ -102,8 +102,8 @@ describe("no-react-svg-props", () => {
 				},
 				// fill attributes
 				{
-					code: `<svg><rect fillOpacity="0.7" /></svg>`,
-					output: `<svg><rect fill-opacity="0.7" /></svg>`,
+					code: "<svg><rect fillOpacity=\"0.7\" /></svg>",
+					output: "<svg><rect fill-opacity=\"0.7\" /></svg>",
 					errors: [
 						{
 							messageId: "noReactSvgProp",
@@ -112,8 +112,8 @@ describe("no-react-svg-props", () => {
 					],
 				},
 				{
-					code: `<svg><path fillRule="evenodd" /></svg>`,
-					output: `<svg><path fill-rule="evenodd" /></svg>`,
+					code: "<svg><path fillRule=\"evenodd\" /></svg>",
+					output: "<svg><path fill-rule=\"evenodd\" /></svg>",
 					errors: [
 						{
 							messageId: "noReactSvgProp",
@@ -123,8 +123,8 @@ describe("no-react-svg-props", () => {
 				},
 				// text attributes
 				{
-					code: `<svg><text textAnchor="middle">Text</text></svg>`,
-					output: `<svg><text text-anchor="middle">Text</text></svg>`,
+					code: "<svg><text textAnchor=\"middle\">Text</text></svg>",
+					output: "<svg><text text-anchor=\"middle\">Text</text></svg>",
 					errors: [
 						{
 							messageId: "noReactSvgProp",
@@ -133,8 +133,8 @@ describe("no-react-svg-props", () => {
 					],
 				},
 				{
-					code: `<svg><text fontFamily="Arial">Text</text></svg>`,
-					output: `<svg><text font-family="Arial">Text</text></svg>`,
+					code: "<svg><text fontFamily=\"Arial\">Text</text></svg>",
+					output: "<svg><text font-family=\"Arial\">Text</text></svg>",
 					errors: [
 						{
 							messageId: "noReactSvgProp",
@@ -143,8 +143,8 @@ describe("no-react-svg-props", () => {
 					],
 				},
 				{
-					code: `<svg><text fontSize="16">Text</text></svg>`,
-					output: `<svg><text font-size="16">Text</text></svg>`,
+					code: "<svg><text fontSize=\"16\">Text</text></svg>",
+					output: "<svg><text font-size=\"16\">Text</text></svg>",
 					errors: [
 						{
 							messageId: "noReactSvgProp",
@@ -153,8 +153,8 @@ describe("no-react-svg-props", () => {
 					],
 				},
 				{
-					code: `<svg><text fontWeight="bold">Text</text></svg>`,
-					output: `<svg><text font-weight="bold">Text</text></svg>`,
+					code: "<svg><text fontWeight=\"bold\">Text</text></svg>",
+					output: "<svg><text font-weight=\"bold\">Text</text></svg>",
 					errors: [
 						{
 							messageId: "noReactSvgProp",
@@ -164,8 +164,8 @@ describe("no-react-svg-props", () => {
 				},
 				// clip attributes
 				{
-					code: `<svg><rect clipPath="url(#clip)" /></svg>`,
-					output: `<svg><rect clip-path="url(#clip)" /></svg>`,
+					code: "<svg><rect clipPath=\"url(#clip)\" /></svg>",
+					output: "<svg><rect clip-path=\"url(#clip)\" /></svg>",
 					errors: [
 						{
 							messageId: "noReactSvgProp",
@@ -174,8 +174,8 @@ describe("no-react-svg-props", () => {
 					],
 				},
 				{
-					code: `<svg><path clipRule="evenodd" /></svg>`,
-					output: `<svg><path clip-rule="evenodd" /></svg>`,
+					code: "<svg><path clipRule=\"evenodd\" /></svg>",
+					output: "<svg><path clip-rule=\"evenodd\" /></svg>",
 					errors: [
 						{
 							messageId: "noReactSvgProp",

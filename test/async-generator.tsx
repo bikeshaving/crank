@@ -1,12 +1,9 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
 
+import type {Child, Children, Context, Element} from "../src/crank.js";
 import {
 	createElement,
-	Child,
-	Children,
-	Context,
-	Element,
 	Fragment,
 } from "../src/crank.js";
 import {renderer} from "../src/dom.js";
@@ -63,6 +60,7 @@ describe("async generator", () => {
 
 	test("refresh", async () => {
 		let ctx!: Context;
+
 		async function* Component(this: Context): AsyncGenerator<Element> {
 			ctx = this;
 			let i = 1;
@@ -88,12 +86,14 @@ describe("async generator", () => {
 
 	test("refreshing doesn’t cause siblings to update", async () => {
 		const mock = Sinon.fake();
+
 		function Sibling(): Element {
 			mock();
 			return <div>Sibling</div>;
 		}
 
 		let ctx!: Context;
+
 		async function* Component(this: Context): AsyncGenerator<Element> {
 			ctx = this;
 			let i = 0;
@@ -102,6 +102,7 @@ describe("async generator", () => {
 				yield <div>Hello {i}</div>;
 			}
 		}
+
 		await renderer.render(
 			<Fragment>
 				<Component />
@@ -163,6 +164,7 @@ describe("async generator", () => {
 
 	test("for...of yield resumes with elements", async () => {
 		let node: HTMLElement | undefined;
+
 		async function* Component(this: Context) {
 			let i = 0;
 			for ({} of this) {
@@ -186,7 +188,9 @@ describe("async generator", () => {
 			await new Promise((resolve) => setTimeout(resolve));
 			return <div id={id}>{id}</div>;
 		}
+
 		let node: HTMLElement | undefined;
+
 		async function* Component(this: Context) {
 			let i = 0;
 			for ({} of this) {
@@ -271,6 +275,7 @@ describe("async generator", () => {
 
 	test("for await...of multiple yields per update", async () => {
 		let resolve: undefined | Function;
+
 		async function* Component(
 			this: Context,
 			{message}: {message: string},
@@ -336,6 +341,7 @@ describe("async generator", () => {
 
 	test("for await...of with Fragment parent", async () => {
 		let resolve!: Function;
+
 		async function* Component(this: Context) {
 			for await (const _ of this) {
 				yield 1;
@@ -363,6 +369,7 @@ describe("async generator", () => {
 
 	test("for await...of yield resumes with a promise of an element", async () => {
 		let nodeP: Promise<HTMLElement> | undefined;
+
 		async function* Component(this: Context) {
 			let i = 0;
 			for await ({} of this) {
@@ -397,6 +404,7 @@ describe("async generator", () => {
 		});
 
 		let html: Promise<string> | undefined;
+
 		async function* Component(this: Context) {
 			let i = 0;
 			for await (const _ of this) {
@@ -442,6 +450,7 @@ describe("async generator", () => {
 
 	test("concurrent unmount", async () => {
 		const mock = Sinon.fake();
+
 		async function* Component(this: Context): AsyncGenerator<Child> {
 			try {
 				for await ({} of this) {
@@ -533,6 +542,7 @@ describe("async generator", () => {
 
 	test("try/finally", async () => {
 		const mock = Sinon.fake();
+
 		async function* Component(this: Context): AsyncGenerator<Child> {
 			try {
 				let i = 0;
@@ -559,6 +569,7 @@ describe("async generator", () => {
 		const beforeYieldFn = Sinon.fake();
 		const afterYieldFn = Sinon.fake();
 		const afterLoopFn = Sinon.fake();
+
 		async function* Component(this: Context) {
 			let i = 0;
 			for ({} of this) {
@@ -589,6 +600,7 @@ describe("async generator", () => {
 		const beforeYieldFn = Sinon.fake();
 		const afterYieldFn = Sinon.fake();
 		const afterLoopFn = Sinon.fake();
+
 		async function* Component(this: Context) {
 			let i = 0;
 			await new Promise((resolve) => setTimeout(resolve));
@@ -623,6 +635,7 @@ describe("async generator", () => {
 		const beforeYieldFn = Sinon.fake();
 		const afterYieldFn = Sinon.fake();
 		const afterLoopFn = Sinon.fake();
+
 		async function* Component(this: Context): AsyncGenerator<Child> {
 			let i = 0;
 			for await (const _ of this) {
@@ -661,6 +674,7 @@ describe("async generator", () => {
 		const beforeYieldFn = Sinon.fake();
 		const afterYieldFn = Sinon.fake();
 		const afterLoopFn = Sinon.fake();
+
 		async function* Component(this: Context): AsyncGenerator<Child> {
 			let i = 0;
 			for await (const _ of this) {
@@ -701,6 +715,7 @@ describe("async generator", () => {
 		const beforeYieldFn = Sinon.fake();
 		const afterYieldFn = Sinon.fake();
 		const afterLoopFn = Sinon.fake();
+
 		async function* Component(this: Context): AsyncGenerator<Child> {
 			let i = 0;
 			for await ({} of this) {
@@ -748,6 +763,7 @@ describe("async generator", () => {
 
 	test("Context iterator returns on unmount", async () => {
 		const mock = Sinon.fake();
+
 		async function* Component(this: Context): AsyncGenerator<Element> {
 			let i = 0;
 			for await ({} of this) {
@@ -769,6 +785,7 @@ describe("async generator", () => {
 
 	test("return called when component continues to yield", async () => {
 		const mock = Sinon.fake();
+
 		async function* Component(this: Context) {
 			let i = 0;
 			for await ({} of this) {
@@ -837,6 +854,7 @@ describe("async generator", () => {
 
 	test("multiple iterations without a yield throw", async () => {
 		let i = 0;
+
 		async function* Component(this: Context) {
 			for await (const _ of this) {
 				// just so the test suite doesn’t enter an infinite loop
@@ -867,6 +885,7 @@ describe("async generator", () => {
 
 	test("for...of enqueues", async () => {
 		const fn = Sinon.fake();
+
 		async function* Component(
 			this: Context<typeof Component>,
 			{message}: {message: string},
@@ -964,6 +983,7 @@ describe("async generator", () => {
 
 	test("for await...of updates enqueue", async () => {
 		const beforeAwaitFn = Sinon.fake();
+
 		async function* Component(this: Context, {callIndex}: {callIndex: number}) {
 			let runIndex = 1;
 			for await ({callIndex} of this) {
@@ -1016,7 +1036,7 @@ describe("async generator", () => {
 	});
 
 	test("stale renders are skipped", async () => {
-		const characterDatas: Array<string> = [];
+		const characterDatas: string[] = [];
 		const mutationObserver = new MutationObserver((records) => {
 			for (const record of records) {
 				if (record.type === "characterData") {
@@ -1030,6 +1050,7 @@ describe("async generator", () => {
 			subtree: true,
 		});
 		let resolve: undefined | Function;
+
 		async function* Component(this: Context, {message}: {message: string}) {
 			for await ({message} of this) {
 				yield <span>{message} before</span>;
@@ -1066,6 +1087,7 @@ describe("async generator", () => {
 		const beforeYieldFn = Sinon.fake();
 		const afterYieldFn = Sinon.fake();
 		const afterLoopFn = Sinon.fake();
+
 		async function* Component(this: Context) {
 			let i = 0;
 			for ({} of this) {
@@ -1134,7 +1156,8 @@ describe("async generator", () => {
 	});
 
 	test("for await...of waits for nephew", async () => {
-		let mock = Sinon.fake();
+		const mock = Sinon.fake();
+
 		async function* Component(this: Context) {
 			for await ({} of this) {
 				yield <div>Children 1</div>;
@@ -1144,6 +1167,7 @@ describe("async generator", () => {
 		}
 
 		let resolveNephew: Function;
+
 		async function Nephew() {
 			await new Promise((resolve) => (resolveNephew = resolve));
 			return <span>Nephew</span>;

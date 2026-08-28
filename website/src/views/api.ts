@@ -21,7 +21,7 @@ export default async function APIView({url}: ViewProps) {
 
 	// Find the matching document
 	// Handle /api -> /api/index mapping
-	let lookupUrl = url.replace(/\/$/, "");
+	const lookupUrl = url.replace(/\/$/, "");
 	let post = docs.find((doc) => doc.url.replace(/\/$/, "") === lookupUrl);
 
 	// If not found and URL ends without a specific file, try adding /index

@@ -8,24 +8,24 @@ describe("no-react-event-props", () => {
 	it("should allow lowercase event handlers (valid Crank syntax)", () => {
 		ruleTester.run("no-react-event-props", noReactEventProps, {
 			valid: [
-				{code: `<button onclick={handleClick}>Click</button>`},
-				{code: `<input onchange={handleChange} />`},
-				{code: `<input oninput={handleInput} />`},
-				{code: `<form onsubmit={handleSubmit}>Submit</form>`},
-				{code: `<input onkeydown={handleKey} />`},
-				{code: `<input onkeyup={handleKey} />`},
-				{code: `<div onmousedown={handleMouse} />`},
-				{code: `<div onmouseup={handleMouse} />`},
-				{code: `<div onmouseover={handleMouse} />`},
-				{code: `<div onmouseout={handleMouse} />`},
-				{code: `<input onfocus={handleFocus} />`},
-				{code: `<input onblur={handleBlur} />`},
-				{code: `<div onscroll={handleScroll} />`},
-				{code: `<div onwheel={handleWheel} />`},
+				{code: "<button onclick={handleClick}>Click</button>"},
+				{code: "<input onchange={handleChange} />"},
+				{code: "<input oninput={handleInput} />"},
+				{code: "<form onsubmit={handleSubmit}>Submit</form>"},
+				{code: "<input onkeydown={handleKey} />"},
+				{code: "<input onkeyup={handleKey} />"},
+				{code: "<div onmousedown={handleMouse} />"},
+				{code: "<div onmouseup={handleMouse} />"},
+				{code: "<div onmouseover={handleMouse} />"},
+				{code: "<div onmouseout={handleMouse} />"},
+				{code: "<input onfocus={handleFocus} />"},
+				{code: "<input onblur={handleBlur} />"},
+				{code: "<div onscroll={handleScroll} />"},
+				{code: "<div onwheel={handleWheel} />"},
 				// Non-event props should not be affected
-				{code: `<div customProp={value} />`},
-				{code: `<div className={styles.button} />`},
-				{code: `<Component myCallback={fn} />`},
+				{code: "<div customProp={value} />"},
+				{code: "<div className={styles.button} />"},
+				{code: "<Component myCallback={fn} />"},
 			],
 			invalid: [],
 		});
@@ -36,26 +36,26 @@ describe("no-react-event-props", () => {
 			{
 				event: "onClick",
 				correct: "onclick",
-				code: `<button onClick={handleClick}>Click</button>`,
-				output: `<button onclick={handleClick}>Click</button>`,
+				code: "<button onClick={handleClick}>Click</button>",
+				output: "<button onclick={handleClick}>Click</button>",
 			},
 			{
 				event: "onChange",
 				correct: "onchange",
-				code: `<input onChange={handleChange} />`,
-				output: `<input onchange={handleChange} />`,
+				code: "<input onChange={handleChange} />",
+				output: "<input onchange={handleChange} />",
 			},
 			{
 				event: "onInput",
 				correct: "oninput",
-				code: `<input onInput={handleInput} />`,
-				output: `<input oninput={handleInput} />`,
+				code: "<input onInput={handleInput} />",
+				output: "<input oninput={handleInput} />",
 			},
 			{
 				event: "onSubmit",
 				correct: "onsubmit",
-				code: `<form onSubmit={handleSubmit}>Submit</form>`,
-				output: `<form onsubmit={handleSubmit}>Submit</form>`,
+				code: "<form onSubmit={handleSubmit}>Submit</form>",
+				output: "<form onsubmit={handleSubmit}>Submit</form>",
 			},
 		])("should fix $event to $correct", ({event, correct, code, output}) => {
 			ruleTester.run("no-react-event-props", noReactEventProps, {
@@ -227,8 +227,8 @@ describe("no-react-event-props", () => {
 			valid: [],
 			invalid: [
 				{
-					code: `<button onClick={handleClick} onMouseOver={handleHover}>Hover</button>`,
-					output: `<button onclick={handleClick} onmouseover={handleHover}>Hover</button>`,
+					code: "<button onClick={handleClick} onMouseOver={handleHover}>Hover</button>",
+					output: "<button onclick={handleClick} onmouseover={handleHover}>Hover</button>",
 					errors: [
 						{
 							messageId: "noReactEventProp",

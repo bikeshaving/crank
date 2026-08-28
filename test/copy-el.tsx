@@ -1,7 +1,8 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
 
-import {Context, Copy, createElement, Element, Fragment} from "../src/crank.js";
+import type {Context, Element} from "../src/crank.js";
+import {Copy, createElement, Fragment} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("copy-el", () => {
@@ -328,6 +329,7 @@ describe("copy-el", () => {
 		}
 
 		let ctx!: Context;
+
 		function* Parent(this: Context) {
 			ctx = this;
 			let i = 1;
@@ -355,10 +357,12 @@ describe("copy-el", () => {
 
 	test("identical elements", () => {
 		const fn = Sinon.fake();
+
 		function Component() {
 			fn();
 			return <span>Hello</span>;
 		}
+
 		const el = <Component />;
 		renderer.render(el, document.body);
 		expect(document.body.innerHTML).toBe("<span>Hello</span>");
@@ -369,12 +373,14 @@ describe("copy-el", () => {
 
 	test("identical elements passed as children", () => {
 		const fn = Sinon.fake();
+
 		function Child() {
 			fn();
 			return <span>Hello</span>;
 		}
 
 		let ctx!: Context;
+
 		function* Parent(this: Context, {children}: {children: Element}) {
 			ctx = this;
 			let i = 0;

@@ -5,7 +5,7 @@
 export async function hangs(
 	value: unknown,
 	ms = 1,
-	message: string = "Expected not to fulfill before timeout",
+	message = "Expected not to fulfill before timeout",
 ): Promise<void> {
 	const timeout = Symbol("timeout");
 	try {
