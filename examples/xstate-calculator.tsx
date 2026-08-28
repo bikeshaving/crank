@@ -10,7 +10,7 @@ import {renderer} from "@b9g/crank/dom";
 const not =
   (fn) =>
     (...args) =>
-      !fn.apply(null, args);
+      !fn(...args);
 const isZero = (context, event) => event.key === 0;
 const isNotZero = not(isZero);
 const isMinus = (context, event) => event.operator === "-";

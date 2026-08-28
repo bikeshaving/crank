@@ -1,6 +1,6 @@
 import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
-import type {Context} from "@b9g/crank";
+import type {Context, Element} from "@b9g/crank";
 
 interface SearchResult {
 	url: string;
@@ -33,7 +33,7 @@ declare global {
 	}
 }
 
-export async function* Search(this: Context) {
+export async function* Search(this: Context): AsyncGenerator<Element> {
 	let query = "";
 	let results: SearchResult[] = [];
 	let isOpen = false;

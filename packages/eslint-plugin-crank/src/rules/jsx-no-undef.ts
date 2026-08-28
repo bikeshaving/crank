@@ -33,7 +33,7 @@ export const jsxNoUndef: Rule.RuleModule = {
 		const config = context.options[0] || {};
 		const allowGlobals = config.allowGlobals || false;
 
-		function checkIdentifierInJSX(node: ESLintNode) {
+		function checkIdentifierInJSX(node: ESLintNode): void {
 			if (node.name === "this") {
 				return;
 			}

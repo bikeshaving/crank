@@ -386,7 +386,7 @@ const tsGenerator: any = {
 	},
 };
 
-function formatParam(param: any, state: any, generator: any) {
+function formatParam(param: any, state: any, generator: any): void {
 	switch (param.type) {
 		case "Identifier":
 			state.write(param.name);
@@ -412,7 +412,7 @@ function formatParam(param: any, state: any, generator: any) {
 	}
 }
 
-function formatFunction(node: any, state: any, generator: any) {
+function formatFunction(node: any, state: any, generator: any): void {
 	state.write("(");
 	// Filter out TypeScript `this` parameter (e.g., `this: Context`)
 	const params = node.params.filter(
@@ -471,7 +471,7 @@ function parseJSXPragma(code: string): {
 const MAX_ITERATIONS = Math.pow(2, 20); // ~1 million iterations
 
 function injectLoopGuards(ast: any): void {
-	function walk(node: any) {
+	function walk(node: any): void {
 		if (!node || typeof node !== "object") {
 			return;
 		}
@@ -541,7 +541,7 @@ function injectLoopGuards(ast: any): void {
 
 	// Second pass: insert loop counter declarations
 
-	function wrapLoops(node: any) {
+	function wrapLoops(node: any): void {
 		if (!node || typeof node !== "object") {
 			return;
 		}
@@ -598,13 +598,11 @@ function transformJSX(
 	pragma: ReturnType<typeof parseJSXPragma>,
 ): void {
 	function walk(
-
 		node: any,
-
 		parent: any = null,
 		parentKey: string | null = null,
 		parentIndex: number | null = null,
-	) {
+	): void {
 		if (!node || typeof node !== "object") {
 			return;
 		}
@@ -1005,7 +1003,7 @@ function rewriteBareModuleSpecifiers(ast: any): void {
 		return "https://cdn.jsdelivr.net/npm/" + value + "/+esm";
 	}
 
-	function walk(node: any) {
+	function walk(node: any): void {
 		if (!node || typeof node !== "object") {
 			return;
 		}

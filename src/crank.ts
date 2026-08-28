@@ -24,12 +24,12 @@ const NOOP = (): undefined => {};
 export type Tag = string | symbol | Component;
 
 function getTagName(tag: Tag): string {
+	// Symbol tags use the else branch to avoid typeof tag === "symbol"
 	return typeof tag === "function"
 		? tag.name || "Anonymous"
 		: typeof tag === "string"
 			? tag
-			: // tag is symbol, using else branch to avoid typeof tag === "symbol"
-			tag.description || "Anonymous";
+			: tag.description || "Anonymous";
 }
 
 /**
@@ -132,6 +132,7 @@ export type Portal = typeof Portal;
  * rerendering as a performance optimization. Copy elements can also be keyed,
  * in which case the previously rendered keyed element will be copied.
  */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export const Copy = Symbol.for("crank.Copy") as unknown as Component<{}> &
 	symbol;
 export type Copy = typeof Copy;
@@ -212,6 +213,7 @@ export interface Element<TTag extends Tag = Tag> {
  * Typically, you use a helper function like createElement to create elements
  * rather than instatiating this class directly.
  */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class Element<TTag extends Tag = Tag> {
 	constructor(tag: TTag, props: TagProps<TTag>) {
 		this.tag = tag;
@@ -532,9 +534,14 @@ function getChildValues<TNode>(
 }
 
 function stripSpecialProps(props: Record<string, any>): Record<string, any> {
-	let _: unknown;
-	let result: Record<string, any>;
-	({key: _, ref: _, copy: _, hydrate: _, children: _, ...result} = props);
+	const {
+		key: _key,
+		ref: _ref,
+		copy: _copy,
+		hydrate: _hydrate,
+		children: _children,
+		...result
+	} = props;
 	return result;
 }
 
@@ -2155,7 +2162,7 @@ function flush<TRoot>(
 	adapter: RenderAdapter<unknown, unknown, TRoot>,
 	root: TRoot | undefined,
 	initiator?: ContextState,
-) {
+): void {
 	if (root != null) {
 		adapter.finalize(root);
 	}
@@ -2428,6 +2435,7 @@ class ContextState<
 
 // Public type that only extracts props from component functions
 export type ComponentProps<T> = T extends () => unknown
+	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 	? {}
 	: T extends (props: infer U) => unknown
 		? U
@@ -2453,6 +2461,7 @@ const _ContextState = Symbol.for("crank.ContextState");
  * places such as the return value of refresh and the argument passed to
  * schedule and cleanup callbacks.
  */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class Context<
 	T = any,
 	TResult = any,
@@ -3851,7 +3860,10 @@ function propagateError<TNode>(
 
 	if (isPromiseLike(diff)) {
 		return diff.then(
-			() => void commitComponent(parent, schedulePromises),
+			() => {
+				commitComponent(parent, schedulePromises);
+				return undefined;
+			},
 			(err) => propagateError(parent, err, schedulePromises),
 		);
 	}
@@ -3873,6 +3885,7 @@ type MappedEventListenerOrEventListenerObject<T extends string> =
 	MappedEventListener<T> |
 	{handleEvent: MappedEventListener<T>};
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface Context extends Crank.Context {
 	addEventListener<T extends string>(
 		type: T,
@@ -3897,8 +3910,10 @@ declare global {
 			[tag: string]: Event;
 		}
 
+		// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 		export interface ProvisionMap {}
 
+		// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 		export interface Context {}
 	}
 
@@ -3921,6 +3936,7 @@ declare global {
 		}
 
 		export interface ElementChildrenAttribute {
+			// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 			children: {};
 		}
 	}

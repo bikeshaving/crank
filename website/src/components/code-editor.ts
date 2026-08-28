@@ -145,7 +145,7 @@ export function* CodeEditor(
 		editable?: boolean;
 		showGutter?: boolean;
 	},
-) {
+): Generator<Element> {
 	const keyer = new Keyer();
 	let selectionRange: SelectionRange | undefined;
 	let renderSource: string | undefined;
@@ -397,7 +397,7 @@ export function* CodeEditor(
 	}
 }
 
-function getPreviousLine(text: string, index: number) {
+function getPreviousLine(text: string, index: number): string {
 	index = Math.max(0, index);
 	for (let i = index - 1; i >= 0; i--) {
 		if (text[i] === "\n" || text[i] === "\r") {
@@ -415,7 +415,10 @@ interface SelectionRange {
 }
 
 /** * Revise Logic ***/
-async function checkpointEditHistory(ctx: Context, editHistory: EditHistory) {
+async function checkpointEditHistory(
+	ctx: Context,
+	editHistory: EditHistory,
+): Promise<void> {
 	const contentArea = (
 		(await new Promise((resolve) => ctx.schedule(resolve))) as any
 	).querySelector("content-area");

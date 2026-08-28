@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
 import {NotFound} from "@b9g/http-errors";
@@ -21,7 +22,7 @@ function estimateReadTime(body: string): number {
 	return Math.max(1, Math.ceil(words / 200));
 }
 
-export default async function BlogPage({url}: ViewProps) {
+export default async function BlogPage({url}: ViewProps): Promise<Element> {
 	const docsDir = await self.directories.open("docs");
 	const blogDir = await docsDir.getDirectoryHandle("blog");
 	const posts = await collectDocuments(blogDir, "blog");

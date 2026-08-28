@@ -1,12 +1,12 @@
 import {describe, it} from "@b9g/libuild/test";
-import {noReactSvgProps} from "./no-react-svg-props.js";
+import {noReactSVGProps} from "./no-react-svg-props.js";
 import {createTsRuleTester} from "../test-helpers/rule-tester.js";
 
 const ruleTester = createTsRuleTester();
 
 describe("no-react-svg-props", () => {
 	it("detects React camelCase SVG attributes and fixes to standard names", () => {
-		ruleTester.run("no-react-svg-props", noReactSvgProps, {
+		ruleTester.run("no-react-svg-props", noReactSVGProps, {
 			valid: [
 				// kebab-case SVG attributes should be allowed
 				{
@@ -55,7 +55,7 @@ describe("no-react-svg-props", () => {
 					output: "<svg><path stroke-width=\"2\" /></svg>",
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "strokeWidth", standard: "stroke-width"},
 						},
 					],
@@ -65,7 +65,7 @@ describe("no-react-svg-props", () => {
 					output: "<svg><line stroke-dasharray=\"5,5\" /></svg>",
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "strokeDasharray", standard: "stroke-dasharray"},
 						},
 					],
@@ -75,7 +75,7 @@ describe("no-react-svg-props", () => {
 					output: "<svg><path stroke-linecap=\"round\" /></svg>",
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "strokeLinecap", standard: "stroke-linecap"},
 						},
 					],
@@ -85,7 +85,7 @@ describe("no-react-svg-props", () => {
 					output: "<svg><polygon stroke-linejoin=\"miter\" /></svg>",
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "strokeLinejoin", standard: "stroke-linejoin"},
 						},
 					],
@@ -95,7 +95,7 @@ describe("no-react-svg-props", () => {
 					output: "<svg><circle stroke-opacity=\"0.5\" /></svg>",
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "strokeOpacity", standard: "stroke-opacity"},
 						},
 					],
@@ -106,7 +106,7 @@ describe("no-react-svg-props", () => {
 					output: "<svg><rect fill-opacity=\"0.7\" /></svg>",
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "fillOpacity", standard: "fill-opacity"},
 						},
 					],
@@ -116,7 +116,7 @@ describe("no-react-svg-props", () => {
 					output: "<svg><path fill-rule=\"evenodd\" /></svg>",
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "fillRule", standard: "fill-rule"},
 						},
 					],
@@ -127,7 +127,7 @@ describe("no-react-svg-props", () => {
 					output: "<svg><text text-anchor=\"middle\">Text</text></svg>",
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "textAnchor", standard: "text-anchor"},
 						},
 					],
@@ -137,7 +137,7 @@ describe("no-react-svg-props", () => {
 					output: "<svg><text font-family=\"Arial\">Text</text></svg>",
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "fontFamily", standard: "font-family"},
 						},
 					],
@@ -147,7 +147,7 @@ describe("no-react-svg-props", () => {
 					output: "<svg><text font-size=\"16\">Text</text></svg>",
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "fontSize", standard: "font-size"},
 						},
 					],
@@ -157,7 +157,7 @@ describe("no-react-svg-props", () => {
 					output: "<svg><text font-weight=\"bold\">Text</text></svg>",
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "fontWeight", standard: "font-weight"},
 						},
 					],
@@ -168,7 +168,7 @@ describe("no-react-svg-props", () => {
 					output: "<svg><rect clip-path=\"url(#clip)\" /></svg>",
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "clipPath", standard: "clip-path"},
 						},
 					],
@@ -178,7 +178,7 @@ describe("no-react-svg-props", () => {
 					output: "<svg><path clip-rule=\"evenodd\" /></svg>",
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "clipRule", standard: "clip-rule"},
 						},
 					],
@@ -197,15 +197,15 @@ describe("no-react-svg-props", () => {
 				`,
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "strokeWidth", standard: "stroke-width"},
 						},
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "fillOpacity", standard: "fill-opacity"},
 						},
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "strokeDasharray", standard: "stroke-dasharray"},
 						},
 					],
@@ -230,11 +230,11 @@ describe("no-react-svg-props", () => {
 				`,
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "strokeWidth", standard: "stroke-width"},
 						},
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "fillOpacity", standard: "fill-opacity"},
 						},
 					],
@@ -273,19 +273,19 @@ describe("no-react-svg-props", () => {
 				`,
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "strokeWidth", standard: "stroke-width"},
 						},
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "strokeLinecap", standard: "stroke-linecap"},
 						},
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "strokeLinejoin", standard: "stroke-linejoin"},
 						},
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "fillOpacity", standard: "fill-opacity"},
 						},
 					],
@@ -310,23 +310,23 @@ describe("no-react-svg-props", () => {
 				`,
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "textAnchor", standard: "text-anchor"},
 						},
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "fontFamily", standard: "font-family"},
 						},
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "fontSize", standard: "font-size"},
 						},
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "strokeWidth", standard: "stroke-width"},
 						},
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "strokeDasharray", standard: "stroke-dasharray"},
 						},
 					],
@@ -351,19 +351,19 @@ describe("no-react-svg-props", () => {
 				`,
 					errors: [
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "stopColor", standard: "stop-color"},
 						},
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "stopOpacity", standard: "stop-opacity"},
 						},
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "stopColor", standard: "stop-color"},
 						},
 						{
-							messageId: "noReactSvgProp",
+							messageId: "noReactSVGProp",
 							data: {react: "stopOpacity", standard: "stop-opacity"},
 						},
 					],

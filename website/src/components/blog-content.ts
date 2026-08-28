@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 import type {Children} from "@b9g/crank";
 
@@ -20,7 +21,7 @@ export function BlogContent({
 	authorURL,
 	readTime,
 	children,
-}: BlogContentProps) {
+}: BlogContentProps): Element {
 	const publishDateDisplay =
 		publishDate &&
 		publishDate.toLocaleString("en-US", {

@@ -2,7 +2,7 @@ import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
 
 import {hangs} from "./utils.js";
-import type {Context} from "../src/crank.js";
+import type {Context, Element} from "../src/crank.js";
 import {createElement} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
@@ -183,7 +183,7 @@ describe("copy-prop", () => {
 	});
 
 	test("isolate higher-order component", () => {
-		function isolate(Component: any) {
+		function isolate(Component: any): (props: any) => Element {
 			return function Wrapper(props: any) {
 				return <Component {...props} copy={true} />;
 			};
@@ -482,7 +482,7 @@ describe("copy-prop", () => {
 	test("copy prop can be used for uncontrolled input values", () => {
 		const spy = Sinon.spy();
 
-		function* Component(this: Context<typeof Component>, {}: {}) {
+		function* Component(this: Context<typeof Component>) {
 			let force = false;
 			let value = "Hello";
 			for ({} of this) {

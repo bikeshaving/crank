@@ -170,7 +170,7 @@ router.route("/pagefind/:path*").get(async (request, context) => {
 		return new Response(content, {
 			headers: {"Content-Type": contentType},
 		});
-	} catch {
+	} catch (err) {
 		return new Response("Not Found (run static build first)", {status: 404});
 	}
 });
@@ -293,7 +293,7 @@ router.route("/skill").get(async () => {
 					'attachment; filename="crank-component-authoring.skill"',
 			},
 		});
-	} catch {
+	} catch (err) {
 		return new Response("Not Found", {status: 404});
 	}
 });
@@ -372,7 +372,7 @@ self.addEventListener("install", (event) => {
 	event.waitUntil(generateStaticSite());
 });
 
-async function generateStaticSite() {
+async function generateStaticSite(): Promise<void> {
 	if (import.meta.env.MODE !== "production") {
 		return;
 	}
@@ -411,12 +411,12 @@ async function generateStaticSite() {
 
 		// Generate 404 page
 		const notFoundResponse = await fetch("/404.html");
-		const notFoundHtml = await notFoundResponse.text();
+		const notFoundHTML = await notFoundResponse.text();
 		const notFoundHandle = await staticBucket.getFileHandle("404.html", {
 			create: true,
 		});
 		const notFoundWritable = await notFoundHandle.createWritable();
-		await notFoundWritable.write(notFoundHtml);
+		await notFoundWritable.write(notFoundHTML);
 		await notFoundWritable.close();
 		logger.info("Generated 404.html");
 
@@ -457,7 +457,7 @@ async function generateStaticSite() {
 
 		// Generate redirect HTML files for old URLs
 		for (const [oldPath, newPath] of Object.entries(redirects)) {
-			const redirectHtml = `<!DOCTYPE html>
+			const redirectHTML = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -484,7 +484,7 @@ async function generateStaticSite() {
 				create: true,
 			});
 			const writable = await fileHandle.createWritable();
-			await writable.write(redirectHtml);
+			await writable.write(redirectHTML);
 			await writable.close();
 			logger.info(`Generated redirect ${oldPath} -> ${newPath}`);
 		}
@@ -546,7 +546,7 @@ async function generateStaticSite() {
 	}
 }
 
-function escapeXml(str: string): string {
+function escapeXML(str: string): string {
 	return str
 		.replace(/&/g, "&amp;")
 		.replace(/</g, "&lt;")
@@ -581,9 +581,9 @@ function generateFeed(blogDocs: DocInfo[]): string {
 				? post.attributes.publishDate.toUTCString()
 				: "";
 			return `    <item>
-      <title>${escapeXml(post.attributes.title)}</title>
+      <title>${escapeXML(post.attributes.title)}</title>
       <link>https://crank.js.org${post.url}</link>
-      <guid>https://crank.js.org${post.url}</guid>${pubDate ? `\n      <pubDate>${pubDate}</pubDate>` : ""}${post.attributes.description ? `\n      <description>${escapeXml(post.attributes.description)}</description>` : ""}${post.attributes.author ? `\n      <author>${escapeXml(post.attributes.author)}</author>` : ""}
+      <guid>https://crank.js.org${post.url}</guid>${pubDate ? `\n      <pubDate>${pubDate}</pubDate>` : ""}${post.attributes.description ? `\n      <description>${escapeXML(post.attributes.description)}</description>` : ""}${post.attributes.author ? `\n      <author>${escapeXML(post.attributes.author)}</author>` : ""}
     </item>`;
 		})
 		.join("\n");
