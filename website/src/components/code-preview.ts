@@ -314,6 +314,7 @@ ${code}
 }
 
 let globalId = 0;
+
 export function* CodePreview(
 	this: Context<typeof CodePreview>,
 	{
@@ -398,7 +399,7 @@ export function* CodePreview(
 	let height = 100;
 	if (typeof window !== "undefined") {
 		const onmessage = (ev: any) => {
-			let data: any = JSON.parse(ev.data);
+			const data: any = JSON.parse(ev.data);
 			if (data.id !== id) {
 				return;
 			}

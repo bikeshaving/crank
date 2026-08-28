@@ -155,10 +155,10 @@ describe("no-yield-in-lifecycle-methods", () => {
 										messageId: "noYieldInLifecycle",
 										data: {
 											statement: "yield",
-											method: method,
+											method,
 										},
-										line: line,
-										column: column,
+										line,
+										column,
 									},
 								],
 							},

@@ -1,11 +1,13 @@
-import {SourceCode} from "eslint";
+import type {SourceCode} from "eslint";
 import type {ESLintNode} from "./types";
 
 /**
  * Check if a statement is a final action in its scope (before return, throw, or end of block)
  */
 export function isFinalAction(node: ESLintNode): boolean {
-	if (!node.parent) return false;
+	if (!node.parent) {
+		return false;
+	}
 
 	// If the node is a CallExpression, we need to check if its parent ExpressionStatement
 	// is the final action in its block
@@ -81,7 +83,9 @@ export function traverseAST(
 	node: ESLintNode,
 	visitor: (node: ESLintNode) => void,
 ): void {
-	if (!node) return;
+	if (!node) {
+		return;
+	}
 
 	visitor(node);
 
@@ -202,7 +206,9 @@ export function findAncestor(
  */
 export function getAssignedVariableName(node: ESLintNode): string | null {
 	const parent = node.parent;
-	if (!parent) return null;
+	if (!parent) {
+		return null;
+	}
 
 	// Variable declaration: const x = ...
 	if (parent.type === "VariableDeclarator" && parent.id.type === "Identifier") {

@@ -566,7 +566,7 @@ ${entries}
 `;
 }
 
-function generateFeed(blogDocs: Array<DocInfo>): string {
+function generateFeed(blogDocs: DocInfo[]): string {
 	const posts = [...blogDocs]
 		.filter((doc) => doc.attributes.publish)
 		.sort((a, b) => {

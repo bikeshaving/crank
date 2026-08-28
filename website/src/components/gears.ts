@@ -70,7 +70,7 @@ function calculateGear(mod: number, toothCount: number, pressureAngle: number) {
 	// rotate points so teeth tips aligned with x=0 and y=0
 	points = points.map(([x, y]) => rotate([x, y], -mirrorAngle / 2));
 
-	let toothPoints = [];
+	const toothPoints = [];
 	for (let i = 0; i <= toothCount; i++) {
 		const points1 = points
 			.slice()
@@ -187,7 +187,7 @@ function Rack({mod, height}: {mod: number; height: number}) {
 	const pressureAngle = radiansFromDegrees(20);
 	const points = [];
 	const toothWidth = mod * Math.PI;
-	let tipWidth = toothWidth / 4;
+	const tipWidth = toothWidth / 4;
 	const count = Math.ceil(height / toothWidth) + 1;
 	for (let i = Math.floor(-count); i <= count; i++) {
 		const offset = i * toothWidth;
@@ -293,7 +293,7 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 		const height =
 			(typeof document !== "undefined" &&
 				document.scrollingElement?.clientHeight) ||
-			1000;
+				1000;
 		const scrollAng = (-scrollTop * speed) / pitchRadius1 + idleOffset;
 		// Linear rack movement derived from gear rotation
 		const rackOffset = -scrollAng * pitchRadius1;

@@ -49,7 +49,9 @@ export function buildAPIModules(docs: DocInfo[]): APIModule[] {
 		// Parse URL: /api, /api/{module}, /api/{module}/{category}/{item}
 		const parts = doc.url.split("/").filter(Boolean); // ["api", "core", "functions", "createElement"]
 
-		if (parts.length < 2) continue; // Skip /api itself
+		if (parts.length < 2) {
+			continue;
+		} // Skip /api itself
 
 		const moduleSlug = parts[1];
 
@@ -103,8 +105,12 @@ export function buildAPIModules(docs: DocInfo[]): APIModule[] {
 
 	// Sort modules: core first, then alphabetically
 	modules.sort((a, b) => {
-		if (a.slug === "core") return -1;
-		if (b.slug === "core") return 1;
+		if (a.slug === "core") {
+			return -1;
+		}
+		if (b.slug === "core") {
+			return 1;
+		}
 		return a.name.localeCompare(b.name);
 	});
 

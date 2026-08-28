@@ -93,7 +93,7 @@ export function* InlineCodeBlock(
 									if (typeof navigator !== "undefined" && navigator.clipboard) {
 										await navigator.clipboard.writeText(value);
 										this.refresh(() => (copied = true));
-										// eslint-disable-next-line crank/require-cleanup-for-timers -- fire-and-forget UI feedback
+
 										setTimeout(
 											() => this.refresh(() => (copied = false)),
 											2000,

@@ -31,7 +31,7 @@ interface SerializeResult {
 function wrapJSXExpression(
 	j: JSCodeshift,
 	expr: any,
-	useGenericClose: boolean = true,
+	useGenericClose = true,
 ): any {
 	if (expr.type === "JSXElement") {
 		const serialized = serializeJSXElement(j, expr, useGenericClose);
@@ -64,7 +64,7 @@ function createTaggedTemplate(
 function serializeJSXElement(
 	j: JSCodeshift,
 	node: JSXElement,
-	useGenericClose: boolean = true,
+	useGenericClose = true,
 ): SerializeResult {
 	const parts: string[] = [];
 	const expressions: any[] = [];
@@ -199,7 +199,7 @@ function serializeJSXElement(
 function serializeJSXFragment(
 	j: JSCodeshift,
 	node: JSXFragment,
-	useGenericClose: boolean = true,
+	useGenericClose = true,
 ): SerializeResult {
 	const parts: string[] = [];
 	const expressions: any[] = [];

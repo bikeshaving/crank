@@ -1,7 +1,8 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
 
-import {createElement, Child, Context} from "../src/crank.js";
+import type {Child, Context} from "../src/crank.js";
+import {createElement} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("errors", () => {
@@ -92,6 +93,7 @@ describe("errors", () => {
 
 	test("sync gen throws refresh call", () => {
 		let ctx!: Context;
+
 		function* Thrower(this: Context) {
 			ctx = this;
 			let i = 0;
@@ -129,6 +131,7 @@ describe("errors", () => {
 		}
 
 		let ctx!: Context;
+
 		function* Parent(this: Context) {
 			ctx = this;
 			for ({} of this) {
@@ -165,6 +168,7 @@ describe("errors", () => {
 		}
 
 		let ctx!: Context;
+
 		function* Parent(this: Context) {
 			ctx = this;
 			for ({} of this) {
@@ -233,6 +237,7 @@ describe("errors", () => {
 		}
 
 		let parentCtx!: Context;
+
 		async function* Parent(this: Context) {
 			parentCtx = this;
 			for await ({} of this) {
@@ -316,6 +321,7 @@ describe("errors", () => {
 
 	test("async gen rethrows after child error", async () => {
 		const mock = Sinon.fake();
+
 		async function Thrower(this: Context) {
 			throw new Error("async gen rethrows after child error");
 		}
@@ -343,6 +349,7 @@ describe("errors", () => {
 
 	test("async gen rethrows after child error in async gen", async () => {
 		const mock = Sinon.fake();
+
 		/* eslint-disable require-yield */
 		async function* Thrower() {
 			throw new Error("async gen rethrows after child error in async gen");
@@ -374,6 +381,7 @@ describe("errors", () => {
 
 	test("async gen throws in async gen after yield", async () => {
 		const mock = Sinon.fake();
+
 		async function* Thrower(this: Context) {
 			yield 1;
 			for await ({} of this) {
@@ -532,6 +540,7 @@ describe("errors", () => {
 
 	test("error recovery", () => {
 		const err = new Error("error recovery");
+
 		function* Thrower() {
 			yield 1;
 			yield 2;
@@ -540,6 +549,7 @@ describe("errors", () => {
 		}
 
 		const mock = Sinon.fake();
+
 		function* Component(this: Context) {
 			while (true) {
 				try {
@@ -607,6 +617,7 @@ describe("errors", () => {
 
 	test("nested gen function throws with refresh can be caught by parent", () => {
 		let throwerCtx!: Context;
+
 		function* Thrower(this: Context): Generator<Child> {
 			throwerCtx = this;
 			yield <div>Hello</div>;
@@ -638,6 +649,7 @@ describe("errors", () => {
 
 	test("nested async gen function throws with refresh can be caught by parent", async () => {
 		let throwerCtx!: Context;
+
 		async function* Thrower(this: Context): AsyncGenerator<Child> {
 			throwerCtx = this;
 			yield <div>Hello</div>;
@@ -714,6 +726,7 @@ describe("errors", () => {
 		}
 
 		const mock = Sinon.fake();
+
 		function* Component(this: Context) {
 			for ({} of this) {
 				try {
@@ -732,6 +745,7 @@ describe("errors", () => {
 
 	test("async gen with for await of rejects children passed back in awaited", async () => {
 		const mock = Sinon.fake();
+
 		/* eslint-disable require-yield */
 		async function* Thrower(this: Context) {
 			for await ({} of this) {
@@ -764,6 +778,7 @@ describe("errors", () => {
 
 	test("async gen with for await of rejects children passed back in then", async () => {
 		const mock = Sinon.fake();
+
 		/* eslint-disable require-yield */
 		async function* Thrower(this: Context) {
 			for ({} of this) {
@@ -797,6 +812,7 @@ describe("errors", () => {
 
 	test("async gen with for await of rejects children passed back in catch", async () => {
 		const mock = Sinon.fake();
+
 		/* eslint-disable require-yield */
 		async function* Thrower(this: Context) {
 			for ({} of this) {
