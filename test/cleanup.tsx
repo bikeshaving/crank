@@ -401,7 +401,7 @@ describe("cleanup", () => {
 
 	test("components can linger", async () => {
 		const fn = Sinon.fake();
-		let resolve: Function;
+		let resolve: (value?: any) => void;
 
 		function* Component(this: Context) {
 			this.cleanup(() => {
@@ -435,8 +435,8 @@ describe("cleanup", () => {
 	test("multiple components linger and unmount independently", async () => {
 		const mock1 = Sinon.fake();
 		const mock2 = Sinon.fake();
-		let resolve1!: Function;
-		let resolve2!: Function;
+		let resolve1!: (value?: any) => void;
+		let resolve2!: (value?: any) => void;
 
 		function* Child1(this: Context) {
 			this.cleanup(() => {
@@ -500,8 +500,8 @@ describe("cleanup", () => {
 	test("nested components linger correctly", async () => {
 		const parentCleanup = Sinon.fake();
 		const childCleanup = Sinon.fake();
-		let resolveParent!: Function;
-		let resolveChild!: Function;
+		let resolveParent!: (value?: any) => void;
+		let resolveChild!: (value?: any) => void;
 
 		function* Parent(this: Context) {
 			this.cleanup(() => {
@@ -564,8 +564,8 @@ describe("cleanup", () => {
 	test("fragments handle lingering components correctly", async () => {
 		const cleanupA = Sinon.fake();
 		const cleanupB = Sinon.fake();
-		let resolveA!: Function;
-		let resolveB!: Function;
+		let resolveA!: (value?: any) => void;
+		let resolveB!: (value?: any) => void;
 
 		function* ComponentA(this: Context) {
 			this.cleanup(() => {
@@ -624,7 +624,7 @@ describe("cleanup", () => {
 
 	test("component without children does not linger", async () => {
 		const cleanup = Sinon.fake();
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
 		function* Component(this: Context, {condition}: {condition: boolean}) {
 			this.cleanup(() => {
@@ -687,7 +687,7 @@ describe("cleanup", () => {
 		// AlertModal wraps Modal directly (no intermediate <div>).
 		// Does Modal linger when AlertModal is removed?
 		const cleanup = Sinon.fake();
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
 		function* Modal(this: Context) {
 			this.cleanup(() => {
@@ -739,7 +739,7 @@ describe("cleanup", () => {
 		// AlertModal wraps Modal inside a <div class="wrapper">.
 		// Does Modal linger when AlertModal is removed?
 		const cleanup = Sinon.fake();
-		let _resolve!: Function;
+		let _resolve!: (value?: any) => void;
 
 		function* Modal(this: Context) {
 			this.cleanup(() => {
@@ -789,7 +789,7 @@ describe("cleanup", () => {
 	test("lingering component can refresh during cleanup", async () => {
 		// Modal calls this.refresh() in cleanup to trigger exit animation class.
 		// Does the refresh actually re-render?
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
 		function* Modal(this: Context) {
 			let visible = true;
@@ -829,7 +829,7 @@ describe("cleanup", () => {
 		// Three levels of component wrapping: Outer -> Middle -> Modal
 		// No host elements between them. Does Modal linger?
 		const cleanup = Sinon.fake();
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
 		function* Modal(this: Context) {
 			this.cleanup(() => {
@@ -882,7 +882,7 @@ describe("cleanup", () => {
 		// Modal renders its content via a Portal. Portal content should
 		// stay visible during async cleanup (lingering).
 		const cleanup = Sinon.fake();
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
 		const portalRoot = document.createElement("div");
 		document.body.appendChild(portalRoot);
@@ -938,7 +938,7 @@ describe("cleanup", () => {
 	test("Portal-rendering component can refresh during linger", async () => {
 		// Modal renders via Portal, calls this.refresh() in cleanup to trigger
 		// CSS transition class, then defers with a Promise.
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
 		const portalRoot = document.createElement("div");
 		document.body.appendChild(portalRoot);
@@ -987,7 +987,7 @@ describe("cleanup", () => {
 	test("lingering component can refresh multiple times", async () => {
 		// Component plays a multi-step exit animation via repeated refreshes
 		let step = 0;
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
 		function* Animated(this: Context) {
 			this.cleanup(() => {
@@ -1022,7 +1022,7 @@ describe("cleanup", () => {
 
 	test("lingering component responds to events during linger", async () => {
 		let clickCount = 0;
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
 		function* Counter(this: Context) {
 			this.cleanup(() => {
@@ -1070,7 +1070,7 @@ describe("cleanup", () => {
 	});
 
 	test("lingering component children update on refresh", async () => {
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 		let phase = "active";
 
 		function Badge({label}: {label: string}) {
@@ -1117,7 +1117,7 @@ describe("cleanup", () => {
 		// Simulates a real exit animation: cleanup triggers state change,
 		// then a timer fires and resolves the cleanup promise
 		let visible = true;
-		let cleanupResolve!: Function;
+		let cleanupResolve!: (value?: any) => void;
 
 		function* Toast(this: Context) {
 			this.cleanup(() => {

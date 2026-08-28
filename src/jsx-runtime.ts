@@ -2,8 +2,9 @@
 // runtime. Besides automatic imports, the JSX automatic runtime provides no
 // actual advantage over the createElement transform.
 import {createElement} from "./crank.js";
+import type {Element} from "./crank.js";
 
-function jsxAdapter(tag: any, props: Record<string, any>, key: any) {
+function jsxAdapter(tag: any, props: Record<string, any>, key: any): Element {
 	// The new JSX transform extracts the key from props for performance reasons,
 	// but key is not a special property in Crank.
 	if (key != null) {

@@ -359,7 +359,7 @@ describe("events", () => {
 	});
 
 	test("async refresh callback", async () => {
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
 		function* Component(this: Context): Generator<string> {
 			let count = 0;

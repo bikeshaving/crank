@@ -1,5 +1,5 @@
 import {RuleTester} from "eslint";
-import * as tsParser from "@typescript-eslint/parser";
+import * as TSParser from "@typescript-eslint/parser";
 
 // Override RuleTester's internal describe/it to avoid nesting issues with the
 // test runner. bun:test (and @b9g/libuild/test) do not allow describe() inside
@@ -19,7 +19,7 @@ import * as tsParser from "@typescript-eslint/parser";
 export function createTsRuleTester(): RuleTester {
 	return new RuleTester({
 		languageOptions: {
-			parser: tsParser,
+			parser: TSParser,
 			ecmaVersion: 2022,
 			sourceType: "module",
 			parserOptions: {

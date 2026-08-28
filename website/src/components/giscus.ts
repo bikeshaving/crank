@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 
 export interface GiscusProps {
 	repo: string;
@@ -28,7 +29,7 @@ export function Giscus({
 	theme = "preferred_color_scheme",
 	lang = "en",
 	loading = "lazy",
-}: GiscusProps) {
+}: GiscusProps): Element {
 	return jsx`
 		<script
 			src="https://giscus.app/client.js"

@@ -274,7 +274,7 @@ describe("async generator", () => {
 	});
 
 	test("for await...of multiple yields per update", async () => {
-		let resolve: undefined | Function;
+		let resolve: ((value?: any) => void) | undefined;
 
 		async function* Component(
 			this: Context,
@@ -340,7 +340,7 @@ describe("async generator", () => {
 	});
 
 	test("for await...of with Fragment parent", async () => {
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
 		async function* Component(this: Context) {
 			for await (const _ of this) {
@@ -1049,7 +1049,7 @@ describe("async generator", () => {
 			characterData: true,
 			subtree: true,
 		});
-		let resolve: undefined | Function;
+		let resolve: ((value?: any) => void) | undefined;
 
 		async function* Component(this: Context, {message}: {message: string}) {
 			for await ({message} of this) {
@@ -1166,7 +1166,7 @@ describe("async generator", () => {
 			}
 		}
 
-		let resolveNephew: Function;
+		let resolveNephew: (value?: any) => void;
 
 		async function Nephew() {
 			await new Promise((resolve) => (resolveNephew = resolve));

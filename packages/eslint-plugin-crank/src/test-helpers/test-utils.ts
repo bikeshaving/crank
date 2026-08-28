@@ -31,7 +31,10 @@ export function createInvalidTest(
 /**
  * Creates a mock AST statement node for testing
  */
-export function createMockStatement(type: string, text: string) {
+export function createMockStatement(
+	type: string,
+	text: string,
+): {type: string; text: string} {
 	return {type, text};
 }
 
@@ -40,7 +43,7 @@ export function createMockStatement(type: string, text: string) {
  */
 export function createMockCallbackNode(
 	statements: Array<{type: string; text: string}>,
-) {
+): {body: {type: string; body: Array<{type: string; text: string}>}} {
 	return {
 		body: {
 			type: "BlockStatement",

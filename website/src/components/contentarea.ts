@@ -27,7 +27,7 @@ export function* ContentArea(
 		value?: string | undefined;
 		renderSource?: string | undefined;
 	} & Record<string, any>,
-) {
+): Generator<Element> {
 	let initial = true;
 	let contentArea!: ContentAreaElement;
 	for ({ref, value, children, selectionRange, renderSource, ...rest} of this) {

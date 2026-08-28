@@ -1,7 +1,7 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 /// <ref lib="dom" />
-import {Copy, Fragment, Raw} from "../src/crank.js";
-import type {Context, createElement} from "../src/crank.js";
+import {Copy, createElement, Fragment, Raw} from "../src/crank.js";
+import type {Context, Element} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("dom", () => {
@@ -1872,7 +1872,7 @@ describe("dom", () => {
 	test("same element reference skips re-render", () => {
 		let renderCount = 0;
 
-		function Tracker(): ReturnType<typeof createElement> {
+		function Tracker(): Element {
 			renderCount++;
 			return <span>rendered</span>;
 		}

@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {Root} from "../components/root.js";
 import {SerializeScript} from "../components/serialize-javascript.js";
 import {assets} from "../server.js";
@@ -25,7 +26,9 @@ renderer.render(<Timer />, document.body);
 `.trim();
 
 // Read all examples dynamically
-async function loadExamples() {
+async function loadExamples(): Promise<
+	Array<{name: string; label: string; code: string}>
+> {
 	const examplesDir = await self.directories.open("examples");
 
 	const examples = [{name: "timer", label: "Timer", code: TIMER_EXAMPLE}];
@@ -70,7 +73,7 @@ async function loadExamples() {
 	return examples;
 }
 
-export default async function Playground({url}: ViewProps) {
+export default async function Playground({url}: ViewProps): Promise<Element> {
 	const examples = await loadExamples();
 	return jsx`
 		<${Root} title="Crank.js" url=${url} noFooter>

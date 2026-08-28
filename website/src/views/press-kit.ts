@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 import {Root} from "../components/root.js";
 
@@ -227,7 +228,7 @@ function TrademarkSection() {
 	`;
 }
 
-export default function PressKit({url}: ViewProps) {
+export default function PressKit({url}: ViewProps): Element {
 	return jsx`
 		<${Root} title=${"Press Kit \u2014 Crank.js"} url=${url}>
 			<${CopySection} />

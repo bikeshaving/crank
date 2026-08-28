@@ -299,7 +299,7 @@ export const requireCleanupForTimers: Rule.RuleModule = {
 			},
 		};
 
-		function checkFunctionForTimerCleanup(node: ESLintNode) {
+		function checkFunctionForTimerCleanup(node: ESLintNode): void {
 			// Only check generator functions
 			if (!node.generator) {
 				return;

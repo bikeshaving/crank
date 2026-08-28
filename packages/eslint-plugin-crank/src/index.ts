@@ -3,7 +3,7 @@ import {preferPropsIterator} from "./rules/prefer-props-iterator.js";
 import {propDestructuringConsistency} from "./rules/prop-destructuring-consistency.js";
 import {noReactEventProps} from "./rules/no-react-event-props.js";
 import {noReactProps} from "./rules/no-react-props.js";
-import {noReactSvgProps} from "./rules/no-react-svg-props.js";
+import {noReactSVGProps} from "./rules/no-react-svg-props.js";
 import {noYieldInLifecycleMethods} from "./rules/no-yield-in-lifecycle-methods.js";
 import {requireCleanupForTimers} from "./rules/require-cleanup-for-timers.js";
 import {jsxUsesCrank} from "./rules/jsx-uses-crank.js";
@@ -19,7 +19,7 @@ export const rules = {
 	"prop-destructuring-consistency": propDestructuringConsistency,
 	"no-react-event-props": noReactEventProps,
 	"no-react-props": noReactProps,
-	"no-react-svg-props": noReactSvgProps,
+	"no-react-svg-props": noReactSVGProps,
 	"no-yield-in-lifecycle-methods": noYieldInLifecycleMethods,
 	"require-cleanup-for-timers": requireCleanupForTimers,
 	"jsx-uses-crank": jsxUsesCrank,

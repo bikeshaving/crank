@@ -51,7 +51,7 @@ export function createFunctionTracker(): FunctionTracker {
  */
 export function createGeneratorTrackingVisitors(
 	functionTracker: FunctionTracker,
-) {
+): Record<string, (node: ESLintNode) => void> {
 	const handleFunctionEnter = (node: ESLintNode) => {
 		if (isGeneratorComponent(node)) {
 			const {props, contextVar} = extractCrankParams(node.params);

@@ -85,7 +85,7 @@ function emitHydrationWarning(
 	actualValue: any,
 	element: Element,
 	displayName?: string,
-) {
+): void {
 	const checkName = propName;
 	const showName = displayName || propName;
 	if (!quietProps || !quietProps.has(checkName)) {
@@ -415,11 +415,11 @@ function patchProp(
 				value && typeof value === "object" && "__html" in value
 					? (value.__html ?? "")
 					: "";
-			const oldHtmlValue =
+			const oldHTMLValue =
 				oldValue && typeof oldValue === "object" && "__html" in oldValue
 					? (oldValue.__html ?? "")
 					: "";
-			if (htmlValue !== oldHtmlValue) {
+			if (htmlValue !== oldHTMLValue) {
 				element.innerHTML = htmlValue as any;
 			}
 			break;
@@ -474,8 +474,9 @@ function patchProp(
 				) {
 					try {
 						propValue = new URL(value, element.baseURI).href;
-					} catch {
-						// Invalid URL, use original value for comparison
+					} catch (err) {
+						// Invalid URL: keep the original value for comparison.
+						propValue = value;
 					}
 				}
 

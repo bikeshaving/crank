@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
 import {Root} from "../components/root.js";
@@ -271,7 +272,7 @@ function BlogSection({posts}: {posts: any[]}) {
 	`;
 }
 
-export default async function Home({url}: ViewProps) {
+export default async function Home({url}: ViewProps): Promise<Element> {
 	const docsDir = await self.directories.open("docs");
 	const docs = await collectDocuments(docsDir);
 	const md = docs.find((doc) => doc.filename === "index.md");

@@ -128,7 +128,7 @@ describe("async functions", () => {
 	});
 
 	test("update", async () => {
-		const resolves: Function[] = [];
+		const resolves: Array<(value?: any) => void> = [];
 
 		async function Component({message}: {message: string}): Promise<Element> {
 			await new Promise((resolve) => resolves.push(resolve));

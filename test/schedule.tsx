@@ -12,7 +12,7 @@ import {renderer} from "../src/dom.js";
 describe("schedule", () => {
 	interface ResolvingComponent {
 		(props?: Record<string, any>): any;
-		resolves: Function[];
+		resolves: Array<(value?: any) => void>;
 	}
 
 	const AsyncComponent = async function ({
@@ -742,7 +742,7 @@ describe("schedule", () => {
 
 	// TODO: async updating
 	test("async schedule does not work after initial render", async () => {
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
 		function* Component(this: Context): Generator<Element> {
 			let i = 0;
@@ -780,7 +780,7 @@ describe("schedule", () => {
 	});
 
 	test("async mount with refresh", async () => {
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
 		function* Component(this: Context): Generator<Element> {
 			let i = 0;
@@ -898,7 +898,7 @@ describe("schedule", () => {
 	});
 
 	test("async mount inside async component", async () => {
-		let scheduleResolve!: Function;
+		let scheduleResolve!: (value?: any) => void;
 
 		async function AsyncComponent(this: Context): Promise<Element> {
 			this.schedule(() => new Promise((r) => (scheduleResolve = r)));

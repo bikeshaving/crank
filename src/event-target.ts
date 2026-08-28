@@ -92,13 +92,13 @@ export class CustomEventTarget<
 		const record: EventListenerRecord = {type, listener, callback, options};
 
 		if (options.once) {
-			record.callback = function (this: any) {
+			record.callback = function (this: any, ...args: unknown[]) {
 				const i = listeners.indexOf(record);
 				if (i !== -1) {
 					listeners.splice(i, 1);
 				}
 
-				return callback.apply(this, arguments as any);
+				return callback.apply(this, args as any);
 			};
 		}
 

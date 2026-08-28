@@ -344,7 +344,7 @@ function build(
 
 	// When the JSX stack is non-empty we're inside a component tag, so all
 	// output goes to the top frame's children instead of the result array.
-	function emit(...elements: Array<Element | string>) {
+	function emit(...elements: Array<Element | string>): void {
 		const target =
 			jsxStack.length > 0 ? jsxStack[jsxStack.length - 1].children : result;
 		target.push(...elements);
@@ -428,7 +428,7 @@ function build(
 					};
 
 					const first = item.tokens?.[0] as {tokens?: Token[]} | undefined;
-					if (first?.tokens?.length) {
+					if (first && first.tokens?.length) {
 						first.tokens.unshift(checkmark as unknown as Token);
 					} else {
 						tokens.unshift(checkmark as unknown as Token);
@@ -658,7 +658,10 @@ export interface MarkedProps {
 	[key: string]: unknown;
 }
 
-export function Marked({markdown, ...props}: MarkedProps) {
+export function Marked({
+	markdown,
+	...props
+}: MarkedProps): Array<Element | string> {
 	// Configure marked to not encode HTML entities in text
 	const tokens = marked.Lexer.lex(markdown, {
 		gfm: true,

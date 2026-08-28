@@ -1,4 +1,8 @@
-export function debounce(fn: Function, wait: number, immediate?: boolean) {
+export function debounce(
+	fn: (...args: unknown[]) => unknown,
+	wait: number,
+	immediate?: boolean,
+): (...args: unknown[]) => void {
 	let timeout: any = null;
 	return function (this: unknown, ...args: unknown[]) {
 		const later = () => {
