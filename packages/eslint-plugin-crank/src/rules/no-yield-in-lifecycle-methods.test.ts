@@ -114,7 +114,7 @@ describe("no-yield-in-lifecycle-methods", () => {
 	});
 
 	describe("invalid cases - yield in lifecycle methods", () => {
-		for (const {method, yieldValue, line, column} of [
+		it.each([
 			{
 				method: "schedule",
 				yieldValue: "<div>Bad</div>",
@@ -133,8 +133,9 @@ describe("no-yield-in-lifecycle-methods", () => {
 				line: 4,
 				column: 19,
 			},
-		]) {
-			it(`should detect yield in this.${method}()`, () => {
+		])(
+			"should detect yield in this.$method()",
+			({method, yieldValue, line, column}) => {
 				ruleTester.run(
 					"no-yield-in-lifecycle-methods",
 					noYieldInLifecycleMethods,
@@ -164,8 +165,8 @@ describe("no-yield-in-lifecycle-methods", () => {
 						],
 					},
 				);
-			});
-		}
+			},
+		);
 	});
 
 	describe("invalid cases - return with value in after()", () => {
