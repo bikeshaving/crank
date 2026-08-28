@@ -21,7 +21,7 @@ describe("no-react-props", () => {
 	});
 
 	describe("className transformation", () => {
-		for (const {name, code, output} of [
+		it.each([
 			{
 				name: "should detect and fix className -> class",
 				code: `<div className="container">Content</div>`,
@@ -42,25 +42,23 @@ describe("no-react-props", () => {
 				code: `<div className={\`container \${active ? 'active' : ''}\`}>Content</div>`,
 				output: `<div class={\`container \${active ? 'active' : ''}\`}>Content</div>`,
 			},
-		]) {
-			it(`${name}`, () => {
-				ruleTester.run("no-react-props", noReactProps, {
-					valid: [],
-					invalid: [
-						{
-							code,
-							output,
-							errors: [
-								{
-									messageId: "useStandardAttribute",
-									data: {react: "className", standard: "class"},
-								},
-							],
-						},
-					],
-				});
+		])("$name", ({code, output}) => {
+			ruleTester.run("no-react-props", noReactProps, {
+				valid: [],
+				invalid: [
+					{
+						code,
+						output,
+						errors: [
+							{
+								messageId: "useStandardAttribute",
+								data: {react: "className", standard: "class"},
+							},
+						],
+					},
+				],
 			});
-		}
+		});
 	});
 
 	describe("htmlFor transformation", () => {
