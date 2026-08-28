@@ -23,7 +23,9 @@ function useVirtualizerBase<
 	});
 
 	_this.cleanup(() => {
-		unmount && unmount();
+		if (unmount) {
+			unmount();
+		}
 	});
 
 	const afterUpdate = () => {

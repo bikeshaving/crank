@@ -251,7 +251,7 @@ test("Props inference", () => {
 	): unknown {
 		for (const props1 of this) {
 			// @ts-expect-error
-			props1.poop;
+			void props1.poop;
 			yield props1.message;
 		}
 	}
@@ -262,7 +262,7 @@ test("Props inference", () => {
 	): unknown {
 		for await (const props1 of this) {
 			// @ts-expect-error
-			props1.poop;
+			void props1.poop;
 			yield props1.message;
 		}
 	}

@@ -2,6 +2,12 @@ import type {Context} from "@b9g/crank/standalone";
 
 export type ColorScheme = "dark" | "light";
 
+export interface ColorSchemeController {
+	get: () => ColorScheme;
+	toggle: () => void;
+	set: (scheme: ColorScheme) => void;
+}
+
 const BG_DARK = "#0a0e1f";
 const BG_LIGHT = "#e7f4f5";
 const TEXT_DARK = "#f5f9ff";
@@ -10,7 +16,7 @@ const TEXT_LIGHT = "#0a0e1f";
 /**
  * Reactive color scheme hook for Crank components
  */
-export function useColorScheme(ctx: Context) {
+export function useColorScheme(ctx: Context): ColorSchemeController {
 	// SSR: return static object, hydration will set up reactivity
 	if (typeof window === "undefined") {
 		return {

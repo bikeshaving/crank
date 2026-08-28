@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
 export interface BlogCardProps {
@@ -19,7 +20,7 @@ export function BlogCard({
 	readTime,
 	author,
 	featured,
-}: BlogCardProps) {
+}: BlogCardProps): Element {
 	const publishDateDisplay =
 		publishDate &&
 		publishDate.toLocaleString("en-US", {

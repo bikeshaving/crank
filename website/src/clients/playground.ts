@@ -49,7 +49,7 @@ function* Playground(this: Context) {
 	if (hash) {
 		try {
 			code = LZString.decompressFromEncodedURIComponent(hash) || "";
-		} catch {
+		} catch (err) {
 			// Invalid hash, ignore
 		}
 	}
@@ -101,7 +101,7 @@ function* Playground(this: Context) {
 		try {
 			await navigator.clipboard.writeText(url);
 			status = "Copied!";
-		} catch {
+		} catch (err) {
 			status = "Failed";
 		}
 		this.refresh(() => {

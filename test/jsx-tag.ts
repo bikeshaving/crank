@@ -665,7 +665,7 @@ describe("jsx static caching", () => {
 		for (let i = 0; i < 2; i++) {
 			renderer.render(jsx`<ul>${items}</ul>`, document.body);
 			expect(document.body.innerHTML).toEqual(
-				`<ul><li class="s">item</li><li class="s">item</li><li class="s">item</li></ul>`,
+				"<ul><li class=\"s\">item</li><li class=\"s\">item</li><li class=\"s\">item</li></ul>",
 			);
 		}
 	});
@@ -675,7 +675,7 @@ describe("jsx static caching", () => {
 		renderer.render(null, document.body);
 		expect(document.body.innerHTML).toEqual("");
 		renderer.render(jsx`<div class="a">hello</div>`, document.body);
-		expect(document.body.innerHTML).toEqual(`<div class="a">hello</div>`);
+		expect(document.body.innerHTML).toEqual("<div class=\"a\">hello</div>");
 	});
 
 	test("cached elements render into multiple roots", () => {
@@ -686,13 +686,13 @@ describe("jsx static caching", () => {
 		try {
 			renderer.render(jsx`<p class="s">shared</p>`, root1);
 			renderer.render(jsx`<p class="s">shared</p>`, root2);
-			expect(root1.innerHTML).toEqual(`<p class="s">shared</p>`);
-			expect(root2.innerHTML).toEqual(`<p class="s">shared</p>`);
+			expect(root1.innerHTML).toEqual("<p class=\"s\">shared</p>");
+			expect(root2.innerHTML).toEqual("<p class=\"s\">shared</p>");
 			expect(root1.firstChild).not.toBe(root2.firstChild);
 			renderer.render(jsx`<p class="s">shared</p>`, root1);
 			renderer.render(jsx`<p class="s">shared</p>`, root2);
-			expect(root1.innerHTML).toEqual(`<p class="s">shared</p>`);
-			expect(root2.innerHTML).toEqual(`<p class="s">shared</p>`);
+			expect(root1.innerHTML).toEqual("<p class=\"s\">shared</p>");
+			expect(root2.innerHTML).toEqual("<p class=\"s\">shared</p>");
 		} finally {
 			renderer.render(null, root1);
 			renderer.render(null, root2);

@@ -274,7 +274,7 @@ export default function transform(fileInfo: FileInfo, api: API): string | null {
 	const root = j(fileInfo.source);
 
 	let hasJSX = false;
-	let hasJsxImport = false;
+	let hasJSXImport = false;
 
 	// Check for existing jsx import from standalone
 	root.find(j.ImportDeclaration).forEach((path) => {
@@ -286,7 +286,7 @@ export default function transform(fileInfo: FileInfo, api: API): string | null {
 					spec.imported.type === "Identifier" &&
 					spec.imported.name === "jsx"
 				) {
-					hasJsxImport = true;
+					hasJSXImport = true;
 				}
 			});
 		}
@@ -313,7 +313,8 @@ export default function transform(fileInfo: FileInfo, api: API): string | null {
 					? serializeJSXElement(j, path.node)
 					: serializeJSXFragment(j, path.node);
 
-			let {parts, expressions} = serialized;
+			const {expressions} = serialized;
+			let {parts} = serialized;
 
 			// If content is multi-line, add newlines and proper indentation
 			const isMultiLine = parts.some((p) => p.includes("\n"));
@@ -327,7 +328,8 @@ export default function transform(fileInfo: FileInfo, api: API): string | null {
 				) {
 					stmtPath = stmtPath.parent;
 				}
-				const stmtIndent = stmtPath?.node?.loc?.start?.column ?? 0;
+				const stmtLoc = stmtPath && stmtPath.node ? stmtPath.node.loc : null;
+				const stmtIndent = stmtLoc ? stmtLoc.start.column : 0;
 				const contentIndent = stmtIndent + 2; // Content indented one level from statement
 
 				parts = parts.slice();
@@ -351,7 +353,8 @@ export default function transform(fileInfo: FileInfo, api: API): string | null {
 
 			// If JSX is wrapped in parentheses, replace the whole parenthesized expression
 			// since template literals don't need parens
-			if (path.parent?.node?.type === "ParenthesizedExpression") {
+			const parentNode = path.parent ? path.parent.node : null;
+			if (parentNode && parentNode.type === "ParenthesizedExpression") {
 				j(path.parent).replaceWith(taggedTemplate);
 			} else {
 				j(path).replaceWith(taggedTemplate);
@@ -363,20 +366,20 @@ export default function transform(fileInfo: FileInfo, api: API): string | null {
 	transformJSX(root.find(j.JSXFragment), "JSXFragment");
 
 	// Add jsx import if needed
-	if (hasJSX && !hasJsxImport) {
+	if (hasJSX && !hasJSXImport) {
 		let addedToExisting = false;
 		root.find(j.ImportDeclaration).forEach((path) => {
 			if (
 				path.node.source.value === "@b9g/crank/standalone" &&
 				!addedToExisting
 			) {
-				const hasJsx = path.node.specifiers?.some(
+				const hasJSX = path.node.specifiers?.some(
 					(s) =>
 						s.type === "ImportSpecifier" &&
 						s.imported.type === "Identifier" &&
 						s.imported.name === "jsx",
 				);
-				if (!hasJsx) {
+				if (!hasJSX) {
 					path.node.specifiers = path.node.specifiers || [];
 					path.node.specifiers.push(j.importSpecifier(j.identifier("jsx")));
 				}

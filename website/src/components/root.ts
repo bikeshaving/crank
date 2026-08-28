@@ -1,4 +1,5 @@
 import {jsx, Raw} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import type {Children, Context} from "@b9g/crank";
 import {extractCritical} from "@emotion/server";
 import {Navbar} from "./navbar.js";
@@ -33,7 +34,7 @@ export function* Root(
 		description?: string;
 		noFooter?: boolean;
 	},
-) {
+): Generator<Element> {
 	for ({title, children, url, description = "", noFooter = false} of this) {
 		this.schedule(() => this.refresh());
 		const childrenHTML: string = yield jsx`
