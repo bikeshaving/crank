@@ -2304,7 +2304,10 @@ const scheduleMap = new WeakMap<ContextState, Set<ValueCallback>>();
 const cleanupMap = new WeakMap<ContextState, Set<ValueCallback>>();
 
 // keys are roots
-const afterMapByRoot = new WeakMap<object, Map<ContextState, Set<ValueCallback>>>();
+const afterMapByRoot = new WeakMap<
+	object,
+	Map<ContextState, Set<ValueCallback>>
+>();
 
 interface PullController {
 	iterationP: Promise<ChildrenIteratorResult> | undefined;
