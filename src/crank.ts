@@ -366,7 +366,9 @@ class Retainer<TNode, TScope = unknown> {
 	// This is only assigned for host and raw elements.
 	declare oldProps: Record<string, any> | undefined;
 	declare pendingDiff: Promise<undefined> | undefined;
-	declare onNextDiff: Function | undefined;
+	// A pendingDiff resolver. The argument is only used for thenable adoption,
+	// and one call site resolves with an array of diffs.
+	declare onNextDiff: ((diff: unknown) => void) | undefined;
 	declare graveyard: Array<Retainer<TNode, TScope>> | undefined;
 	declare lingerers:
 		| Array<Set<Retainer<TNode, TScope>> | undefined>
@@ -1223,7 +1225,7 @@ function diffChild<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 			}
 		});
 
-		let onNextDiffs!: Function;
+		let onNextDiffs!: (diff: unknown) => void;
 		const diff2 = (parent.pendingDiff = safeRace([
 			diff1,
 			new Promise<any>((resolve) => (onNextDiffs = resolve)),
@@ -1477,7 +1479,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				}
 			});
 
-		let onNextDiffs!: Function;
+		let onNextDiffs!: (diff: unknown) => void;
 		const diffs2 = (parent.pendingDiff = safeRace([
 			diffs1,
 			new Promise<any>((resolve) => (onNextDiffs = resolve)),
@@ -2167,7 +2169,7 @@ function flush<TRoot>(
 	// which are not scheduling.
 	const afterMap = afterMapByRoot.get(root as any);
 	if (afterMap) {
-		const afterMap1 = new Map<ContextState, Set<Function>>();
+		const afterMap1 = new Map<ContextState, Set<ValueCallback>>();
 		for (const [ctx, callbacks] of afterMap) {
 			if (
 				getFlag(ctx.ret, IsScheduling) ||
@@ -2292,12 +2294,17 @@ function unmountChildren<
 }
 const provisionMaps = new WeakMap<ContextState, Map<unknown, unknown>>();
 
-const scheduleMap = new WeakMap<ContextState, Set<Function>>();
+// The value parameter is any because these sets erase each context's TResult:
+// callbacks are registered as (value: TResult) => unknown but stored keyed by
+// non-generic ContextState.
+type ValueCallback = (value: any) => unknown;
 
-const cleanupMap = new WeakMap<ContextState, Set<Function>>();
+const scheduleMap = new WeakMap<ContextState, Set<ValueCallback>>();
+
+const cleanupMap = new WeakMap<ContextState, Set<ValueCallback>>();
 
 // keys are roots
-const afterMapByRoot = new WeakMap<object, Map<ContextState, Set<Function>>>();
+const afterMapByRoot = new WeakMap<object, Map<ContextState, Set<ValueCallback>>>();
 
 interface PullController {
 	iterationP: Promise<ChildrenIteratorResult> | undefined;
@@ -2419,7 +2426,7 @@ export type ComponentProps<T> = T extends () => unknown
 		: never;
 
 // Public helper type that handles both component functions and regular objects
-export type ComponentPropsOrProps<T> = T extends Function
+export type ComponentPropsOrProps<T> = T extends (...args: any[]) => unknown
 	? ComponentProps<T>
 	: T;
 
@@ -2679,7 +2686,7 @@ export class Context<
 		const ctx = this[_ContextState];
 		let callbacks = scheduleMap.get(ctx);
 		if (!callbacks) {
-			callbacks = new Set<Function>();
+			callbacks = new Set<ValueCallback>();
 			scheduleMap.set(ctx, callbacks);
 		}
 
@@ -2700,13 +2707,13 @@ export class Context<
 		const root = ctx.root || ANONYMOUS_ROOT;
 		let afterMap = afterMapByRoot.get(root);
 		if (!afterMap) {
-			afterMap = new Map<ContextState, Set<Function>>();
+			afterMap = new Map<ContextState, Set<ValueCallback>>();
 			afterMapByRoot.set(root, afterMap);
 		}
 
 		let callbacks = afterMap.get(ctx);
 		if (!callbacks) {
-			callbacks = new Set<Function>();
+			callbacks = new Set<ValueCallback>();
 			afterMap.set(ctx, callbacks);
 		}
 
@@ -2734,7 +2741,7 @@ export class Context<
 
 		let callbacks = cleanupMap.get(ctx);
 		if (!callbacks) {
-			callbacks = new Set<Function>();
+			callbacks = new Set<ValueCallback>();
 			cleanupMap.set(ctx, callbacks);
 		}
 
@@ -2877,7 +2884,7 @@ function enqueueComponent<TNode, TResult>(
 	} else if (!ctx.enqueued) {
 		// The enqueuedBlock and enqueuedDiff properties must be set
 		// simultaneously, hence the usage of the Promise constructor.
-		let resolve: Function;
+		let resolve: (value: Promise<undefined> | undefined) => void;
 		ctx.enqueued = [
 			new Promise<undefined>((resolve1) => (resolve = resolve1)).finally(() =>
 				advanceComponent(ctx),
@@ -3217,7 +3224,7 @@ async function pullComponent<TNode, TResult>(
 				ctx.pull.iterationP = iterationP;
 			}
 
-			let onDiff!: Function;
+			let onDiff!: (diff: Promise<undefined> | undefined) => void;
 			ctx.pull.diff = new Promise((resolve) => (onDiff = resolve)).then(
 				(): undefined => {
 					if (
