@@ -918,6 +918,7 @@ export class Renderer<
 	constructor(adapter: Partial<RenderAdapter<TNode, TScope, TRoot, TResult>>) {
 		this.cache = new WeakMap();
 		this.adapter = {...defaultAdapter, ...adapter};
+		initComponentIdState(this.adapter);
 	}
 
 	/**
@@ -2309,6 +2310,26 @@ const afterMapByRoot = new WeakMap<
 	Map<ContextState, Set<ValueCallback>>
 >();
 
+function djb2Hash(str: string): string {
+	let hash = 5381;
+	for (let i = 0; i < str.length; i++) {
+		hash = ((hash << 5) + hash + str.charCodeAt(i)) | 0;
+	}
+	return (hash >>> 0).toString(36);
+}
+
+interface ComponentIdState {
+	ids: WeakMap<Function, string>;
+	generate: (fn: Function) => string;
+}
+
+const componentIdStates = new WeakMap<object, ComponentIdState>();
+
+function initComponentIdState(adapter: object): void {
+	const generate = (fn: Function) => `crank-${djb2Hash(fn.toString())}`;
+	componentIdStates.set(adapter, {ids: new WeakMap(), generate});
+}
+
 interface PullController {
 	iterationP: Promise<ChildrenIteratorResult> | undefined;
 	diff: Promise<undefined> | undefined;
@@ -2478,6 +2499,21 @@ export class Context<
 
 	get isUnmounted(): boolean {
 		return getFlag(this[_ContextState].ret, IsUnmounted);
+	}
+
+	get componentId(): string {
+		const ctx = this[_ContextState];
+		const tag = ctx.ret.el.tag;
+		if (typeof tag !== "function") {
+			throw new Error("componentId is only available on component contexts");
+		}
+		const state = componentIdStates.get(ctx.adapter)!;
+		let id = state.ids.get(tag);
+		if (id === undefined) {
+			id = state.generate(tag);
+			state.ids.set(tag, id);
+		}
+		return id;
 	}
 
 	*[Symbol.iterator](): Generator<ComponentPropsOrProps<T>, undefined> {
