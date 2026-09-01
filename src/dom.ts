@@ -93,12 +93,12 @@ function emitHydrationWarning(
 	if (!quietProps || !quietProps.has(checkName)) {
 		if (expectedValue === null || expectedValue === false) {
 			console.warn(
-				`Expected "${showName}" to be missing but found ${String(actualValue)} while hydrating:`,
+				`Expected "${showName}" to be missing but found ${JSON.stringify(actualValue)} while hydrating:`,
 				element,
 			);
 		} else if (expectedValue === true || expectedValue === "") {
 			console.warn(
-				`Expected "${showName}" to be ${expectedValue === true ? "present" : '""'} but found ${String(actualValue)} while hydrating:`,
+				`Expected "${showName}" to be ${expectedValue === true ? "present" : '""'} but found ${JSON.stringify(actualValue)} while hydrating:`,
 				element,
 			);
 		} else {
@@ -116,7 +116,7 @@ function emitHydrationWarning(
 				}
 			}
 			console.warn(
-				`Expected "${showName}" to be "${String(expectedValue)}" but found ${String(actualValue)} while hydrating:`,
+				`Expected "${showName}" to be ${JSON.stringify(expectedValue)} but found ${JSON.stringify(actualValue)} while hydrating:`,
 				element,
 			);
 		}
@@ -793,7 +793,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 				// We log textData and not node because node will be mutated
 				console.warn(
 					`Expected "${value}" while hydrating but found:`,
-					textData,
+					JSON.stringify(textData),
 				);
 				oldNode = node;
 			}
