@@ -131,6 +131,8 @@ function *AutoFocusInput() {
 }
 ```
 
+Register the callback *before* the render it targets — during component execution, or before calling `refresh()`. A callback registered after `refresh()` waits for the *next* render, which may be unrelated or may never come. If you have already refreshed, you don’t need `after()`: `refresh()` commits to the DOM before it returns in sync components, and returns a promise you can await in async ones.
+
 ### cleanup(): On Unmount
 
 `cleanup(callback)` runs when the component unmounts. The callback receives the element value. Use it for teardown that lives outside the component function:

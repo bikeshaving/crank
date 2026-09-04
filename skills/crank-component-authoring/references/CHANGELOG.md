@@ -10,6 +10,23 @@
     deprecated `Context.value` getter.
 
 ### Bug Fixes
+- **The DOM renderer no longer relies on the `Node`/`Element` globals** (#381)
+  `nodeType` constants are inlined and the Portal root is duck-typed, so the
+  renderer works with custom DOM implementations (e.g. termdom) which don’t
+  install the browser globals.
+
+- **A self-refresh() during an async generator's execution no longer flashes the superseded children into the DOM on newer Safari.**
+  When an async generator component calls `refresh()` before its next `yield`
+  has committed, the yielded children are stale: the refresh immediately
+  resumes the generator, and only the fresh children should commit. Crank
+  relied on unspecified microtask ordering for this, and JavaScriptCore as of
+  Safari 26 resolves `.finally()` two ticks faster than V8, which flipped the
+  race: the stale children briefly committed and the render promise resolved
+  with them. The superseded children are now skipped explicitly, on every
+  engine. External re-renders are unaffected: an update requested while a
+  render is in flight still coalesces into the enqueued render, and the
+  in-flight render still commits its own children.
+
 - **`createElement` no longer mutates the caller's props object** (#356)
   Children are spread into a fresh props object instead of being assigned onto
   the passed-in props, so reusing a props object across calls (e.g. a
@@ -25,16 +42,6 @@
   and as a real line break in a `<pre>`. Whitespace adjacent to an element, an
   expression, or the template edge is still stripped as layout.
 
-- **`jsx` template tag now accepts colons in prop and tag names.**
-  `attr:`/`prop:` prefixes and other XML namespace prefixes (`xlink:href`,
-  `xmlns:xlink`, a namespaced tag like `svg:circle`) previously threw a parse
-  error (“Unexpected text `:`”) even though the DOM and HTML renderers already
-  understood them. The template tag now parses these to the same props object
-  compiled JSX produces. A leading, trailing, or repeated colon (`:foo`,
-  `foo:`, `a:b:c`) is a parse error, since none of those forms are meaningful
-  namespaced names; colons in text and quoted attribute values (`3:1`,
-  `style="color: red"`) are unaffected.
-
 ### Changed
 - **`window.Crank` (the UMD/CDN browser global) now ships authoring templates and a default renderer.**
   The browser build exposes the `jsx`/`html` tagged templates and `Crank.renderer`
@@ -44,6 +51,18 @@
   The renderers are now flat: `Crank.renderer` and `Crank.domRenderer` (DOM), and
   `Crank.htmlRenderer` (server HTML), with `Crank.DOMRenderer`/`Crank.HTMLRenderer`
   for the classes.
+
+## [0.7.10] - 2026-08-12
+### Bug Fixes
+- **`jsx` template tag now accepts colons in prop and tag names.**
+  `attr:`/`prop:` prefixes and other XML namespace prefixes (`xlink:href`,
+  `xmlns:xlink`, a namespaced tag like `svg:circle`) previously threw a parse
+  error (“Unexpected text `:`”) even though the DOM and HTML renderers already
+  understood them. The template tag now parses these to the same props object
+  compiled JSX produces. A leading, trailing, or repeated colon (`:foo`,
+  `foo:`, `a:b:c`) is a parse error, since none of those forms are meaningful
+  namespaced names; colons in text and quoted attribute values (`3:1`,
+  `style="color: red"`) are unaffected.
 
 ## [0.7.9] - 2026-03-31
 ### Performance
