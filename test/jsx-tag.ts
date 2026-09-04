@@ -655,4 +655,47 @@ describe("jsx static caching", () => {
 			);
 		}
 	});
+
+	test("the same cached element renders at multiple positions", () => {
+		const items = [1, 2, 3].map(() => jsx`<li class="s">item</li>`);
+		expect(items[0]).toBe(items[1]);
+		expect(items[1]).toBe(items[2]);
+		for (let i = 0; i < 2; i++) {
+			renderer.render(jsx`<ul>${items}</ul>`, document.body);
+			expect(document.body.innerHTML).toEqual(
+				`<ul><li class="s">item</li><li class="s">item</li><li class="s">item</li></ul>`,
+			);
+		}
+	});
+
+	test("cached elements can be unmounted and remounted", () => {
+		renderer.render(jsx`<div class="a">hello</div>`, document.body);
+		renderer.render(null, document.body);
+		expect(document.body.innerHTML).toEqual("");
+		renderer.render(jsx`<div class="a">hello</div>`, document.body);
+		expect(document.body.innerHTML).toEqual(`<div class="a">hello</div>`);
+	});
+
+	test("cached elements render into multiple roots", () => {
+		const root1 = document.createElement("div");
+		const root2 = document.createElement("div");
+		document.body.appendChild(root1);
+		document.body.appendChild(root2);
+		try {
+			renderer.render(jsx`<p class="s">shared</p>`, root1);
+			renderer.render(jsx`<p class="s">shared</p>`, root2);
+			expect(root1.innerHTML).toEqual(`<p class="s">shared</p>`);
+			expect(root2.innerHTML).toEqual(`<p class="s">shared</p>`);
+			expect(root1.firstChild).not.toBe(root2.firstChild);
+			renderer.render(jsx`<p class="s">shared</p>`, root1);
+			renderer.render(jsx`<p class="s">shared</p>`, root2);
+			expect(root1.innerHTML).toEqual(`<p class="s">shared</p>`);
+			expect(root2.innerHTML).toEqual(`<p class="s">shared</p>`);
+		} finally {
+			renderer.render(null, root1);
+			renderer.render(null, root2);
+			root1.remove();
+			root2.remove();
+		}
+	});
 });
