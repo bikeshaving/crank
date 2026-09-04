@@ -1,4 +1,22 @@
 # Changelog
+## [0.7.12] - 2026-09-04
+### Performance
+- **Cache static subtrees in the `jsx` template tag** (#383, #384)
+  A template with no `${}` expressions now returns the same element on every
+  call, and expression-free subtrees of dynamic templates are shared between
+  calls. The renderer already skips a child that is identical to what it
+  rendered last time, so static markup is skipped entirely on re-render —
+  static-heavy templates re-render 3–4× faster. Note this changes what a
+  render does for these templates: static parts are no longer re-patched, so
+  out-of-band DOM mutations to them are no longer overwritten on re-render.
+  Elements are immutable descriptors; code that mutates an element after
+  creation was never supported and will now observe the shared instance.
+
+### Bug Fixes
+- **Quote values properly in hydration warnings** (#387)
+  Warning messages now use `JSON.stringify`, so an empty string reads as `""`
+  instead of vanishing from the message. Thanks @yyny.
+
 ## [0.7.11] - 2026-08-14
 ### Bug Fixes
 - **Stop reading the `Node`/`Element` globals in the DOM renderer** (#381)
