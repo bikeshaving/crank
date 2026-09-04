@@ -9,7 +9,7 @@ metadata:
 
 # Crank Component Authoring
 
-**Crank 0.7.11+ is required.** This skill was built against 0.7.11. Always check npm for the latest version before generating code, as APIs may have changed.
+This skill was built against the Crank version in its metadata. Always check npm for the latest version before generating code, as APIs may have changed.
 
 ## JSX Template Tag (No Build Step)
 
@@ -149,6 +149,7 @@ Crank components are plain JavaScript functions and generators. State is variabl
 - `this.refresh(() => { ... })` atomically mutates state and triggers a re-render.
 - Props are plain values — destructure and transform them freely.
 - Shared logic is plain classes, functions, and modules.
+- Elements are immutable descriptions of what to render — never mutate an element or its props after creating it; build a new one instead.
 
 ## JSX Template Tag — Quick Reference
 
