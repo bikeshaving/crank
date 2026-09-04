@@ -1,1 +1,0 @@
-var e=document.getElementById("gears");e&&Promise.all([import("./standalone-WOLCAGNO.js"),import("./dom-T636HBVY.js"),import("./gears-BYUJLRDF.js")]).then(([{jsx:t},{renderer:o},{GearInteractive:r}])=>{o.render(t`<${r} />`,e)});
