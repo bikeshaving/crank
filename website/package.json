@@ -15,7 +15,6 @@
   "dependencies": {
     "@b9g/assets": "^0.2.1",
     "@b9g/crank": "^0.7.6",
-    "@b9g/crank-codemods": "file:../packages/crank-codemods",
     "@b9g/crankdown": "file:../packages/crankdown",
     "@b9g/platform": "^0.1.17",
     "@b9g/platform-bun": "^0.1.16",
@@ -56,5 +55,8 @@
     "@playwright/test": "^1.57.0",
     "@types/serialize-javascript": "^5.0.4",
     "playwright": "^1.57.0"
+  },
+  "overrides": {
+    "@b9g/crank": "file:../dist"
   }
 }
