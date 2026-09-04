@@ -45,7 +45,7 @@ Crank provides a `jsx` tagged template literal that runs directly in the browser
 </html>
 ```
 
-The standalone module exports both the `jsx` tag and the DOM `renderer` in a single import. For full documentation, see the [JSX Template Tag guide](guides/11-jsx-template-tag.md).
+The standalone module exports both the `jsx` tag and the DOM `renderer` in a single import. For full documentation, see the [JSX Template Tag guide](docs/guides/11-jsx-template-tag.md).
 
 ## With a Build Step (JSX syntax)
 
@@ -202,35 +202,35 @@ Multiple root elements are supported — the template tag automatically wraps th
 ## References
 
 Read these two files for complete API coverage and idiomatic patterns:
-1. [Component Specification](spec.bs) — complete API reference: all component types, lifecycle, context methods, reconciliation, async behavior, special props, JSX modes
-2. [Style Guide](guides/12-crank-style-guide.md) — do/don’t patterns: component structure, state updates, props, cleanup, refs, error handling
+1. [Component Specification](docs/spec.bs) — complete API reference: all component types, lifecycle, context methods, reconciliation, async behavior, special props, JSX modes
+2. [Style Guide](docs/guides/12-crank-style-guide.md) — do/don’t patterns: component structure, state updates, props, cleanup, refs, error handling
 
 ## Examples (consult as needed for the relevant task)
-- [Greeting](../examples/greeting.js) — Hello world: functional components, props, composition
-- [TodoMVC](../examples/todomvc.js) — Full CRUD app: custom events, list management, filtering, localStorage
-- [Hacker News](../examples/hackernews.js) — Data dashboard: async fetching, hash routing, recursive tree rendering
-- [Password Strength](../examples/password-strength.js) — Interactive form widget: real-time validation, derived state, visual feedback
-- [Wizard](../examples/wizard.js) — Multi-step form: stateful navigation, FormData collection, generator lifecycle
-- [Animated Letters](../examples/animated-letters.js) — Animation: CSS transitions, exit animations, requestAnimationFrame
+- [Greeting](examples/greeting.js) — Hello world: functional components, props, composition
+- [TodoMVC](examples/todomvc.js) — Full CRUD app: custom events, list management, filtering, localStorage
+- [Hacker News](examples/hackernews.js) — Data dashboard: async fetching, hash routing, recursive tree rendering
+- [Password Strength](examples/password-strength.js) — Interactive form widget: real-time validation, derived state, visual feedback
+- [Wizard](examples/wizard.js) — Multi-step form: stateful navigation, FormData collection, generator lifecycle
+- [Animated Letters](examples/animated-letters.js) — Animation: CSS transitions, exit animations, requestAnimationFrame
 
 ## Additional Guides (for deeper reading on specific topics)
-- [Getting Started](guides/01-getting-started.md)
-- [Elements](guides/02-elements.md)
-- [Components](guides/03-components.md)
-- [Handling Events](guides/04-handling-events.md)
-- [Async Components](guides/05-async-components.md)
-- [Special Props and Components](guides/06-special-props-and-components.md)
-- [Lifecycles](guides/07-lifecycles.md)
-- [Hydration](guides/08-hydration.md)
-- [Reusable Logic](guides/09-reusable-logic.md)
-- [Working with TypeScript](guides/10-working-with-typescript.md)
-- [JSX Template Tag](guides/11-jsx-template-tag.md)
-- [Reference for React Developers](guides/13-reference-for-react-developers.md)
-- [Custom Renderers](guides/14-custom-renderers.md)
+- [Getting Started](docs/guides/01-getting-started.md)
+- [Elements](docs/guides/02-elements.md)
+- [Components](docs/guides/03-components.md)
+- [Handling Events](docs/guides/04-handling-events.md)
+- [Async Components](docs/guides/05-async-components.md)
+- [Special Props and Components](docs/guides/06-special-props-and-components.md)
+- [Lifecycles](docs/guides/07-lifecycles.md)
+- [Hydration](docs/guides/08-hydration.md)
+- [Reusable Logic](docs/guides/09-reusable-logic.md)
+- [Working with TypeScript](docs/guides/10-working-with-typescript.md)
+- [JSX Template Tag](docs/guides/11-jsx-template-tag.md)
+- [Reference for React Developers](docs/guides/13-reference-for-react-developers.md)
+- [Custom Renderers](docs/guides/14-custom-renderers.md)
 
 ## Blog Posts
-- [Introducing Crank](blog/2020-04-15-introducing-crank.md)
-- [Why Be Reactive?](blog/2025-08-20-why-be-reactive.md)
+- [Introducing Crank](docs/blog/2020-04-15-introducing-crank.md)
+- [Why Be Reactive?](docs/blog/2025-08-20-why-be-reactive.md)
 
 ## Other
-- [Changelog](../CHANGELOG.md)
+- [Changelog](CHANGELOG.md)

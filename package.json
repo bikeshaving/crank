@@ -45,7 +45,7 @@
     "test:crankdown": "cd packages/crankdown && npm run typecheck && bun test",
     "test:eslint": "cd packages/eslint-plugin-crank && bun test",
     "typecheck": "tsc --noEmit",
-    "skill": "skillpack docs/SKILL.md -o skills/",
+    "skill": "skillpack SKILL.md -o skills/",
     "prepublishOnly": "echo 'ERROR: Cannot publish from root directory. Use libuild publish instead.' && exit 1"
   },
   "workspaces": [
