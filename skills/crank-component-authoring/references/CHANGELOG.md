@@ -9,6 +9,14 @@
   - Removed `Context.flush()` (renamed to `Context.after()` in 0.7) and the
     deprecated `Context.value` getter.
 
+### Performance
+- **The `jsx` template tag caches static subtrees** (#383)
+  Parts of a template with no expressions are built once and the same element
+  instance is returned on every call, so re-renders skip them by identity.
+  Re-rendering a static-heavy template is 3–4× faster. Note this changes what
+  a render does for templates: static parts are no longer re-patched, so
+  out-of-band DOM mutations to them are no longer overwritten on re-render.
+
 ### Bug Fixes
 - **The DOM renderer no longer relies on the `Node`/`Element` globals** (#381)
   `nodeType` constants are inlined and the Portal root is duck-typed, so the
