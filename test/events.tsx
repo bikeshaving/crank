@@ -1,7 +1,8 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
 
-import {Context, createElement, Element, Fragment} from "../src/crank.js";
+import type {Context, Element} from "../src/crank.js";
+import {createElement, Fragment} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("events", () => {
@@ -50,6 +51,7 @@ describe("events", () => {
 
 	test("function component", () => {
 		const mock = Sinon.fake();
+
 		function Button(this: Context) {
 			this.addEventListener("click", () => {
 				mock();
@@ -83,6 +85,7 @@ describe("events", () => {
 
 	test("delegation", () => {
 		let ctx!: Context;
+
 		function* Component(this: Context): Generator<Element> {
 			ctx = this;
 			for ({} of this) {
@@ -123,6 +126,7 @@ describe("events", () => {
 
 	test("delegation with unmounting children", () => {
 		let ctx!: Context;
+
 		function* Component(this: Context): Generator<Element | null> {
 			ctx = this;
 			yield (
@@ -178,6 +182,7 @@ describe("events", () => {
 		}
 
 		const mock = Sinon.fake();
+
 		function* Parent(this: Context) {
 			this.addEventListener("click", () => {
 				mock();
@@ -216,6 +221,7 @@ describe("events", () => {
 
 	test("non-direct delegation with refresh", () => {
 		let ctx!: Context;
+
 		function* Child(this: Context) {
 			ctx = this;
 			yield null;
@@ -231,6 +237,7 @@ describe("events", () => {
 		}
 
 		const mock = Sinon.fake();
+
 		function* Parent(this: Context) {
 			this.addEventListener("click", (ev) => {
 				if ((ev.target as HTMLElement).tagName === "BUTTON") {
@@ -352,7 +359,8 @@ describe("events", () => {
 	});
 
 	test("async refresh callback", async () => {
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
+
 		function* Component(this: Context): Generator<string> {
 			let count = 0;
 			this.addEventListener("click", (ev) => {
@@ -396,6 +404,7 @@ describe("events", () => {
 
 	test("unmount and dispatch", () => {
 		let ctx!: Context;
+
 		function Component(this: Context) {
 			ctx = this;
 			return <span>Hello</span>;
@@ -424,6 +433,7 @@ describe("events", () => {
 
 	test("event props", () => {
 		let ctx!: Context;
+
 		function Component(this: Context, _props: {onfoo: (ev: Event) => any}) {
 			ctx = this;
 			return <span>Hello</span>;
@@ -437,6 +447,7 @@ describe("events", () => {
 
 	test("event props camelCased", () => {
 		let ctx!: Context;
+
 		function Component(this: Context, _props: {onFoo: (ev: Event) => any}) {
 			ctx = this;
 			return <span>Hello</span>;
@@ -450,6 +461,7 @@ describe("events", () => {
 
 	test("error thrown in listener", () => {
 		let ctx!: Context;
+
 		function Component(this: Context) {
 			ctx = this;
 			return <span>Hello</span>;
@@ -478,6 +490,7 @@ describe("events", () => {
 
 	test("errors do not affect other listeners", () => {
 		let ctx!: Context;
+
 		function Component(this: Context) {
 			ctx = this;
 			return <span>Hello</span>;

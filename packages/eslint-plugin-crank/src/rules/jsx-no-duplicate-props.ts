@@ -2,8 +2,8 @@
 // Original: Copyright (c) 2014 Yannick Croissant, MIT License
 // https://github.com/jsx-eslint/eslint-plugin-react
 
-import {Rule} from "eslint";
-import {ESLintNode} from "../utils/types.js";
+import type {Rule} from "eslint";
+import type {ESLintNode} from "../utils/types.js";
 
 export const jsxNoDuplicateProps: Rule.RuleModule = {
 	meta: {
@@ -36,10 +36,16 @@ export const jsxNoDuplicateProps: Rule.RuleModule = {
 				const props: Record<string, boolean> = {};
 
 				for (const decl of node.attributes) {
-					if (decl.type === "JSXSpreadAttribute") continue;
+					if (decl.type === "JSXSpreadAttribute") {
+						continue;
+					}
 					let name = decl.name?.name;
-					if (typeof name !== "string") continue;
-					if (ignoreCase) name = name.toLowerCase();
+					if (typeof name !== "string") {
+						continue;
+					}
+					if (ignoreCase) {
+						name = name.toLowerCase();
+					}
 
 					if (props[name]) {
 						context.report({node: decl, messageId: "noDuplicateProps"});

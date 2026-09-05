@@ -1,7 +1,8 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
 
-import {Children, Context, createElement, Element, Raw} from "../src/crank.js";
+import type {Children, Context, Element} from "../src/crank.js";
+import {createElement, Raw} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("refs", () => {
@@ -63,6 +64,7 @@ describe("refs", () => {
 
 	test("function component ref passing", () => {
 		const fn = Sinon.fake();
+
 		function Component({ref}: {ref: unknown}): Element {
 			return <span ref={ref}>Hello</span>;
 		}
@@ -81,6 +83,7 @@ describe("refs", () => {
 
 	test("generator component ref passing", () => {
 		const fn = Sinon.fake();
+
 		function* Component({ref}: {ref: unknown}): Generator<Element> {
 			while (true) {
 				yield <span ref={ref}>Hello</span>;
@@ -101,6 +104,7 @@ describe("refs", () => {
 
 	test("async function component ref passing", async () => {
 		const fn = Sinon.fake();
+
 		async function Component({ref}: {ref: unknown}): Promise<Element> {
 			return <span ref={ref}>Hello</span>;
 		}
@@ -119,6 +123,7 @@ describe("refs", () => {
 
 	test("async generator component", async () => {
 		const fn = Sinon.fake();
+
 		async function* Component(
 			this: Context,
 			{ref}: {ref: unknown},
@@ -146,6 +151,7 @@ describe("refs", () => {
 		}
 
 		const fn = Sinon.fake();
+
 		function Parent(): Element {
 			return (
 				<div>
@@ -170,6 +176,7 @@ describe("refs", () => {
 		}
 
 		const fn = Sinon.fake();
+
 		function Parent(): Element {
 			return (
 				<div>

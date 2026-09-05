@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
 import {GearLogo} from "./gears.js";
@@ -23,7 +24,7 @@ const navbarGroupLayout = css`
 `;
 
 // TODO: url should be named pathname
-export function Navbar({url}: {url: string}) {
+export function Navbar({url}: {url: string}): Element {
 	return jsx`
 		<nav
 			class="

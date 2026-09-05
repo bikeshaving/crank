@@ -56,7 +56,7 @@ function printStyleObject(style: Record<string, any>): string {
 
 function printAttrs(props: Record<string, any>, isSVG?: boolean): string {
 	const attrs: string[] = [];
-	for (let [name, value] of Object.entries(props)) {
+	for (const [name, value] of Object.entries(props)) {
 		if (
 			name === "innerHTML" ||
 			name === "dangerouslySetInnerHTML" ||
@@ -94,17 +94,19 @@ function printAttrs(props: Record<string, any>, isSVG?: boolean): string {
 				}
 			}
 		} else {
-			if (name.startsWith("attr:")) {
-				name = name.slice("attr:".length);
-			} else if (isSVG && name in REACT_SVG_PROPS) {
-				name = REACT_SVG_PROPS[name];
+			let attrName = name;
+			if (attrName.startsWith("attr:")) {
+				attrName = attrName.slice("attr:".length);
+			} else if (isSVG && attrName in REACT_SVG_PROPS) {
+				attrName = REACT_SVG_PROPS[attrName];
 			}
+
 			if (typeof value === "string") {
-				attrs.push(`${escape(name)}="${escape(value)}"`);
+				attrs.push(`${escape(attrName)}="${escape(value)}"`);
 			} else if (typeof value === "number") {
-				attrs.push(`${escape(name)}="${value}"`);
+				attrs.push(`${escape(attrName)}="${value}"`);
 			} else if (value === true) {
-				attrs.push(`${escape(name)}`);
+				attrs.push(`${escape(attrName)}`);
 			}
 		}
 	}

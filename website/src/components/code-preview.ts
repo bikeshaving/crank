@@ -314,6 +314,7 @@ ${code}
 }
 
 let globalId = 0;
+
 export function* CodePreview(
 	this: Context<typeof CodePreview>,
 	{
@@ -332,7 +333,7 @@ export function* CodePreview(
 	let iframe!: HTMLIFrameElement;
 	// We use this iframe ID as the key for the iframe, so that previous iframes
 	// are destroyed along with any registered callbacks like setInterval.
-	let iframeID = 0;
+	let iframeId = 0;
 	let loading = true;
 	let errorMessage: string | null = null;
 	let showErrorModal = true;
@@ -358,7 +359,7 @@ export function* CodePreview(
 			// previous iframe is destroyed. We would have to await refresh if this
 			// component was refactored to be async.
 			this.refresh(() => {
-				iframeID++;
+				iframeId++;
 			});
 			const document1 = iframe.contentDocument;
 			if (document1 == null) {
@@ -398,7 +399,7 @@ export function* CodePreview(
 	let height = 100;
 	if (typeof window !== "undefined") {
 		const onmessage = (ev: any) => {
-			let data: any = JSON.parse(ev.data);
+			const data: any = JSON.parse(ev.data);
 			if (data.id !== id) {
 				return;
 			}
@@ -571,7 +572,7 @@ export function* CodePreview(
 						`
 					}
 					<iframe
-						key=${iframeID}
+						key=${iframeId}
 						ref=${(el: HTMLIFrameElement) => (iframe = el)}
 						class="
 							playground-iframe

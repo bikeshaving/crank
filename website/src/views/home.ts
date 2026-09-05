@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
 import {Root} from "../components/root.js";
@@ -219,7 +220,7 @@ function AntiHero() {
 	`;
 }
 
-function BlogSection({posts}: {posts: Array<any>}) {
+function BlogSection({posts}: {posts: any[]}) {
 	return jsx`
 		<div class=${css`
 			max-width: 1200px;
@@ -271,7 +272,7 @@ function BlogSection({posts}: {posts: Array<any>}) {
 	`;
 }
 
-export default async function Home({url}: ViewProps) {
+export default async function Home({url}: ViewProps): Promise<Element> {
 	const docsDir = await self.directories.open("docs");
 	const docs = await collectDocuments(docsDir);
 	const md = docs.find((doc) => doc.filename === "index.md");

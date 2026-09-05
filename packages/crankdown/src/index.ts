@@ -3,173 +3,173 @@ import type {Children, Component, Element} from "@b9g/crank";
 import {marked} from "marked";
 import type {Token, Tokens} from "marked";
 // TODO: This is probably a component
-/*
-Token type definitions from Marked
-interface Space {
- type: 'space';
- raw: string;
-}
-
-interface Code {
- type: 'code';
- raw: string;
- codeBlockStyle?: 'indented' | undefined;
- lang?: string | undefined;
- text: string;
-}
-
-interface Heading {
- type: 'heading';
- raw: string;
- depth: number;
- text: string;
- tokens: Token[];
-}
-
-interface Table {
- type: 'table';
- raw: string;
- align: Array<'center' | 'left' | 'right' | null>;
- header: TableCell[];
- rows: TableCell[][];
-}
-
-interface TableCell {
- text: string;
- tokens: Token[];
-}
-
-interface Hr {
- type: 'hr';
- raw: string;
-}
-
-interface Blockquote {
- type: 'blockquote';
- raw: string;
- text: string;
- tokens: Token[];
-}
-
-interface List {
- type: 'list';
- raw: string;
- ordered: boolean;
- start: number | '';
- loose: boolean;
- items: ListItem[];
-}
-
-interface ListItem {
- type: 'list_item';
- raw: string;
- task: boolean;
- checked?: boolean | undefined;
- loose: boolean;
- text: string;
- tokens: Token[];
-}
-
-interface Paragraph {
- type: 'paragraph';
- raw: string;
- pre?: boolean | undefined;
- text: string;
- tokens: Token[];
-}
-
-interface HTML {
- type: 'html';
- raw: string;
- pre: boolean;
- text: string;
-}
-
-interface Text {
- type: 'text';
- raw: string;
- text: string;
- tokens?: Token[] | undefined;
-}
-
-interface Def {
- type: 'def';
- raw: string;
- tag: string;
- href: string;
- title: string;
-}
-
-interface Escape {
- type: 'escape';
- raw: string;
- text: string;
-}
-
-interface Tag {
- type: 'text' | 'html';
- raw: string;
- inLink: boolean;
- inRawBlock: boolean;
- text: string;
-}
-
-interface Link {
- type: 'link';
- raw: string;
- href: string;
- title: string;
- text: string;
- tokens: Token[];
-}
-
-interface Image {
- type: 'image';
- raw: string;
- href: string;
- title: string;
- text: string;
-}
-
-interface Strong {
- type: 'strong';
- raw: string;
- text: string;
- tokens: Token[];
-}
-
-interface Em {
- type: 'em';
- raw: string;
- text: string;
- tokens: Token[];
-}
-
-interface Codespan {
- type: 'codespan';
- raw: string;
- text: string;
-}
-
-interface Br {
- type: 'br';
- raw: string;
-}
-
-interface Del {
- type: 'del';
- raw: string;
- text: string;
- tokens: Token[];
-}
-
-interface Generic {
- [index: string]: any;
- type: string;
- raw: string;
- tokens?: Token[] | undefined;
-}
-*/
+//
+// Token type definitions from Marked
+// interface Space {
+// type: 'space';
+// raw: string;
+// }
+//
+// interface Code {
+// type: 'code';
+// raw: string;
+// codeBlockStyle?: 'indented' | undefined;
+// lang?: string | undefined;
+// text: string;
+// }
+//
+// interface Heading {
+// type: 'heading';
+// raw: string;
+// depth: number;
+// text: string;
+// tokens: Token[];
+// }
+//
+// interface Table {
+// type: 'table';
+// raw: string;
+// align: Array<'center' | 'left' | 'right' | null>;
+// header: TableCell[];
+// rows: TableCell[][];
+// }
+//
+// interface TableCell {
+// text: string;
+// tokens: Token[];
+// }
+//
+// interface Hr {
+// type: 'hr';
+// raw: string;
+// }
+//
+// interface Blockquote {
+// type: 'blockquote';
+// raw: string;
+// text: string;
+// tokens: Token[];
+// }
+//
+// interface List {
+// type: 'list';
+// raw: string;
+// ordered: boolean;
+// start: number | '';
+// loose: boolean;
+// items: ListItem[];
+// }
+//
+// interface ListItem {
+// type: 'list_item';
+// raw: string;
+// task: boolean;
+// checked?: boolean | undefined;
+// loose: boolean;
+// text: string;
+// tokens: Token[];
+// }
+//
+// interface Paragraph {
+// type: 'paragraph';
+// raw: string;
+// pre?: boolean | undefined;
+// text: string;
+// tokens: Token[];
+// }
+//
+// interface HTML {
+// type: 'html';
+// raw: string;
+// pre: boolean;
+// text: string;
+// }
+//
+// interface Text {
+// type: 'text';
+// raw: string;
+// text: string;
+// tokens?: Token[] | undefined;
+// }
+//
+// interface Def {
+// type: 'def';
+// raw: string;
+// tag: string;
+// href: string;
+// title: string;
+// }
+//
+// interface Escape {
+// type: 'escape';
+// raw: string;
+// text: string;
+// }
+//
+// interface Tag {
+// type: 'text' | 'html';
+// raw: string;
+// inLink: boolean;
+// inRawBlock: boolean;
+// text: string;
+// }
+//
+// interface Link {
+// type: 'link';
+// raw: string;
+// href: string;
+// title: string;
+// text: string;
+// tokens: Token[];
+// }
+//
+// interface Image {
+// type: 'image';
+// raw: string;
+// href: string;
+// title: string;
+// text: string;
+// }
+//
+// interface Strong {
+// type: 'strong';
+// raw: string;
+// text: string;
+// tokens: Token[];
+// }
+//
+// interface Em {
+// type: 'em';
+// raw: string;
+// text: string;
+// tokens: Token[];
+// }
+//
+// interface Codespan {
+// type: 'codespan';
+// raw: string;
+// text: string;
+// }
+//
+// interface Br {
+// type: 'br';
+// raw: string;
+// }
+//
+// interface Del {
+// type: 'del';
+// raw: string;
+// text: string;
+// tokens: Token[];
+// }
+//
+// interface Generic {
+// [index: string]: any;
+// type: string;
+// raw: string;
+// tokens?: Token[] | undefined;
+// }
+//
 
 export interface Checkmark {
 	type: "checkmark";
@@ -335,16 +335,16 @@ function decodeHTMLEntities(text: string): string {
 
 // This function is called recursively to turn an array of tokens into elements.
 function build(
-	tokens: Array<Token>,
+	tokens: Token[],
 	rootProps: BuildProps,
 	blockLevel = false,
 ): Array<Element | string> {
 	const result: Array<Element | string> = [];
-	let jsxStack: Array<JSXStackFrame> = [];
+	let jsxStack: JSXStackFrame[] = [];
 
 	// When the JSX stack is non-empty we're inside a component tag, so all
 	// output goes to the top frame's children instead of the result array.
-	function emit(...elements: Array<Element | string>) {
+	function emit(...elements: Array<Element | string>): void {
 		const target =
 			jsxStack.length > 0 ? jsxStack[jsxStack.length - 1].children : result;
 		target.push(...elements);
@@ -427,8 +427,8 @@ function build(
 						checked: !!item.checked,
 					};
 
-					const first = item.tokens?.[0] as {tokens?: Array<Token>} | undefined;
-					if (first?.tokens?.length) {
+					const first = item.tokens?.[0] as {tokens?: Token[]} | undefined;
+					if (first && first.tokens?.length) {
 						first.tokens.unshift(checkmark as unknown as Token);
 					} else {
 						tokens.unshift(checkmark as unknown as Token);
@@ -532,8 +532,8 @@ function parseProps(attrs: string): Record<string, string | true> {
 // Split a multi-tag HTML token into individual segments that parseJSX can
 // handle one at a time. Each segment is either a complete tag (open, close,
 // or self-closing) or a stretch of non-tag text.
-function splitHTMLSegments(html: string): Array<string> {
-	const segments: Array<string> = [];
+function splitHTMLSegments(html: string): string[] {
+	const segments: string[] = [];
 	const re = /<\/?[\w-]+(?:\s+[\w-]+(?:\s*=\s*(?:"[^"]*"|'[^']*'))?)*\s*\/?>/g;
 	let lastIndex = 0;
 	let m: RegExpExecArray | null;
@@ -565,9 +565,9 @@ function splitHTMLSegments(html: string): Array<string> {
 // build()).
 function parseJSX(
 	html: string,
-	stack: Array<JSXStackFrame>,
+	stack: JSXStackFrame[],
 	rootProps: BuildProps,
-): [Array<Element | string>, Array<JSXStackFrame>] {
+): [Array<Element | string>, JSXStackFrame[]] {
 	const results: Array<Element | string> = [];
 	let m: RegExpMatchArray | null;
 
@@ -630,7 +630,7 @@ function parseJSX(
 						Object.entries(frame.props)
 							.map(([k, v]) => (v === true ? ` ${k}` : ` ${k}="${v}"`))
 							.join("") +
-						">"
+							">"
 					} />`,
 					...frame.children,
 					jsx`<${Raw} value=${html} />`,
@@ -658,7 +658,10 @@ export interface MarkedProps {
 	[key: string]: unknown;
 }
 
-export function Marked({markdown, ...props}: MarkedProps) {
+export function Marked({
+	markdown,
+	...props
+}: MarkedProps): Array<Element | string> {
 	// Configure marked to not encode HTML entities in text
 	const tokens = marked.Lexer.lex(markdown, {
 		gfm: true,

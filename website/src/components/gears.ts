@@ -1,36 +1,49 @@
 import {jsx} from "@b9g/crank/standalone";
-import type {Context} from "@b9g/crank";
+import type {Context, Element} from "@b9g/crank";
 
-function degreesFromRadians(r: number) {
+function degreesFromRadians(r: number): number {
 	return (r * 180) / Math.PI;
 }
 
-function radiansFromDegrees(d: number) {
+function radiansFromDegrees(d: number): number {
 	return (d * Math.PI) / 180;
 }
 
-function rotate([x, y]: [number, number], a: number) {
+function rotate([x, y]: [number, number], a: number): [number, number] {
 	return [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
 }
 
-function invAngle(radius: number, baseRadius: number) {
+function invAngle(radius: number, baseRadius: number): number {
 	return Math.sqrt(radius ** 2 - baseRadius ** 2) / baseRadius;
 }
 
-function invPoint(angle: number, baseRadius: number) {
+function invPoint(angle: number, baseRadius: number): [number, number] {
 	return [
 		baseRadius * (Math.cos(angle) + angle * Math.sin(angle)),
 		baseRadius * (Math.sin(angle) - angle * Math.cos(angle)),
 	];
 }
 
-function invIntersectAngle(radius: number, baseRadius: number) {
+function invIntersectAngle(radius: number, baseRadius: number): number {
 	const angle = Math.sqrt(radius ** 2 - baseRadius ** 2) / baseRadius;
 	const [x, y] = invPoint(angle, baseRadius);
 	return Math.atan2(y, x);
 }
 
-function calculateGear(mod: number, toothCount: number, pressureAngle: number) {
+function calculateGear(
+	mod: number,
+	toothCount: number,
+	pressureAngle: number,
+): {
+	path: string;
+	pitchRadius: number;
+	baseRadius: number;
+	dedRadius: number;
+	addRadius: number;
+	addAngle: number;
+	toothAngle: number;
+	mirrorAngle: number;
+} {
 	const pitchRadius = (mod * toothCount) / 2;
 	const baseRadius = pitchRadius * Math.cos(pressureAngle);
 	const dedRadius = pitchRadius - mod;
@@ -70,7 +83,7 @@ function calculateGear(mod: number, toothCount: number, pressureAngle: number) {
 	// rotate points so teeth tips aligned with x=0 and y=0
 	points = points.map(([x, y]) => rotate([x, y], -mirrorAngle / 2));
 
-	let toothPoints = [];
+	const toothPoints = [];
 	for (let i = 0; i <= toothCount; i++) {
 		const points1 = points
 			.slice()
@@ -187,7 +200,7 @@ function Rack({mod, height}: {mod: number; height: number}) {
 	const pressureAngle = radiansFromDegrees(20);
 	const points = [];
 	const toothWidth = mod * Math.PI;
-	let tipWidth = toothWidth / 4;
+	const tipWidth = toothWidth / 4;
 	const count = Math.ceil(height / toothWidth) + 1;
 	for (let i = Math.floor(-count); i <= count; i++) {
 		const offset = i * toothWidth;
@@ -212,7 +225,9 @@ function Rack({mod, height}: {mod: number; height: number}) {
 	`;
 }
 
-export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
+export function* GearInteractive(
+	this: Context<typeof GearInteractive>,
+): Generator<Element> {
 	let scrollTop = 0;
 	let idleOffset = 0;
 	let lastTime = 0;
@@ -293,7 +308,7 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 		const height =
 			(typeof document !== "undefined" &&
 				document.scrollingElement?.clientHeight) ||
-			1000;
+				1000;
 		const scrollAng = (-scrollTop * speed) / pitchRadius1 + idleOffset;
 		// Linear rack movement derived from gear rotation
 		const rackOffset = -scrollAng * pitchRadius1;
@@ -383,7 +398,7 @@ export function GearLogo({
 	height?: number;
 	color?: string;
 	background?: string;
-}) {
+}): Element {
 	const style = background
 		? `flex: none; background-color: ${background};`
 		: "flex: none;";

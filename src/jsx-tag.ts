@@ -2,9 +2,10 @@ import {createElement} from "./crank.js";
 import type {Element} from "./crank.js";
 
 const cache = new Map<string, ParseResult>();
+
 export function jsx(
 	spans: TemplateStringsArray,
-	...expressions: Array<unknown>
+	...expressions: unknown[]
 ): Element {
 	const key = JSON.stringify(spans.raw);
 	let parseResult = cache.get(key);
@@ -34,11 +35,11 @@ export function jsx(
 				throw new SyntaxError(
 					target.spanIndex != null && target.charIndex != null
 						? formatSyntaxError(
-								msg,
-								spans.raw,
-								target.spanIndex,
-								target.charIndex,
-							)
+							msg,
+							spans.raw,
+							target.spanIndex,
+							target.charIndex,
+						)
 						: msg,
 				);
 			}
@@ -184,7 +185,7 @@ function validateName(
 
 export function parse(spans: ArrayLike<string>): ParseResult {
 	let matcher = CHILDREN_RE;
-	const stack: Array<ParseElement> = [];
+	const stack: ParseElement[] = [];
 	let element: ParseElement = {
 		type: "element",
 		open: {type: "tag", slash: "", value: ""},
@@ -423,7 +424,7 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 							if (i === span.length) {
 								throw new SyntaxError(
 									formatSyntaxError(
-										`Expected props but reached end of document`,
+										"Expected props but reached end of document",
 										spans,
 										s,
 										i,
@@ -674,16 +675,16 @@ function build(parsed: ParseElement, spans?: ArrayLike<string>): Element {
 		throw new SyntaxError(
 			spans && parsed.close.spanIndex != null && parsed.close.charIndex != null
 				? formatSyntaxError(
-						msg,
-						spans,
-						parsed.close.spanIndex,
-						parsed.close.charIndex,
-					)
+					msg,
+					spans,
+					parsed.close.spanIndex,
+					parsed.close.charIndex,
+				)
 				: msg,
 		);
 	}
 
-	const children: Array<unknown> = [];
+	const children: unknown[] = [];
 	for (let i = 0; i < parsed.children.length; i++) {
 		const child = parsed.children[i];
 		children.push(child.type === "element" ? build(child, spans) : child.value);

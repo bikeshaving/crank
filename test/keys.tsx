@@ -738,6 +738,7 @@ describe("keys", () => {
 	// https://github.com/bikeshaving/crank/issues/267
 	test("component unmounts with key", () => {
 		const fn = Sinon.fake();
+
 		function* Component(this: Context) {
 			this.cleanup(() => {
 				fn();
@@ -760,6 +761,7 @@ describe("keys", () => {
 
 	test("changing list", () => {
 		const fn = Sinon.fake();
+
 		function* Component(this: Context, {children}: {children?: any}) {
 			for ({children} of this) {
 				yield <p>{children}</p>;
@@ -793,6 +795,7 @@ describe("keys", () => {
 	// Keyed host elements reorder correctly via refresh
 	test("keyed host elements reorder via refresh", async () => {
 		let refresh: () => void;
+
 		function* List(this: Context) {
 			let reversed = false;
 			refresh = () => {
@@ -805,17 +808,17 @@ describe("keys", () => {
 					<div>
 						{reversed
 							? [
-									<span key="d">d</span>,
-									<span key="c">c</span>,
-									<span key="b">b</span>,
-									<span key="a">a</span>,
-								]
+								<span key="d">d</span>,
+								<span key="c">c</span>,
+								<span key="b">b</span>,
+								<span key="a">a</span>,
+							]
 							: [
-									<span key="a">a</span>,
-									<span key="b">b</span>,
-									<span key="c">c</span>,
-									<span key="d">d</span>,
-								]}
+								<span key="a">a</span>,
+								<span key="b">b</span>,
+								<span key="c">c</span>,
+								<span key="d">d</span>,
+							]}
 					</div>
 				);
 			}
@@ -849,6 +852,7 @@ describe("keys", () => {
 	// Bug: keyed generator components don't reorder via refresh
 	test("keyed generator components reorder via refresh", async () => {
 		const mounted: string[] = [];
+
 		function* ID(this: Context, {id}: {id: string}) {
 			mounted.push(id);
 			for ({id} of this) {
@@ -857,6 +861,7 @@ describe("keys", () => {
 		}
 
 		let refresh: () => void;
+
 		function* List(this: Context) {
 			let reversed = false;
 			refresh = () => {

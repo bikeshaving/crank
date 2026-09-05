@@ -9,7 +9,7 @@ import type {ContentAreaElement} from "@b9g/revise/contentarea.js";
 
 import type {Token} from "prismjs";
 
-//import {parser} from "@lezer/javascript";
+// import {parser} from "@lezer/javascript";
 import {ContentArea} from "./contentarea.js";
 import {tokenize} from "../utils/prism.js";
 
@@ -145,7 +145,7 @@ export function* CodeEditor(
 		editable?: boolean;
 		showGutter?: boolean;
 	},
-) {
+): Generator<Element> {
 	const keyer = new Keyer();
 	let selectionRange: SelectionRange | undefined;
 	let renderSource: string | undefined;
@@ -181,7 +181,7 @@ export function* CodeEditor(
 		});
 	});
 
-	let editHistory = new EditHistory();
+	const editHistory = new EditHistory();
 	{
 		// history stuff
 		const undo = () => {
@@ -397,7 +397,7 @@ export function* CodeEditor(
 	}
 }
 
-function getPreviousLine(text: string, index: number) {
+function getPreviousLine(text: string, index: number): string {
 	index = Math.max(0, index);
 	for (let i = index - 1; i >= 0; i--) {
 		if (text[i] === "\n" || text[i] === "\r") {
@@ -414,8 +414,11 @@ interface SelectionRange {
 	selectionDirection: string;
 }
 
-/*** Revise Logic ***/
-async function checkpointEditHistory(ctx: Context, editHistory: EditHistory) {
+/** * Revise Logic ***/
+async function checkpointEditHistory(
+	ctx: Context,
+	editHistory: EditHistory,
+): Promise<void> {
 	const contentArea = (
 		(await new Promise((resolve) => ctx.schedule(resolve))) as any
 	).querySelector("content-area");
@@ -439,7 +442,7 @@ async function checkpointEditHistory(ctx: Context, editHistory: EditHistory) {
 			(oldSelectionRange.selectionStart !== newSelectionRange.selectionStart ||
 				oldSelectionRange.selectionEnd !== newSelectionRange.selectionEnd ||
 				oldSelectionRange.selectionDirection !==
-					newSelectionRange.selectionDirection)
+				newSelectionRange.selectionDirection)
 		) {
 			editHistory.checkpoint();
 		}

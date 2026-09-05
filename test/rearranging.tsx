@@ -1,5 +1,6 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
-import {createElement, Context, Fragment} from "../src/crank.js";
+import type {Context} from "../src/crank.js";
+import {createElement, Fragment} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("rearranging", () => {
@@ -14,6 +15,7 @@ describe("rearranging", () => {
 	});
 
 	let headerCtx: Context | undefined;
+
 	function* Header(this: Context) {
 		headerCtx = this;
 		let i = 0;
@@ -25,6 +27,7 @@ describe("rearranging", () => {
 	}
 
 	let asyncHeaderCtx: Context | undefined;
+
 	async function* AsyncHeader(this: Context) {
 		asyncHeaderCtx = this;
 		let i = 0;
@@ -67,6 +70,7 @@ describe("rearranging", () => {
 
 	test("changing children nested in a function component", () => {
 		let ctx!: Context;
+
 		function Component(this: Context) {
 			ctx = this;
 			return <Header />;
@@ -84,6 +88,7 @@ describe("rearranging", () => {
 
 	test("changing children nested in a generator component", () => {
 		let ctx!: Context;
+
 		function* Component(this: Context) {
 			ctx = this;
 			while (true) {
@@ -107,6 +112,7 @@ describe("rearranging", () => {
 
 	test("changing children nested in a fragment in a generator component", () => {
 		let ctx!: Context;
+
 		function* Component(this: Context) {
 			ctx = this;
 			while (true) {
@@ -126,6 +132,7 @@ describe("rearranging", () => {
 
 	test("changing children nested in an async component", async () => {
 		let ctx!: Context;
+
 		async function Component(this: Context) {
 			ctx = this;
 			return <Header />;
@@ -143,6 +150,7 @@ describe("rearranging", () => {
 
 	test("changing children nested in an async generator component", async () => {
 		let ctx!: Context;
+
 		async function* Component(this: Context) {
 			ctx = this;
 			for await (const _ of this) {
@@ -164,6 +172,7 @@ describe("rearranging", () => {
 		function Sibling() {
 			return <p>Sibling</p>;
 		}
+
 		renderer.render([<Header />, <Sibling />], document.body);
 
 		expect(document.body.innerHTML).toBe("<h1>0</h1><p>Sibling</p>");

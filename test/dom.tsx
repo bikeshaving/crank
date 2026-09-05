@@ -1,7 +1,7 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 /// <ref lib="dom" />
 import {Copy, createElement, Fragment, Raw} from "../src/crank.js";
-import type {Context} from "../src/crank.js";
+import type {Context, Element} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("dom", () => {
@@ -422,7 +422,7 @@ describe("dom", () => {
 	});
 
 	test("raw node", () => {
-		var template = document.createElement("template");
+		const template = document.createElement("template");
 		template.innerHTML = '<span id="raw">Hi</span>';
 		const span = template.content.firstChild!;
 		renderer.render(
@@ -971,17 +971,17 @@ describe("dom", () => {
 			renderer.render(<iframe src="/test-path" />, document.body);
 			expect(srcSetCount).toBe(
 				1,
-			) /* src should be set once on initial render */;
+			);
 
 			// Re-render with same src
 			renderer.render(<iframe src="/test-path" />, document.body);
 			expect(srcSetCount).toBe(
 				1,
-			) /* src should not be set again when unchanged */;
+			);
 
 			// Re-render with different src
 			renderer.render(<iframe src="/different-path" />, document.body);
-			expect(srcSetCount).toBe(2) /* src should be set when changed */;
+			expect(srcSetCount).toBe(2);
 		} finally {
 			// Restore original property
 			Object.defineProperty(
@@ -1013,17 +1013,17 @@ describe("dom", () => {
 			renderer.render(<a href="/test-link">Link</a>, document.body);
 			expect(hrefSetCount).toBe(
 				1,
-			) /* href should be set once on initial render */;
+			);
 
 			// Re-render with same href
 			renderer.render(<a href="/test-link">Link</a>, document.body);
 			expect(hrefSetCount).toBe(
 				1,
-			) /* href should not be set again when unchanged */;
+			);
 
 			// Re-render with different href
 			renderer.render(<a href="/different-link">Link</a>, document.body);
-			expect(hrefSetCount).toBe(2) /* href should be set when changed */;
+			expect(hrefSetCount).toBe(2);
 		} finally {
 			// Restore original property
 			Object.defineProperty(
@@ -1058,7 +1058,7 @@ describe("dom", () => {
 			renderer.render(<iframe src="https://example.com/page" />, document.body);
 			expect(srcSetCount).toBe(
 				1,
-			) /* absolute src should not be set again when unchanged */;
+			);
 		} finally {
 			Object.defineProperty(
 				HTMLIFrameElement.prototype,
@@ -1234,7 +1234,7 @@ describe("dom", () => {
 			<div class={{active: true, highlight: true, large: true}}>Test</div>,
 			document.body,
 		);
-		let div = document.querySelector("div")!;
+		const div = document.querySelector("div")!;
 		expect(div.classList.contains("active")).toBeTruthy();
 		expect(div.classList.contains("highlight")).toBeTruthy();
 		expect(div.classList.contains("large")).toBeTruthy();
@@ -1255,7 +1255,7 @@ describe("dom", () => {
 			<div class={{a: true, b: true, c: true}}>Test</div>,
 			document.body,
 		);
-		let div = document.querySelector("div")!;
+		const div = document.querySelector("div")!;
 		expect(div.classList.contains("a")).toBeTruthy();
 		expect(div.classList.contains("b")).toBeTruthy();
 		expect(div.classList.contains("c")).toBeTruthy();
@@ -1271,7 +1271,7 @@ describe("dom", () => {
 
 	test("class object to empty object clears classes", () => {
 		renderer.render(<div class={{x: true, y: true}}>Test</div>, document.body);
-		let div = document.querySelector("div")!;
+		const div = document.querySelector("div")!;
 		expect(div.classList.contains("x")).toBeTruthy();
 		expect(div.classList.contains("y")).toBeTruthy();
 
@@ -1288,7 +1288,7 @@ describe("dom", () => {
 			</div>,
 			document.body,
 		);
-		let div = document.querySelector("div")!;
+		const div = document.querySelector("div")!;
 		expect(div.id).toBe("old");
 		expect(div.style.color).toBe("red");
 		expect(div.classList.contains("active")).toBeTruthy();
@@ -1488,7 +1488,7 @@ describe("dom", () => {
 		expect(document.body.innerHTML).toBe("<div><span>second</span></div>");
 		expect(document.body.querySelector("span")).toBe(
 			span,
-		) /* should reuse the span element */;
+		);
 	});
 
 	test("one to one child, different tag", () => {
@@ -1585,7 +1585,7 @@ describe("dom", () => {
 		expect(document.body.innerHTML).toBe("<div><span>b</span></div>");
 		expect(document.body.querySelector("span")).not.toBe(
 			span1,
-		) /* should create a new span for different key */;
+		);
 	});
 
 	test("one child with key to one child without key", () => {
@@ -1605,7 +1605,7 @@ describe("dom", () => {
 		expect(document.body.innerHTML).toBe("<div><span>b</span></div>");
 		expect(document.body.querySelector("span")).not.toBe(
 			span1,
-		) /* should create a new span when key removed */;
+		);
 	});
 
 	test("one child without key to one child with key", () => {
@@ -1625,7 +1625,7 @@ describe("dom", () => {
 		expect(document.body.innerHTML).toBe("<div><span>b</span></div>");
 		expect(document.body.querySelector("span")).not.toBe(
 			span1,
-		) /* should create a new span when key added */;
+		);
 	});
 
 	test("one keyed child to many children", () => {
@@ -1731,7 +1731,7 @@ describe("dom", () => {
 			renderer.render(<div />, document.body);
 			expect(document.body.innerHTML).toBe(
 				"<div></div>",
-			) /* `round ${round}: zero` */;
+			);
 
 			renderer.render(
 				<div>
@@ -1741,7 +1741,7 @@ describe("dom", () => {
 			);
 			expect(document.body.innerHTML).toBe(
 				"<div><span>one</span></div>",
-			) /* `round ${round}: one` */;
+			);
 
 			renderer.render(
 				<div>
@@ -1753,7 +1753,7 @@ describe("dom", () => {
 			);
 			expect(document.body.innerHTML).toBe(
 				"<div><span>a</span><span>b</span><span>c</span></div>",
-			) /* `round ${round}: many` */;
+			);
 		}
 	});
 
@@ -1871,7 +1871,8 @@ describe("dom", () => {
 
 	test("same element reference skips re-render", () => {
 		let renderCount = 0;
-		function Tracker(): ReturnType<typeof createElement> {
+
+		function Tracker(): Element {
 			renderCount++;
 			return <span>rendered</span>;
 		}
@@ -1895,6 +1896,7 @@ describe("dom", () => {
 
 	test("nullish child unmounts component subtree", () => {
 		const cleanups: string[] = [];
+
 		function* Child(this: Context, {name}: {name: string}): Generator {
 			try {
 				for ({name} of this) {
@@ -1947,6 +1949,7 @@ describe("dom", () => {
 
 	test("nullish child unmounts nested component tree", () => {
 		const cleanups: string[] = [];
+
 		function* Leaf(this: Context, {id}: {id: string}): Generator {
 			try {
 				for ({id} of this) {

@@ -9,11 +9,11 @@ export function Sidebar({
 	title,
 	url,
 }: {
-	docs: Array<DocInfo>;
+	docs: DocInfo[];
 	url: string;
 	title: string;
-}) {
-	const links: Array<Element> = [];
+}): Element {
+	const links: Element[] = [];
 	for (const doc of docs) {
 		if (doc.attributes.publish) {
 			links.push(jsx`
@@ -73,7 +73,7 @@ export function Sidebar({
 	`;
 }
 
-export function Main({children}: {children: unknown}) {
+export function Main({children}: {children: unknown}): Element {
 	return jsx`
 		<main data-pagefind-body class=${css`
 			margin: 0 auto;

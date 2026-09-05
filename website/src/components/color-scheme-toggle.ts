@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 import type {Context} from "@b9g/crank/standalone";
 import {useColorScheme} from "../utils/color-scheme.js";
@@ -44,7 +45,7 @@ const knobStyles = css`
  */
 const IS_CLIENT = typeof window !== "undefined";
 
-export function* ColorSchemeToggle(this: Context) {
+export function* ColorSchemeToggle(this: Context): Generator<Element> {
 	const colorScheme = useColorScheme(this);
 
 	for ({} of this) {

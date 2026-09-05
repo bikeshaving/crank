@@ -49,7 +49,7 @@ function* Playground(this: Context) {
 	if (hash) {
 		try {
 			code = LZString.decompressFromEncodedURIComponent(hash) || "";
-		} catch {
+		} catch (err) {
 			// Invalid hash, ignore
 		}
 	}
@@ -79,7 +79,9 @@ function* Playground(this: Context) {
 	let exampleName = "";
 	const onexamplechange = (ev: Event) => {
 		exampleName = (ev.target as HTMLSelectElement).value;
-		if (!exampleName) return; // "Load an example..." selected
+		if (!exampleName) {
+			return;
+		} // "Load an example..." selected
 		const example = examples.find(
 			(example: any) => example.name === exampleName,
 		);
@@ -99,7 +101,7 @@ function* Playground(this: Context) {
 		try {
 			await navigator.clipboard.writeText(url);
 			status = "Copied!";
-		} catch {
+		} catch (err) {
 			status = "Failed";
 		}
 		this.refresh(() => {
@@ -121,7 +123,9 @@ function* Playground(this: Context) {
 
 	const updateWidth = (clientX: number) => {
 		const container = document.querySelector(".playground") as HTMLElement;
-		if (!container) return;
+		if (!container) {
+			return;
+		}
 		const rect = container.getBoundingClientRect();
 		const newWidth = ((clientX - rect.left) / rect.width) * 100;
 		// Clamp between 20% and 80%
@@ -133,12 +137,16 @@ function* Playground(this: Context) {
 	};
 
 	const onMouseMove = (ev: MouseEvent) => {
-		if (!isDragging) return;
+		if (!isDragging) {
+			return;
+		}
 		updateWidth(ev.clientX);
 	};
 
 	const onTouchMove = (ev: TouchEvent) => {
-		if (!isDragging) return;
+		if (!isDragging) {
+			return;
+		}
 		updateWidth(ev.touches[0].clientX);
 	};
 

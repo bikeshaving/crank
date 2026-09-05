@@ -46,14 +46,14 @@ describe("Text", () => {
 	});
 
 	test("component which returns array of strings produces multiple text nodes", () => {
-		function Component({children}: {children: Array<string>}) {
+		function Component({children}: {children: string[]}) {
 			return children;
 		}
 
 		const result = renderer.render(
 			<Component>{["Hello, ", "Crank!"]}</Component>,
 			document.body,
-		) as Array<globalThis.Text>;
+		) as globalThis.Text[];
 
 		expect(document.body.childNodes.length).toBe(2);
 		expect(document.body.childNodes[0]).toBeInstanceOf(globalThis.Text);
@@ -73,7 +73,7 @@ describe("Text", () => {
 		const result1 = renderer.render(
 			<Component>{["Hello ", "again, ", "Crank!"]}</Component>,
 			document.body,
-		) as Array<globalThis.Text>;
+		) as globalThis.Text[];
 
 		expect(document.body.childNodes.length).toBe(3);
 		expect(document.body.childNodes[0]).toBeInstanceOf(globalThis.Text);

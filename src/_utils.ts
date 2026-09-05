@@ -25,11 +25,11 @@ export function measureMark(label: string): void {
 	}
 }
 
-export function wrap<T>(value: Array<T> | T | undefined): Array<T> {
+export function wrap<T>(value: T[] | T | undefined): T[] {
 	return value === undefined ? [] : Array.isArray(value) ? value : [value];
 }
 
-export function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
+export function unwrap<T>(arr: T[]): T[] | T | undefined {
 	return arr.length === 0 ? undefined : arr.length === 1 ? arr[0] : arr;
 }
 
@@ -44,13 +44,13 @@ export type NonStringIterable<T> = Iterable<T> & object;
  */
 export function arrayify<T>(
 	value: NonStringIterable<T> | T | null | undefined,
-): Array<T> {
+): T[] {
 	return value == null
 		? []
 		: Array.isArray(value)
 			? value
 			: typeof value === "string" ||
-				  typeof (value as any)[Symbol.iterator] !== "function"
+				typeof (value as any)[Symbol.iterator] !== "function"
 				? [value as T]
 				: [...(value as NonStringIterable<T>)];
 }
@@ -107,6 +107,7 @@ function createRaceRecord(contender: PromiseLike<unknown>): RaceRecord {
 // Values are a record of data containing a set of deferreds and whether the
 // value has settled.
 const wm = new WeakMap<object, RaceRecord>();
+
 export function safeRace<T>(
 	contenders: Iterable<T | PromiseLike<T>>,
 ): Promise<Awaited<T>> {

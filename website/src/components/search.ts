@@ -1,6 +1,6 @@
 import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
-import type {Context} from "@b9g/crank";
+import type {Context, Element} from "@b9g/crank";
 
 interface SearchResult {
 	url: string;
@@ -33,7 +33,7 @@ declare global {
 	}
 }
 
-export async function* Search(this: Context) {
+export async function* Search(this: Context): AsyncGenerator<Element> {
 	let query = "";
 	let results: SearchResult[] = [];
 	let isOpen = false;
@@ -42,8 +42,12 @@ export async function* Search(this: Context) {
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const loadPagefind = async () => {
-		if (pagefind) return pagefind;
-		if (typeof window === "undefined") return null;
+		if (pagefind) {
+			return pagefind;
+		}
+		if (typeof window === "undefined") {
+			return null;
+		}
 
 		try {
 			// Pagefind generates its assets at /pagefind/
@@ -118,7 +122,9 @@ export async function* Search(this: Context) {
 		query = (e.target as HTMLInputElement).value;
 		isOpen = true;
 
-		if (debounceTimer) clearTimeout(debounceTimer);
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
+		}
 		debounceTimer = setTimeout(() => doSearch(query), 150);
 		this.cleanup(() => clearTimeout(debounceTimer!));
 	};
@@ -215,7 +221,7 @@ export async function* Search(this: Context) {
 						`
 								: results.length > 0
 									? results.map(
-											(r) => jsx`
+										(r) => jsx`
 							<a
 								href=${r.url}
 								class=${css`
@@ -257,7 +263,7 @@ export async function* Search(this: Context) {
 								/>
 							</a>
 						`,
-										)
+									)
 									: query.trim()
 										? jsx`
 							<div class=${css`

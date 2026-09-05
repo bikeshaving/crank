@@ -24,7 +24,7 @@ export function isGeneratorComponent(node: ESLintNode): boolean {
 		(node.type === "FunctionDeclaration" ||
 			node.type === "FunctionExpression" ||
 			node.type === "ArrowFunctionExpression") &&
-		node.generator === true
+			node.generator === true
 	);
 }
 
@@ -51,7 +51,7 @@ export function createFunctionTracker(): FunctionTracker {
  */
 export function createGeneratorTrackingVisitors(
 	functionTracker: FunctionTracker,
-) {
+): Record<string, (node: ESLintNode) => void> {
 	const handleFunctionEnter = (node: ESLintNode) => {
 		if (isGeneratorComponent(node)) {
 			const {props, contextVar} = extractCrankParams(node.params);

@@ -24,12 +24,12 @@ const NOOP = (): undefined => {};
 export type Tag = string | symbol | Component;
 
 function getTagName(tag: Tag): string {
+	// Symbol tags use the else branch to avoid typeof tag === "symbol"
 	return typeof tag === "function"
 		? tag.name || "Anonymous"
 		: typeof tag === "string"
 			? tag
-			: // tag is symbol, using else branch to avoid typeof tag === "symbol"
-				tag.description || "Anonymous";
+			: tag.description || "Anonymous";
 }
 
 /**
@@ -84,14 +84,14 @@ export type Component<TProps extends Record<string, unknown> = any> = (
 	props: TProps,
 	ctx: Context<TProps>,
 ) =>
-	| Children
-	| PromiseLike<Children>
+	Children |
+	PromiseLike<Children> |
 	// The return type of iterators must include void because TypeScript will
 	// infer generators which return implicitly as having a void return type.
-	| Iterator<Children, Children | void, any>
-	| AsyncIterator<Children, Children | void, any>;
+	Iterator<Children, Children | void, any> |
+	AsyncIterator<Children, Children | void, any>;
 
-/*** SPECIAL TAGS ***/
+/** * SPECIAL TAGS ***/
 /**
  * A special tag for grouping multiple children within the same parent.
  *
@@ -121,7 +121,7 @@ export type Fragment = typeof Fragment;
 export const Portal = Symbol.for("crank.Portal") as unknown as Component<{
 	root?: object;
 }> &
-	symbol;
+symbol;
 export type Portal = typeof Portal;
 
 /**
@@ -132,6 +132,7 @@ export type Portal = typeof Portal;
  * rerendering as a performance optimization. Copy elements can also be keyed,
  * in which case the previously rendered keyed element will be copied.
  */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export const Copy = Symbol.for("crank.Copy") as unknown as Component<{}> &
 	symbol;
 export type Copy = typeof Copy;
@@ -145,14 +146,14 @@ export type Copy = typeof Copy;
 export const Text = Symbol.for("crank.Text") as unknown as Component<{
 	value: string;
 }> &
-	symbol;
+symbol;
 export type Text = typeof Text;
 
 /** A special tag for injecting raw nodes or strings via a value prop. */
 export const Raw = Symbol.for("crank.Raw") as unknown as Component<{
 	value: string | object;
 }> &
-	symbol;
+symbol;
 export type Raw = typeof Raw;
 
 /**
@@ -168,6 +169,7 @@ const ElementSymbol = Symbol.for("crank.Element");
 // To maximize compatibility between Crank versions, starting with 0.2.0, any
 // changes to the Element properties will be considered a breaking change.
 export interface Element<TTag extends Tag = Tag> {
+
 	/**
 	 * @internal
 	 * A unique symbol to identify elements as elements across versions and
@@ -211,6 +213,7 @@ export interface Element<TTag extends Tag = Tag> {
  * Typically, you use a helper function like createElement to create elements
  * rather than instatiating this class directly.
  */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class Element<TTag extends Tag = Tag> {
 	constructor(tag: TTag, props: TagProps<TTag>) {
 		this.tag = tag;
@@ -235,7 +238,7 @@ export function isElement(value: any): value is Element {
 export function createElement<TTag extends Tag>(
 	tag: TTag,
 	props?: TagProps<TTag> | null | undefined,
-	...children: Array<unknown>
+	...children: unknown[]
 ): Element<TTag> {
 	if (props == null) {
 		props = {} as TagProps<TTag>;
@@ -264,7 +267,7 @@ export function cloneElement<TTag extends Tag>(
 	return new Element(el.tag, {...el.props});
 }
 
-/*** ELEMENT UTILITIES ***/
+/** * ELEMENT UTILITIES ***/
 
 // WHAT ARE WE DOING TO THE CHILDREN???
 /**
@@ -302,9 +305,9 @@ function narrow(value: Children): NarrowedChild {
  * For component or fragment elements the value can be a node or an array of
  * nodes, depending on how many children they have.
  */
-export type ElementValue<TNode> = Array<TNode> | TNode | undefined;
+export type ElementValue<TNode> = TNode[] | TNode | undefined;
 
-/*** RETAINER FLAGS ***/
+/** * RETAINER FLAGS ***/
 const DidDiff = 1 << 0;
 const DidCommit = 1 << 1;
 const IsCopied = 1 << 2;
@@ -356,9 +359,10 @@ class Retainer<TNode, TScope = unknown> {
 	declare el: Element;
 	declare ctx: ContextState<TNode, TScope, any> | undefined;
 	declare children:
-		| Array<Retainer<TNode, TScope> | undefined>
-		| Retainer<TNode, TScope>
-		| undefined;
+		Array<Retainer<TNode, TScope> | undefined> |
+		Retainer<TNode, TScope> |
+		undefined;
+
 	declare fallback: Retainer<TNode, TScope> | undefined;
 	// This is only assigned for host, text and raw elements.
 	declare value: ElementValue<TNode> | undefined;
@@ -371,8 +375,8 @@ class Retainer<TNode, TScope = unknown> {
 	declare onNextDiff: ((diff: unknown) => void) | undefined;
 	declare graveyard: Array<Retainer<TNode, TScope>> | undefined;
 	declare lingerers:
-		| Array<Set<Retainer<TNode, TScope>> | undefined>
-		| undefined;
+		Array<Set<Retainer<TNode, TScope>> | undefined> |
+		undefined;
 
 	constructor(el: Element) {
 		this.f = 0;
@@ -447,8 +451,8 @@ function getValue<TNode>(
 function getChildValues<TNode>(
 	ret: Retainer<TNode>,
 	startIndex?: number,
-): Array<TNode> {
-	const values: Array<TNode> = [];
+): TNode[] {
+	const values: TNode[] = [];
 	const lingerers = ret.lingerers;
 	const rawChildren = ret.children;
 	const isChildrenArray = Array.isArray(rawChildren);
@@ -456,7 +460,7 @@ function getChildValues<TNode>(
 		rawChildren === undefined
 			? 0
 			: isChildrenArray
-				? (rawChildren as Array<any>).length
+				? (rawChildren as any[]).length
 				: 1;
 	let currentIndex = startIndex;
 
@@ -530,9 +534,14 @@ function getChildValues<TNode>(
 }
 
 function stripSpecialProps(props: Record<string, any>): Record<string, any> {
-	let _: unknown;
-	let result: Record<string, any>;
-	({key: _, ref: _, copy: _, hydrate: _, children: _, ...result} = props);
+	const {
+		key: _key,
+		ref: _ref,
+		copy: _copy,
+		hydrate: _hydrate,
+		children: _children,
+		...result
+	} = props;
 	return result;
 }
 
@@ -564,6 +573,7 @@ export interface RenderAdapter<
 	TRoot extends TNode | undefined = TNode,
 	TResult = ElementValue<TNode>,
 > {
+
 	/**
 	 * Creates a new node for the given element tag and props.
 	 *
@@ -626,7 +636,7 @@ export interface RenderAdapter<
 		node: TNode | undefined;
 		scope: TScope | undefined;
 		root: TRoot | undefined;
-	}): Array<TNode> | undefined;
+	}): TNode[] | undefined;
 
 	/**
 	 * Creates or updates a text node.
@@ -655,7 +665,7 @@ export interface RenderAdapter<
 		value: string;
 		scope: TScope | undefined;
 		oldNode: TNode | undefined;
-		hydrationNodes: Array<TNode> | undefined;
+		hydrationNodes: TNode[] | undefined;
 		root: TRoot | undefined;
 	}): TNode;
 
@@ -716,7 +726,7 @@ export interface RenderAdapter<
 	raw(data: {
 		value: string | TNode;
 		scope: TScope | undefined;
-		hydrationNodes: Array<TNode> | undefined;
+		hydrationNodes: TNode[] | undefined;
 		root: TRoot | undefined;
 	}): ElementValue<TNode>;
 
@@ -796,7 +806,7 @@ export interface RenderAdapter<
 		tagName: string;
 		node: TNode;
 		props: Record<string, any>;
-		children: Array<TNode>;
+		children: TNode[];
 		oldProps: Record<string, any> | undefined;
 		scope: TScope | undefined;
 		root: TRoot | undefined;
@@ -941,8 +951,8 @@ export class Renderer<
 	): Promise<TResult> | TResult {
 		const ret = getRootRetainer(this, bridge, {children, root});
 		return renderRoot(this.adapter, root, ret, children) as
-			| Promise<TResult>
-			| TResult;
+			Promise<TResult> |
+			TResult;
 	}
 
 	hydrate(
@@ -956,12 +966,12 @@ export class Renderer<
 			hydrate: true,
 		});
 		return renderRoot(this.adapter, root, ret, children) as
-			| Promise<TResult>
-			| TResult;
+			Promise<TResult> |
+			TResult;
 	}
 }
 
-/*** PRIVATE RENDERER FUNCTIONS ***/
+/** * PRIVATE RENDERER FUNCTIONS ***/
 function getRootRetainer<
 	TNode extends object,
 	TScope,
@@ -1104,7 +1114,7 @@ function diffChild<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	parent: Retainer<TNode, TScope>,
 	newChildren: Children,
 ): Promise<undefined> | undefined {
-	let child = narrow(newChildren);
+	const child = narrow(newChildren);
 	let ret = parent.children as Retainer<TNode, TScope> | undefined;
 	let graveyard: Array<Retainer<TNode, TScope>> | undefined;
 	let diff: Promise<undefined> | undefined;
@@ -1273,7 +1283,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		(typeof newChildren !== "object" ||
 			newChildren === null ||
 			typeof (newChildren as any)[Symbol.iterator] !== "function") &&
-		!Array.isArray(parent.children)
+			!Array.isArray(parent.children)
 	) {
 		return diffChild(adapter, root, host, ctx, scope, parent, newChildren);
 	}
@@ -1286,7 +1296,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	let seenKeys: Set<Key> | undefined;
 	let isAsync = false;
 	let oi = 0;
-	let oldLength = oldRetained.length;
+	const oldLength = oldRetained.length;
 	let graveyard: Array<Retainer<TNode, TScope>> | undefined;
 	for (let ni = 0, newLength = newChildren1.length; ni < newLength; ni++) {
 		// length checks to prevent index out of bounds deoptimizations.
@@ -1588,7 +1598,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	root: TRoot | undefined,
 	index: number,
 	schedulePromises: Array<PromiseLike<unknown>>,
-	hydrationNodes: Array<TNode> | undefined,
+	hydrationNodes: TNode[] | undefined,
 ): ElementValue<TNode> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
 		return getValue(ret);
@@ -1616,7 +1626,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	}
 
 	let value: ElementValue<TNode>;
-	let skippedHydrationNodes: Array<TNode> | undefined;
+	let skippedHydrationNodes: TNode[] | undefined;
 	if (
 		hydrationNodes &&
 		el.props.hydrate != null &&
@@ -1707,22 +1717,22 @@ function commitChildren<
 	parent: Retainer<TNode, TScope>,
 	index: number,
 	schedulePromises: Array<PromiseLike<unknown>>,
-	hydrationNodes: Array<TNode> | undefined,
-): Array<TNode> {
-	let values: Array<TNode> = [];
+	hydrationNodes: TNode[] | undefined,
+): TNode[] {
+	let values: TNode[] = [];
 	const rawChildren = parent.children;
 	const isChildrenArray = Array.isArray(rawChildren);
 	const childrenLength =
 		rawChildren === undefined
 			? 0
 			: isChildrenArray
-				? (rawChildren as Array<any>).length
+				? (rawChildren as any[]).length
 				: 1;
 	for (let i = 0; i < childrenLength; i++) {
 		let child = isChildrenArray
 			? (rawChildren as Array<Retainer<TNode, TScope> | undefined>)[i]
 			: (rawChildren as Retainer<TNode, TScope> | undefined);
-		let schedulePromises1: Array<unknown> | undefined;
+		let schedulePromises1: unknown[] | undefined;
 		let isSchedulingFallback = false;
 		while (
 			child &&
@@ -1855,7 +1865,7 @@ function commitText<TNode, TScope, TRoot extends TNode | undefined>(
 	ret: Retainer<TNode, TScope>,
 	el: Element<Text>,
 	scope: TScope | undefined,
-	hydrationNodes: Array<TNode> | undefined,
+	hydrationNodes: TNode[] | undefined,
 	root: TRoot | undefined,
 ): TNode {
 	const value = adapter.text({
@@ -1875,7 +1885,7 @@ function commitRaw<TNode, TScope, TRoot extends TNode | undefined>(
 	host: Retainer<TNode>,
 	ret: Retainer<TNode>,
 	scope: TScope | undefined,
-	hydrationNodes: Array<TNode> | undefined,
+	hydrationNodes: TNode[] | undefined,
 	root: TRoot | undefined,
 ): ElementValue<TNode> {
 	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
@@ -1907,7 +1917,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 	ctx: ContextState<TNode, TScope, TRoot, unknown> | undefined,
 	root: TRoot | undefined,
 	schedulePromises: Array<PromiseLike<unknown>>,
-	hydrationNodes: Array<TNode> | undefined,
+	hydrationNodes: TNode[] | undefined,
 ): ElementValue<TNode> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
 		return getValue(ret);
@@ -1953,7 +1963,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 	}
 
 	const scope = ret.scope;
-	let childHydrationNodes: Array<TNode> | undefined;
+	let childHydrationNodes: TNode[] | undefined;
 	let quietProps: Set<string> | undefined;
 	let hydrationMetaProp: MetaProp | undefined;
 	if (!getFlag(ret, DidCommit)) {
@@ -2067,7 +2077,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 		adapter.arrange({
 			tag,
 			tagName: getTagName(tag),
-			node: node,
+			node,
 			props,
 			children,
 			oldProps,
@@ -2147,11 +2157,12 @@ function contextContains(parent: ContextState, child: ContextState): boolean {
 // When rendering is done without a root, we use this special anonymous root to
 // make sure after callbacks are still called.
 const ANONYMOUS_ROOT: any = {};
+
 function flush<TRoot>(
 	adapter: RenderAdapter<unknown, unknown, TRoot>,
 	root: TRoot | undefined,
 	initiator?: ContextState,
-) {
+): void {
 	if (root != null) {
 		adapter.finalize(root);
 	}
@@ -2292,6 +2303,7 @@ function unmountChildren<
 		unmount(adapter, host, ctx, root, rawChildren, isNested);
 	}
 }
+
 const provisionMaps = new WeakMap<ContextState, Map<unknown, unknown>>();
 
 // The value parameter is any because these sets erase each context's TResult:
@@ -2365,9 +2377,9 @@ class ContextState<
 	 * component. It is deleted when a component is returned.
 	 */
 	declare iterator:
-		| Iterator<Children, Children | void, unknown>
-		| AsyncIterator<Children, Children | void, unknown>
-		| undefined;
+		Iterator<Children, Children | void, unknown> |
+		AsyncIterator<Children, Children | void, unknown> |
+		undefined;
 
 	// See runComponent() for a description of these properties.
 	declare inflight: [Promise<undefined>, Promise<undefined>] | undefined;
@@ -2423,6 +2435,7 @@ class ContextState<
 
 // Public type that only extracts props from component functions
 export type ComponentProps<T> = T extends () => unknown
+	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 	? {}
 	: T extends (props: infer U) => unknown
 		? U
@@ -2448,6 +2461,7 @@ const _ContextState = Symbol.for("crank.ContextState");
  * places such as the return value of refresh and the argument passed to
  * schedule and cleanup callbacks.
  */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class Context<
 	T = any,
 	TResult = any,
@@ -2480,7 +2494,7 @@ export class Context<
 		return getFlag(this[_ContextState].ret, IsUnmounted);
 	}
 
-	*[Symbol.iterator](): Generator<ComponentPropsOrProps<T>, undefined> {
+	* [Symbol.iterator](): Generator<ComponentPropsOrProps<T>, undefined> {
 		const ctx = this[_ContextState];
 		setFlag(ctx.ret, IsInForOfLoop);
 		try {
@@ -2500,7 +2514,7 @@ export class Context<
 		}
 	}
 
-	async *[Symbol.asyncIterator](): AsyncGenerator<
+	async* [Symbol.asyncIterator](): AsyncGenerator<
 		ComponentPropsOrProps<T>,
 		undefined
 	> {
@@ -3207,9 +3221,9 @@ function resumePropsAsyncIterator(
 async function pullComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 	iterationP:
-		| Promise<ChildrenIteratorResult>
-		| ChildrenIteratorResult
-		| undefined,
+		Promise<ChildrenIteratorResult> |
+		ChildrenIteratorResult |
+		undefined,
 ): Promise<void> {
 	if (!iterationP || ctx.pull) {
 		return;
@@ -3218,7 +3232,7 @@ async function pullComponent<TNode, TResult>(
 	ctx.pull = {iterationP: undefined, diff: undefined, onChildError: undefined};
 
 	// TODO: replace done with iteration
-	//let iteration: ChildrenIteratorResult | undefined;
+	// let iteration: ChildrenIteratorResult | undefined;
 	let done = false;
 	try {
 		let childError: any;
@@ -3420,7 +3434,7 @@ async function pullComponent<TNode, TResult>(
 function commitComponent<TNode>(
 	ctx: ContextState<TNode>,
 	schedulePromises: Array<PromiseLike<unknown>>,
-	hydrationNodes?: Array<TNode> | undefined,
+	hydrationNodes?: TNode[] | undefined,
 ): ElementValue<TNode> {
 	if (ctx.schedule) {
 		ctx.schedule.promise.then(() => {
@@ -3533,7 +3547,7 @@ function isRetainerActive<TNode>(
 	target: Retainer<TNode>,
 	host: Retainer<TNode>,
 ): boolean {
-	const stack: Retainer<TNode>[] = [host];
+	const stack: Array<Retainer<TNode>> = [host];
 
 	while (stack.length > 0) {
 		const current = stack.pop()!;
@@ -3754,7 +3768,7 @@ async function unmountComponent(
 	}
 }
 
-/*** ERROR HANDLING UTILITIES ***/
+/** * ERROR HANDLING UTILITIES ***/
 function handleChildError<TNode>(
 	ctx: ContextState<TNode, unknown, TNode>,
 	err: unknown,
@@ -3846,7 +3860,10 @@ function propagateError<TNode>(
 
 	if (isPromiseLike(diff)) {
 		return diff.then(
-			() => void commitComponent(parent, schedulePromises),
+			() => {
+				commitComponent(parent, schedulePromises);
+				return undefined;
+			},
 			(err) => propagateError(parent, err, schedulePromises),
 		);
 	}
@@ -3865,9 +3882,10 @@ export interface EventMap extends Crank.EventMap {}
 type MappedEventListener<T extends string> = (ev: Crank.EventMap[T]) => unknown;
 
 type MappedEventListenerOrEventListenerObject<T extends string> =
-	| MappedEventListener<T>
-	| {handleEvent: MappedEventListener<T>};
+	MappedEventListener<T> |
+	{handleEvent: MappedEventListener<T>};
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface Context extends Crank.Context {
 	addEventListener<T extends string>(
 		type: T,
@@ -3892,8 +3910,10 @@ declare global {
 			[tag: string]: Event;
 		}
 
+		// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 		export interface ProvisionMap {}
 
+		// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 		export interface Context {}
 	}
 
@@ -3916,6 +3936,7 @@ declare global {
 		}
 
 		export interface ElementChildrenAttribute {
+			// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 			children: {};
 		}
 	}

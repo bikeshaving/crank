@@ -1,9 +1,9 @@
-import {Rule} from "eslint";
+import type {Rule} from "eslint";
 import {
 	createFunctionTracker,
 	createGeneratorTrackingVisitors,
 } from "../utils/function-tracker.js";
-import {ESLintNode} from "../utils/types.js";
+import type {ESLintNode} from "../utils/types.js";
 import {
 	isTimerCall,
 	getClearFunctionForTimer,
@@ -87,7 +87,9 @@ export const requireCleanupForTimers: Rule.RuleModule = {
 		 * Recursively check if a node contains a clear call for the timer
 		 */
 		function unwrapTSExpression(node: any): any {
-			if (!node) return node;
+			if (!node) {
+				return node;
+			}
 			// Unwrap TypeScript non-null assertions (foo!) and type assertions (foo as T)
 			if (
 				node.type === "TSNonNullExpression" ||
@@ -104,7 +106,9 @@ export const requireCleanupForTimers: Rule.RuleModule = {
 			timerVariable: string,
 			clearFunction: string,
 		): boolean {
-			if (!node) return false;
+			if (!node) {
+				return false;
+			}
 
 			// Check if this is a clear call
 			if (
@@ -150,7 +154,9 @@ export const requireCleanupForTimers: Rule.RuleModule = {
 		): boolean {
 			const clearFunction = getClearFunctionForTimer(timerType);
 			const body = funcNode.body;
-			if (!body || body.type !== "BlockStatement") return false;
+			if (!body || body.type !== "BlockStatement") {
+				return false;
+			}
 			return checkNodeTreeForClearCall(body, timerVariable, clearFunction);
 		}
 
@@ -163,7 +169,9 @@ export const requireCleanupForTimers: Rule.RuleModule = {
 			timerVariable: string,
 			clearFunction: string,
 		): boolean {
-			if (!node) return false;
+			if (!node) {
+				return false;
+			}
 
 			// Don't descend into nested functions
 			if (
@@ -189,7 +197,9 @@ export const requireCleanupForTimers: Rule.RuleModule = {
 
 			// Recurse into child nodes
 			for (const key of Object.keys(node)) {
-				if (key === "parent") continue;
+				if (key === "parent") {
+					continue;
+				}
 				const child = node[key];
 				if (Array.isArray(child)) {
 					for (const item of child) {
@@ -289,12 +299,16 @@ export const requireCleanupForTimers: Rule.RuleModule = {
 			},
 		};
 
-		function checkFunctionForTimerCleanup(node: ESLintNode) {
+		function checkFunctionForTimerCleanup(node: ESLintNode): void {
 			// Only check generator functions
-			if (!node.generator) return;
+			if (!node.generator) {
+				return;
+			}
 
 			const timers = timersByFunction.get(node);
-			if (!timers || timers.length === 0) return;
+			if (!timers || timers.length === 0) {
+				return;
+			}
 
 			const cleanupCalls = cleanupCallsByFunction.get(node);
 
