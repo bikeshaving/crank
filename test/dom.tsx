@@ -519,6 +519,7 @@ describe("dom", () => {
 	test("unknown attribute", () => {
 		renderer.render(
 			<div
+				// @ts-expect-error - arbitrary attributes (Crank passes unknown attrs through at runtime)
 				unknown="value"
 				unknown-attribute="value"
 				data-unknown-attribute="value"
@@ -628,6 +629,7 @@ describe("dom", () => {
 		expect(input.value).toBe("hello");
 		input.value = "world";
 		expect(input.value).toBe("world");
+		// @ts-expect-error - Crank's Copy sentinel used as a prop value to preserve the existing prop
 		renderer.render(<input value={Copy} />, document.body);
 	});
 
@@ -971,17 +973,17 @@ describe("dom", () => {
 			renderer.render(<iframe src="/test-path" />, document.body);
 			expect(srcSetCount).toBe(
 				1,
-			) /* src should be set once on initial render */;
+			); /* src should be set once on initial render */
 
 			// Re-render with same src
 			renderer.render(<iframe src="/test-path" />, document.body);
 			expect(srcSetCount).toBe(
 				1,
-			) /* src should not be set again when unchanged */;
+			); /* src should not be set again when unchanged */
 
 			// Re-render with different src
 			renderer.render(<iframe src="/different-path" />, document.body);
-			expect(srcSetCount).toBe(2) /* src should be set when changed */;
+			expect(srcSetCount).toBe(2); /* src should be set when changed */
 		} finally {
 			// Restore original property
 			Object.defineProperty(
@@ -1013,17 +1015,17 @@ describe("dom", () => {
 			renderer.render(<a href="/test-link">Link</a>, document.body);
 			expect(hrefSetCount).toBe(
 				1,
-			) /* href should be set once on initial render */;
+			); /* href should be set once on initial render */
 
 			// Re-render with same href
 			renderer.render(<a href="/test-link">Link</a>, document.body);
 			expect(hrefSetCount).toBe(
 				1,
-			) /* href should not be set again when unchanged */;
+			); /* href should not be set again when unchanged */
 
 			// Re-render with different href
 			renderer.render(<a href="/different-link">Link</a>, document.body);
-			expect(hrefSetCount).toBe(2) /* href should be set when changed */;
+			expect(hrefSetCount).toBe(2); /* href should be set when changed */
 		} finally {
 			// Restore original property
 			Object.defineProperty(
@@ -1058,7 +1060,7 @@ describe("dom", () => {
 			renderer.render(<iframe src="https://example.com/page" />, document.body);
 			expect(srcSetCount).toBe(
 				1,
-			) /* absolute src should not be set again when unchanged */;
+			); /* absolute src should not be set again when unchanged */
 		} finally {
 			Object.defineProperty(
 				HTMLIFrameElement.prototype,
@@ -1346,6 +1348,7 @@ describe("dom", () => {
 
 	test("dangerouslySetInnerHTML sets innerHTML", () => {
 		renderer.render(
+			// @ts-expect-error - React-compat prop (Crank coerces dangerouslySetInnerHTML to innerHTML)
 			<div dangerouslySetInnerHTML={{__html: "<b>bold</b>"}} />,
 			document.body,
 		);
@@ -1354,6 +1357,7 @@ describe("dom", () => {
 
 	test("dangerouslySetInnerHTML does not insert children", () => {
 		renderer.render(
+			// @ts-expect-error - React-compat prop (Crank coerces dangerouslySetInnerHTML to innerHTML)
 			<div dangerouslySetInnerHTML={{__html: "<b>bold</b>"}} />,
 			document.body,
 		);
@@ -1364,10 +1368,12 @@ describe("dom", () => {
 
 	test("dangerouslySetInnerHTML updates", () => {
 		renderer.render(
+			// @ts-expect-error - React-compat prop (Crank coerces dangerouslySetInnerHTML to innerHTML)
 			<div dangerouslySetInnerHTML={{__html: "<b>first</b>"}} />,
 			document.body,
 		);
 		renderer.render(
+			// @ts-expect-error - React-compat prop (Crank coerces dangerouslySetInnerHTML to innerHTML)
 			<div dangerouslySetInnerHTML={{__html: "<i>second</i>"}} />,
 			document.body,
 		);
@@ -1488,7 +1494,7 @@ describe("dom", () => {
 		expect(document.body.innerHTML).toBe("<div><span>second</span></div>");
 		expect(document.body.querySelector("span")).toBe(
 			span,
-		) /* should reuse the span element */;
+		); /* should reuse the span element */
 	});
 
 	test("one to one child, different tag", () => {
@@ -1585,7 +1591,7 @@ describe("dom", () => {
 		expect(document.body.innerHTML).toBe("<div><span>b</span></div>");
 		expect(document.body.querySelector("span")).not.toBe(
 			span1,
-		) /* should create a new span for different key */;
+		); /* should create a new span for different key */
 	});
 
 	test("one child with key to one child without key", () => {
@@ -1605,7 +1611,7 @@ describe("dom", () => {
 		expect(document.body.innerHTML).toBe("<div><span>b</span></div>");
 		expect(document.body.querySelector("span")).not.toBe(
 			span1,
-		) /* should create a new span when key removed */;
+		); /* should create a new span when key removed */
 	});
 
 	test("one child without key to one child with key", () => {
@@ -1625,7 +1631,7 @@ describe("dom", () => {
 		expect(document.body.innerHTML).toBe("<div><span>b</span></div>");
 		expect(document.body.querySelector("span")).not.toBe(
 			span1,
-		) /* should create a new span when key added */;
+		); /* should create a new span when key added */
 	});
 
 	test("one keyed child to many children", () => {
@@ -1731,7 +1737,7 @@ describe("dom", () => {
 			renderer.render(<div />, document.body);
 			expect(document.body.innerHTML).toBe(
 				"<div></div>",
-			) /* `round ${round}: zero` */;
+			); /* `round ${round}: zero` */
 
 			renderer.render(
 				<div>
@@ -1741,7 +1747,7 @@ describe("dom", () => {
 			);
 			expect(document.body.innerHTML).toBe(
 				"<div><span>one</span></div>",
-			) /* `round ${round}: one` */;
+			); /* `round ${round}: one` */
 
 			renderer.render(
 				<div>
@@ -1753,7 +1759,7 @@ describe("dom", () => {
 			);
 			expect(document.body.innerHTML).toBe(
 				"<div><span>a</span><span>b</span><span>c</span></div>",
-			) /* `round ${round}: many` */;
+			); /* `round ${round}: many` */
 		}
 	});
 
