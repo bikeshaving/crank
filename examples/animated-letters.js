@@ -48,10 +48,7 @@ function* Letter({letter, index}) {
 
   yield (
     <span
-      style={{
-        ...style,
-        color: "green",
-      }}
+      style={{...style, color: "green"}}
     >
       {letter}
     </span>

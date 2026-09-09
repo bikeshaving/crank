@@ -67,11 +67,7 @@ function CopySection() {
 	`;
 }
 
-function LogoCard({
-	src,
-	label,
-	background,
-}: {
+function LogoCard({src, label, background}: {
 	src: string;
 	label: string;
 	background: string;
@@ -144,8 +140,7 @@ function LogoSection() {
 				gap: 1rem;
 				align-items: end;
 			`}>
-				${[512, 256, 192, 128, 96, 64, 48, 32, 16].map(
-					(size) => jsx`
+				${[512, 256, 192, 128, 96, 64, 48, 32, 16].map((size) => jsx`
 						<a href=${`/static/logo-${size}.png`} download class=${css`
 							text-align: center;
 							text-decoration: none;
@@ -164,8 +159,7 @@ function LogoSection() {
 							/>
 							<small>${size}px</small>
 						</a>
-					`,
-				)}
+					`)}
 			</div>
 		</section>
 	`;

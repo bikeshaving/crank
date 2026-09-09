@@ -27,9 +27,7 @@ function getTagName(tag: Tag): string {
 	// Symbol tags use the else branch to avoid typeof tag === "symbol"
 	return typeof tag === "function"
 		? tag.name || "Anonymous"
-		: typeof tag === "string"
-			? tag
-			: tag.description || "Anonymous";
+		: typeof tag === "string" ? tag : tag.description || "Anonymous";
 }
 
 /**
@@ -118,10 +116,9 @@ export type Fragment = typeof Fragment;
  * Renderer.prototype.render() implicitly wraps top-level in a Portal element
  * with the root set to the second argument passed in.
  */
-export const Portal = Symbol.for("crank.Portal") as unknown as Component<{
-	root?: object;
-}> &
-symbol;
+export const Portal = Symbol.for("crank.Portal") as unknown as Component<
+	{root?: object}
+> & symbol;
 export type Portal = typeof Portal;
 
 /**
@@ -143,17 +140,15 @@ export type Copy = typeof Copy;
  * Strings in the element tree are implicitly wrapped in a Text element with
  * value set to the string.
  */
-export const Text = Symbol.for("crank.Text") as unknown as Component<{
-	value: string;
-}> &
-symbol;
+export const Text = Symbol.for("crank.Text") as unknown as Component<
+	{value: string}
+> & symbol;
 export type Text = typeof Text;
 
 /** A special tag for injecting raw nodes or strings via a value prop. */
-export const Raw = Symbol.for("crank.Raw") as unknown as Component<{
-	value: string | object;
-}> &
-symbol;
+export const Raw = Symbol.for("crank.Raw") as unknown as Component<
+	{value: string | object}
+> & symbol;
 export type Raw = typeof Raw;
 
 /**
@@ -165,33 +160,6 @@ type Key = unknown;
 type ChildrenIteratorResult = IteratorResult<Children, Children | void>;
 
 const ElementSymbol = Symbol.for("crank.Element");
-
-// To maximize compatibility between Crank versions, starting with 0.2.0, any
-// changes to the Element properties will be considered a breaking change.
-export interface Element<TTag extends Tag = Tag> {
-
-	/**
-	 * @internal
-	 * A unique symbol to identify elements as elements across versions and
-	 * realms, and to protect against basic injection attacks.
-	 * https://overreacted.io/why-do-react-elements-have-typeof-property/
-	 *
-	 * This property is defined on the element prototype rather than per
-	 * instance, because it is the same for every Element.
-	 */
-	$$typeof: typeof ElementSymbol;
-
-	/**
-	 * The tag of the element. Can be a string, symbol or function.
-	 */
-	tag: TTag;
-
-	/**
-	 * An object containing the "properties" of an element. These correspond to
-	 * the attribute syntax from JSX.
-	 */
-	props: TagProps<TTag>;
-}
 
 /**
  * Elements are the basic building blocks of Crank applications. They are
@@ -213,8 +181,32 @@ export interface Element<TTag extends Tag = Tag> {
  * Typically, you use a helper function like createElement to create elements
  * rather than instatiating this class directly.
  */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+
+// To maximize compatibility between Crank versions, starting with 0.2.0, any
+// changes to the Element properties will be considered a breaking change.
 export class Element<TTag extends Tag = Tag> {
+	/**
+	 * @internal
+	 * A unique symbol to identify elements as elements across versions and
+	 * realms, and to protect against basic injection attacks.
+	 * https://overreacted.io/why-do-react-elements-have-typeof-property/
+	 *
+	 * This property is defined on the element prototype rather than per
+	 * instance, because it is the same for every Element.
+	 */
+	declare $$typeof: typeof ElementSymbol;
+
+	/**
+	 * The tag of the element. Can be a string, symbol or function.
+	 */
+	declare tag: TTag;
+
+	/**
+	 * An object containing the "properties" of an element. These correspond to
+	 * the attribute syntax from JSX.
+	 */
+	declare props: TagProps<TTag>;
+
 	constructor(tag: TTag, props: TagProps<TTag>) {
 		this.tag = tag;
 		this.props = props;
@@ -375,8 +367,7 @@ class Retainer<TNode, TScope = unknown> {
 	declare onNextDiff: ((diff: unknown) => void) | undefined;
 	declare graveyard: Array<Retainer<TNode, TScope>> | undefined;
 	declare lingerers:
-		Array<Set<Retainer<TNode, TScope>> | undefined> |
-		undefined;
+		Array<Set<Retainer<TNode, TScope>> | undefined> | undefined;
 
 	constructor(el: Element) {
 		this.f = 0;
@@ -456,12 +447,9 @@ function getChildValues<TNode>(
 	const lingerers = ret.lingerers;
 	const rawChildren = ret.children;
 	const isChildrenArray = Array.isArray(rawChildren);
-	const childrenLength =
-		rawChildren === undefined
-			? 0
-			: isChildrenArray
-				? (rawChildren as any[]).length
-				: 1;
+	const childrenLength = rawChildren === undefined
+		? 0
+		: isChildrenArray ? (rawChildren as any[]).length : 1;
 	let currentIndex = startIndex;
 
 	for (let i = 0; i < childrenLength; i++) {
@@ -951,8 +939,7 @@ export class Renderer<
 	): Promise<TResult> | TResult {
 		const ret = getRootRetainer(this, bridge, {children, root});
 		return renderRoot(this.adapter, root, ret, children) as
-			Promise<TResult> |
-			TResult;
+			Promise<TResult> | TResult;
 	}
 
 	hydrate(
@@ -960,14 +947,9 @@ export class Renderer<
 		root: TRoot,
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
-		const ret = getRootRetainer(this, bridge, {
-			children,
-			root,
-			hydrate: true,
-		});
+		const ret = getRootRetainer(this, bridge, {children, root, hydrate: true});
 		return renderRoot(this.adapter, root, ret, children) as
-			Promise<TResult> |
-			TResult;
+			Promise<TResult> | TResult;
 	}
 }
 
@@ -979,11 +961,7 @@ function getRootRetainer<
 >(
 	renderer: Renderer<TNode, TScope, TRoot, unknown>,
 	bridge: Context | undefined,
-	{
-		children,
-		root,
-		hydrate,
-	}: {
+	{children, root, hydrate}: {
 		children: Children;
 		root: TRoot | undefined;
 		hydrate?: boolean;
@@ -1133,9 +1111,7 @@ function diffChild<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		if (child.tag === Copy) {
 			childCopied = true;
 		} else if (
-			typeof ret === "object" &&
-			ret.el === child &&
-			getFlag(ret, DidCommit)
+			typeof ret === "object" && ret.el === child && getFlag(ret, DidCommit)
 		) {
 			childCopied = true;
 		} else {
@@ -1348,9 +1324,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 			if (child.tag === Copy) {
 				childCopied = true;
 			} else if (
-				typeof ret === "object" &&
-				ret.el === child &&
-				getFlag(ret, DidCommit)
+				typeof ret === "object" && ret.el === child && getFlag(ret, DidCommit)
 			) {
 				// If the child is the same as the retained element, we skip
 				// re-rendering.
@@ -1543,8 +1517,7 @@ function createChildrenByKey<TNode, TScope>(
 	for (let i = offset; i < children.length; i++) {
 		const child = children[i];
 		if (
-			typeof child === "object" &&
-			typeof child.el.props.key !== "undefined"
+			typeof child === "object" && typeof child.el.props.key !== "undefined"
 		) {
 			childrenByKey.set(child.el.props.key, child);
 		}
@@ -1569,13 +1542,15 @@ function diffHost<TNode, TScope, TRoot extends TNode | undefined>(
 	if (getFlag(ret, DidCommit)) {
 		scope = ret.scope;
 	} else {
-		scope = ret.scope = adapter.scope({
-			tag,
-			tagName: getTagName(tag),
-			props: el.props,
-			scope,
-			root,
-		});
+		scope =
+			ret.scope =
+				adapter.scope({
+					tag,
+					tagName: getTagName(tag),
+					props: el.props,
+					scope,
+					root,
+				});
 	}
 
 	return diffChildren(
@@ -1722,12 +1697,9 @@ function commitChildren<
 	let values: TNode[] = [];
 	const rawChildren = parent.children;
 	const isChildrenArray = Array.isArray(rawChildren);
-	const childrenLength =
-		rawChildren === undefined
-			? 0
-			: isChildrenArray
-				? (rawChildren as any[]).length
-				: 1;
+	const childrenLength = rawChildren === undefined
+		? 0
+		: isChildrenArray ? (rawChildren as any[]).length : 1;
 	for (let i = 0; i < childrenLength; i++) {
 		let child = isChildrenArray
 			? (rawChildren as Array<Retainer<TNode, TScope> | undefined>)[i]
@@ -2121,9 +2093,7 @@ class MetaProp {
 		}
 
 		if (!allBangs && !noBangs) {
-			console.error(
-				`Invalid ${propName} prop "${propValue}".\nUse prop or !prop but not both.`,
-			);
+			console.error(`Invalid ${propName} prop "${propValue}".\nUse prop or !prop but not both.`);
 			this.include = true;
 			this.props.clear();
 		} else {
@@ -2437,9 +2407,7 @@ class ContextState<
 export type ComponentProps<T> = T extends () => unknown
 	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 	? {}
-	: T extends (props: infer U) => unknown
-		? U
-		: never;
+	: T extends (props: infer U) => unknown ? U : never;
 
 // Public helper type that handles both component functions and regular objects
 export type ComponentPropsOrProps<T> = T extends (...args: any[]) => unknown
@@ -2461,23 +2429,31 @@ const _ContextState = Symbol.for("crank.ContextState");
  * places such as the return value of refresh and the argument passed to
  * schedule and cleanup callbacks.
  */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class Context<
-	T = any,
-	TResult = any,
-> extends CustomEventTarget<Context> {
-	/**
-	 * @internal
-	 * DO NOT USE READ THIS PROPERTY.
-	 */
-	declare [_ContextState]: ContextState<unknown, unknown, unknown, TResult>;
 
+export class Context<T = any, TResult = any>
+	extends CustomEventTarget<Context> {
 	// TODO: If we could make the constructor function take a nicer value, it
 	// would be useful for testing purposes.
 	constructor(state: ContextState<unknown, unknown, unknown, TResult>) {
 		super(state.parent ? state.parent.ctx : null);
 		this[_ContextState] = state;
 	}
+
+	declare addEventListener: <TType extends string>(
+		type: TType,
+		listener: MappedEventListenerOrEventListenerObject<TType> | null,
+		options?: boolean | AddEventListenerOptions,
+	) => void;
+
+	declare removeEventListener: <TType extends string>(
+		type: TType,
+		listener: MappedEventListenerOrEventListenerObject<TType> | null,
+		options?: EventListenerOptions | boolean,
+	) => void;
+
+	declare dispatchEvent: <TType extends string>(
+		ev: EventMap[TType] | Event,
+	) => boolean;
 
 	/**
 	 * The current props of the associated element.
@@ -2534,10 +2510,8 @@ export class Context<
 					setFlag(ctx.ret, PropsAvailable, false);
 					yield ctx.ret.el.props;
 				} else {
-					const props = await new Promise<ComponentPropsOrProps<T>>(
-						(resolve) =>
-							(ctx.onPropsProvided = resolve as (props: unknown) => unknown),
-					);
+					const props = await new Promise<ComponentPropsOrProps<T>>((resolve) =>
+						(ctx.onPropsProvided = resolve as (props: unknown) => unknown));
 					if (getFlag(ctx.ret, IsUnmounted) || getFlag(ctx.ret, IsErrored)) {
 						break;
 					}
@@ -2769,9 +2743,7 @@ export class Context<
 	consume(key: unknown): any;
 	consume(key: unknown): any {
 		for (
-			let ctx = this[_ContextState].parent;
-			ctx !== undefined;
-			ctx = ctx.parent
+			let ctx = this[_ContextState].parent; ctx !== undefined; ctx = ctx.parent
 		) {
 			const provisions = provisionMaps.get(ctx);
 			if (provisions && provisions.has(key)) {
@@ -2986,12 +2958,10 @@ function runComponent<TNode, TResult>(
 			];
 		} else {
 			// async function component
-			const returned1 =
-				returned instanceof Promise ? returned : Promise.resolve(returned);
-			returned1.then(
-				() => measureMark(tagName),
-				() => measureMark(tagName),
-			);
+			const returned1 = returned instanceof Promise
+				? returned
+				: Promise.resolve(returned);
+			returned1.then(() => measureMark(tagName), () => measureMark(tagName));
 			return [
 				returned1.catch(NOOP),
 				returned1.then(
@@ -3103,10 +3073,7 @@ function runComponent<TNode, TResult>(
 				throw new Error("Mixed generator component");
 			}
 
-			iteration.then(
-				() => measureMark(tagName),
-				() => measureMark(tagName),
-			);
+			iteration.then(() => measureMark(tagName), () => measureMark(tagName));
 			// The block chain below adopts this via a closure rather than deriving
 			// from diff, because in the superseded branch diff resolves with the
 			// enqueued run's diff, and the enqueued run only starts once the block
@@ -3157,12 +3124,14 @@ function runComponent<TNode, TResult>(
 						return ctx.enqueued ? ctx.enqueued[1] : undefined;
 					}
 
-					return (childDiff = diffComponentChildren<TNode, TResult>(
-						ctx,
-						// Children can be void so we eliminate that here
-						iteration.value as Children,
-						!iteration.done,
-					));
+					return (
+						childDiff = diffComponentChildren<TNode, TResult>(
+							ctx,
+							// Children can be void so we eliminate that here
+							iteration.value as Children,
+							!iteration.done,
+						)
+					);
 				},
 				(err) => {
 					setFlag(ctx.ret, IsErrored);
@@ -3173,10 +3142,7 @@ function runComponent<TNode, TResult>(
 			// This reaction is registered after diff's, so childDiff is assigned
 			// by the time it runs.
 			const block = iteration
-				.then(
-					() => childDiff,
-					() => undefined,
-				)
+				.then(() => childDiff, () => undefined)
 				.catch(NOOP);
 
 			return [block, diff];
@@ -3221,9 +3187,7 @@ function resumePropsAsyncIterator(
 async function pullComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 	iterationP:
-		Promise<ChildrenIteratorResult> |
-		ChildrenIteratorResult |
-		undefined,
+		Promise<ChildrenIteratorResult> | ChildrenIteratorResult | undefined,
 ): Promise<void> {
 	if (!iterationP || ctx.pull) {
 		return;
@@ -3413,9 +3377,9 @@ async function pullComponent<TNode, TResult>(
 			} else if (!iteration.done) {
 				try {
 					setFlag(ctx.ret, IsExecuting);
-					iterationP = ctx.iterator!.next(
-						oldResult,
-					) as Promise<ChildrenIteratorResult>;
+					iterationP = ctx.iterator!.next(oldResult) as Promise<
+						ChildrenIteratorResult
+					>;
 				} finally {
 					setFlag(ctx.ret, IsExecuting, false);
 				}
@@ -3558,8 +3522,7 @@ function isRetainerActive<TNode>(
 
 		// Add direct children to stack (skip if this is a host boundary)
 		// Host boundaries are: DOM elements (string tags) or Portal, but NOT Fragment
-		const isHostBoundary =
-			current !== host &&
+		const isHostBoundary = current !== host &&
 			((typeof current.el.tag === "string" && current.el.tag !== Fragment) ||
 				current.el.tag === Portal);
 		if (current.children && !isHostBoundary) {
@@ -3800,25 +3763,22 @@ function handleChildError<TNode>(
 	}
 
 	if (isPromiseLike(iteration)) {
-		return iteration.then(
-			(iteration) => {
-				if (iteration.done) {
-					setFlag(ctx.ret, IsSyncGen, false);
-					setFlag(ctx.ret, IsAsyncGen, false);
-					ctx.iterator = undefined;
-				}
+		return iteration.then((iteration) => {
+			if (iteration.done) {
+				setFlag(ctx.ret, IsSyncGen, false);
+				setFlag(ctx.ret, IsAsyncGen, false);
+				ctx.iterator = undefined;
+			}
 
-				return diffComponentChildren(
-					ctx,
-					iteration.value as Children,
-					!iteration.done,
-				);
-			},
-			(err) => {
-				setFlag(ctx.ret, IsErrored);
-				throw err;
-			},
-		);
+			return diffComponentChildren(
+				ctx,
+				iteration.value as Children,
+				!iteration.done,
+			);
+		}, (err) => {
+			setFlag(ctx.ret, IsErrored);
+			throw err;
+		});
 	}
 
 	if (iteration.done) {
@@ -3859,13 +3819,10 @@ function propagateError<TNode>(
 	}
 
 	if (isPromiseLike(diff)) {
-		return diff.then(
-			() => {
-				commitComponent(parent, schedulePromises);
-				return undefined;
-			},
-			(err) => propagateError(parent, err, schedulePromises),
-		);
+		return diff.then(() => {
+			commitComponent(parent, schedulePromises);
+			return undefined;
+		}, (err) => propagateError(parent, err, schedulePromises));
 	}
 
 	commitComponent(parent, schedulePromises);
@@ -3881,25 +3838,23 @@ export interface EventMap extends Crank.EventMap {}
 
 type MappedEventListener<T extends string> = (ev: Crank.EventMap[T]) => unknown;
 
-type MappedEventListenerOrEventListenerObject<T extends string> =
-	MappedEventListener<T> |
-	{handleEvent: MappedEventListener<T>};
+type MappedEventListenerOrEventListenerObject<
+	T extends string,
+> = MappedEventListener<
+	T
+> |
+{handleEvent: MappedEventListener<T>};
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface Context extends Crank.Context {
-	addEventListener<T extends string>(
-		type: T,
-		listener: MappedEventListenerOrEventListenerObject<T> | null,
-		options?: boolean | AddEventListenerOptions,
-	): void;
+// The class and its merged interface must declare identical type parameters,
+// so T is required here even though only TResult is used.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export interface Context<T = any, TResult = any> extends Crank.Context {
 
-	removeEventListener<T extends string>(
-		type: T,
-		listener: MappedEventListenerOrEventListenerObject<T> | null,
-		options?: EventListenerOptions | boolean,
-	): void;
-
-	dispatchEvent<T extends string>(ev: EventMap[T] | Event): boolean;
+	/**
+	 * @internal
+	 * DO NOT USE READ THIS PROPERTY.
+	 */
+	[_ContextState]: ContextState<unknown, unknown, unknown, TResult>;
 }
 
 // TODO: uncomment and use in the Element interface below

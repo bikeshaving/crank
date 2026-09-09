@@ -107,11 +107,7 @@ describe("no-react-props", () => {
 					{
 						code: "<div dangerouslySetInnerHTML={{ __html: htmlContent }} />",
 						output: "<div innerHTML={htmlContent} />",
-						errors: [
-							{
-								messageId: "useinnerHTML",
-							},
-						],
+						errors: [{messageId: "useinnerHTML"}],
 					},
 				],
 			});
@@ -124,11 +120,7 @@ describe("no-react-props", () => {
 					{
 						code: "<div dangerouslySetInnerHTML={{ __html: \"<p>Test</p>\" }} />",
 						output: "<div innerHTML={\"<p>Test</p>\"} />",
-						errors: [
-							{
-								messageId: "useinnerHTML",
-							},
-						],
+						errors: [{messageId: "useinnerHTML"}],
 					},
 				],
 			});
@@ -141,11 +133,7 @@ describe("no-react-props", () => {
 					{
 						code: "<div dangerouslySetInnerHTML={{ __html: markup }} />",
 						output: "<div innerHTML={markup} />",
-						errors: [
-							{
-								messageId: "useinnerHTML",
-							},
-						],
+						errors: [{messageId: "useinnerHTML"}],
 					},
 				],
 			});
@@ -158,11 +146,7 @@ describe("no-react-props", () => {
 					{
 						code: "<div dangerouslySetInnerHTML={{ __html: getMarkup() }} />",
 						output: "<div innerHTML={getMarkup()} />",
-						errors: [
-							{
-								messageId: "useinnerHTML",
-							},
-						],
+						errors: [{messageId: "useinnerHTML"}],
 					},
 				],
 			});
@@ -175,11 +159,7 @@ describe("no-react-props", () => {
 					{
 						code: "<div dangerouslySetInnerHTML={{ __html: `<p>${text}</p>` }} />",
 						output: "<div innerHTML={`<p>${text}</p>`} />",
-						errors: [
-							{
-								messageId: "useinnerHTML",
-							},
-						],
+						errors: [{messageId: "useinnerHTML"}],
 					},
 				],
 			});

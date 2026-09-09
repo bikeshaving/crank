@@ -78,9 +78,7 @@ test("renders tables", async () => {
 // HTML TAG STACK FRAME HANDLING
 // =============================================================================
 test("inline markdown inside <dt> and <dd>", async () => {
-	const html = await render(
-		"<dl>\n<dt>**Bold Term**</dt>\n<dd>Text with *emphasis* and `code`.</dd>\n</dl>",
-	);
+	const html = await render("<dl>\n<dt>**Bold Term**</dt>\n<dd>Text with *emphasis* and `code`.</dd>\n</dl>");
 	expect(html).toContain("<strong>Bold Term</strong>");
 	expect(html).toContain("<em>emphasis</em>");
 	expect(html).toContain("<code>code</code>");

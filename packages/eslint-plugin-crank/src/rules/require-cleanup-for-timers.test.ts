@@ -139,9 +139,7 @@ describe("require-cleanup-for-timers", () => {
 							errors: [
 								{
 									messageId: "missingCleanup",
-									data: {
-										timerType,
-									},
+									data: {timerType},
 									line: 3,
 									...(timerType === "setInterval" ? {column: 31} : {}),
 								},
@@ -172,10 +170,7 @@ describe("require-cleanup-for-timers", () => {
 							errors: [
 								{
 									messageId: "missingClearInCleanup",
-									data: {
-										timerVar: varName,
-										clearFunction,
-									},
+									data: {timerVar: varName, clearFunction},
 									...(timerType === "setInterval" ? {line: 3} : {}),
 								},
 							],
@@ -185,10 +180,12 @@ describe("require-cleanup-for-timers", () => {
 			});
 
 			it(`should detect ${timerType} clearing wrong variable`, () => {
-				const wrongClearVar =
-					timerType === "setInterval" ? "wrongTimer" : "timeout";
-				const wrongClearFunc =
-					timerType === "setTimeout" ? "clearInterval" : clearFunction;
+				const wrongClearVar = timerType === "setInterval"
+					? "wrongTimer"
+					: "timeout";
+				const wrongClearFunc = timerType === "setTimeout"
+					? "clearInterval"
+					: clearFunction;
 
 				ruleTester.run("require-cleanup-for-timers", requireCleanupForTimers, {
 					valid: [],
@@ -210,10 +207,7 @@ describe("require-cleanup-for-timers", () => {
 							errors: [
 								{
 									messageId: "missingClearInCleanup",
-									data: {
-										timerVar: varName,
-										clearFunction,
-									},
+									data: {timerVar: varName, clearFunction},
 								},
 							],
 						},
@@ -240,16 +234,12 @@ describe("require-cleanup-for-timers", () => {
 						errors: [
 							{
 								messageId: "missingCleanup",
-								data: {
-									timerType: "setInterval",
-								},
+								data: {timerType: "setInterval"},
 								line: 3,
 							},
 							{
 								messageId: "missingCleanup",
-								data: {
-									timerType: "setTimeout",
-								},
+								data: {timerType: "setTimeout"},
 								line: 4,
 							},
 						],
@@ -302,10 +292,7 @@ describe("require-cleanup-for-timers", () => {
 						errors: [
 							{
 								messageId: "missingClearInCleanup",
-								data: {
-									timerVar: "timer2",
-									clearFunction: "clearTimeout",
-								},
+								data: {timerVar: "timer2", clearFunction: "clearTimeout"},
 							},
 						],
 					},
@@ -335,12 +322,7 @@ describe("require-cleanup-for-timers", () => {
               }
             `,
 						errors: [
-							{
-								messageId: "missingCleanup",
-								data: {
-									timerType: "setInterval",
-								},
-							},
+							{messageId: "missingCleanup", data: {timerType: "setInterval"}},
 						],
 					},
 				],
@@ -394,12 +376,7 @@ describe("require-cleanup-for-timers", () => {
               }
             `,
 						errors: [
-							{
-								messageId: "missingCleanup",
-								data: {
-									timerType: "setTimeout",
-								},
-							},
+							{messageId: "missingCleanup", data: {timerType: "setTimeout"}},
 						],
 					},
 				],
@@ -483,11 +460,7 @@ describe("require-cleanup-for-timers", () => {
                 yield <div>Tick</div>;
               }
             `,
-						errors: [
-							{
-								messageId: "missingCleanup",
-							},
-						],
+						errors: [{messageId: "missingCleanup"}],
 					},
 				],
 			});

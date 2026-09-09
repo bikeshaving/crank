@@ -6,16 +6,12 @@ import {createElement} from "../src/crank.js";
 declare global {
 	module JSX {
 		interface IntrinsicElements {
-			myIntrinsic: {
-				message: string;
-			};
+			myIntrinsic: {message: string};
 		}
 	}
 }
 
-type MyProps = {
-	message: string;
-};
+type MyProps = {message: string};
 
 let elem: any;
 test("createElement", () => {

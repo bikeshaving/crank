@@ -186,10 +186,7 @@ export interface TokenProps {
 
 // Generate a URL-friendly slug from text
 function slugify(text: string): string {
-	return text
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/(^-|-$)/g, "");
+	return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
 export const defaultComponents: Record<string, Component<TokenProps>> = {
@@ -218,29 +215,23 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 			<table>
 				<thead>
 					<tr>
-						${header.map(
-							(cell, index) => jsx`
+						${header.map((cell, index) => jsx`
 							<th style=${align[index] ? `text-align: ${align[index]}` : undefined}>
 								${build(cell.tokens, rootProps)}
 							</th>
-						`,
-						)}
+						`)}
 					</tr>
 				</thead>
 				<tbody>
-					${rows.map(
-						(row) => jsx`
+					${rows.map((row) => jsx`
 						<tr>
-							${row.map(
-								(cell, cellIndex) => jsx`
+							${row.map((cell, cellIndex) => jsx`
 								<td style=${align[cellIndex] ? `text-align: ${align[cellIndex]}` : undefined}>
 									${build(cell.tokens, rootProps)}
 								</td>
-							`,
-							)}
+							`)}
 						</tr>
-					`,
-					)}
+					`)}
 				</tbody>
 			</table>
 		`;
@@ -345,8 +336,9 @@ function build(
 	// When the JSX stack is non-empty we're inside a component tag, so all
 	// output goes to the top frame's children instead of the result array.
 	function emit(...elements: Array<Element | string>): void {
-		const target =
-			jsxStack.length > 0 ? jsxStack[jsxStack.length - 1].children : result;
+		const target = jsxStack.length > 0
+			? jsxStack[jsxStack.length - 1].children
+			: result;
 		target.push(...elements);
 	}
 
@@ -408,10 +400,7 @@ function build(
 
 			case "list": {
 				const list = token as Tokens.List;
-				const items = list.items.map((item) => ({
-					...item,
-					loose: list.loose,
-				}));
+				const items = list.items.map((item) => ({...item, loose: list.loose}));
 				children = build(items, rootProps, list.loose);
 				break;
 			}
@@ -467,11 +456,13 @@ function build(
 			throw new Error(`Unknown tag "${token.type}"`);
 		}
 
-		emit(jsx`
+		emit(
+			jsx`
 			<${Tag} token=${token} rootProps=${rootProps}>
 				${children}
 			<//Tag>
-		`);
+		`,
+		);
 	}
 
 	return result;
@@ -619,18 +610,11 @@ function parseJSX(
 			const Tag = rootProps.components?.[tagName];
 			if (Tag) {
 				const token = {type: tagName, raw: html, ...frame.props};
-				results.push(
-					jsx`<${Tag} token=${token} rootProps=${rootProps}>${frame.children}<//Tag>`,
-				);
+				results.push(jsx`<${Tag} token=${token} rootProps=${rootProps}>${frame.children}<//Tag>`);
 			} else {
 				results.push(
 					jsx`<${Raw} value=${
-						"<" +
-						tagName +
-						Object.entries(frame.props)
-							.map(([k, v]) => (v === true ? ` ${k}` : ` ${k}="${v}"`))
-							.join("") +
-							">"
+						"<" + tagName + Object.entries(frame.props).map(([k, v]) => (v === true ? ` ${k}` : ` ${k}="${v}"`)).join("") + ">"
 					} />`,
 					...frame.children,
 					jsx`<${Raw} value=${html} />`,
@@ -658,20 +642,16 @@ export interface MarkedProps {
 	[key: string]: unknown;
 }
 
-export function Marked({
-	markdown,
-	...props
-}: MarkedProps): Array<Element | string> {
+export function Marked({markdown, ...props}: MarkedProps): Array<
+	Element | string
+> {
 	// Configure marked to not encode HTML entities in text
 	const tokens = marked.Lexer.lex(markdown, {
 		gfm: true,
 		breaks: false,
 		pedantic: false,
 	});
-	props = {
-		...props,
-		components: {...defaultComponents, ...props.components},
-	};
+	props = {...props, components: {...defaultComponents, ...props.components}};
 
 	return build(tokens, props, true);
 }

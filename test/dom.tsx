@@ -95,9 +95,9 @@ describe("dom", () => {
 			document.body,
 		);
 		// this expectation is based on non-standard jsdom innerHTML behavior jsdom doesn‘t seem to reflect checked property
-		expect(document.body.innerHTML).toBe(
-			'<input id="toggle" type="checkbox" data-checked=""><label for="toggle"></label>',
-		);
+		expect(
+			document.body.innerHTML,
+		).toBe('<input id="toggle" type="checkbox" data-checked=""><label for="toggle"></label>');
 		expect((document.body.firstChild! as any).checked).toBe(true);
 		renderer.render(
 			<Fragment>
@@ -111,9 +111,9 @@ describe("dom", () => {
 			</Fragment>,
 			document.body,
 		);
-		expect(document.body.innerHTML).toBe(
-			'<input id="toggle" type="checkbox"><label for="toggle" class="inactive"></label>',
-		);
+		expect(
+			document.body.innerHTML,
+		).toBe('<input id="toggle" type="checkbox"><label for="toggle" class="inactive"></label>');
 		expect((document.body.firstChild! as any).checked).toBe(false);
 	});
 
@@ -302,13 +302,7 @@ describe("dom", () => {
 	});
 
 	test("fragment with null and undefined", () => {
-		renderer.render(
-			<Fragment>
-				{null}
-				{undefined}
-			</Fragment>,
-			document.body,
-		);
+		renderer.render(<Fragment>{null}{undefined}</Fragment>, document.body);
 		expect(document.body.innerHTML).toBe("");
 		renderer.render(
 			<Fragment>
@@ -365,9 +359,9 @@ describe("dom", () => {
 			</div>,
 			document.body,
 		);
-		expect(document.body.innerHTML).toBe(
-			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>",
-		);
+		expect(
+			document.body.innerHTML,
+		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>");
 		const span1 = document.body.firstChild!.childNodes[0];
 		const span2 = document.body.firstChild!.childNodes[1];
 		const span3 = document.body.firstChild!.childNodes[2];
@@ -525,9 +519,9 @@ describe("dom", () => {
 			/>,
 			document.body,
 		);
-		expect(document.body.innerHTML).toBe(
-			'<div unknown="value" unknown-attribute="value" data-unknown-attribute="value"></div>',
-		);
+		expect(
+			document.body.innerHTML,
+		).toBe('<div unknown="value" unknown-attribute="value" data-unknown-attribute="value"></div>');
 
 		const div = document.body.firstChild as HTMLDivElement;
 		expect(div.getAttribute("unknown")).toBe("value");
@@ -705,11 +699,7 @@ describe("dom", () => {
 	test("object classnames basic", () => {
 		renderer.render(
 			<div
-				class={{
-					active: true,
-					disabled: false,
-					primary: true,
-				}}
+				class={{active: true, disabled: false, primary: true}}
 			>
 				Test
 			</div>,
@@ -725,11 +715,7 @@ describe("dom", () => {
 	test("object classnames update", () => {
 		renderer.render(
 			<div
-				class={{
-					active: true,
-					disabled: false,
-					primary: true,
-				}}
+				class={{active: true, disabled: false, primary: true}}
 			>
 				Test
 			</div>,
@@ -745,12 +731,7 @@ describe("dom", () => {
 		// Update classnames
 		renderer.render(
 			<div
-				class={{
-					active: false,
-					disabled: true,
-					primary: true,
-					warning: true,
-				}}
+				class={{active: false, disabled: true, primary: true, warning: true}}
 			>
 				Test
 			</div>,
@@ -775,10 +756,7 @@ describe("dom", () => {
 		// Switch to object classnames (should clear old string classes)
 		renderer.render(
 			<div
-				class={{
-					"object-class": true,
-					"new-class": true,
-				}}
+				class={{"object-class": true, "new-class": true}}
 			>
 				Test
 			</div>,
@@ -796,10 +774,7 @@ describe("dom", () => {
 		// Start with object classnames
 		renderer.render(
 			<div
-				class={{
-					"object-class": true,
-					"another-class": true,
-				}}
+				class={{"object-class": true, "another-class": true}}
 			>
 				Test
 			</div>,
@@ -898,10 +873,7 @@ describe("dom", () => {
 		// When two keys share a class, toggling one shouldn't remove the shared class
 		renderer.render(
 			<div
-				class={{
-					"a b": true,
-					"b c": true,
-				}}
+				class={{"a b": true, "b c": true}}
 			>
 				Test
 			</div>,
@@ -916,10 +888,7 @@ describe("dom", () => {
 		// Toggle first key off - "b" should remain because "b c" is still true
 		renderer.render(
 			<div
-				class={{
-					"a b": false,
-					"b c": true,
-				}}
+				class={{"a b": false, "b c": true}}
 			>
 				Test
 			</div>,
@@ -934,10 +903,7 @@ describe("dom", () => {
 		// Toggle both off
 		renderer.render(
 			<div
-				class={{
-					"a b": false,
-					"b c": false,
-				}}
+				class={{"a b": false, "b c": false}}
 			>
 				Test
 			</div>,
@@ -969,15 +935,11 @@ describe("dom", () => {
 		try {
 			// Initial render
 			renderer.render(<iframe src="/test-path" />, document.body);
-			expect(srcSetCount).toBe(
-				1,
-			);
+			expect(srcSetCount).toBe(1);
 
 			// Re-render with same src
 			renderer.render(<iframe src="/test-path" />, document.body);
-			expect(srcSetCount).toBe(
-				1,
-			);
+			expect(srcSetCount).toBe(1);
 
 			// Re-render with different src
 			renderer.render(<iframe src="/different-path" />, document.body);
@@ -1011,15 +973,11 @@ describe("dom", () => {
 		try {
 			// Initial render
 			renderer.render(<a href="/test-link">Link</a>, document.body);
-			expect(hrefSetCount).toBe(
-				1,
-			);
+			expect(hrefSetCount).toBe(1);
 
 			// Re-render with same href
 			renderer.render(<a href="/test-link">Link</a>, document.body);
-			expect(hrefSetCount).toBe(
-				1,
-			);
+			expect(hrefSetCount).toBe(1);
 
 			// Re-render with different href
 			renderer.render(<a href="/different-link">Link</a>, document.body);
@@ -1056,9 +1014,7 @@ describe("dom", () => {
 
 			// Re-render with same absolute URL
 			renderer.render(<iframe src="https://example.com/page" />, document.body);
-			expect(srcSetCount).toBe(
-				1,
-			);
+			expect(srcSetCount).toBe(1);
 		} finally {
 			Object.defineProperty(
 				HTMLIFrameElement.prototype,
@@ -1486,9 +1442,7 @@ describe("dom", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toBe("<div><span>second</span></div>");
-		expect(document.body.querySelector("span")).toBe(
-			span,
-		);
+		expect(document.body.querySelector("span")).toBe(span);
 	});
 
 	test("one to one child, different tag", () => {
@@ -1583,9 +1537,7 @@ describe("dom", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toBe("<div><span>b</span></div>");
-		expect(document.body.querySelector("span")).not.toBe(
-			span1,
-		);
+		expect(document.body.querySelector("span")).not.toBe(span1);
 	});
 
 	test("one child with key to one child without key", () => {
@@ -1603,9 +1555,7 @@ describe("dom", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toBe("<div><span>b</span></div>");
-		expect(document.body.querySelector("span")).not.toBe(
-			span1,
-		);
+		expect(document.body.querySelector("span")).not.toBe(span1);
 	});
 
 	test("one child without key to one child with key", () => {
@@ -1623,9 +1573,7 @@ describe("dom", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toBe("<div><span>b</span></div>");
-		expect(document.body.querySelector("span")).not.toBe(
-			span1,
-		);
+		expect(document.body.querySelector("span")).not.toBe(span1);
 	});
 
 	test("one keyed child to many children", () => {
@@ -1729,9 +1677,7 @@ describe("dom", () => {
 	test("rapid cardinality cycling", () => {
 		for (let round = 0; round < 3; round++) {
 			renderer.render(<div />, document.body);
-			expect(document.body.innerHTML).toBe(
-				"<div></div>",
-			);
+			expect(document.body.innerHTML).toBe("<div></div>");
 
 			renderer.render(
 				<div>
@@ -1739,9 +1685,7 @@ describe("dom", () => {
 				</div>,
 				document.body,
 			);
-			expect(document.body.innerHTML).toBe(
-				"<div><span>one</span></div>",
-			);
+			expect(document.body.innerHTML).toBe("<div><span>one</span></div>");
 
 			renderer.render(
 				<div>

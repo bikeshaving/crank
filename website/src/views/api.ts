@@ -35,11 +35,7 @@ export default async function APIView({url}: ViewProps): Promise<Element> {
 		throw new Error(`API document not found: ${url}`);
 	}
 
-	const {
-		attributes: {title, description},
-		body,
-		filename,
-	} = post;
+	const {attributes: {title, description}, body, filename} = post;
 
 	return jsx`
 		<${Root}

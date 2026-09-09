@@ -315,20 +315,17 @@ ${code}
 
 let globalId = 0;
 
-export function* CodePreview(
-	this: Context<typeof CodePreview>,
-	{
-		value,
-		visible = true,
-		autoresize = false,
-		language,
-	}: {
-		value: string;
-		visible?: boolean;
-		autoresize?: boolean;
-		language?: "javascript" | "python" | "html";
-	},
-): any {
+export function* CodePreview(this: Context<typeof CodePreview>, {
+	value,
+	visible = true,
+	autoresize = false,
+	language,
+}: {
+	value: string;
+	visible?: boolean;
+	autoresize?: boolean;
+	language?: "javascript" | "python" | "html";
+}): any {
 	const id = globalId++;
 	let iframe!: HTMLIFrameElement;
 	// We use this iframe ID as the key for the iframe, so that previous iframes
@@ -483,9 +480,7 @@ export function* CodePreview(
 					position: relative;
 				`} ${loading ? pulsingClass : ""}">
 					${
-						errorMessage &&
-						showErrorModal &&
-						jsx`
+						errorMessage && showErrorModal && jsx`
 							<div class=${css`
 								position: absolute;
 								inset: 0;

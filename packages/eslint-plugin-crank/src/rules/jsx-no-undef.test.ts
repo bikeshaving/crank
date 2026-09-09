@@ -26,21 +26,11 @@ describe("jsx-no-undef", () => {
 			invalid: [
 				{
 					code: "<App />",
-					errors: [
-						{
-							messageId: "undefined",
-							data: {identifier: "App"},
-						},
-					],
+					errors: [{messageId: "undefined", data: {identifier: "App"}}],
 				},
 				{
 					code: "<Foo.Bar />",
-					errors: [
-						{
-							messageId: "undefined",
-							data: {identifier: "Foo"},
-						},
-					],
+					errors: [{messageId: "undefined", data: {identifier: "Foo"}}],
 				},
 			],
 		});

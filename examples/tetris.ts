@@ -3,41 +3,13 @@ import {jsx, renderer} from "@b9g/crank/standalone";
 // tetronimo shapes represented as 2d arrays
 type Tet = number[][];
 const tets: Record<string, Tet> = {
-  I: [
-    [0, 0, 0, 0],
-    [1, 1, 1, 1],
-    [0, 0, 0, 0],
-    [0, 0, 0, 0],
-  ],
-  O: [
-    [1, 1],
-    [1, 1],
-  ],
-  T: [
-    [0, 1, 0],
-    [1, 1, 1],
-    [0, 0, 0],
-  ],
-  J: [
-    [0, 0, 1],
-    [1, 1, 1],
-    [0, 0, 0],
-  ],
-  L: [
-    [1, 0, 0],
-    [1, 1, 1],
-    [0, 0, 0],
-  ],
-  S: [
-    [0, 1, 1],
-    [1, 1, 0],
-    [0, 0, 0],
-  ],
-  Z: [
-    [1, 1, 0],
-    [0, 1, 1],
-    [0, 0, 0],
-  ],
+  I: [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]],
+  O: [[1, 1], [1, 1]],
+  T: [[0, 1, 0], [1, 1, 1], [0, 0, 0]],
+  J: [[0, 0, 1], [1, 1, 1], [0, 0, 0]],
+  L: [[1, 0, 0], [1, 1, 1], [0, 0, 0]],
+  S: [[0, 1, 1], [1, 1, 0], [0, 0, 0]],
+  Z: [[1, 1, 0], [0, 1, 1], [0, 0, 0]],
 };
 
 function randomTet() {
@@ -111,11 +83,7 @@ function squaresOf(piece: Piece): Array<[x: number, y: number]> {
 
 function createPiece(): Piece {
   // TODO: piece sequences
-  return {
-    tet: randomTet(),
-    x: 3,
-    y: 0,
-  };
+  return {tet: randomTet(), x: 3, y: 0};
 }
 
 function placePiece(piece: Piece, field: Field) {
@@ -149,23 +117,19 @@ function Piece({piece}) {
   // TODO: colored pieces
   return jsx`
     <g fill="red">
-      ${squaresOf(piece).map(
-        ([c, r]) => jsx`
+      ${squaresOf(piece).map(([c, r]) => jsx`
         <rect
           width=${UNIT}
           height=${UNIT}
           transform="translate(${c * UNIT}, ${r * UNIT})"
         />
-      `,
-      )}
+      `)}
     </g>
   `;
 }
 
 function Board({field}) {
-  return field.map((row, r) =>
-    row.map(
-      (data, c) => jsx`
+  return field.map((row, r) => row.map((data, c) => jsx`
       <rect
         width=${UNIT}
         height=${UNIT}
@@ -173,9 +137,7 @@ function Board({field}) {
         x=${c * UNIT}
         y=${r * UNIT}
       />
-    `,
-    ),
-  );
+    `));
 }
 
 function* App() {

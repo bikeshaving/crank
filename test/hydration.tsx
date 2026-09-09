@@ -649,9 +649,9 @@ describe("hydration", () => {
 			</Fragment>,
 			app,
 		);
-		expect(container.innerHTML).toBe(
-			"<div id=\"app\">Before After</div><div id=\"portal\"><button>Client</button><button>Server</button></div>",
-		);
+		expect(
+			container.innerHTML,
+		).toBe("<div id=\"app\">Before After</div><div id=\"portal\"><button>Client</button><button>Server</button></div>");
 		expect(portal.innerHTML).toBe(
 			"<button>Client</button><button>Server</button>",
 		);
@@ -677,9 +677,9 @@ describe("hydration", () => {
 			app,
 		);
 
-		expect(container.innerHTML).toBe(
-			"<div id=\"app\">Before After</div><div id=\"portal\"><button>Click</button></div>",
-		);
+		expect(
+			container.innerHTML,
+		).toBe("<div id=\"app\">Before After</div><div id=\"portal\"><button>Click</button></div>");
 		expect(portal.firstChild).toBe(button);
 		expect(portal.innerHTML).toBe("<button>Click</button>");
 		button.click();
@@ -703,9 +703,9 @@ describe("hydration", () => {
 			container,
 		);
 
-		expect(container.innerHTML).toBe(
-			"<div id=\"app\">Before After</div><div id=\"portal\"><button>Click</button></div>",
-		);
+		expect(
+			container.innerHTML,
+		).toBe("<div id=\"app\">Before After</div><div id=\"portal\"><button>Click</button></div>");
 		expect(portal.firstChild).toBe(button);
 		expect(portal.innerHTML).toBe("<button>Click</button>");
 		button.click();
@@ -732,9 +732,9 @@ describe("hydration", () => {
 			</Fragment>,
 			app,
 		);
-		expect(container.innerHTML).toBe(
-			"<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>",
-		);
+		expect(
+			container.innerHTML,
+		).toBe("<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>");
 		expect(
 			button1 === container.querySelector("button:nth-child(1)"),
 		).toBeFalsy();
@@ -768,9 +768,9 @@ describe("hydration", () => {
 			</Fragment>,
 			app,
 		);
-		expect(container.innerHTML).toBe(
-			"<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>",
-		);
+		expect(
+			container.innerHTML,
+		).toBe("<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>");
 		expect(
 			button1 === container.querySelector("button:nth-child(1)"),
 		).toBeFalsy();
@@ -801,9 +801,9 @@ describe("hydration", () => {
 			</Fragment>,
 			app,
 		);
-		expect(container.innerHTML).toBe(
-			"<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>",
-		);
+		expect(
+			container.innerHTML,
+		).toBe("<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>");
 		expect(
 			button1 === container.querySelector("button:nth-child(1)"),
 		).toBeFalsy();
@@ -836,9 +836,9 @@ describe("hydration", () => {
 			</Fragment>,
 			app,
 		);
-		expect(container.innerHTML).toBe(
-			"<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>",
-		);
+		expect(
+			container.innerHTML,
+		).toBe("<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>");
 		expect(
 			text1 ===
 			(container.querySelector("button:nth-child(1)") as HTMLButtonElement)

@@ -328,9 +328,7 @@ export const requireCleanupForTimers: Rule.RuleModule = {
 						context.report({
 							node: timer.node,
 							messageId: "missingCleanup",
-							data: {
-								timerType: timer.type,
-							},
+							data: {timerType: timer.type},
 						});
 					}
 				}

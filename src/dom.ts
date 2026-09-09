@@ -1,8 +1,5 @@
 import type {Children, Context, ElementValue, RenderAdapter} from "./crank.js";
-import {
-	Portal,
-	Renderer,
-} from "./crank.js";
+import {Portal, Renderer} from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import {REACT_SVG_PROPS} from "./_svg.js";
 
@@ -64,8 +61,7 @@ function isWritableProperty(element: Element, name: string): boolean {
 	let result = false;
 	if (propOwner !== null) {
 		const descriptor = Object.getOwnPropertyDescriptor(propOwner, name);
-		result =
-			descriptor != null &&
+		result = descriptor != null &&
 			(descriptor.writable === true || descriptor.set !== undefined);
 	}
 
@@ -356,15 +352,12 @@ function patchProp(
 				}
 
 				if (
-					shouldIssueWarning ||
-					(hydratingClasses && hydratingClasses.size > 0)
+					shouldIssueWarning || (hydratingClasses && hydratingClasses.size > 0)
 				) {
 					emitHydrationWarning(
 						name,
 						quietProps,
-						Object.keys(value)
-							.filter((k) => value[k])
-							.join(" "),
+						Object.keys(value).filter((k) => value[k]).join(" "),
 						hydratingClassName || "",
 						element,
 					);
@@ -411,14 +404,14 @@ function patchProp(
 
 			break;
 		case "dangerouslySetInnerHTML": {
-			const htmlValue =
-				value && typeof value === "object" && "__html" in value
-					? (value.__html ?? "")
-					: "";
-			const oldHTMLValue =
-				oldValue && typeof oldValue === "object" && "__html" in oldValue
-					? (oldValue.__html ?? "")
-					: "";
+			const htmlValue = value && typeof value === "object" && "__html" in value
+				? (value.__html ?? "")
+				: "";
+			const oldHTMLValue = oldValue &&
+				typeof oldValue === "object" &&
+				"__html" in oldValue
+				? (oldValue.__html ?? "")
+				: "";
 			if (htmlValue !== oldHTMLValue) {
 				element.innerHTML = htmlValue as any;
 			}
@@ -451,8 +444,7 @@ function patchProp(
 			}
 
 			// try to set the property directly
-			if (
-				name in element &&
+			if (name in element &&
 				// boolean properties will coerce strings, but sometimes they map to
 				// enumerated attributes, where truthy strings ("false", "no") map to
 				// falsy properties, so we force using setAttribute.
@@ -460,8 +452,7 @@ function patchProp(
 					typeof value === "string" &&
 					typeof (element as any)[name] === "boolean"
 				) &&
-				isWritableProperty(element, name)
-			) {
+				isWritableProperty(element, name)) {
 				// For URL properties like src and href, the DOM property returns the
 				// resolved absolute URL. We need to resolve the prop value the same way
 				// to compare correctly.
@@ -538,12 +529,7 @@ function patchProp(
 }
 
 export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
-	scope({
-		scope: xmlns,
-		tag,
-		props,
-		root,
-	}: {
+	scope({scope: xmlns, tag, props, root}: {
 		scope: string | undefined;
 		tag: string | symbol;
 		props: Record<string, any>;
@@ -551,16 +537,12 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 	}): string | undefined {
 		switch (tag) {
 			case Portal: {
-				const ns =
-					root && root.nodeType === ELEMENT_NODE
-						? (root as Element).namespaceURI
-						: null;
-				xmlns =
-					ns === SVG_NAMESPACE
-						? SVG_NAMESPACE
-						: ns === MATHML_NAMESPACE
-							? MATHML_NAMESPACE
-							: undefined;
+				const ns = root && root.nodeType === ELEMENT_NODE
+					? (root as Element).namespaceURI
+					: null;
+				xmlns = ns === SVG_NAMESPACE
+					? SVG_NAMESPACE
+					: ns === MATHML_NAMESPACE ? MATHML_NAMESPACE : undefined;
 				break;
 			}
 			case "svg":
@@ -577,12 +559,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		return props.xmlns || xmlns;
 	},
 
-	create({
-		tag,
-		tagName,
-		scope: xmlns,
-		root,
-	}: {
+	create({tag, tagName, scope: xmlns, root}: {
 		tag: string | symbol;
 		tagName: string;
 		scope: string | undefined;
@@ -602,12 +579,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		return xmlns ? doc.createElementNS(xmlns, tag) : doc.createElement(tag);
 	},
 
-	adopt({
-		tag,
-		tagName,
-		node,
-		root,
-	}: {
+	adopt({tag, tagName, node, root}: {
 		tag: string | symbol;
 		tagName: string;
 		node: Node | undefined;
@@ -624,9 +596,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 			node === doc.documentElement ||
 			node === doc
 		) {
-			console.warn(
-				`Hydrating ${node.nodeName.toLowerCase()} is discouraged as it is destructive and may remove unknown nodes.`,
-			);
+			console.warn(`Hydrating ${node.nodeName.toLowerCase()} is discouraged as it is destructive and may remove unknown nodes.`);
 		}
 
 		if (
@@ -667,9 +637,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		if (node.nodeType !== ELEMENT_NODE) {
 			throw new TypeError(`Cannot patch node: ${String(node)}`);
 		} else if (props.class && props.className) {
-			console.error(
-				`Both "class" and "className" set in props for <${tagName}>. Use one or the other.`,
-			);
+			console.error(`Both "class" and "className" set in props for <${tagName}>. Use one or the other.`);
 		}
 
 		const element = node as Element;
@@ -712,12 +680,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		}
 	},
 
-	arrange({
-		tag,
-		node,
-		props,
-		children,
-	}: {
+	arrange({tag, node, props, children}: {
 		tag: string | symbol;
 		node: Node;
 		props: Record<string, any>;
@@ -752,11 +715,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		}
 	},
 
-	remove({
-		node,
-		parentNode,
-		isNested,
-	}: {
+	remove({node, parentNode, isNested}: {
 		node: Node;
 		parentNode: Node;
 		isNested: boolean;
@@ -767,12 +726,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		}
 	},
 
-	text({
-		value,
-		oldNode,
-		hydrationNodes,
-		root,
-	}: {
+	text({value, oldNode, hydrationNodes, root}: {
 		value: string;
 		hydrationNodes: Node[] | undefined;
 		oldNode: Node | undefined;
@@ -821,12 +775,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		return doc.createTextNode(value);
 	},
 
-	raw({
-		value,
-		scope: xmlns,
-		hydrationNodes,
-		root,
-	}: {
+	raw({value, scope: xmlns, hydrationNodes, root}: {
 		value: string | Node;
 		scope: string | undefined;
 		hydrationNodes: Node[] | undefined;
@@ -835,12 +784,11 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		let nodes: Node[];
 		if (typeof value === "string") {
 			const doc = getRootDocument(root);
-			const el =
-				xmlns == null
-					? doc.createElement("div")
-					: xmlns === SVG_NAMESPACE
-						? doc.createElementNS(xmlns, "svg")
-						: doc.createElementNS(xmlns, "math");
+			const el = xmlns == null
+				? doc.createElement("div")
+				: xmlns === SVG_NAMESPACE
+					? doc.createElementNS(xmlns, "svg")
+					: doc.createElementNS(xmlns, "math");
 			el.innerHTML = value;
 			nodes = Array.from(el.childNodes);
 		} else {
@@ -870,9 +818,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 
 		return nodes.length === 0
 			? undefined
-			: nodes.length === 1
-				? nodes[0]
-				: nodes;
+			: nodes.length === 1 ? nodes[0] : nodes;
 	},
 };
 

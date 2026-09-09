@@ -8,14 +8,9 @@ export interface APIModule {
 	name: string;
 	slug: string;
 	url: string;
-	categories: Array<{
-		name: string;
-		slug: string;
-		items: Array<{
-			name: string;
-			url: string;
-		}>;
-	}>;
+	categories: Array<
+		{name: string; slug: string; items: Array<{name: string; url: string}>}
+	>;
 }
 
 // Category display names and sort order
@@ -182,10 +177,7 @@ const linkStyle = css`
 export function APISidebar({
 	modules,
 	url,
-}: {
-	modules: APIModule[];
-	url: string;
-}): Element {
+}: {modules: APIModule[]; url: string}): Element {
 	return jsx`
 		<div id="sidebar" class=${sidebarStyle}>
 			<h2 class=${css`
@@ -203,8 +195,7 @@ export function APISidebar({
 			<div id="search-root">
 				<${Search} />
 			</div>
-			${modules.map(
-				(mod) => jsx`
+			${modules.map((mod) => jsx`
 				<div class=${moduleHeaderStyle}>
 					<a
 						href=${mod.url}
@@ -214,22 +205,17 @@ export function APISidebar({
 						aria-current=${url === mod.url && "page"}
 					>${mod.name}</a>
 				</div>
-				${mod.categories.map(
-					(category) => jsx`
+				${mod.categories.map((category) => jsx`
 					<div class=${categoryStyle}>${category.name}</div>
-					${category.items.map(
-						(item) => jsx`
+					${category.items.map((item) => jsx`
 						<a
 							href=${item.url}
 							class=${linkStyle}
 							aria-current=${url === item.url && "page"}
 						>${item.name}</a>
-					`,
-					)}
-				`,
-				)}
-			`,
-			)}
+					`)}
+				`)}
+			`)}
 		</div>
 	`;
 }

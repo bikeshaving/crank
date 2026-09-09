@@ -842,13 +842,9 @@ describe("suspense", () => {
 		// Simple loading fallback that refreshes periodically
 		function* LoadingFallback(this: Context) {
 			let count = 0;
-			const interval = setInterval(
-				() =>
-					this.refresh(() => {
-						count++;
-					}),
-				100,
-			);
+			const interval = setInterval(() => this.refresh(() => {
+				count++;
+			}), 100);
 			this.cleanup(() => clearInterval(interval));
 
 			for ({} of this) {
@@ -900,8 +896,6 @@ describe("suspense", () => {
 		}
 
 		// Test fails if bug is detected
-		expect(
-			bugDetected,
-		).toBeFalsy();
+		expect(bugDetected).toBeFalsy();
 	});
 });

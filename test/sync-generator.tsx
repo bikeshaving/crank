@@ -17,19 +17,22 @@ describe("sync generator", () => {
 	});
 
 	test("basic", () => {
-		const Component = Sinon.fake(function* Component(
-			this: Context,
-			{message}: {message: string},
-		): Generator<Element> {
-			let i = 0;
-			for ({message} of this) {
-				if (++i > 2) {
-					return <span>Final</span>;
-				}
+		const Component = Sinon.fake(
+			function* Component(this: Context, {
+				message,
+			}: {message: string}): Generator<
+				Element
+			> {
+				let i = 0;
+				for ({message} of this) {
+					if (++i > 2) {
+						return <span>Final</span>;
+					}
 
-				yield <span>{message}</span>;
-			}
-		});
+					yield <span>{message}</span>;
+				}
+			},
+		);
 
 		renderer.render(
 			<div>
@@ -271,11 +274,7 @@ describe("sync generator", () => {
 				</Fragment>
 			);
 			yield (
-				<Fragment>
-					{true}
-					{false}
-					{undefined}
-				</Fragment>
+				<Fragment>{true}{false}{undefined}</Fragment>
 			);
 		}
 
@@ -326,11 +325,9 @@ describe("sync generator", () => {
 	test("async children", async () => {
 		const mock = Sinon.fake();
 
-		async function Component({
-			children,
-		}: {
-			children: Children;
-		}): Promise<Element> {
+		async function Component({children}: {children: Children}): Promise<
+			Element
+		> {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			return <span>{children}</span>;
 		}

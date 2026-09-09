@@ -99,10 +99,9 @@ function serializeJSXElement(
 	// Attributes
 	for (const attr of openingElement.attributes || []) {
 		if (attr.type === "JSXAttribute") {
-			const attrName =
-				attr.name.type === "JSXIdentifier"
-					? attr.name.name
-					: `${(attr.name as any).namespace.name}:${(attr.name as any).name.name}`;
+			const attrName = attr.name.type === "JSXIdentifier"
+				? attr.name.name
+				: `${(attr.name as any).namespace.name}:${(attr.name as any).name.name}`;
 
 			if (attr.value == null) {
 				// Boolean attribute
@@ -181,12 +180,11 @@ function serializeJSXElement(
 			) {
 				current += "<//>";
 			} else {
-				const closeName =
-					closingElement.name.type === "JSXIdentifier"
-						? closingElement.name.name
-						: closingElement.name.type === "JSXMemberExpression"
-							? memberExpressionToString(closingElement.name)
-							: `${(closingElement.name as any).namespace.name}:${(closingElement.name as any).name.name}`;
+				const closeName = closingElement.name.type === "JSXIdentifier"
+					? closingElement.name.name
+					: closingElement.name.type === "JSXMemberExpression"
+						? memberExpressionToString(closingElement.name)
+						: `${(closingElement.name as any).namespace.name}:${(closingElement.name as any).name.name}`;
 				current += `</${closeName}>`;
 			}
 		}
@@ -308,10 +306,9 @@ export default function transform(fileInfo: FileInfo, api: API): string | null {
 			}
 
 			hasJSX = true;
-			const serialized =
-				nodeType === "JSXElement"
-					? serializeJSXElement(j, path.node)
-					: serializeJSXFragment(j, path.node);
+			const serialized = nodeType === "JSXElement"
+				? serializeJSXElement(j, path.node)
+				: serializeJSXFragment(j, path.node);
 
 			const {expressions} = serialized;
 			let {parts} = serialized;
@@ -335,8 +332,9 @@ export default function transform(fileInfo: FileInfo, api: API): string | null {
 				parts = parts.slice();
 				// Add newline + content indent at start, newline + statement indent before closing backtick
 				parts[0] = "\n" + " ".repeat(contentIndent) + parts[0];
-				parts[parts.length - 1] =
-					parts[parts.length - 1] + "\n" + " ".repeat(stmtIndent);
+				parts[parts.length - 1] = parts[parts.length - 1] +
+					"\n" +
+					" ".repeat(stmtIndent);
 			}
 
 			const templateLiteral = j.templateLiteral(
@@ -370,8 +368,7 @@ export default function transform(fileInfo: FileInfo, api: API): string | null {
 		let addedToExisting = false;
 		root.find(j.ImportDeclaration).forEach((path) => {
 			if (
-				path.node.source.value === "@b9g/crank/standalone" &&
-				!addedToExisting
+				path.node.source.value === "@b9g/crank/standalone" && !addedToExisting
 			) {
 				const hasJSX = path.node.specifiers?.some(
 					(s) =>
@@ -388,10 +385,9 @@ export default function transform(fileInfo: FileInfo, api: API): string | null {
 		});
 
 		if (!addedToExisting) {
-			const importDecl = j.importDeclaration(
-				[j.importSpecifier(j.identifier("jsx"))],
-				j.literal("@b9g/crank/standalone"),
-			);
+			const importDecl = j.importDeclaration([
+				j.importSpecifier(j.identifier("jsx")),
+			], j.literal("@b9g/crank/standalone"));
 
 			const body = root.get().node.program.body;
 			const firstImport = body.findIndex(

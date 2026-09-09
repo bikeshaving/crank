@@ -51,19 +51,19 @@ export async function collectDocuments(
 			const file = await fileHandle.getFile();
 			const md = await file.text();
 			const {attributes, body} = frontmatter(md) as unknown as DocInfo;
-			attributes.publish =
-				attributes.publish == null ? true : attributes.publish;
+			attributes.publish = attributes.publish == null
+				? true
+				: attributes.publish;
 			if (attributes.publishDate != null) {
 				attributes.publishDate = new Date(attributes.publishDate);
 			}
 
 			const urlBase = prefix ? `/${prefix}` : "";
-			const url =
-				`${urlBase}/${filename}`
-					.replace(/\.md$/, "")
-					.replace(/([0-9]+-)+/, "")
-					.replace(/\/index$/, "") + // index.md -> parent directory URL
-					"/";
+			const url = `${urlBase}/${filename}`
+				.replace(/\.md$/, "")
+				.replace(/([0-9]+-)+/, "")
+				.replace(/\/index$/, "") + // index.md -> parent directory URL
+				"/";
 			const docsRelativeFilename = prefix ? `${prefix}/${filename}` : filename;
 			docs.push({url, filename: docsRelativeFilename, body, attributes});
 		}
