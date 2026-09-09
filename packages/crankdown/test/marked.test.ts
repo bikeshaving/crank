@@ -88,9 +88,8 @@ test("inline markdown inside <dt> and <dd>", async () => {
 });
 
 test("block-level markdown inside <dd> with blank lines", async () => {
-	const html = await render(
-		"<dl>\n<dt>Term</dt>\n<dd>\n\n- one\n- two\n\n</dd>\n</dl>",
-	);
+	const html =
+		await render("<dl>\n<dt>Term</dt>\n<dd>\n\n- one\n- two\n\n</dd>\n</dl>");
 	expect(html).toContain("<ul>");
 	expect(html).toContain("<li>one</li>");
 	expect(html).toContain("<li>two</li>");

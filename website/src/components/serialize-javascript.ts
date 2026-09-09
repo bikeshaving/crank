@@ -4,7 +4,7 @@ import serializeJavascript from "serialize-javascript";
 
 let nextId = 0;
 
-export function* SerializeScript(this: Context, {
+export function *SerializeScript(this: Context, {
 	name,
 	value,
 	...scriptProps

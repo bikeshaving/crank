@@ -7,7 +7,7 @@ class TodoEvent extends CustomEvent {
   }
 }
 
-function* Header() {
+function *Header() {
   let title = "";
 
   const oninput = (ev) => {
@@ -39,7 +39,7 @@ function* Header() {
   }
 }
 
-function* TodoItem({todo}) {
+function *TodoItem({todo}) {
   let editing = false;
   let editTitle = todo.title;
 
@@ -113,7 +113,7 @@ function* TodoItem({todo}) {
   }
 }
 
-function* TodoList({todos, filter}) {
+function *TodoList({todos, filter}) {
   for ({todos, filter} of this) {
     const filteredTodos = todos.filter((todo) => {
       if (filter === "active") {
@@ -135,7 +135,7 @@ function* TodoList({todos, filter}) {
   }
 }
 
-function* Footer({todos, filter}) {
+function *Footer({todos, filter}) {
   const setFilter = (newFilter) => {
     this.dispatchEvent(new TodoEvent("filterchange", {filter: newFilter}));
   };
@@ -176,7 +176,7 @@ function* Footer({todos, filter}) {
   }
 }
 
-function* App() {
+function *App() {
   let todos = [];
   let nextId = 1;
   let filter = "";

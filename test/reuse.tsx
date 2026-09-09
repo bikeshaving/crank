@@ -60,7 +60,7 @@ describe("reuse", () => {
 	test("reused generator component", () => {
 		const fn = Sinon.fake();
 
-		function* Component() {
+		function *Component() {
 			fn();
 			while (true) {
 				yield <span>1</span>;
@@ -77,7 +77,7 @@ describe("reuse", () => {
 	});
 
 	test("toggle reused element", () => {
-		function* Component() {
+		function *Component() {
 			let toggle = true;
 			const el = <span>1</span>;
 			while (true) {

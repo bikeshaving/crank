@@ -84,7 +84,7 @@ describe("refs", () => {
 	test("generator component ref passing", () => {
 		const fn = Sinon.fake();
 
-		function* Component({ref}: {ref: unknown}): Generator<Element> {
+		function *Component({ref}: {ref: unknown}): Generator<Element> {
 			while (true) {
 				yield <span ref={ref}>Hello</span>;
 			}
@@ -124,11 +124,8 @@ describe("refs", () => {
 	test("async generator component", async () => {
 		const fn = Sinon.fake();
 
-		async function* Component(this: Context, {
-			ref,
-		}: {ref: unknown}): AsyncGenerator<
-			Element
-		> {
+		async function *Component(this: Context, {ref}: {ref:
+		unknown;}): AsyncGenerator<Element> {
 			for await ({ref} of this) {
 				yield <span ref={ref}>Hello</span>;
 			}

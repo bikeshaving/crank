@@ -614,10 +614,8 @@ describe("dom", () => {
 	});
 
 	test("uncontrolled props", () => {
-		const input = renderer.render(
-			<input value="hello" />,
-			document.body,
-		) as any;
+		const input =
+			renderer.render(<input value="hello" />, document.body) as any;
 		expect(input instanceof HTMLInputElement).toBeTruthy();
 		expect(input.value).toBe("hello");
 		input.value = "world";
@@ -1636,7 +1634,7 @@ describe("dom", () => {
 	});
 
 	test("component single child transition", () => {
-		function* Inner(this: Context, {message}: {message: string}): Generator {
+		function *Inner(this: Context, {message}: {message: string}): Generator {
 			let count = 0;
 			for ({message} of this) {
 				count++;
@@ -1765,7 +1763,7 @@ describe("dom", () => {
 	});
 
 	test("Copy element as single child", () => {
-		function* Counter(this: Context): Generator {
+		function *Counter(this: Context): Generator {
 			let count = 0;
 			for (const _ of this) {
 				count++;
@@ -1841,7 +1839,7 @@ describe("dom", () => {
 	test("nullish child unmounts component subtree", () => {
 		const cleanups: string[] = [];
 
-		function* Child(this: Context, {name}: {name: string}): Generator {
+		function *Child(this: Context, {name}: {name: string}): Generator {
 			try {
 				for ({name} of this) {
 					yield <span>{name}</span>;
@@ -1894,7 +1892,7 @@ describe("dom", () => {
 	test("nullish child unmounts nested component tree", () => {
 		const cleanups: string[] = [];
 
-		function* Leaf(this: Context, {id}: {id: string}): Generator {
+		function *Leaf(this: Context, {id}: {id: string}): Generator {
 			try {
 				for ({id} of this) {
 					yield <span>{id}</span>;
@@ -1978,7 +1976,7 @@ describe("dom", () => {
 	});
 
 	test("generator component preserves state through single-child path", () => {
-		function* Stateful(this: Context, {label}: {label: string}): Generator {
+		function *Stateful(this: Context, {label}: {label: string}): Generator {
 			let renders = 0;
 			for ({label} of this) {
 				renders++;

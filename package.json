@@ -10,7 +10,7 @@
   "module": "./dist/crank.js",
   "types": "./dist/crank.d.ts",
   "devDependencies": {
-    "@b9g/eslint-config": "^0.1.4",
+    "@b9g/eslint-config": "^0.1.5",
     "@b9g/libuild": "^0.2.20",
     "@b9g/skillpack": "^0.1.6",
     "@eslint/js": "^9.39.0",
@@ -22,7 +22,7 @@
     "eslint": "^9.39.0",
     "eslint-plugin-acrocase": "^0.1.0",
     "eslint-plugin-crank": "workspace:*",
-    "eslint-plugin-esfold": "^0.1.5",
+    "eslint-plugin-esfold": "^0.1.6",
     "playwright": "^1.62.1",
     "sinon": "^17.0.2",
     "typescript": "^5.8.3"

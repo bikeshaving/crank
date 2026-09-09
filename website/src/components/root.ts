@@ -19,7 +19,7 @@ function ColorSchemeScript() {
 	`;
 }
 
-export function* Root(this: Context, {
+export function *Root(this: Context, {
 	title,
 	children,
 	url,

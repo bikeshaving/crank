@@ -642,9 +642,8 @@ export interface MarkedProps {
 	[key: string]: unknown;
 }
 
-export function Marked({markdown, ...props}: MarkedProps): Array<
-	Element | string
-> {
+export function Marked({markdown, ...props}: MarkedProps): Array<Element |
+	string> {
 	// Configure marked to not encode HTML entities in text
 	const tokens = marked.Lexer.lex(markdown, {
 		gfm: true,

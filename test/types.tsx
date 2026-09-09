@@ -113,7 +113,7 @@ test("Component", () => {
 	elem = <MyAsyncFunctionComponent />;
 	elem = <MyAsyncFunctionComponent message={"message"} />;
 
-	const MyGeneratorComponent: Component<MyProps> = function* (
+	const MyGeneratorComponent: Component<MyProps> = function *(
 		this,
 		initialProps,
 	) {
@@ -135,7 +135,7 @@ test("Component", () => {
 	elem = <MyGeneratorComponent />;
 	elem = <MyGeneratorComponent message={"message"} />;
 
-	const MyAsyncGeneratorComponent: Component<MyProps> = async function* (
+	const MyAsyncGeneratorComponent: Component<MyProps> = async function *(
 		this,
 		initialProps,
 	) {
@@ -186,7 +186,7 @@ test("FunctionComponent", () => {
 	elem = <MyAsyncFunctionComponent />;
 	elem = <MyAsyncFunctionComponent message={"message"} />;
 
-	const MyAsyncGeneratorComponent: Component<MyProps> = async function* (
+	const MyAsyncGeneratorComponent: Component<MyProps> = async function *(
 		this,
 		props,
 	) {
@@ -195,7 +195,7 @@ test("FunctionComponent", () => {
 });
 
 test("GeneratorComponent", () => {
-	const MyGeneratorComponent: Component<MyProps> = function* (
+	const MyGeneratorComponent: Component<MyProps> = function *(
 		this,
 		initialProps,
 	) {
@@ -217,7 +217,7 @@ test("GeneratorComponent", () => {
 	elem = <MyGeneratorComponent />;
 	elem = <MyGeneratorComponent message={"message"} />;
 
-	const MyAsyncGeneratorComponent: Component<MyProps> = async function* (
+	const MyAsyncGeneratorComponent: Component<MyProps> = async function *(
 		this,
 		initialProps,
 	) {
@@ -241,7 +241,7 @@ test("GeneratorComponent", () => {
 });
 
 test("Props inference", () => {
-	function* MyComponent(
+	function *MyComponent(
 		this: Context<typeof MyComponent>,
 		props: {message: string},
 	): unknown {
@@ -252,7 +252,7 @@ test("Props inference", () => {
 		}
 	}
 
-	async function* MyAsyncComponent(
+	async function *MyAsyncComponent(
 		this: Context<typeof MyAsyncComponent>,
 		props: {message: string},
 	): unknown {
@@ -263,7 +263,7 @@ test("Props inference", () => {
 		}
 	}
 
-	function* FunctionWithNoParameters(
+	function *FunctionWithNoParameters(
 		this: Context<typeof FunctionWithNoParameters>,
 	): unknown {
 		for ({} of this) {
@@ -304,7 +304,7 @@ test("loose typings", () => {
 	elem = <MyAsyncFunctionComponent />;
 	elem = <MyAsyncFunctionComponent message={"message"} />;
 
-	function* MyGeneratorComponent(this: Context, props: MyProps) {
+	function *MyGeneratorComponent(this: Context, props: MyProps) {
 		const message: string = props.message;
 		// @ts-expect-error
 		const unexpected = props.unexpected;
@@ -323,7 +323,7 @@ test("loose typings", () => {
 	elem = <MyGeneratorComponent />;
 	elem = <MyGeneratorComponent message={"message"} />;
 
-	async function* MyAsyncGeneratorComponent(this: Context, props: MyProps) {
+	async function *MyAsyncGeneratorComponent(this: Context, props: MyProps) {
 		const message: string = props.message;
 		// @ts-expect-error
 		const unexpected = props.unexpected;

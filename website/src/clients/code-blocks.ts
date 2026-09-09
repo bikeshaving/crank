@@ -41,9 +41,8 @@ if (containers.length > 0) {
 
 			// Hydrate code blocks
 			for (const container of Array.from(containers)) {
-				const propsScript = container.querySelector(
-					".props",
-				) as HTMLScriptElement;
+				const propsScript =
+					container.querySelector(".props") as HTMLScriptElement;
 				const {code, lang} = extractData(propsScript);
 				renderer.hydrate(
 					jsx`

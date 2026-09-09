@@ -33,7 +33,7 @@ declare global {
 	}
 }
 
-export async function* Search(this: Context): AsyncGenerator<Element> {
+export async function *Search(this: Context): AsyncGenerator<Element> {
 	let query = "";
 	let results: SearchResult[] = [];
 	let isOpen = false;
@@ -52,9 +52,8 @@ export async function* Search(this: Context): AsyncGenerator<Element> {
 		try {
 			// Pagefind generates its assets at /pagefind/
 			// Use Function constructor to avoid bundler trying to resolve the import
-			const importPagefind = new Function(
-				'return import("/pagefind/pagefind.js")',
-			);
+			const importPagefind =
+				new Function('return import("/pagefind/pagefind.js")');
 			pagefind = await importPagefind();
 			return pagefind;
 		} catch (e) {

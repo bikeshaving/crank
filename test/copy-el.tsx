@@ -283,7 +283,7 @@ describe("copy-el", () => {
 	});
 
 	test("copy async generator", async () => {
-		async function* Component(this: Context) {
+		async function *Component(this: Context) {
 			for await (const _ of this) {
 				await new Promise((resolve) => setTimeout(resolve));
 				yield <span>Hello</span>;
@@ -319,7 +319,7 @@ describe("copy-el", () => {
 
 	// https://github.com/bikeshaving/crank/issues/196
 	test("copy async generator siblings with refresh", async () => {
-		async function* Component(this: Context) {
+		async function *Component(this: Context) {
 			let i = 0;
 			for await (const _ of this) {
 				await new Promise((resolve) => setTimeout(resolve));
@@ -330,7 +330,7 @@ describe("copy-el", () => {
 
 		let ctx!: Context;
 
-		function* Parent(this: Context) {
+		function *Parent(this: Context) {
 			ctx = this;
 			let i = 1;
 			for (const _ of this) {
@@ -382,7 +382,7 @@ describe("copy-el", () => {
 
 		let ctx!: Context;
 
-		function* Parent(this: Context, {children}: {children: Element}) {
+		function *Parent(this: Context, {children}: {children: Element}) {
 			ctx = this;
 			let i = 0;
 			for ({children} of this) {

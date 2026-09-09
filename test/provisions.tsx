@@ -23,7 +23,7 @@ describe("provisions", () => {
 		document.body.innerHTML = "";
 	});
 
-	function* Provider(
+	function *Provider(
 		this: Context,
 		_props: {message?: string},
 	): Generator<Element> {
