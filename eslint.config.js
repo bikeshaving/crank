@@ -4,23 +4,6 @@ export default [
 	...config,
 	{ignores: ["docs/**", "skills/**"]},
 	{
-		files: ["**/*.{js,jsx,ts,tsx}"],
-		rules: {
-			// Empty interfaces which extend a supertype are extension points for
-			// declaration merging (ProvisionMap, EventMap, ChildIterable).
-			"@typescript-eslint/no-empty-object-type": [
-				"error",
-				{allowInterfaces: "with-single-extends"},
-			],
-			// A tagged template is a call. Tests invoke the jsx tag for its
-			// side effects to assert that it throws.
-			"@typescript-eslint/no-unused-expressions": [
-				"error",
-				{allowTaggedTemplates: true},
-			],
-		},
-	},
-	{
 		// Examples are written the way users write them: space-indented, and
 		// without the repo's TypeScript ceremony.
 		files: ["examples/**/*", "website/examples/**/*"],
