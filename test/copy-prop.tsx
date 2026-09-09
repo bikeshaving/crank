@@ -158,7 +158,7 @@ describe("copy-prop", () => {
 	test("generator component", async () => {
 		let ctx!: Context;
 
-		function* Greeting(this: Context, {name}: {name: string}) {
+		function *Greeting(this: Context, {name}: {name: string}) {
 			ctx = this;
 			let i = 0;
 			for ({name} of this) {
@@ -191,7 +191,7 @@ describe("copy-prop", () => {
 
 		let ctx!: Context;
 
-		function* Greeting(this: Context, {name}: any) {
+		function *Greeting(this: Context, {name}: any) {
 			ctx = this;
 			let i = 0;
 			for ({name} of this) {
@@ -482,7 +482,7 @@ describe("copy-prop", () => {
 	test("copy prop can be used for uncontrolled input values", () => {
 		const spy = Sinon.spy();
 
-		function* Component(this: Context<typeof Component>) {
+		function *Component(this: Context<typeof Component>) {
 			let force = false;
 			let value = "Hello";
 			for ({} of this) {

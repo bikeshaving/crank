@@ -301,9 +301,8 @@ ${closingIndent})${semicolon}`;
 /**
  * Find the parent ExpressionStatement of a refresh call node
  */
-export function findRefreshStatementParent(
-	node: ESLintNode,
-): ESLintNode | null {
+export function findRefreshStatementParent(node: ESLintNode): ESLintNode |
+	null {
 	let current = node.parent;
 	while (current && current.type !== "ExpressionStatement") {
 		current = current.parent;

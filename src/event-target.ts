@@ -59,17 +59,12 @@ interface EventListenerRecord {
 	options: AddEventListenerOptions;
 }
 
-export interface CustomEventTarget<
-	TParent extends CustomEventTarget<TParent> = any,
-> {
-	[_parent]: TParent | null;
-	[_listeners]: EventListenerRecord[];
-	[_delegates]: Set<EventTarget>;
-}
-
 export class CustomEventTarget<TParent extends CustomEventTarget<TParent> = any>
 implements EventTarget {
 	declare static dispatchEventOnSelf: typeof _dispatchEventOnSelf;
+	declare [_parent]: TParent | null;
+	declare [_listeners]: EventListenerRecord[];
+	declare [_delegates]: Set<EventTarget>;
 	constructor(parent: TParent | null = null) {
 		this[_parent] = parent;
 		this[_listeners] = [];

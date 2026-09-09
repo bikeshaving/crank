@@ -125,7 +125,7 @@ function neighborsOf(cell, cells) {
   });
 }
 
-function* Minesweeper() {
+function *Minesweeper() {
   const rows = 10;
   const cols = 15;
   const bombCount = 25;
@@ -205,9 +205,8 @@ function* Minesweeper() {
     }
 
     // Check win condition
-    const unrevealedNonBombs = cells.filter(
-      (c) => !c.bomb && !c.revealed,
-    ).length;
+    const unrevealedNonBombs =
+      cells.filter((c) => !c.bomb && !c.revealed).length;
     if (unrevealedNonBombs === 0) {
       gameState = "won";
     }

@@ -38,7 +38,7 @@ function parseHash(hash) {
   return {route: "feed", type: "top", page: 1};
 }
 
-function* Navbar() {
+function *Navbar() {
   let active = null;
   const updateActive = () => {
     const data = parseHash(window.location.hash);
@@ -208,7 +208,7 @@ async function List({type, page}) {
   );
 }
 
-function* Comment() {
+function *Comment() {
   let expanded = true;
   this.addEventListener("click", (ev) => {
     if (ev.target.className === "expand") {
@@ -397,7 +397,7 @@ async function Loading({wait = 800}) {
   );
 }
 
-async function* App() {
+async function *App() {
   let data;
   const route = (ev) => {
     const update = () => {

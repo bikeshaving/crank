@@ -41,7 +41,7 @@ const examples = extractData(
 	document.getElementById("examples") as HTMLScriptElement,
 );
 
-function* Playground(this: Context) {
+function *Playground(this: Context) {
 	// Priority: URL hash > localStorage > default example
 	let code = "";
 	let updateEditor = true;

@@ -4,7 +4,7 @@ import {css} from "@emotion/css";
 import {CodeEditor} from "./code-editor.js";
 import {CodePreview} from "./code-preview.js";
 
-export function* InlineCodeBlock(this: Context<typeof InlineCodeBlock>, {
+export function *InlineCodeBlock(this: Context<typeof InlineCodeBlock>, {
 	value,
 	lang,
 	editable,

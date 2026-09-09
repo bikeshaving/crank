@@ -123,9 +123,8 @@ router.use(async (request) => {
 router.use(trailingSlash("append"));
 
 // Redirects for renamed URLs (handled in middleware to avoid router conflicts)
-const redirects: Record<string, string> = {
-	"/guides/special-props-and-tags/": "/guides/special-props-and-components/",
-};
+const redirects: Record<string, string> =
+	{"/guides/special-props-and-tags/": "/guides/special-props-and-components/"};
 
 router.use(async (request) => {
 	const url = new URL(request.url);
@@ -266,9 +265,8 @@ router.route("/spec/").get(async () => {
 router.route("/skill").get(async () => {
 	try {
 		const skillsDir = await self.directories.open("skills");
-		const fileHandle = await skillsDir.getFileHandle(
-			"crank-component-authoring.skill",
-		);
+		const fileHandle =
+			await skillsDir.getFileHandle("crank-component-authoring.skill");
 		const file = await fileHandle.getFile();
 		const content = await file.arrayBuffer();
 		return new Response(content, {
@@ -397,9 +395,8 @@ async function generateStaticSite(): Promise<void> {
 		// Generate 404 page
 		const notFoundResponse = await fetch("/404.html");
 		const notFoundHTML = await notFoundResponse.text();
-		const notFoundHandle = await staticBucket.getFileHandle("404.html", {
-			create: true,
-		});
+		const notFoundHandle =
+			await staticBucket.getFileHandle("404.html", {create: true});
 		const notFoundWritable = await notFoundHandle.createWritable();
 		await notFoundWritable.write(notFoundHTML);
 		await notFoundWritable.close();
@@ -421,15 +418,13 @@ async function generateStaticSite(): Promise<void> {
 					const parts = filePath.split("/");
 					let currentDir = staticBucket;
 					for (let i = 0; i < parts.length - 1; i++) {
-						currentDir = await currentDir.getDirectoryHandle(parts[i], {
-							create: true,
-						});
+						currentDir =
+							await currentDir.getDirectoryHandle(parts[i], {create: true});
 					}
 
 					const fileName = parts[parts.length - 1];
-					const fileHandle = await currentDir.getFileHandle(fileName, {
-						create: true,
-					});
+					const fileHandle =
+						await currentDir.getFileHandle(fileName, {create: true});
 					const writable = await fileHandle.createWritable();
 					await writable.write(content);
 					await writable.close();
@@ -460,15 +455,13 @@ async function generateStaticSite(): Promise<void> {
 			const parts = filePath.split("/");
 			let currentDir = staticBucket;
 			for (let i = 0; i < parts.length - 1; i++) {
-				currentDir = await currentDir.getDirectoryHandle(parts[i], {
-					create: true,
-				});
+				currentDir =
+					await currentDir.getDirectoryHandle(parts[i], {create: true});
 			}
 
 			const fileName = parts[parts.length - 1];
-			const fileHandle = await currentDir.getFileHandle(fileName, {
-				create: true,
-			});
+			const fileHandle =
+				await currentDir.getFileHandle(fileName, {create: true});
 			const writable = await fileHandle.createWritable();
 			await writable.write(redirectHTML);
 			await writable.close();
@@ -477,9 +470,8 @@ async function generateStaticSite(): Promise<void> {
 
 		// Generate sitemap.xml
 		const sitemapXML = generateSitemap(staticRoutes);
-		const sitemapHandle = await staticBucket.getFileHandle("sitemap.xml", {
-			create: true,
-		});
+		const sitemapHandle =
+			await staticBucket.getFileHandle("sitemap.xml", {create: true});
 		const sitemapWritable = await sitemapHandle.createWritable();
 		await sitemapWritable.write(sitemapXML);
 		await sitemapWritable.close();
@@ -487,21 +479,18 @@ async function generateStaticSite(): Promise<void> {
 
 		// Generate RSS feed
 		const feedXML = generateFeed(blogDocs);
-		const blogOutputDir = await staticBucket.getDirectoryHandle("blog", {
-			create: true,
-		});
-		const feedHandle = await blogOutputDir.getFileHandle("feed.xml", {
-			create: true,
-		});
+		const blogOutputDir =
+			await staticBucket.getDirectoryHandle("blog", {create: true});
+		const feedHandle =
+			await blogOutputDir.getFileHandle("feed.xml", {create: true});
 		const feedWritable = await feedHandle.createWritable();
 		await feedWritable.write(feedXML);
 		await feedWritable.close();
 		logger.info("Generated blog/feed.xml");
 
 		// Generate robots.txt
-		const robotsHandle = await staticBucket.getFileHandle("robots.txt", {
-			create: true,
-		});
+		const robotsHandle =
+			await staticBucket.getFileHandle("robots.txt", {create: true});
 		const robotsWritable = await robotsHandle.createWritable();
 		await robotsWritable.write(robotsTxt);
 		await robotsWritable.close();
@@ -510,14 +499,12 @@ async function generateStaticSite(): Promise<void> {
 		// Copy .skill archive for Claude Code skill installation
 		try {
 			const skillsDir = await self.directories.open("skills");
-			const skillHandle = await skillsDir.getFileHandle(
-				"crank-component-authoring.skill",
-			);
+			const skillHandle =
+				await skillsDir.getFileHandle("crank-component-authoring.skill");
 			const skillFile = await skillHandle.getFile();
 			const skillContent = await skillFile.arrayBuffer();
-			const skillDestHandle = await staticBucket.getFileHandle("skill", {
-				create: true,
-			});
+			const skillDestHandle =
+				await staticBucket.getFileHandle("skill", {create: true});
 			const skillWritable = await skillDestHandle.createWritable();
 			await skillWritable.write(skillContent);
 			await skillWritable.close();

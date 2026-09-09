@@ -13,7 +13,7 @@ import type {Token} from "prismjs";
 import {ContentArea} from "./contentarea.js";
 import {tokenize} from "../utils/prism.js";
 
-function* Gutter(this: Context<typeof Gutter>, {length}: {length: number}) {
+function *Gutter(this: Context<typeof Gutter>, {length}: {length: number}) {
 	let initial = true;
 	let newLength: number;
 	const lines = Array.from({length}, (_, i) => i + 1);
@@ -124,7 +124,7 @@ function printTokens(
 	return result;
 }
 
-export function* CodeEditor(this: Context, {
+export function *CodeEditor(this: Context, {
 	value,
 	language,
 	editable,
@@ -134,9 +134,7 @@ export function* CodeEditor(this: Context, {
 	language: string;
 	editable?: boolean;
 	showGutter?: boolean;
-}): Generator<
-	Element
-> {
+}): Generator<Element> {
 	const keyer = new Keyer();
 	let selectionRange: SelectionRange | undefined;
 	let renderSource: string | undefined;
@@ -269,9 +267,8 @@ export function* CodeEditor(this: Context, {
 				}
 
 				const prevLine = getPreviousLine(value, selectionStart);
-				const [, spaceBefore, bracket] = prevLine.match(
-					/(\s*).*?(\(|\[|{)?(?:\s*)$/,
-				)!;
+				const [, spaceBefore, bracket] =
+					prevLine.match(/(\s*).*?(\(|\[|{)?(?:\s*)$/)!;
 				let insert = "\n" + (spaceBefore || "");
 				if (bracket) {
 					insert += TAB;

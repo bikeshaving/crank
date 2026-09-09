@@ -274,7 +274,7 @@ describe("html", () => {
 	test("sync generator components are cleaned up", () => {
 		const mock = Sinon.fake();
 
-		function* Component() {
+		function *Component() {
 			let i = 0;
 			try {
 				while (true) {
@@ -293,7 +293,7 @@ describe("html", () => {
 	test("async generator components are cleaned up", async () => {
 		const mock = Sinon.fake();
 
-		async function* Component(this: Context) {
+		async function *Component(this: Context) {
 			let i = 0;
 			// TODO: investigate why using a while loop causes renderer.render to
 			// resolve to <div>1</div>
@@ -315,7 +315,7 @@ describe("html", () => {
 	test("stateful", () => {
 		const mock = Sinon.fake();
 
-		function* Component() {
+		function *Component() {
 			let i = 0;
 			try {
 				while (true) {
@@ -382,13 +382,13 @@ describe("html", () => {
 	});
 
 	test("schedule allows for re-render", () => {
-		function* Child(this: Context, {children}: {children: Children}) {
+		function *Child(this: Context, {children}: {children: Children}) {
 			for ({children} of this) {
 				yield children;
 			}
 		}
 
-		function* Component(this: Context) {
+		function *Component(this: Context) {
 			for ({} of this) {
 				this.schedule(() => this.refresh());
 				yield <div>Render 1</div>;
@@ -410,7 +410,7 @@ describe("html", () => {
 			return children;
 		}
 
-		function* Component(this: Context) {
+		function *Component(this: Context) {
 			for ({} of this) {
 				this.schedule(() => this.refresh());
 				yield <div>Render 1</div>;

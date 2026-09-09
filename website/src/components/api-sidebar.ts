@@ -8,9 +8,11 @@ export interface APIModule {
 	name: string;
 	slug: string;
 	url: string;
-	categories: Array<
-		{name: string; slug: string; items: Array<{name: string; url: string}>}
-	>;
+	categories: Array<{
+		name: string;
+		slug: string;
+		items: Array<{name: string; url: string}>;
+	}>;
 }
 
 // Category display names and sort order

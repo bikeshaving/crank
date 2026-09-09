@@ -55,9 +55,8 @@ export function arrayify<T>(
 				: [...(value as NonStringIterable<T>)];
 }
 
-export function isIteratorLike(
-	value: any,
-): value is Iterator<unknown> | AsyncIterator<unknown> {
+export function isIteratorLike(value: any): value is Iterator<unknown> |
+	AsyncIterator<unknown> {
 	return value != null && typeof value.next === "function";
 }
 

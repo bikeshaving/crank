@@ -43,7 +43,7 @@ describe("cleanup", () => {
 	test("generator", () => {
 		const fn = Sinon.fake();
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			this.cleanup(fn);
 			while (true) {
 				yield <span>Hello</span>;
@@ -95,7 +95,7 @@ describe("cleanup", () => {
 	test("async generator", async () => {
 		const fn = Sinon.fake();
 
-		async function* Component(this: Context): AsyncGenerator<Element> {
+		async function *Component(this: Context): AsyncGenerator<Element> {
 			this.cleanup(fn);
 			for await (const _ of this) {
 				await new Promise((resolve) => setTimeout(resolve, 1));
@@ -125,7 +125,7 @@ describe("cleanup", () => {
 	test("multiple calls, same fn", () => {
 		const fn = Sinon.fake();
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			this.cleanup(fn);
 			while (true) {
 				yield <span>Hello</span>;
@@ -153,7 +153,7 @@ describe("cleanup", () => {
 		const fn1 = Sinon.fake();
 		const fn2 = Sinon.fake();
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			this.cleanup(fn1);
 			this.cleanup(fn2);
 			while (true) {
@@ -185,7 +185,7 @@ describe("cleanup", () => {
 		const fn1 = Sinon.fake();
 		const fn2 = Sinon.fake();
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			let i = 0;
 			while (true) {
 				this.cleanup(fn1);
@@ -252,7 +252,7 @@ describe("cleanup", () => {
 
 		const fn = Sinon.fake();
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			this.cleanup(fn);
 			while (true) {
 				yield <Child />;
@@ -283,7 +283,7 @@ describe("cleanup", () => {
 
 		const fn = Sinon.fake();
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			this.cleanup(fn);
 			while (true) {
 				yield <Child />;
@@ -309,7 +309,7 @@ describe("cleanup", () => {
 	test("fragment child", () => {
 		const fn = Sinon.fake();
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			this.cleanup(fn);
 			while (true) {
 				yield (
@@ -347,7 +347,7 @@ describe("cleanup", () => {
 			throw new Error("This should never be reached");
 		}
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			this.cleanup(fn);
 			while (true) {
 				yield <Hanging />;
@@ -376,7 +376,7 @@ describe("cleanup", () => {
 	test("cleanup is called even if component is prematurely unmounted", async () => {
 		const fn = Sinon.fake();
 
-		async function* Component(this: Context) {
+		async function *Component(this: Context) {
 			fn();
 			await new Promise((r) => setTimeout(r, 100));
 			this.cleanup(() => {
@@ -399,7 +399,7 @@ describe("cleanup", () => {
 		const fn = Sinon.fake();
 		let resolve: (value?: any) => void;
 
-		function* Component(this: Context) {
+		function *Component(this: Context) {
 			this.cleanup(() => {
 				fn();
 				return new Promise((resolve1) => (resolve = resolve1));
@@ -434,7 +434,7 @@ describe("cleanup", () => {
 		let resolve1!: (value?: any) => void;
 		let resolve2!: (value?: any) => void;
 
-		function* Child1(this: Context) {
+		function *Child1(this: Context) {
 			this.cleanup(() => {
 				mock1();
 				return new Promise((r) => (resolve1 = r));
@@ -444,7 +444,7 @@ describe("cleanup", () => {
 			}
 		}
 
-		function* Child3(this: Context) {
+		function *Child3(this: Context) {
 			this.cleanup(() => {
 				mock2();
 				return new Promise((r) => (resolve2 = r));
@@ -499,7 +499,7 @@ describe("cleanup", () => {
 		let resolveParent!: (value?: any) => void;
 		let resolveChild!: (value?: any) => void;
 
-		function* Parent(this: Context) {
+		function *Parent(this: Context) {
 			this.cleanup(() => {
 				parentCleanup();
 				return new Promise((r) => (resolveParent = r));
@@ -509,7 +509,7 @@ describe("cleanup", () => {
 			}
 		}
 
-		function* Child(this: Context) {
+		function *Child(this: Context) {
 			this.cleanup(() => {
 				childCleanup();
 				return new Promise((r) => (resolveChild = r));
@@ -563,7 +563,7 @@ describe("cleanup", () => {
 		let resolveA!: (value?: any) => void;
 		let resolveB!: (value?: any) => void;
 
-		function* ComponentA(this: Context) {
+		function *ComponentA(this: Context) {
 			this.cleanup(() => {
 				cleanupA();
 				return new Promise((r) => (resolveA = r));
@@ -571,7 +571,7 @@ describe("cleanup", () => {
 			yield <span>A</span>;
 		}
 
-		function* ComponentB(this: Context) {
+		function *ComponentB(this: Context) {
 			this.cleanup(() => {
 				cleanupB();
 				return new Promise((r) => (resolveB = r));
@@ -622,7 +622,7 @@ describe("cleanup", () => {
 		const cleanup = Sinon.fake();
 		let resolve!: (value?: any) => void;
 
-		function* Component(this: Context, {condition}: {condition: boolean}) {
+		function *Component(this: Context, {condition}: {condition: boolean}) {
 			this.cleanup(() => {
 				cleanup();
 				return new Promise((r) => (resolve = r));
@@ -653,7 +653,7 @@ describe("cleanup", () => {
 	test("lingering component cleared when parent unmounted", async () => {
 		const cleanup = Sinon.fake();
 
-		function* Child(this: Context) {
+		function *Child(this: Context) {
 			this.cleanup(() => {
 				cleanup();
 				return new Promise(() => {});
@@ -685,7 +685,7 @@ describe("cleanup", () => {
 		const cleanup = Sinon.fake();
 		let resolve!: (value?: any) => void;
 
-		function* Modal(this: Context) {
+		function *Modal(this: Context) {
 			this.cleanup(() => {
 				cleanup();
 				return new Promise((r) => (resolve = r));
@@ -735,7 +735,7 @@ describe("cleanup", () => {
 		const cleanup = Sinon.fake();
 		let _resolve!: (value?: any) => void;
 
-		function* Modal(this: Context) {
+		function *Modal(this: Context) {
 			this.cleanup(() => {
 				cleanup();
 				return new Promise((r) => (_resolve = r));
@@ -783,7 +783,7 @@ describe("cleanup", () => {
 		// Does the refresh actually re-render?
 		let resolve!: (value?: any) => void;
 
-		function* Modal(this: Context) {
+		function *Modal(this: Context) {
 			let visible = true;
 			this.cleanup(() => {
 				this.refresh(() => (visible = false));
@@ -823,7 +823,7 @@ describe("cleanup", () => {
 		const cleanup = Sinon.fake();
 		let resolve!: (value?: any) => void;
 
-		function* Modal(this: Context) {
+		function *Modal(this: Context) {
 			this.cleanup(() => {
 				cleanup();
 				return new Promise((r) => (resolve = r));
@@ -879,7 +879,7 @@ describe("cleanup", () => {
 		const portalRoot = document.createElement("div");
 		document.body.appendChild(portalRoot);
 
-		function* Modal(this: Context) {
+		function *Modal(this: Context) {
 			this.cleanup(() => {
 				cleanup();
 				return new Promise((r) => (resolve = r));
@@ -931,7 +931,7 @@ describe("cleanup", () => {
 		const portalRoot = document.createElement("div");
 		document.body.appendChild(portalRoot);
 
-		function* Modal(this: Context) {
+		function *Modal(this: Context) {
 			let visible = true;
 			this.cleanup(() => {
 				this.refresh(() => (visible = false));
@@ -973,7 +973,7 @@ describe("cleanup", () => {
 		let step = 0;
 		let resolve!: (value?: any) => void;
 
-		function* Animated(this: Context) {
+		function *Animated(this: Context) {
 			this.cleanup(() => {
 				this.refresh(() => (step = 1));
 				return new Promise((r) => (resolve = r));
@@ -1008,7 +1008,7 @@ describe("cleanup", () => {
 		let clickCount = 0;
 		let resolve!: (value?: any) => void;
 
-		function* Counter(this: Context) {
+		function *Counter(this: Context) {
 			this.cleanup(() => {
 				return new Promise((r) => (resolve = r));
 			});
@@ -1061,7 +1061,7 @@ describe("cleanup", () => {
 			return <span class="badge">{label}</span>;
 		}
 
-		function* Panel(this: Context) {
+		function *Panel(this: Context) {
 			this.cleanup(() => {
 				this.refresh(() => (phase = "exiting"));
 				return new Promise((r) => (resolve = r));
@@ -1103,7 +1103,7 @@ describe("cleanup", () => {
 		let visible = true;
 		let cleanupResolve!: (value?: any) => void;
 
-		function* Toast(this: Context) {
+		function *Toast(this: Context) {
 			this.cleanup(() => {
 				this.refresh(() => (visible = false));
 				return new Promise((r) => (cleanupResolve = r));

@@ -432,9 +432,7 @@ function formatFunction(node: any, state: any, generator: any): void {
 /**
  * Parse JSX pragma comments to determine runtime mode.
  */
-function parseJSXPragma(
-	code: string,
-): {
+function parseJSXPragma(code: string): {
 	jsxRuntime: "automatic" | "classic";
 	jsxImportSource?: string;
 	jsxPragma?: string;
@@ -665,9 +663,8 @@ function transformJSXElement(
 		tag = {type: "Identifier", name: tagName.name};
 	}
 
-	const {props, propsWithKey, keyExpr} = transformJSXAttributes(
-		openingElement.attributes,
-	);
+	const {props, propsWithKey, keyExpr} =
+		transformJSXAttributes(openingElement.attributes);
 	const children = transformJSXChildren(node.children, pragma);
 
 	if (pragma.jsxRuntime === "automatic") {
@@ -819,9 +816,7 @@ function transformJSXMemberExpression(node: any): ESTree.MemberExpression {
 	};
 }
 
-function transformJSXAttributes(
-	attributes: any[],
-): {
+function transformJSXAttributes(attributes: any[]): {
 	props: ESTree.ObjectExpression;
 	propsWithKey: ESTree.ObjectExpression;
 	keyExpr: ESTree.Expression | null;

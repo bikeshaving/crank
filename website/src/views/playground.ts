@@ -26,9 +26,11 @@ renderer.render(<Timer />, document.body);
 `.trim();
 
 // Read all examples dynamically
-async function loadExamples(): Promise<
-	Array<{name: string; label: string; code: string}>
-> {
+async function loadExamples(): Promise<Array<{
+	name: string;
+	label: string;
+	code: string;
+}>> {
 	const examplesDir = await self.directories.open("examples");
 
 	const examples = [{name: "timer", label: "Timer", code: TIMER_EXAMPLE}];

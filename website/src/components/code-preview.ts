@@ -315,7 +315,7 @@ ${code}
 
 let globalId = 0;
 
-export function* CodePreview(this: Context<typeof CodePreview>, {
+export function *CodePreview(this: Context<typeof CodePreview>, {
 	value,
 	visible = true,
 	autoresize = false,

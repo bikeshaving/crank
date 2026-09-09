@@ -371,7 +371,7 @@ function buttonDescription(label: string): string {
   return "";
 }
 
-function* Calculator(this: Context) {
+function *Calculator(this: Context) {
   let state = calcMachine.initialState;
   this.addEventListener("click", (el) => {
     if ((el.target as Element).tagName === "BUTTON") {

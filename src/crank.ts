@@ -116,9 +116,8 @@ export type Fragment = typeof Fragment;
  * Renderer.prototype.render() implicitly wraps top-level in a Portal element
  * with the root set to the second argument passed in.
  */
-export const Portal = Symbol.for("crank.Portal") as unknown as Component<
-	{root?: object}
-> & symbol;
+export const Portal =
+	Symbol.for("crank.Portal") as unknown as Component<{root?: object}> & symbol;
 export type Portal = typeof Portal;
 
 /**
@@ -140,9 +139,8 @@ export type Copy = typeof Copy;
  * Strings in the element tree are implicitly wrapped in a Text element with
  * value set to the string.
  */
-export const Text = Symbol.for("crank.Text") as unknown as Component<
-	{value: string}
-> & symbol;
+export const Text =
+	Symbol.for("crank.Text") as unknown as Component<{value: string}> & symbol;
 export type Text = typeof Text;
 
 /** A special tag for injecting raw nodes or strings via a value prop. */
@@ -2543,30 +2541,10 @@ export interface EventMap extends Crank.EventMap {}
 
 type MappedEventListener<T extends string> = (ev: Crank.EventMap[T]) => unknown;
 
-type MappedEventListenerObject<T extends string> = {
-	handleEvent: MappedEventListener<T>;
-};
+type MappedEventListenerOrEventListenerObject<T extends string> =
+	MappedEventListener<T> | {handleEvent: MappedEventListener<T>};
 
-type MappedEventListenerOrEventListenerObject<
-	T extends string,
-> = MappedEventListener<
-	T
-> |
-MappedEventListenerObject<T>;
-
-// The class and its merged interface must declare identical type parameters,
-// so T is required here even though only this half uses TResult alone. The
-// rule does not pool type-parameter usage across merged declaration halves
-// (typescript-eslint bug), so it flags T as unused; tsc itself is clean.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface Context<T = any, TResult = any> extends Crank.Context {
-
-	/**
-	 * @internal
-	 * DO NOT USE READ THIS PROPERTY.
-	 */
-	[_ContextState]: ContextState<unknown, unknown, unknown, TResult>;
-}
+export interface Context extends Crank.Context {}
 
 /**
  * A class which is instantiated and passed to every component as its this
@@ -2584,6 +2562,12 @@ export interface Context<T = any, TResult = any> extends Crank.Context {
 
 export class Context<T = any, TResult = any>
 	extends CustomEventTarget<Context> {
+	/**
+	 * @internal
+	 * DO NOT USE READ THIS PROPERTY.
+	 */
+	declare [_ContextState]: ContextState<unknown, unknown, unknown, TResult>;
+
 	// TODO: If we could make the constructor function take a nicer value, it
 	// would be useful for testing purposes.
 	constructor(state: ContextState<unknown, unknown, unknown, TResult>) {
@@ -2622,7 +2606,7 @@ export class Context<T = any, TResult = any>
 		return getFlag(this[_ContextState].ret, IsUnmounted);
 	}
 
-	* [Symbol.iterator](): Generator<ComponentPropsOrProps<T>, undefined> {
+	*[Symbol.iterator](): Generator<ComponentPropsOrProps<T>, undefined> {
 		const ctx = this[_ContextState];
 		setFlag(ctx.ret, IsInForOfLoop);
 		try {
@@ -2642,7 +2626,7 @@ export class Context<T = any, TResult = any>
 		}
 	}
 
-	async* [Symbol.asyncIterator](): AsyncGenerator<
+	async *[Symbol.asyncIterator](): AsyncGenerator<
 		ComponentPropsOrProps<T>,
 		undefined
 	> {
@@ -3308,9 +3292,8 @@ function runComponent<TNode, TResult>(
  * @returns {Promise<undefined> | undefined} A possible promise which
  * represents the duration during which the component is blocked.
  */
-function resumePropsAsyncIterator(
-	ctx: ContextState,
-): Promise<undefined> | undefined {
+function resumePropsAsyncIterator(ctx: ContextState): Promise<undefined> |
+	undefined {
 	if (ctx.onPropsProvided) {
 		ctx.onPropsProvided(ctx.ret.el.props);
 		ctx.onPropsProvided = undefined;
@@ -3529,9 +3512,8 @@ async function pullComponent<TNode, TResult>(
 			} else if (!iteration.done) {
 				try {
 					setFlag(ctx.ret, IsExecuting);
-					iterationP = ctx.iterator!.next(oldResult) as Promise<
-						ChildrenIteratorResult
-					>;
+					iterationP =
+						ctx.iterator!.next(oldResult) as Promise<ChildrenIteratorResult>;
 				} finally {
 					setFlag(ctx.ret, IsExecuting, false);
 				}
