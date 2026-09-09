@@ -2417,6 +2417,39 @@ export type ComponentPropsOrProps<T> = T extends (...args: any[]) => unknown
 const _ContextState = Symbol.for("crank.ContextState");
 
 /**
+ * An interface which can be extended to provide strongly typed provisions.
+ * See Context.prototype.consume and Context.prototype.provide.
+ */
+export interface ProvisionMap extends Crank.ProvisionMap {}
+
+export interface EventMap extends Crank.EventMap {}
+
+type MappedEventListener<T extends string> = (ev: Crank.EventMap[T]) => unknown;
+
+type MappedEventListenerObject<T extends string> = {
+	handleEvent: MappedEventListener<T>;
+};
+
+type MappedEventListenerOrEventListenerObject<
+	T extends string,
+> = MappedEventListener<
+	T
+> |
+MappedEventListenerObject<T>;
+
+// The class and its merged interface must declare identical type parameters,
+// so T is required here even though only TResult is used.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export interface Context<T = any, TResult = any> extends Crank.Context {
+
+	/**
+	 * @internal
+	 * DO NOT USE READ THIS PROPERTY.
+	 */
+	[_ContextState]: ContextState<unknown, unknown, unknown, TResult>;
+}
+
+/**
  * A class which is instantiated and passed to every component as its this
  * value/second parameter. Contexts form a tree just like elements and all
  * components in the element tree are connected via contexts. Components can
@@ -3826,35 +3859,6 @@ function propagateError<TNode>(
 	}
 
 	commitComponent(parent, schedulePromises);
-}
-
-/**
- * An interface which can be extended to provide strongly typed provisions.
- * See Context.prototype.consume and Context.prototype.provide.
- */
-export interface ProvisionMap extends Crank.ProvisionMap {}
-
-export interface EventMap extends Crank.EventMap {}
-
-type MappedEventListener<T extends string> = (ev: Crank.EventMap[T]) => unknown;
-
-type MappedEventListenerOrEventListenerObject<
-	T extends string,
-> = MappedEventListener<
-	T
-> |
-{handleEvent: MappedEventListener<T>};
-
-// The class and its merged interface must declare identical type parameters,
-// so T is required here even though only TResult is used.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface Context<T = any, TResult = any> extends Crank.Context {
-
-	/**
-	 * @internal
-	 * DO NOT USE READ THIS PROPERTY.
-	 */
-	[_ContextState]: ContextState<unknown, unknown, unknown, TResult>;
 }
 
 // TODO: uncomment and use in the Element interface below
