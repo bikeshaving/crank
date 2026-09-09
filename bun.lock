@@ -5,7 +5,7 @@
     "": {
       "name": "@b9g/crank",
       "devDependencies": {
-        "@b9g/eslint-config": "^0.1.5",
+        "@b9g/eslint-config": "^0.1.6",
         "@b9g/libuild": "^0.2.20",
         "@b9g/skillpack": "^0.1.6",
         "@eslint/js": "^9.39.0",
@@ -101,7 +101,7 @@
 
     "@b9g/crankdown": ["@b9g/crankdown@workspace:packages/crankdown"],
 
-    "@b9g/eslint-config": ["@b9g/eslint-config@0.1.5", "", { "peerDependencies": { "@eslint/js": ">=9", "@stylistic/eslint-plugin": ">=3", "@typescript-eslint/eslint-plugin": ">=8", "@typescript-eslint/parser": ">=8", "eslint": ">=9", "eslint-plugin-acrocase": ">=0.0.1", "eslint-plugin-crank": ">=0.2.2", "eslint-plugin-esfold": ">=0.1.2" } }, "sha512-bt0B3em4vbE7rltn4oHRw8OAwndK3jP0aHzOsoF+ttRwbURcUzGiKBNPkJFHtYp/40PBSIQ6exwqWOol7C+6KQ=="],
+    "@b9g/eslint-config": ["@b9g/eslint-config@0.1.6", "", { "peerDependencies": { "@eslint/js": ">=9", "@stylistic/eslint-plugin": ">=3", "@typescript-eslint/eslint-plugin": ">=8", "@typescript-eslint/parser": ">=8", "eslint": ">=9", "eslint-plugin-acrocase": ">=0.0.1", "eslint-plugin-crank": ">=0.2.2", "eslint-plugin-esfold": ">=0.1.2" } }, "sha512-L3eajD9O5p9FLt+iKAx+LaeoAPlONvbU5kX0RPw9tuMCVllFzMYtxmFFafu8xEiqPbCYMBYC0s3hTwcjLUksBQ=="],
 
     "@b9g/libuild": ["@b9g/libuild@0.2.23", "", { "dependencies": { "@b9g/async-context": "^0.2.1", "commander": "^15.0.0", "esbuild": "^0.28.1", "expect": "^30.4.1", "glob": "^13.0.6", "pretty-format": "^30.4.1" }, "peerDependencies": { "playwright": "^1.40.0", "typescript": "^5.0.0 || ^6.0.0" }, "optionalPeers": ["playwright", "typescript"], "bin": { "libuild": "cli.js" } }, "sha512-Egwo3a0Blk2sPWX2Gp+GtYgqWCt4uTitLgHBZbc3WvBm0WhZ31cC+ODyANIo2oDj6NrZjUmPP8k8nkyTe8rocg=="],
 
