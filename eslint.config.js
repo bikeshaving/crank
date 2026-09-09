@@ -25,6 +25,8 @@ export default [
 		// without the repo's TypeScript ceremony.
 		files: ["examples/**/*", "website/examples/**/*"],
 		rules: {
+			// The indent width lives in three rules; a width override must set
+			// all of them.
 			"@stylistic/indent": ["error", 2],
 			"@stylistic/indent-binary-ops": ["error", 2],
 			"@stylistic/jsx-indent-props": ["error", 2],
