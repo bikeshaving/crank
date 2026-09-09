@@ -7,10 +7,7 @@ export function createError(
 	messageId: string,
 	data?: Record<string, string>,
 ): RuleTester.TestCaseError {
-	return {
-		messageId,
-		...(data && {data}),
-	} as RuleTester.TestCaseError;
+	return {messageId, ...(data && {data})} as RuleTester.TestCaseError;
 }
 
 /**
@@ -21,11 +18,7 @@ export function createInvalidTest(
 	output: string,
 	errors: RuleTester.TestCaseError[],
 ): RuleTester.InvalidTestCase {
-	return {
-		code,
-		output,
-		errors,
-	};
+	return {code, output, errors};
 }
 
 /**
@@ -44,12 +37,7 @@ export function createMockStatement(
 export function createMockCallbackNode(
 	statements: Array<{type: string; text: string}>,
 ): {body: {type: string; body: Array<{type: string; text: string}>}} {
-	return {
-		body: {
-			type: "BlockStatement",
-			body: statements,
-		},
-	};
+	return {body: {type: "BlockStatement", body: statements}};
 }
 
 /**

@@ -4,10 +4,11 @@ import serializeJavascript from "serialize-javascript";
 
 let nextId = 0;
 
-export function* SerializeScript(
-	this: Context,
-	{name, value, ...scriptProps}: any,
-): any {
+export function* SerializeScript(this: Context, {
+	name,
+	value,
+	...scriptProps
+}: any): any {
 	const id = nextId++;
 	for ({name, value} of this) {
 		name = `${name || "embedded-json"}-${id}`;

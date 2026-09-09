@@ -23,11 +23,7 @@ const components = {
 				class="${css`
 					display: block;
 					text-align: center;
-					font-size: ${depth === 2
-						? "max(5vh, 40px)"
-						: depth === 3
-							? "max(4vh, 30px)"
-							: null};
+					font-size: ${depth === 2 ? "max(5vh, 40px)" : depth === 3 ? "max(4vh, 30px)" : null};
 					color: var(${depth === 3 ? "--highlight-color" : "--text-color"});
 					margin: 0.75em auto;
 					${(depth === 2 || depth === 3) && "padding: 0.75em 0"};

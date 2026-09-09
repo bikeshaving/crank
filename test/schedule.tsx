@@ -2,11 +2,7 @@ import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
 import {hangs} from "./utils.js";
 import type {Children, Context, Element} from "../src/crank.js";
-import {
-	createElement,
-	Copy,
-	Fragment,
-} from "../src/crank.js";
+import {createElement, Copy, Fragment} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("schedule", () => {
@@ -17,22 +13,20 @@ describe("schedule", () => {
 
 	const AsyncComponent = async function ({
 		children,
-	}: {
-		children: Children;
-	}): Promise<Children> {
+	}: {children: Children}): Promise<
+		Children
+	> {
 		await new Promise((resolve) => AsyncComponent.resolves.push(resolve));
 		return children;
 	} as ResolvingComponent;
 
 	AsyncComponent.resolves = [];
 
-	const AsyncMountingComponent = function* (
-		this: Context,
-		{children}: {children: Children},
-	): Generator<Children> {
-		this.schedule(
-			() =>
-				new Promise((resolve) => AsyncMountingComponent.resolves.push(resolve)),
+	const AsyncMountingComponent = function* (this: Context, {children}: {
+		children: Children;
+	}): Generator<Children> {
+		this.schedule(() =>
+			new Promise((resolve) => AsyncMountingComponent.resolves.push(resolve)),
 		);
 		for ({children} of this) {
 			yield children;
@@ -690,10 +684,9 @@ describe("schedule", () => {
 			yield <Component>Render 2</Component>;
 		}
 
-		const result = renderer.render(
-			<Parent />,
-			document.body,
-		) as Promise<HTMLElement>;
+		const result = renderer.render(<Parent />, document.body) as Promise<
+			HTMLElement
+		>;
 
 		expect((await result).outerHTML).toBe("<p>Render 2</p>");
 		expect(document.body.innerHTML).toBe("<p>Render 2</p>");

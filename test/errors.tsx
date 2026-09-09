@@ -654,9 +654,7 @@ describe("errors", () => {
 			throwerCtx = this;
 			yield <div>Hello</div>;
 			for await ({} of this) {
-				throw new Error(
-					"nested async gen function throws with refresh can be caught by parent",
-				);
+				throw new Error("nested async gen function throws with refresh can be caught by parent");
 			}
 		}
 

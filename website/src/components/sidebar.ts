@@ -4,11 +4,7 @@ import type {Element} from "@b9g/crank/standalone";
 import type {DocInfo} from "../models/document.js";
 import {Search} from "./search.js";
 
-export function Sidebar({
-	docs,
-	title,
-	url,
-}: {
+export function Sidebar({docs, title, url}: {
 	docs: DocInfo[];
 	url: string;
 	title: string;
@@ -16,7 +12,8 @@ export function Sidebar({
 	const links: Element[] = [];
 	for (const doc of docs) {
 		if (doc.attributes.publish) {
-			links.push(jsx`
+			links.push(
+				jsx`
 				<div class=${css`
 					margin: 10px 0;
 				`}>
@@ -28,7 +25,8 @@ export function Sidebar({
 						`}
 					>${doc.attributes.title}</a>
 				</div>
-			`);
+			`,
+			);
 		}
 	}
 

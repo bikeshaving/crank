@@ -115,24 +115,9 @@ describe("no-yield-in-lifecycle-methods", () => {
 
 	describe("invalid cases - yield in lifecycle methods", () => {
 		it.each([
-			{
-				method: "schedule",
-				yieldValue: "<div>Bad</div>",
-				line: 4,
-				column: 19,
-			},
-			{
-				method: "after",
-				yieldValue: "someValue",
-				line: 4,
-				column: 19,
-			},
-			{
-				method: "cleanup",
-				yieldValue: "cleanupValue",
-				line: 4,
-				column: 19,
-			},
+			{method: "schedule", yieldValue: "<div>Bad</div>", line: 4, column: 19},
+			{method: "after", yieldValue: "someValue", line: 4, column: 19},
+			{method: "cleanup", yieldValue: "cleanupValue", line: 4, column: 19},
 		])(
 			"should detect yield in this.$method()",
 			({method, yieldValue, line, column}) => {
@@ -153,10 +138,7 @@ describe("no-yield-in-lifecycle-methods", () => {
 								errors: [
 									{
 										messageId: "noYieldInLifecycle",
-										data: {
-											statement: "yield",
-											method,
-										},
+										data: {statement: "yield", method},
 										line,
 										column,
 									},
@@ -188,10 +170,7 @@ describe("no-yield-in-lifecycle-methods", () => {
 							errors: [
 								{
 									messageId: "noYieldInLifecycle",
-									data: {
-										statement: "return",
-										method: "after",
-									},
+									data: {statement: "return", method: "after"},
 									line: 4,
 									column: 19,
 								},
@@ -256,10 +235,7 @@ describe("no-yield-in-lifecycle-methods", () => {
 							errors: [
 								{
 									messageId: "noYieldInLifecycle",
-									data: {
-										statement: "yield",
-										method: "schedule",
-									},
+									data: {statement: "yield", method: "schedule"},
 								},
 							],
 						},
@@ -291,18 +267,12 @@ describe("no-yield-in-lifecycle-methods", () => {
 							errors: [
 								{
 									messageId: "noYieldInLifecycle",
-									data: {
-										statement: "yield",
-										method: "schedule",
-									},
+									data: {statement: "yield", method: "schedule"},
 									line: 4,
 								},
 								{
 									messageId: "noYieldInLifecycle",
-									data: {
-										statement: "yield",
-										method: "after",
-									},
+									data: {statement: "yield", method: "after"},
 									line: 7,
 								},
 							],
@@ -341,10 +311,7 @@ describe("no-yield-in-lifecycle-methods", () => {
 							errors: [
 								{
 									messageId: "noYieldInLifecycle",
-									data: {
-										statement: "yield",
-										method: "schedule",
-									},
+									data: {statement: "yield", method: "schedule"},
 								},
 							],
 						},
@@ -372,10 +339,7 @@ describe("no-yield-in-lifecycle-methods", () => {
 							errors: [
 								{
 									messageId: "noYieldInLifecycle",
-									data: {
-										statement: "return",
-										method: "after",
-									},
+									data: {statement: "return", method: "after"},
 								},
 							],
 						},
@@ -414,11 +378,7 @@ describe("no-yield-in-lifecycle-methods", () => {
                 });
               }
             `,
-							errors: [
-								{
-									messageId: "noYieldInLifecycle",
-								},
-							],
+							errors: [{messageId: "noYieldInLifecycle"}],
 						},
 					],
 				},

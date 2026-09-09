@@ -18,8 +18,7 @@ export function extractCrankParams(params: ESLintNode[]): ExtractedParams {
 		if (param.type === "TSParameterProperty") {
 			// TypeScript parameter property (this: Context)
 			if (
-				param.parameter.type === "Identifier" &&
-				param.parameter.name === "this"
+				param.parameter.type === "Identifier" && param.parameter.name === "this"
 			) {
 				contextVar = "this";
 			}
@@ -36,9 +35,7 @@ export function extractCrankParams(params: ESLintNode[]): ExtractedParams {
 					.filter(Boolean) as string[]),
 			);
 		} else if (
-			index === 0 &&
-			param.type === "Identifier" &&
-			param.name === "this"
+			index === 0 && param.type === "Identifier" && param.name === "this"
 		) {
 			// First parameter is this context (this: Context)
 			contextVar = "this";

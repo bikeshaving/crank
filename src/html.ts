@@ -86,9 +86,7 @@ function printAttrs(props: Record<string, any>, isSVG?: boolean): string {
 				attrs.push(`class="${escape(value)}"`);
 			} else if (typeof value === "object" && value !== null) {
 				// class={{"foo bar": true, "baz": false}} syntax
-				const classes = Object.keys(value)
-					.filter((k) => value[k])
-					.join(" ");
+				const classes = Object.keys(value).filter((k) => value[k]).join(" ");
 				if (classes) {
 					attrs.push(`class="${escape(classes)}"`);
 				}
@@ -135,97 +133,84 @@ function join(children: Array<TextNode | string>): string {
 	return result;
 }
 
-export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
-	{
-		scope({
-			scope,
-			tag,
-		}: {
-			scope: string | undefined;
-			tag: string | symbol;
-			props: Record<string, any>;
-			root: TextNode | undefined;
-		}): string | undefined {
-			if (tag === Portal) {
+export const impl: Partial<
+	RenderAdapter<TextNode, string, TextNode, string>
+> = {
+	scope({scope, tag}: {
+		scope: string | undefined;
+		tag: string | symbol;
+		props: Record<string, any>;
+		root: TextNode | undefined;
+	}): string | undefined {
+		if (tag === Portal) {
+			return undefined;
+		}
+
+		switch (tag) {
+			case "svg":
+				return "svg";
+			case "math":
+				return "math";
+			case "foreignObject":
 				return undefined;
-			}
+		}
 
-			switch (tag) {
-				case "svg":
-					return "svg";
-				case "math":
-					return "math";
-				case "foreignObject":
-					return undefined;
-			}
+		return scope;
+	},
 
-			return scope;
-		},
+	create(): TextNode {
+		return {value: ""};
+	},
 
-		create(): TextNode {
-			return {value: ""};
-		},
+	text({value}: {value: string}): TextNode {
+		return {value: escape(value)};
+	},
 
-		text({value}: {value: string}): TextNode {
-			return {value: escape(value)};
-		},
+	read(value: ElementValue<TextNode>): string {
+		if (Array.isArray(value)) {
+			return join(value);
+		} else if (typeof value === "undefined") {
+			return "";
+		} else if (typeof value === "string") {
+			return value;
+		} else {
+			return value.value || "";
+		}
+	},
 
-		read(value: ElementValue<TextNode>): string {
-			if (Array.isArray(value)) {
-				return join(value);
-			} else if (typeof value === "undefined") {
-				return "";
-			} else if (typeof value === "string") {
-				return value;
-			} else {
-				return value.value || "";
-			}
-		},
+	arrange({tag, tagName, node, props, children, scope}: {
+		tag: string | symbol;
+		tagName: string;
+		node: TextNode;
+		props: Record<string, any>;
+		children: Array<TextNode | string>;
+		scope: string | undefined;
+		root: TextNode | undefined;
+	}): void {
+		if (tag === Portal) {
+			return;
+		} else if (typeof tag !== "string") {
+			throw new Error(`Unknown tag: ${tagName}`);
+		}
 
-		arrange({
-			tag,
-			tagName,
-			node,
-			props,
-			children,
-			scope,
-		}: {
-			tag: string | symbol;
-			tagName: string;
-			node: TextNode;
-			props: Record<string, any>;
-			children: Array<TextNode | string>;
-			scope: string | undefined;
-			root: TextNode | undefined;
-		}): void {
-			if (tag === Portal) {
-				return;
-			} else if (typeof tag !== "string") {
-				throw new Error(`Unknown tag: ${tagName}`);
-			}
+		const attrs = printAttrs(props, scope === "svg" || tag === "foreignObject");
+		const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
+		let result: string;
+		if (voidTags.has(tag)) {
+			result = open;
+		} else {
+			const close = `</${tag}>`;
+			const contents = "innerHTML" in props
+				? props["innerHTML"]
+				: "dangerouslySetInnerHTML" in props
+					? (props["dangerouslySetInnerHTML"]?.__html ?? "")
+					: join(children);
+			result = `${open}${contents}${close}`;
+		}
 
-			const attrs = printAttrs(
-				props,
-				scope === "svg" || tag === "foreignObject",
-			);
-			const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
-			let result: string;
-			if (voidTags.has(tag)) {
-				result = open;
-			} else {
-				const close = `</${tag}>`;
-				const contents =
-					"innerHTML" in props
-						? props["innerHTML"]
-						: "dangerouslySetInnerHTML" in props
-							? (props["dangerouslySetInnerHTML"]?.__html ?? "")
-							: join(children);
-				result = `${open}${contents}${close}`;
-			}
-
-			node.value = result;
-		},
-	};
+		node.value = result;
+	},
+};
 
 export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 	constructor() {

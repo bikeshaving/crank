@@ -38,15 +38,9 @@ describe("no-react-svg-props", () => {
 				`,
 				},
 				// camelCase attributes in non-SVG elements should not be flagged
-				{
-					code: "<div strokeWidth=\"2\">Not SVG</div>",
-				},
-				{
-					code: "<button fillOpacity=\"0.5\">Not SVG</button>",
-				},
-				{
-					code: "<Component strokeDasharray=\"5,5\" />",
-				},
+				{code: "<div strokeWidth=\"2\">Not SVG</div>"},
+				{code: "<button fillOpacity=\"0.5\">Not SVG</button>"},
+				{code: "<Component strokeDasharray=\"5,5\" />"},
 			],
 			invalid: [
 				// stroke attributes

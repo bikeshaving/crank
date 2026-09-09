@@ -12,27 +12,17 @@ describe("prefer-refresh-callback", () => {
 		it("should pass for valid refresh callback patterns", () => {
 			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
 				valid: [
-					{
-						code: "this.refresh(() => count++);",
-					},
-					{
-						code: "this.refresh(() => { count++; });",
-					},
+					{code: "this.refresh(() => count++);"},
+					{code: "this.refresh(() => { count++; });"},
 					{
 						code: `this.refresh(() => { 
               count++;
               doSomething();
             });`,
 					},
-					{
-						code: "someOtherObject.refresh();",
-					},
-					{
-						code: "this.someOtherMethod();",
-					},
-					{
-						code: "this.refresh(callback);",
-					},
+					{code: "someOtherObject.refresh();"},
+					{code: "this.someOtherMethod();"},
+					{code: "this.refresh(callback);"},
 				],
 				invalid: [],
 			});
@@ -40,11 +30,7 @@ describe("prefer-refresh-callback", () => {
 
 		it("should NOT detect standalone refresh calls outside Crank components", () => {
 			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-				valid: [
-					{
-						code: "this.refresh();",
-					},
-				],
+				valid: [{code: "this.refresh();"}],
 				invalid: [],
 			});
 		});

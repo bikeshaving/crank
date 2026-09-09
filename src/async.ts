@@ -29,9 +29,7 @@ export function lazy<T extends Component>(
 		}
 
 		if (typeof Component !== "function") {
-			throw new Error(
-				"Lazy component initializer must return a Component or a module with a default export that is a Component.",
-			);
+			throw new Error("Lazy component initializer must return a Component or a module with a default export that is a Component.");
 		}
 
 		for (props of this) {
@@ -45,33 +43,20 @@ async function SuspenseEmpty() {
 	return null;
 }
 
-async function SuspenseFallback(
-	this: Context,
-	{
-		children,
-		timeout,
-		schedule,
-	}: {
-		children: Children;
-		timeout: number;
-		schedule: () => Promise<unknown>;
-	},
-): Promise<Children> {
+async function SuspenseFallback(this: Context, {children, timeout, schedule}: {
+	children: Children;
+	timeout: number;
+	schedule: () => Promise<unknown>;
+}): Promise<Children> {
 	this.schedule(schedule);
 	await new Promise((resolve) => setTimeout(resolve, timeout));
 	return children;
 }
 
-function SuspenseChildren(
-	this: Context,
-	{
-		children,
-		schedule,
-	}: {
-		children: Children;
-		schedule: () => Promise<unknown>;
-	},
-) {
+function SuspenseChildren(this: Context, {children, schedule}: {
+	children: Children;
+	schedule: () => Promise<unknown>;
+}) {
 	this.schedule(schedule);
 	return children;
 }
@@ -94,14 +79,11 @@ function SuspenseChildren(
  * </Suspense>
  * ```
  */
-export async function* Suspense(
-	this: Context,
-	{
-		children,
-		fallback,
-		timeout,
-	}: {children: Children; fallback: Children; timeout?: number},
-): AsyncGenerator<Children> {
+export async function* Suspense(this: Context, {children, fallback, timeout}: {
+	children: Children;
+	fallback: Children;
+	timeout?: number;
+}): AsyncGenerator<Children> {
 	const controller = this.consume(SuspenseListController);
 	this.provide(SuspenseListController, undefined);
 	for await ({children, fallback, timeout} of this) {
@@ -207,20 +189,17 @@ declare global {
  * </SuspenseList>
  * ```
  */
-export function* SuspenseList(
-	this: Context,
-	{
-		revealOrder = "forwards",
-		tail = "collapsed",
-		timeout,
-		children,
-	}: {
-		revealOrder?: "forwards" | "backwards" | "together";
-		tail?: "collapsed" | "hidden";
-		timeout?: number;
-		children: Children;
-	},
-): Generator<Children> {
+export function* SuspenseList(this: Context, {
+	revealOrder = "forwards",
+	tail = "collapsed",
+	timeout,
+	children,
+}: {
+	revealOrder?: "forwards" | "backwards" | "together";
+	tail?: "collapsed" | "hidden";
+	timeout?: number;
+	children: Children;
+}): Generator<Children> {
 	let finishRegistration: () => void;
 	let registering: Promise<void> | null = null;
 	let items: SuspenseListItem[] = [];
@@ -235,11 +214,7 @@ export function* SuspenseList(
 					(r) => (childrenResolver = r),
 				);
 
-				items.push({
-					ctx,
-					resolve: childrenResolver!,
-					promise: childrenPromise,
-				});
+				items.push({ctx, resolve: childrenResolver!, promise: childrenPromise});
 
 				// Wait for registration to complete
 				await registering;
@@ -266,10 +241,7 @@ export function* SuspenseList(
 			return false;
 		},
 
-		async scheduleFallback(
-			ctx: Context,
-			suspenseItems: SuspenseListItem[],
-		) {
+		async scheduleFallback(ctx: Context, suspenseItems: SuspenseListItem[]) {
 			const index = suspenseItems.findIndex((item) => item.ctx === ctx);
 			if (index === -1) {
 				return;
@@ -284,10 +256,7 @@ export function* SuspenseList(
 			}
 		},
 
-		async scheduleChildren(
-			ctx: Context,
-			suspenseItems: SuspenseListItem[],
-		) {
+		async scheduleChildren(ctx: Context, suspenseItems: SuspenseListItem[]) {
 			const index = suspenseItems.findIndex((item) => item.ctx === ctx);
 			if (index === -1) {
 				return;

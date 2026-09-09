@@ -1,5 +1,5 @@
-const supportsUserTiming =
-	typeof performance !== "undefined" && typeof performance.mark === "function";
+const supportsUserTiming = typeof performance !== "undefined" &&
+	typeof performance.mark === "function";
 
 let profiling = false;
 
@@ -70,34 +70,28 @@ type Deferred<T = unknown> = {
 	reject: (reason?: unknown) => void;
 };
 
-type RaceRecord = {
-	deferreds: Set<Deferred>;
-	settled: boolean;
-};
+type RaceRecord = {deferreds: Set<Deferred>; settled: boolean};
 
 function createRaceRecord(contender: PromiseLike<unknown>): RaceRecord {
 	const deferreds = new Set<Deferred>();
 	const record = {deferreds, settled: false};
 
 	// This call to `then` happens once for the lifetime of the value.
-	Promise.resolve(contender).then(
-		(value) => {
-			for (const {resolve} of deferreds) {
-				resolve(value);
-			}
+	Promise.resolve(contender).then((value) => {
+		for (const {resolve} of deferreds) {
+			resolve(value);
+		}
 
-			deferreds.clear();
-			record.settled = true;
-		},
-		(err) => {
-			for (const {reject} of deferreds) {
-				reject(err);
-			}
+		deferreds.clear();
+		record.settled = true;
+	}, (err) => {
+		for (const {reject} of deferreds) {
+			reject(err);
+		}
 
-			deferreds.clear();
-			record.settled = true;
-		},
-	);
+		deferreds.clear();
+		record.settled = true;
+	});
 	return record;
 }
 

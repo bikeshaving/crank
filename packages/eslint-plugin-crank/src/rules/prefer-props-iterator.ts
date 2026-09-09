@@ -55,10 +55,9 @@ export const preferPropsIterator: Rule.RuleModule = {
 					const usedProps = new Set<string>();
 					findPropAccess(node.body, usedProps, currentFunction.params);
 
-					const destructuringPattern =
-						usedProps.size > 0
-							? `{ ${Array.from(usedProps).join(", ")} }`
-							: "{}";
+					const destructuringPattern = usedProps.size > 0
+						? `{ ${Array.from(usedProps).join(", ")} }`
+						: "{}";
 
 					context.report({
 						node,

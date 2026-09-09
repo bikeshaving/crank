@@ -353,10 +353,7 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 
 							matcher = CHILDREN_RE;
 						} else if (spread) {
-							const value = {
-								type: "value" as const,
-								value: null,
-							};
+							const value = {type: "value" as const, value: null};
 							element.props.push(value);
 							// SPREAD PROP EXPRESSION
 							expressionTarget = value;
@@ -405,18 +402,13 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 								value = {type: "propString", parts: []};
 								value.parts.push(string);
 								if (end === span.length) {
-									matcher =
-										quote === "'"
-											? CLOSING_SINGLE_QUOTE_RE
-											: CLOSING_DOUBLE_QUOTE_RE;
+									matcher = quote === "'"
+										? CLOSING_SINGLE_QUOTE_RE
+										: CLOSING_DOUBLE_QUOTE_RE;
 								}
 							}
 
-							const prop = {
-								type: "prop" as const,
-								name,
-								value,
-							};
+							const prop = {type: "prop" as const, name, value};
 							element.props.push(prop);
 						}
 					} else {
@@ -619,8 +611,8 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 }
 
 function markStatic(el: ParseElement, targets: Set<object>): boolean {
-	let isStatic =
-		!targets.has(el.open) && (el.close === null || !targets.has(el.close));
+	let isStatic = !targets.has(el.open) &&
+		(el.close === null || !targets.has(el.close));
 	for (let i = 0; i < el.props.length; i++) {
 		const prop = el.props[i];
 		if (prop.type === "value") {
@@ -669,9 +661,7 @@ function build(parsed: ParseElement, spans?: ArrayLike<string>): Element {
 		parsed.close.slash !== "//" &&
 		parsed.open.value !== parsed.close.value
 	) {
-		const msg = `Unmatched closing tag ${formatTagForError(
-			parsed.close.value,
-		)}, expected ${formatTagForError(parsed.open.value)}`;
+		const msg = `Unmatched closing tag ${formatTagForError(parsed.close.value)}, expected ${formatTagForError(parsed.open.value)}`;
 		throw new SyntaxError(
 			spans && parsed.close.spanIndex != null && parsed.close.charIndex != null
 				? formatSyntaxError(
@@ -704,8 +694,9 @@ function build(parsed: ParseElement, spans?: ArrayLike<string>): Element {
 					if (typeof part === "string") {
 						string += part;
 					} else if (typeof part.value !== "boolean" && part.value != null) {
-						string +=
-							typeof part.value === "string" ? part.value : String(part.value);
+						string += typeof part.value === "string"
+							? part.value
+							: String(part.value);
 					}
 				}
 				value = string
@@ -766,9 +757,7 @@ function build(parsed: ParseElement, spans?: ArrayLike<string>): Element {
 function formatTagForError(tag: unknown): string {
 	return typeof tag === "function"
 		? tag.name + "()"
-		: typeof tag === "string"
-			? `"${tag}"`
-			: JSON.stringify(tag);
+		: typeof tag === "string" ? `"${tag}"` : JSON.stringify(tag);
 }
 
 function formatSyntaxError(

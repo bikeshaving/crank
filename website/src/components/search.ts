@@ -103,13 +103,7 @@ export async function* Search(this: Context): AsyncGenerator<Element> {
 					];
 				}
 				// Fall back to page-level result
-				return [
-					{
-						url: d.url,
-						title: d.meta.title || d.url,
-						excerpt: d.excerpt,
-					},
-				];
+				return [{url: d.url, title: d.meta.title || d.url, excerpt: d.excerpt}];
 			})
 			.slice(0, 8);
 		this.refresh(() => {
@@ -220,8 +214,7 @@ export async function* Search(this: Context): AsyncGenerator<Element> {
 							`}>Searching...</div>
 						`
 								: results.length > 0
-									? results.map(
-										(r) => jsx`
+									? results.map((r) => jsx`
 							<a
 								href=${r.url}
 								class=${css`
@@ -262,8 +255,7 @@ export async function* Search(this: Context): AsyncGenerator<Element> {
 									innerHTML=${r.excerpt}
 								/>
 							</a>
-						`,
-									)
+						`)
 									: query.trim()
 										? jsx`
 							<div class=${css`

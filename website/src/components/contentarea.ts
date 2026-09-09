@@ -11,33 +11,30 @@ interface SelectionRange {
 	selectionDirection: "forward" | "backward" | "none";
 }
 
-export function* ContentArea(
-	this: Context,
-	{
-		ref,
-		value,
-		children,
-		selectionRange,
-		renderSource,
-		...rest
-	}: {
-		ref?: (el: ContentAreaElement) => void;
-		children: unknown;
-		selectionRange?: SelectionRange | undefined;
-		value?: string | undefined;
-		renderSource?: string | undefined;
-	} & Record<string, any>,
-): Generator<Element> {
+export function* ContentArea(this: Context, {
+	ref,
+	value,
+	children,
+	selectionRange,
+	renderSource,
+	...rest
+}: {
+	ref?: (el: ContentAreaElement) => void;
+	children: unknown;
+	selectionRange?: SelectionRange | undefined;
+	value?: string | undefined;
+	renderSource?: string | undefined;
+} & Record<string, any>): Generator<Element> {
 	let initial = true;
 	let contentArea!: ContentAreaElement;
 	for ({ref, value, children, selectionRange, renderSource, ...rest} of this) {
-		selectionRange =
-			selectionRange ||
-			(contentArea && {
-				selectionStart: contentArea.selectionStart,
-				selectionEnd: contentArea.selectionEnd,
-				selectionDirection: contentArea.selectionDirection,
-			});
+		selectionRange = selectionRange ||
+			(contentArea &&
+				{
+					selectionStart: contentArea.selectionStart,
+					selectionEnd: contentArea.selectionEnd,
+					selectionDirection: contentArea.selectionDirection,
+				});
 
 		if (!initial) {
 			this.after(() => {
@@ -47,9 +44,7 @@ export function* ContentArea(
 
 				if (typeof value === "string" && value !== contentArea.value) {
 					console.error(
-						`Expected value ${JSON.stringify(
-							value,
-						)} but received ${JSON.stringify(contentArea.value)} from the DOM`,
+						`Expected value ${JSON.stringify(value)} but received ${JSON.stringify(contentArea.value)} from the DOM`,
 					);
 				}
 
@@ -69,13 +64,11 @@ export function* ContentArea(
 				}
 
 				const selection = document.getSelection();
-				if (
-					selection &&
+				if (selection &&
 					// TODO: think more about using renderSource
 					renderSource !== "refresh" &&
 					contentArea.contains(document.activeElement) &&
-					contentArea.contains(selection.focusNode)
-				) {
+					contentArea.contains(selection.focusNode)) {
 					let focusNode = selection.focusNode! as Element;
 					if (focusNode && focusNode.nodeType === Node.TEXT_NODE) {
 						focusNode = focusNode.parentNode as Element;

@@ -432,7 +432,9 @@ function formatFunction(node: any, state: any, generator: any): void {
 /**
  * Parse JSX pragma comments to determine runtime mode.
  */
-function parseJSXPragma(code: string): {
+function parseJSXPragma(
+	code: string,
+): {
 	jsxRuntime: "automatic" | "classic";
 	jsxImportSource?: string;
 	jsxPragma?: string;
@@ -440,10 +442,7 @@ function parseJSXPragma(code: string): {
 } {
 	const importSourceMatch = code.match(/@jsxImportSource\s+(\S+)/);
 	if (importSourceMatch) {
-		return {
-			jsxRuntime: "automatic",
-			jsxImportSource: importSourceMatch[1],
-		};
+		return {jsxRuntime: "automatic", jsxImportSource: importSourceMatch[1]};
 	}
 
 	const jsxMatch = code.match(/@jsx\s+(\S+)/);
@@ -456,10 +455,7 @@ function parseJSXPragma(code: string): {
 		};
 	}
 
-	return {
-		jsxRuntime: "automatic",
-		jsxImportSource: "@b9g/crank",
-	};
+	return {jsxRuntime: "automatic", jsxImportSource: "@b9g/crank"};
 }
 
 /**
@@ -503,10 +499,7 @@ function injectLoopGuards(ast: any): void {
 						type: "NewExpression",
 						callee: {type: "Identifier", name: "RangeError"},
 						arguments: [
-							{
-								type: "Literal",
-								value: "Potential infinite loop detected",
-							},
+							{type: "Literal", value: "Potential infinite loop detected"},
 						],
 					},
 				} as ESTree.ThrowStatement,
@@ -514,10 +507,7 @@ function injectLoopGuards(ast: any): void {
 			};
 
 			if (node.body.type !== "BlockStatement") {
-				node.body = {
-					type: "BlockStatement",
-					body: [node.body],
-				};
+				node.body = {type: "BlockStatement", body: [node.body]};
 			}
 
 			node.body.body.unshift(guardCheck);
@@ -663,8 +653,7 @@ function transformJSXElement(
 	if (tagName.type === "JSXIdentifier") {
 		const name = tagName.name;
 		if (
-			name[0] === name[0].toLowerCase() &&
-			name[0] !== name[0].toUpperCase()
+			name[0] === name[0].toLowerCase() && name[0] !== name[0].toUpperCase()
 		) {
 			tag = {type: "Literal", value: name};
 		} else {
@@ -692,10 +681,9 @@ function transformJSXElement(
 						{
 							type: "Property",
 							key: {type: "Identifier", name: "children"},
-							value:
-									children.length === 1
-										? children[0]
-										: {type: "ArrayExpression", elements: children},
+							value: children.length === 1
+								? children[0]
+								: {type: "ArrayExpression", elements: children},
 							kind: "init",
 							method: false,
 							shorthand: false,
@@ -756,23 +744,21 @@ function transformJSXFragment(
 		const jsxFunc = children.length > 1 ? "jsxs" : "jsx";
 		const propsWithChildren: ESTree.ObjectExpression = {
 			type: "ObjectExpression",
-			properties:
-				children.length > 0
-					? [
-						{
-							type: "Property",
-							key: {type: "Identifier", name: "children"},
-							value:
-									children.length === 1
-										? children[0]
-										: {type: "ArrayExpression", elements: children},
-							kind: "init",
-							method: false,
-							shorthand: false,
-							computed: false,
-						} as ESTree.Property,
-					]
-					: [],
+			properties: children.length > 0
+				? [
+					{
+						type: "Property",
+						key: {type: "Identifier", name: "children"},
+						value: children.length === 1
+							? children[0]
+							: {type: "ArrayExpression", elements: children},
+						kind: "init",
+						method: false,
+						shorthand: false,
+						computed: false,
+					} as ESTree.Property,
+				]
+				: [],
 		};
 
 		return {
@@ -833,7 +819,9 @@ function transformJSXMemberExpression(node: any): ESTree.MemberExpression {
 	};
 }
 
-function transformJSXAttributes(attributes: any[]): {
+function transformJSXAttributes(
+	attributes: any[],
+): {
 	props: ESTree.ObjectExpression;
 	propsWithKey: ESTree.ObjectExpression;
 	keyExpr: ESTree.Expression | null;
@@ -852,8 +840,9 @@ function transformJSXAttributes(attributes: any[]): {
 			properties.push(spreadElement);
 			propertiesWithKey.push(spreadElement);
 		} else if (attr.type === "JSXAttribute") {
-			const name =
-				attr.name.type === "JSXIdentifier" ? attr.name.name : attr.name.name;
+			const name = attr.name.type === "JSXIdentifier"
+				? attr.name.name
+				: attr.name.name;
 			let value: ESTree.Expression;
 
 			if (attr.value === null) {
@@ -889,14 +878,8 @@ function transformJSXAttributes(attributes: any[]): {
 	}
 
 	return {
-		props: {
-			type: "ObjectExpression",
-			properties,
-		},
-		propsWithKey: {
-			type: "ObjectExpression",
-			properties: propertiesWithKey,
-		},
+		props: {type: "ObjectExpression", properties},
+		propsWithKey: {type: "ObjectExpression", properties: propertiesWithKey},
 		keyExpr,
 	};
 }
@@ -923,11 +906,13 @@ function transformJSXChildren(
 		} else if (child.type === "JSXFragment") {
 			result.push(transformJSXFragment(child, pragma));
 		} else if (child.type === "JSXSpreadChild") {
-			result.push({
-				type: "SpreadElement",
-				argument: child.expression,
+			result.push(
+				{
+					type: "SpreadElement",
+					argument: child.expression,
 
-			} as any);
+				} as any,
+			);
 		}
 	}
 
@@ -1012,13 +997,11 @@ function rewriteBareModuleSpecifiers(ast: any): void {
 			node.source.value = rewrite(node.source.value);
 		} else if (
 			(node.type === "ExportNamedDeclaration" ||
-				node.type === "ExportAllDeclaration") &&
-				node.source
+				node.type === "ExportAllDeclaration") && node.source
 		) {
 			node.source.value = rewrite(node.source.value);
 		} else if (
-			node.type === "ImportExpression" &&
-			node.source?.type === "Literal"
+			node.type === "ImportExpression" && node.source?.type === "Literal"
 		) {
 			node.source.value = rewrite(node.source.value);
 		}

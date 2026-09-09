@@ -22,8 +22,7 @@ export function BlogContent({
 	readTime,
 	children,
 }: BlogContentProps): Element {
-	const publishDateDisplay =
-		publishDate &&
+	const publishDateDisplay = publishDate &&
 		publishDate.toLocaleString("en-US", {
 			month: "long",
 			year: "numeric",
@@ -61,8 +60,7 @@ export function BlogContent({
 					opacity: 0.7;
 				`}>
 					${
-						author &&
-						jsx`
+						author && jsx`
 						<span>
 							By ${
 								authorURL
@@ -83,8 +81,7 @@ export function BlogContent({
 				</div>
 
 				${
-					description &&
-					jsx`
+					description && jsx`
 					<p class=${css`
 						font-size: 1.2rem;
 						line-height: 1.6;
