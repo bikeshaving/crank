@@ -54,8 +54,7 @@ function* Gutter(this: Context<typeof Gutter>, {length}: {length: number}) {
 					left: 0;
 				`}"
 			>
-				${lines.map(
-					(line) => jsx`
+				${lines.map((line) => jsx`
 					<div
 						class="prism-line ${css`
 							border-top: 1px solid transparent;
@@ -63,8 +62,7 @@ function* Gutter(this: Context<typeof Gutter>, {length}: {length: number}) {
 						`}">
 							${line}
 						</div>
-				`,
-				)}
+				`)}
 			</div>
 		`;
 		initial = false;
@@ -77,16 +75,10 @@ const IS_CLIENT = typeof document !== "undefined";
 // TODO: Custom tabs
 const TAB = "  ";
 
-function Line(
-	this: Context<typeof Line>,
-	{
-		line,
-		lineNumber,
-	}: {
-		line: Array<Token | string>;
-		lineNumber: number;
-	},
-) {
+function Line(this: Context<typeof Line>, {line, lineNumber}: {
+	line: Array<Token | string>;
+	lineNumber: number;
+}) {
 	return jsx`
 		<div
 			class="
@@ -132,20 +124,19 @@ function printTokens(
 	return result;
 }
 
-export function* CodeEditor(
-	this: Context,
-	{
-		value,
-		language,
-		editable,
-		showGutter,
-	}: {
-		value: string;
-		language: string;
-		editable?: boolean;
-		showGutter?: boolean;
-	},
-): Generator<Element> {
+export function* CodeEditor(this: Context, {
+	value,
+	language,
+	editable,
+	showGutter,
+}: {
+	value: string;
+	language: string;
+	editable?: boolean;
+	showGutter?: boolean;
+}): Generator<
+	Element
+> {
 	const keyer = new Keyer();
 	let selectionRange: SelectionRange | undefined;
 	let renderSource: string | undefined;
@@ -247,10 +238,7 @@ export function* CodeEditor(
 
 				ev.preventDefault();
 			} else if (
-				ev.keyCode === 0x59 /* Y */ &&
-				ev.ctrlKey &&
-				!ev.altKey &&
-				!ev.metaKey
+				ev.keyCode === 0x59 /* Y */ && ev.ctrlKey && !ev.altKey && !ev.metaKey
 			) {
 				redo();
 				ev.preventDefault();
@@ -374,8 +362,7 @@ export function* CodeEditor(
 							// TODO: only highlight visible lines
 							// TODO: line should probably be a custom Prism token with the
 							// length already calculated.
-							const length =
-								line.reduce((length, t) => length + t.length, 0) + "\n".length;
+							const length = line.reduce((length, t) => length + t.length, 0) + "\n".length;
 							try {
 								// TODO: using the virtualizer start and ends with static is breaking paste
 								return jsx`

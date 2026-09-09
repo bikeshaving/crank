@@ -27,11 +27,7 @@ export default async function Guide({url}: ViewProps): Promise<Element> {
 		throw new NotFound(`Guide not found: ${url}`);
 	}
 
-	const {
-		attributes: {title, description},
-		body,
-		filename,
-	} = post;
+	const {attributes: {title, description}, body, filename} = post;
 	return jsx`
 		<${Root} title="Crank.js | ${title}" url=${url} description=${description}>
 			<${Sidebar} docs=${docs} url=${url} title="Guides" />

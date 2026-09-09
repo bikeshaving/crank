@@ -398,9 +398,9 @@ describe("copy-prop", () => {
 		);
 
 		expect(consoleError.callCount).toBe(1);
-		expect(consoleError.firstCall.args[0]).toEqual(
-			'Invalid copy prop "!style data-greeting".\nUse prop or !prop but not both.',
-		);
+		expect(
+			consoleError.firstCall.args[0],
+		).toEqual('Invalid copy prop "!style data-greeting".\nUse prop or !prop but not both.');
 
 		expect(document.body.innerHTML).toBe(
 			'<div class="fourth-greeting">Hello a fourth time</div>',

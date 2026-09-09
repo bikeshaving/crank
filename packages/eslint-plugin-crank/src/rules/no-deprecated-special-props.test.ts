@@ -84,10 +84,7 @@ describe("no-deprecated-special-props", () => {
 					errors: [
 						{
 							messageId: "useModernProp",
-							data: {
-								deprecated: "crank-static",
-								modern: "copy",
-							},
+							data: {deprecated: "crank-static", modern: "copy"},
 						},
 					],
 				},

@@ -23,9 +23,7 @@ export function isRefreshCall(
 				return true;
 			}
 			if (
-				contextVar &&
-				object.type === "Identifier" &&
-				object.name === contextVar
+				contextVar && object.type === "Identifier" && object.name === contextVar
 			) {
 				return true;
 			}

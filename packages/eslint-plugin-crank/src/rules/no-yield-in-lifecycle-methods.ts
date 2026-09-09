@@ -65,10 +65,7 @@ export const noYieldInLifecycleMethods: Rule.RuleModule = {
 					context.report({
 						node,
 						messageId: "noYieldInLifecycle",
-						data: {
-							statement: "yield",
-							method,
-						},
+						data: {statement: "yield", method},
 					});
 				}
 			},
@@ -83,10 +80,7 @@ export const noYieldInLifecycleMethods: Rule.RuleModule = {
 						context.report({
 							node,
 							messageId: "noYieldInLifecycle",
-							data: {
-								statement: "return",
-								method,
-							},
+							data: {statement: "return", method},
 						});
 					}
 				}

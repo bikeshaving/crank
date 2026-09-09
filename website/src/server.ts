@@ -131,10 +131,7 @@ router.use(async (request) => {
 	const url = new URL(request.url);
 	const newPath = redirects[url.pathname];
 	if (newPath) {
-		return new Response(null, {
-			status: 301,
-			headers: {Location: newPath},
-		});
+		return new Response(null, {status: 301, headers: {Location: newPath}});
 	}
 	return;
 });
@@ -160,16 +157,11 @@ router.route("/pagefind/:path*").get(async (request, context) => {
 		const content = await file.arrayBuffer();
 		const dotIndex = fileName.lastIndexOf(".");
 		const ext = dotIndex !== -1 ? fileName.slice(dotIndex).toLowerCase() : "";
-		const contentType =
-			ext === ".js"
-				? "application/javascript"
-				: ext === ".css"
-					? "text/css"
-					: "application/octet-stream";
+		const contentType = ext === ".js"
+			? "application/javascript"
+			: ext === ".css" ? "text/css" : "application/octet-stream";
 
-		return new Response(content, {
-			headers: {"Content-Type": contentType},
-		});
+		return new Response(content, {headers: {"Content-Type": contentType}});
 	} catch (err) {
 		return new Response("Not Found (run static build first)", {status: 404});
 	}
@@ -186,16 +178,16 @@ async function renderView(
 		url = url + "/";
 	}
 
-	const html = await renderer.render(jsx`
+	const html = await renderer.render(
+		jsx`
 		<${View}
 			url=${url}
 			params=${params}
 		/>
-	`);
+	`,
+	);
 
-	return new Response(html, {
-		headers: {"Content-Type": "text/html"},
-	});
+	return new Response(html, {headers: {"Content-Type": "text/html"}});
 }
 
 // Routes
@@ -250,11 +242,7 @@ router.route("/spec/").get(async () => {
 	try {
 		const proc = Bun.spawn(
 			["bikeshed", "spec", "--die-on=nothing", "docs/spec.bs", outFile],
-			{
-				cwd: import.meta.dirname + "/../..",
-				stdout: "pipe",
-				stderr: "pipe",
-			},
+			{cwd: import.meta.dirname + "/../..", stdout: "pipe", stderr: "pipe"},
 		);
 		const exitCode = await proc.exited;
 		if (exitCode !== 0) {
@@ -262,14 +250,11 @@ router.route("/spec/").get(async () => {
 			throw new Error(stderr || `bikeshed exited with code ${exitCode}`);
 		}
 		const html = await Bun.file(outFile).text();
-		return new Response(html, {
-			headers: {"Content-Type": "text/html"},
-		});
+		return new Response(html, {headers: {"Content-Type": "text/html"}});
 	} catch (error: any) {
-		const message =
-			error?.code === "ENOENT"
-				? "bikeshed is not installed. Run: pipx install bikeshed && bikeshed update"
-				: (error?.message ?? "Unknown error building spec");
+		const message = error?.code === "ENOENT"
+			? "bikeshed is not installed. Run: pipx install bikeshed && bikeshed update"
+			: (error?.message ?? "Unknown error building spec");
 		return new Response(
 			`<pre style="padding:2rem;font-family:monospace">${message}</pre>`,
 			{status: 500, headers: {"Content-Type": "text/html"}},
@@ -306,9 +291,7 @@ Sitemap: https://crank.js.org/sitemap.xml
 `;
 
 router.route("/robots.txt").get(async () => {
-	return new Response(robotsTxt, {
-		headers: {"Content-Type": "text/plain"},
-	});
+	return new Response(robotsTxt, {headers: {"Content-Type": "text/plain"}});
 });
 
 // Sitemap (dev route; static build writes the file directly)
@@ -353,9 +336,11 @@ router.route("/blog/feed.xml").get(async () => {
 // 404 catch-all (must be last)
 router.route("*").all(async (request) => {
 	const url = new URL(request.url);
-	const html = await renderer.render(jsx`
+	const html = await renderer.render(
+		jsx`
 		<${NotFoundView} url=${url.pathname} params=${{}} />
-	`);
+	`,
+	);
 	return new Response(html, {
 		status: 404,
 		headers: {"Content-Type": "text/html"},
@@ -428,8 +413,9 @@ async function generateStaticSite(): Promise<void> {
 					const content = await response.text();
 					// Generate proper directory structure for static servers
 					// /blog/slug/ -> blog/slug/index.html
-					const filePath =
-						route === "/" ? "index.html" : `${route.slice(1)}index.html`;
+					const filePath = route === "/"
+						? "index.html"
+						: `${route.slice(1)}index.html`;
 
 					// Create nested directories if needed
 					const parts = filePath.split("/");

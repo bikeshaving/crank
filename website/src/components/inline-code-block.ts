@@ -4,21 +4,13 @@ import {css} from "@emotion/css";
 import {CodeEditor} from "./code-editor.js";
 import {CodePreview} from "./code-preview.js";
 
-export function* InlineCodeBlock(
-	this: Context<typeof InlineCodeBlock>,
-	{
-		value,
-		lang,
-		editable,
-		// TODO: This is narsty.
-		breakpoint = "1300px",
-	}: {
-		value: string;
-		lang: string;
-		editable: boolean;
-		breakpoint: string;
-	},
-): any {
+export function* InlineCodeBlock(this: Context<typeof InlineCodeBlock>, {
+	value,
+	lang,
+	editable,
+	// TODO: This is narsty.
+	breakpoint = "1300px",
+}: {value: string; lang: string; editable: boolean; breakpoint: string}): any {
 	let copied = false;
 
 	this.addEventListener("contentchange", (ev: any) => {
@@ -94,10 +86,7 @@ export function* InlineCodeBlock(
 										await navigator.clipboard.writeText(value);
 										this.refresh(() => (copied = true));
 
-										setTimeout(
-											() => this.refresh(() => (copied = false)),
-											2000,
-										);
+										setTimeout(() => this.refresh(() => (copied = false)), 2000);
 									}
 								}}
 								class=${css`
@@ -131,8 +120,7 @@ export function* InlineCodeBlock(
 						</div>
 					</div>
 					${
-						editable &&
-						jsx`
+						editable && jsx`
 							<div hydrate="!class" class=${css`
 								flex: 1 1 auto;
 								position: sticky;

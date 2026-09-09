@@ -2,9 +2,7 @@ import config from "@b9g/eslint-config";
 
 export default [
 	...config,
-	{
-		ignores: ["docs/**", "skills/**"],
-	},
+	{ignores: ["docs/**", "skills/**"]},
 	{
 		files: ["**/*.{js,jsx,ts,tsx}"],
 		rules: {
@@ -28,6 +26,7 @@ export default [
 		files: ["examples/**/*", "website/examples/**/*"],
 		rules: {
 			"@stylistic/indent": ["error", 2],
+			"@stylistic/indent-binary-ops": ["error", 2],
 			"@stylistic/jsx-indent-props": ["error", 2],
 			"@b9g/explicit-declaration-return-type": "off",
 		},

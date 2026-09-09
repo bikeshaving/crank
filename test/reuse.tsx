@@ -17,13 +17,7 @@ describe("reuse", () => {
 
 	test("reused intrinsic", () => {
 		const el = <span>1</span>;
-		renderer.render(
-			<div>
-				{el}
-				{el}
-			</div>,
-			document.body,
-		);
+		renderer.render(<div>{el}{el}</div>, document.body);
 
 		expect(document.body.innerHTML).toBe(
 			"<div><span>1</span><span>1</span></div>",
@@ -55,13 +49,7 @@ describe("reuse", () => {
 		}
 
 		const el = <Component />;
-		renderer.render(
-			<div>
-				{el}
-				{el}
-			</div>,
-			document.body,
-		);
+		renderer.render(<div>{el}{el}</div>, document.body);
 
 		expect(document.body.innerHTML).toBe(
 			"<div><span>1</span><span>1</span></div>",
@@ -80,13 +68,7 @@ describe("reuse", () => {
 		}
 
 		const el = <Component />;
-		renderer.render(
-			<div>
-				{el}
-				{el}
-			</div>,
-			document.body,
-		);
+		renderer.render(<div>{el}{el}</div>, document.body);
 
 		expect(document.body.innerHTML).toBe(
 			"<div><span>1</span><span>1</span></div>",

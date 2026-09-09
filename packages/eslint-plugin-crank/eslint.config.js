@@ -7,20 +7,12 @@ export default tseslint.config(
 	...tseslint.configs.recommended,
 	{
 		files: ["**/*.{ts,tsx,js,jsx}"],
-		plugins: {
-			crank: crankPlugin,
-		},
+		plugins: {crank: crankPlugin},
 		languageOptions: {
 			ecmaVersion: 2022,
 			sourceType: "module",
-			globals: {
-				console: "readonly",
-			},
-			parserOptions: {
-				ecmaFeatures: {
-					jsx: true,
-				},
-			},
+			globals: {console: "readonly"},
+			parserOptions: {ecmaFeatures: {jsx: true}},
 		},
 		rules: {
 			// Crank plugin rules
@@ -40,8 +32,6 @@ export default tseslint.config(
 			"**/*.spec.{ts,tsx,js,jsx}",
 			"vitest.config.ts",
 		],
-		rules: {
-			"@typescript-eslint/no-explicit-any": "off",
-		},
+		rules: {"@typescript-eslint/no-explicit-any": "off"},
 	},
 );

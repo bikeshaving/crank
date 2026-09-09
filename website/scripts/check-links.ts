@@ -37,8 +37,7 @@ for await (const path of glob.scan(ROOT)) {
 			: join(dirname(file), href);
 
 		// Check for exact file, index.html inside directory, or .html extension
-		const exists =
-			existsSync(target) ||
+		const exists = existsSync(target) ||
 			existsSync(join(target, "index.html")) ||
 			existsSync(target + ".html");
 

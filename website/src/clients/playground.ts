@@ -205,11 +205,9 @@ function* Playground(this: Context) {
 								onchange=${onexamplechange}
 							>
 								<option value="">Load an example...</option>
-								${examples.map(
-									({name, label}: any) => jsx`
+								${examples.map(({name, label}: any) => jsx`
 									<option value=${name} key=${name}>${label}</option>
-								`,
-								)}
+								`)}
 							</select>
 						</div>
 						<button

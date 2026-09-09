@@ -169,10 +169,10 @@ export const preferRefreshCallback: Rule.RuleModule = {
 
 				// If there's a semicolon, include it in the replacement range to avoid double semicolons
 				if (hasSemicolon) {
-					return fixer.replaceTextRange(
-						[callbackNode.range![0], callbackEnd + 1],
-						newCallbackText,
-					);
+					return fixer.replaceTextRange([
+						callbackNode.range![0],
+						callbackEnd + 1,
+					], newCallbackText);
 				}
 
 				return fixer.replaceText(callbackNode as any, newCallbackText);

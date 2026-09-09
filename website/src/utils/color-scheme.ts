@@ -19,11 +19,7 @@ const TEXT_LIGHT = "#0a0e1f";
 export function useColorScheme(ctx: Context): ColorSchemeController {
 	// SSR: return static object, hydration will set up reactivity
 	if (typeof window === "undefined") {
-		return {
-			get: (): ColorScheme => "dark",
-			toggle: () => {},
-			set: () => {},
-		};
+		return {get: (): ColorScheme => "dark", toggle: () => {}, set: () => {}};
 	}
 
 	let current: ColorScheme = getColorScheme();

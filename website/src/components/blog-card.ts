@@ -21,8 +21,7 @@ export function BlogCard({
 	author,
 	featured,
 }: BlogCardProps): Element {
-	const publishDateDisplay =
-		publishDate &&
+	const publishDateDisplay = publishDate &&
 		publishDate.toLocaleString("en-US", {
 			month: "short",
 			day: "numeric",
@@ -58,8 +57,7 @@ export function BlogCard({
 			`}
 		>
 			${
-				hasMetadata &&
-				jsx`
+				hasMetadata && jsx`
 				<div class=${css`
 					display: flex;
 					flex-wrap: wrap;
@@ -87,8 +85,7 @@ export function BlogCard({
 				}
 			`}>${title}</h3>
 			${
-				description &&
-				jsx`
+				description && jsx`
 				<p class=${css`
 					margin: 0;
 					color: var(--text-color);
@@ -99,8 +96,7 @@ export function BlogCard({
 			`
 			}
 			${
-				author &&
-				jsx`
+				author && jsx`
 				<p class=${css`
 					margin: 1rem 0 0;
 					font-size: 0.85rem;

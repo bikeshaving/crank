@@ -2,11 +2,7 @@ import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
 
 import type {Context, Element} from "../src/crank.js";
-import {
-	createElement,
-	Fragment,
-	Portal,
-} from "../src/crank.js";
+import {createElement, Fragment, Portal} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("cleanup", () => {
@@ -730,9 +726,7 @@ describe("cleanup", () => {
 
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve));
-		expect(document.body.innerHTML).toBe(
-			"<div><span>Sibling</span></div>",
-		);
+		expect(document.body.innerHTML).toBe("<div><span>Sibling</span></div>");
 	});
 
 	test("component wrapping lingering component with host boundary", async () => {
@@ -767,9 +761,9 @@ describe("cleanup", () => {
 			document.body,
 		);
 
-		expect(document.body.innerHTML).toBe(
-			'<div><div class="wrapper"><span>Modal</span></div><span>Sibling</span></div>',
-		);
+		expect(
+			document.body.innerHTML,
+		).toBe('<div><div class="wrapper"><span>Modal</span></div><span>Sibling</span></div>');
 
 		renderer.render(
 			<div>
@@ -781,9 +775,7 @@ describe("cleanup", () => {
 		expect(cleanup.callCount).toBe(1);
 		// Modal cannot linger because <div class="wrapper"> forces isNested=true
 		// So everything is removed immediately
-		expect(document.body.innerHTML).toBe(
-			"<div><span>Sibling</span></div>",
-		);
+		expect(document.body.innerHTML).toBe("<div><span>Sibling</span></div>");
 	});
 
 	test("lingering component can refresh during cleanup", async () => {
@@ -921,16 +913,12 @@ describe("cleanup", () => {
 
 		expect(cleanup.callCount).toBe(1);
 		// Portal content should linger during async cleanup
-		expect(portalRoot.innerHTML).toBe(
-			'<div class="modal">Modal Content</div>',
-		);
+		expect(portalRoot.innerHTML).toBe('<div class="modal">Modal Content</div>');
 
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve));
 
-		expect(portalRoot.innerHTML).toBe(
-			"",
-		);
+		expect(portalRoot.innerHTML).toBe("");
 
 		document.body.removeChild(portalRoot);
 	});
@@ -970,16 +958,12 @@ describe("cleanup", () => {
 		renderer.render(<div />, document.body);
 
 		// Modal should re-render with hidden class during linger
-		expect(portalRoot.innerHTML).toBe(
-			'<div class="hidden">Modal</div>',
-		);
+		expect(portalRoot.innerHTML).toBe('<div class="hidden">Modal</div>');
 
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve));
 
-		expect(portalRoot.innerHTML).toBe(
-			"",
-		);
+		expect(portalRoot.innerHTML).toBe("");
 
 		document.body.removeChild(portalRoot);
 	});

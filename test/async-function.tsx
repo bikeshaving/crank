@@ -163,10 +163,9 @@ describe("async functions", () => {
 		async function Component({
 			message,
 			delay,
-		}: {
-			message: string;
-			delay: number;
-		}): Promise<Element> {
+		}: {message: string; delay: number}): Promise<
+			Element
+		> {
 			await new Promise((resolve) => setTimeout(resolve, delay));
 			return <span>{message}</span>;
 		}
@@ -191,14 +190,12 @@ describe("async functions", () => {
 	});
 
 	test("async children enqueue", async () => {
-		const Child = Sinon.fake(async function Child({
-			message,
-		}: {
-			message: string;
-		}): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 100));
-			return <div>{message}</div>;
-		});
+		const Child = Sinon.fake(
+			async function Child({message}: {message: string}): Promise<Element> {
+				await new Promise((resolve) => setTimeout(resolve, 100));
+				return <div>{message}</div>;
+			},
+		);
 
 		async function Parent({message}: {message: string}): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 50));

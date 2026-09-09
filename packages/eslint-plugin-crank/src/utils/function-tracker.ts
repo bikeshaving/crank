@@ -23,8 +23,7 @@ export function isGeneratorComponent(node: ESLintNode): boolean {
 	return (
 		(node.type === "FunctionDeclaration" ||
 			node.type === "FunctionExpression" ||
-			node.type === "ArrowFunctionExpression") &&
-			node.generator === true
+			node.type === "ArrowFunctionExpression") && node.generator === true
 	);
 }
 

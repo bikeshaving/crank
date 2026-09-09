@@ -16,15 +16,11 @@ export const jsxNoDuplicateProps: Rule.RuleModule = {
 		schema: [
 			{
 				type: "object",
-				properties: {
-					ignoreCase: {type: "boolean"},
-				},
+				properties: {ignoreCase: {type: "boolean"}},
 				additionalProperties: false,
 			},
 		],
-		messages: {
-			noDuplicateProps: "No duplicate props allowed.",
-		},
+		messages: {noDuplicateProps: "No duplicate props allowed."},
 	},
 
 	create(context) {

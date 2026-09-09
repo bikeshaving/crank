@@ -18,15 +18,11 @@ export const jsxNoUndef: Rule.RuleModule = {
 		schema: [
 			{
 				type: "object",
-				properties: {
-					allowGlobals: {type: "boolean"},
-				},
+				properties: {allowGlobals: {type: "boolean"}},
 				additionalProperties: false,
 			},
 		],
-		messages: {
-			undefined: "'{{identifier}}' is not defined.",
-		},
+		messages: {undefined: "'{{identifier}}' is not defined."},
 	},
 
 	create(context) {
@@ -43,8 +39,9 @@ export const jsxNoUndef: Rule.RuleModule = {
 				? (sourceCode as any).getScope(node)
 				: (context as any).getScope();
 			const sourceType = sourceCode.ast?.sourceType;
-			const scopeUpperBound =
-				!allowGlobals && sourceType === "module" ? "module" : "global";
+			const scopeUpperBound = !allowGlobals && sourceType === "module"
+				? "module"
+				: "global";
 
 			let variables: Scope.Variable[] = scope.variables;
 
@@ -56,8 +53,9 @@ export const jsxNoUndef: Rule.RuleModule = {
 			if (scope.childScopes.length) {
 				variables = scope.childScopes[0].variables.concat(variables);
 				if (scope.childScopes[0].childScopes.length) {
-					variables =
-						scope.childScopes[0].childScopes[0].variables.concat(variables);
+					variables = scope.childScopes[0].childScopes[0].variables.concat(
+						variables,
+					);
 				}
 			}
 

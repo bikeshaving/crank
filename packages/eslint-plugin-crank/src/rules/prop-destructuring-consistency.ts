@@ -50,8 +50,7 @@ export const propDestructuringConsistency: Rule.RuleModule = {
 
 				const contextRef = currentFunction.contextVariable || "this";
 
-				const isContextLoop =
-					node.right.type === "ThisExpression" ||
+				const isContextLoop = node.right.type === "ThisExpression" ||
 					(node.right.type === "Identifier" && node.right.name === contextRef);
 
 				if (!isContextLoop) {
@@ -74,9 +73,8 @@ export const propDestructuringConsistency: Rule.RuleModule = {
 					}
 				}
 
-				const missingProps = Array.from(usedProps).filter(
-					(prop) => !destructuredProps.has(prop),
-				);
+				const missingProps = Array.from(usedProps)
+					.filter((prop) => !destructuredProps.has(prop));
 
 				if (missingProps.length === 0) {
 					return;

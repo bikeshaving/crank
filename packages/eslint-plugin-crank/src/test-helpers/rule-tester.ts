@@ -22,11 +22,7 @@ export function createTsRuleTester(): RuleTester {
 			parser: TSParser,
 			ecmaVersion: 2022,
 			sourceType: "module",
-			parserOptions: {
-				ecmaFeatures: {
-					jsx: true,
-				},
-			},
+			parserOptions: {ecmaFeatures: {jsx: true}},
 		},
 	});
 }
@@ -39,11 +35,7 @@ export function createJsRuleTester(): RuleTester {
 		languageOptions: {
 			ecmaVersion: 2022,
 			sourceType: "module",
-			parserOptions: {
-				ecmaFeatures: {
-					jsx: true,
-				},
-			},
+			parserOptions: {ecmaFeatures: {jsx: true}},
 		},
 	});
 }
