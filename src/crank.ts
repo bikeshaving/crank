@@ -2438,7 +2438,9 @@ type MappedEventListenerOrEventListenerObject<
 MappedEventListenerObject<T>;
 
 // The class and its merged interface must declare identical type parameters,
-// so T is required here even though only TResult is used.
+// so T is required here even though only this half uses TResult alone. The
+// rule does not pool type-parameter usage across merged declaration halves
+// (typescript-eslint bug), so it flags T as unused; tsc itself is clean.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface Context<T = any, TResult = any> extends Crank.Context {
 
