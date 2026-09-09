@@ -125,7 +125,7 @@ function calculateGear(
 	};
 }
 
-export function* Gear(this: Context<typeof Gear>, {
+export function *Gear(this: Context<typeof Gear>, {
 	mod,
 	toothCount,
 	offset,
@@ -218,7 +218,7 @@ function Rack({mod, height}: {mod: number; height: number}) {
 	`;
 }
 
-export function* GearInteractive(
+export function *GearInteractive(
 	this: Context<typeof GearInteractive>,
 ): Generator<Element> {
 	let scrollTop = 0;

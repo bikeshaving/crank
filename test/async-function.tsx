@@ -163,9 +163,7 @@ describe("async functions", () => {
 		async function Component({
 			message,
 			delay,
-		}: {message: string; delay: number}): Promise<
-			Element
-		> {
+		}: {message: string; delay: number}): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, delay));
 			return <span>{message}</span>;
 		}

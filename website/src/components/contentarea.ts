@@ -11,7 +11,7 @@ interface SelectionRange {
 	selectionDirection: "forward" | "backward" | "none";
 }
 
-export function* ContentArea(this: Context, {
+export function *ContentArea(this: Context, {
 	ref,
 	value,
 	children,

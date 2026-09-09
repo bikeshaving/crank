@@ -86,7 +86,7 @@ describe("events", () => {
 	test("delegation", () => {
 		let ctx!: Context;
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			ctx = this;
 			for ({} of this) {
 				yield (
@@ -127,7 +127,7 @@ describe("events", () => {
 	test("delegation with unmounting children", () => {
 		let ctx!: Context;
 
-		function* Component(this: Context): Generator<Element | null> {
+		function *Component(this: Context): Generator<Element | null> {
 			ctx = this;
 			yield (
 				<div>
@@ -183,7 +183,7 @@ describe("events", () => {
 
 		const mock = Sinon.fake();
 
-		function* Parent(this: Context) {
+		function *Parent(this: Context) {
 			this.addEventListener("click", () => {
 				mock();
 			});
@@ -222,7 +222,7 @@ describe("events", () => {
 	test("non-direct delegation with refresh", () => {
 		let ctx!: Context;
 
-		function* Child(this: Context) {
+		function *Child(this: Context) {
 			ctx = this;
 			yield null;
 			for ({} of this) {
@@ -238,7 +238,7 @@ describe("events", () => {
 
 		const mock = Sinon.fake();
 
-		function* Parent(this: Context) {
+		function *Parent(this: Context) {
 			this.addEventListener("click", (ev) => {
 				if ((ev.target as HTMLElement).tagName === "BUTTON") {
 					mock();
@@ -282,7 +282,7 @@ describe("events", () => {
 	});
 
 	test("refresh on click", () => {
-		function* Component(this: Context): Generator<string> {
+		function *Component(this: Context): Generator<string> {
 			let count = 0;
 			this.addEventListener("click", (ev) => {
 				if ((ev.target as HTMLElement).id === "button") {
@@ -320,7 +320,7 @@ describe("events", () => {
 	});
 
 	test("refresh callback", () => {
-		function* Component(this: Context): Generator<string> {
+		function *Component(this: Context): Generator<string> {
 			let count = 0;
 			this.addEventListener("click", (ev) => {
 				if ((ev.target as HTMLElement).id === "button") {
@@ -361,7 +361,7 @@ describe("events", () => {
 	test("async refresh callback", async () => {
 		let resolve!: (value?: any) => void;
 
-		function* Component(this: Context): Generator<string> {
+		function *Component(this: Context): Generator<string> {
 			let count = 0;
 			this.addEventListener("click", (ev) => {
 				if ((ev.target as HTMLElement).id === "button") {

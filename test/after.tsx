@@ -99,7 +99,7 @@ describe("after", () => {
 	test("called called once in a generator", () => {
 		const fn = Sinon.fake();
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			let i = 0;
 			this.after(fn);
 			for (const _ of this) {
@@ -133,7 +133,7 @@ describe("after", () => {
 	test("callback called every time in a generator", () => {
 		const fn = Sinon.fake();
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			let i = 0;
 			for (const _ of this) {
 				this.after(fn);
@@ -233,7 +233,7 @@ describe("after", () => {
 	test("callback called once in an async generator", async () => {
 		const fn = Sinon.fake();
 
-		async function* Component(this: Context) {
+		async function *Component(this: Context) {
 			let i = 0;
 			this.after(fn);
 			for await (const _ of this) {
@@ -267,7 +267,7 @@ describe("after", () => {
 	test("callback called every time in an async generator", async () => {
 		const fn = Sinon.fake();
 
-		async function* Component(this: Context) {
+		async function *Component(this: Context) {
 			let i = 0;
 			for await (const _ of this) {
 				this.after(fn);
@@ -304,7 +304,7 @@ describe("after", () => {
 		let ctx1!: Context;
 		let ctx2!: Context;
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			ctx1 = this;
 			let i = 0;
 			for (const _ of this) {
@@ -313,7 +313,7 @@ describe("after", () => {
 			}
 		}
 
-		function* Sibling(this: Context) {
+		function *Sibling(this: Context) {
 			let i = 0;
 			ctx2 = this;
 			for (const _ of this) {
@@ -350,7 +350,7 @@ describe("after", () => {
 	test("callback called after insertion with schedule refresh edge case", () => {
 		const fn = Sinon.fake();
 
-		function* Component(this: Context) {
+		function *Component(this: Context) {
 			this.after((el) => {
 				fn(document.contains(el));
 			});
@@ -380,7 +380,7 @@ describe("after", () => {
 	test("callback called after insertion with async schedule refresh edge case", async () => {
 		const fn = Sinon.fake();
 
-		async function* Component(this: Context) {
+		async function *Component(this: Context) {
 			this.after((el) => {
 				fn(document.contains(el));
 			});

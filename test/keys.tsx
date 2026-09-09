@@ -739,7 +739,7 @@ describe("keys", () => {
 	test("component unmounts with key", () => {
 		const fn = Sinon.fake();
 
-		function* Component(this: Context) {
+		function *Component(this: Context) {
 			this.cleanup(() => {
 				fn();
 			});
@@ -762,7 +762,7 @@ describe("keys", () => {
 	test("changing list", () => {
 		const fn = Sinon.fake();
 
-		function* Component(this: Context, {children}: {children?: any}) {
+		function *Component(this: Context, {children}: {children?: any}) {
 			for ({children} of this) {
 				yield <p>{children}</p>;
 			}
@@ -796,7 +796,7 @@ describe("keys", () => {
 	test("keyed host elements reorder via refresh", async () => {
 		let refresh: () => void;
 
-		function* List(this: Context) {
+		function *List(this: Context) {
 			let reversed = false;
 			refresh = () => {
 				reversed = !reversed;
@@ -853,7 +853,7 @@ describe("keys", () => {
 	test("keyed generator components reorder via refresh", async () => {
 		const mounted: string[] = [];
 
-		function* ID(this: Context, {id}: {id: string}) {
+		function *ID(this: Context, {id}: {id: string}) {
 			mounted.push(id);
 			for ({id} of this) {
 				yield <span>{id}</span>;
@@ -862,7 +862,7 @@ describe("keys", () => {
 
 		let refresh: () => void;
 
-		function* List(this: Context) {
+		function *List(this: Context) {
 			let reversed = false;
 			refresh = () => {
 				reversed = !reversed;

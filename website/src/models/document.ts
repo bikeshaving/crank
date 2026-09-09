@@ -4,7 +4,7 @@ interface WalkInfo {
 	filename: string;
 }
 
-async function* walk(
+async function *walk(
 	dir: FileSystemDirectoryHandle,
 	basePath = "",
 ): AsyncGenerator<WalkInfo> {
@@ -17,7 +17,7 @@ async function* walk(
 	for (const [name, handle] of entries) {
 		const path = basePath ? `${basePath}/${name}` : name;
 		if (handle.kind === "directory") {
-			yield* walk(handle as FileSystemDirectoryHandle, path);
+			yield *walk(handle as FileSystemDirectoryHandle, path);
 		} else if (handle.kind === "file") {
 			yield {filename: path};
 		}

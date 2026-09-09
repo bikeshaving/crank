@@ -27,7 +27,7 @@ function deferTransitionStyles(callback) {
   });
 }
 
-function* Letter({letter, index}) {
+function *Letter({letter, index}) {
   this.after((node) => {
     node.style.transform = `translate(${index * 1.1}em, -20px)`;
     node.style.opacity = 0;
@@ -65,7 +65,7 @@ function* Letter({letter, index}) {
   }
 }
 
-function* Letters() {
+function *Letters() {
   const interval = setInterval(() => this.refresh(), 1500);
 
   for ({} of this) {

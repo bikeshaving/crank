@@ -83,7 +83,7 @@ describe("hydration", () => {
 		const button = container.firstChild as HTMLButtonElement;
 
 		const onclick = Sinon.fake();
-		const Component = Sinon.fake(function* Component(this: Context) {
+		const Component = Sinon.fake(function *Component(this: Context) {
 			for ({} of this) {
 				yield <button onclick={onclick}>Click</button>;
 			}
@@ -104,7 +104,7 @@ describe("hydration", () => {
 		const button = container.firstChild as HTMLButtonElement;
 
 		const onclick = Sinon.fake();
-		const Component = Sinon.fake(function* Component(this: Context) {
+		const Component = Sinon.fake(function *Component(this: Context) {
 			let count = 0;
 			for ({} of this) {
 				yield (
@@ -157,7 +157,7 @@ describe("hydration", () => {
 		const button = container.firstChild as HTMLButtonElement;
 
 		const onclick = Sinon.fake();
-		const Component = Sinon.fake(async function* Component(this: Context) {
+		const Component = Sinon.fake(async function *Component(this: Context) {
 			for await ({} of this) {
 				yield <button onclick={onclick}>Click</button>;
 			}
@@ -716,12 +716,10 @@ describe("hydration", () => {
 	test("hydrate={false} can be used to disable hydration for a fragment", () => {
 		container.innerHTML = "<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>";
 		const app = document.getElementById("app")!;
-		const button1 = container.querySelector(
-			"button:nth-child(1)",
-		) as HTMLButtonElement;
-		const button2 = container.querySelector(
-			"button:nth-child(2)",
-		) as HTMLButtonElement;
+		const button1 =
+			container.querySelector("button:nth-child(1)") as HTMLButtonElement;
+		const button2 =
+			container.querySelector("button:nth-child(2)") as HTMLButtonElement;
 		renderer.hydrate(
 			<Fragment>
 				Before{" "}
@@ -747,12 +745,10 @@ describe("hydration", () => {
 	test("hydrate={false} can be used to disable hydration for a component", () => {
 		container.innerHTML = "<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>";
 		const app = document.getElementById("app")!;
-		const button1 = container.querySelector(
-			"button:nth-child(1)",
-		) as HTMLButtonElement;
-		const button2 = container.querySelector(
-			"button:nth-child(2)",
-		) as HTMLButtonElement;
+		const button1 =
+			container.querySelector("button:nth-child(1)") as HTMLButtonElement;
+		const button2 =
+			container.querySelector("button:nth-child(2)") as HTMLButtonElement;
 
 		function Component() {
 			return (
@@ -783,12 +779,10 @@ describe("hydration", () => {
 	test("hydrate={false} can be used to disable hydration for a Raw node", () => {
 		container.innerHTML = "<div id=\"app\">Before <button>Click1</button> <button>Click2</button> After</div>";
 		const app = document.getElementById("app")!;
-		const button1 = container.querySelector(
-			"button:nth-child(1)",
-		) as HTMLButtonElement;
-		const button2 = container.querySelector(
-			"button:nth-child(2)",
-		) as HTMLButtonElement;
+		const button1 =
+			container.querySelector("button:nth-child(1)") as HTMLButtonElement;
+		const button2 =
+			container.querySelector("button:nth-child(2)") as HTMLButtonElement;
 
 		renderer.hydrate(
 			<Fragment>

@@ -62,7 +62,7 @@ describe("suspense", () => {
 	test("suspense with refresh", async () => {
 		let ctx!: Context;
 
-		async function* App(this: Context) {
+		async function *App(this: Context) {
 			ctx = this;
 			for await (const _ of this) {
 				yield (
@@ -87,7 +87,7 @@ describe("suspense", () => {
 	test("suspense with concurrent refresh", async () => {
 		let ctx!: Context;
 
-		async function* App(this: Context) {
+		async function *App(this: Context) {
 			ctx = this;
 			for await (const _ of this) {
 				yield (
@@ -114,7 +114,7 @@ describe("suspense", () => {
 	test("suspense with concurrent refresh in timeout", async () => {
 		let ctx!: Context;
 
-		async function* App(this: Context) {
+		async function *App(this: Context) {
 			ctx = this;
 			for await (const _ of this) {
 				yield (
@@ -141,7 +141,7 @@ describe("suspense", () => {
 	test("suspense with concurrent refresh after refresh fulfills", async () => {
 		let ctx!: Context;
 
-		async function* App(this: Context) {
+		async function *App(this: Context) {
 			ctx = this;
 			for await (const _ of this) {
 				yield (
@@ -169,7 +169,7 @@ describe("suspense", () => {
 		let ctx!: Context;
 		const mock = Sinon.stub();
 
-		async function* StatefulChild(this: Context) {
+		async function *StatefulChild(this: Context) {
 			mock();
 			let count = 0;
 			for ({} of this) {
@@ -178,7 +178,7 @@ describe("suspense", () => {
 			}
 		}
 
-		async function* App(this: Context) {
+		async function *App(this: Context) {
 			ctx = this;
 			for await (const _ of this) {
 				yield (
@@ -840,7 +840,7 @@ describe("suspense", () => {
 	// TODO: See if we can create a reproduction that does not use setInterval
 	test("suspense fallback and children render simultaneously", async () => {
 		// Simple loading fallback that refreshes periodically
-		function* LoadingFallback(this: Context) {
+		function *LoadingFallback(this: Context) {
 			let count = 0;
 			const interval = setInterval(() => this.refresh(() => {
 				count++;
@@ -863,7 +863,7 @@ describe("suspense", () => {
 		}
 
 		// Parent component with button that triggers refresh
-		function* App(this: Context) {
+		function *App(this: Context) {
 			for ({} of this) {
 				yield (
 					<Suspense fallback={<LoadingFallback />} timeout={300}>

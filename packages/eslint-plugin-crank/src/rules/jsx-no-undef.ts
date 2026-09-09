@@ -53,9 +53,8 @@ export const jsxNoUndef: Rule.RuleModule = {
 			if (scope.childScopes.length) {
 				variables = scope.childScopes[0].variables.concat(variables);
 				if (scope.childScopes[0].childScopes.length) {
-					variables = scope.childScopes[0].childScopes[0].variables.concat(
-						variables,
-					);
+					variables =
+						scope.childScopes[0].childScopes[0].variables.concat(variables);
 				}
 			}
 

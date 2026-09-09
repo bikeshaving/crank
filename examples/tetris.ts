@@ -140,7 +140,7 @@ function Board({field}) {
     `));
 }
 
-function* App() {
+function *App() {
   let currentPiece = createPiece();
   const field = Array.from(Array(HEIGHT), () =>
     Array.from(Array(WIDTH), () => false),

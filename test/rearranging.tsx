@@ -16,7 +16,7 @@ describe("rearranging", () => {
 
 	let headerCtx: Context | undefined;
 
-	function* Header(this: Context) {
+	function *Header(this: Context) {
 		headerCtx = this;
 		let i = 0;
 		for (const _ of this) {
@@ -28,7 +28,7 @@ describe("rearranging", () => {
 
 	let asyncHeaderCtx: Context | undefined;
 
-	async function* AsyncHeader(this: Context) {
+	async function *AsyncHeader(this: Context) {
 		asyncHeaderCtx = this;
 		let i = 0;
 		for await (const _ of this) {
@@ -89,7 +89,7 @@ describe("rearranging", () => {
 	test("changing children nested in a generator component", () => {
 		let ctx!: Context;
 
-		function* Component(this: Context) {
+		function *Component(this: Context) {
 			ctx = this;
 			while (true) {
 				yield (
@@ -113,7 +113,7 @@ describe("rearranging", () => {
 	test("changing children nested in a fragment in a generator component", () => {
 		let ctx!: Context;
 
-		function* Component(this: Context) {
+		function *Component(this: Context) {
 			ctx = this;
 			while (true) {
 				yield <Header />;
@@ -151,7 +151,7 @@ describe("rearranging", () => {
 	test("changing children nested in an async generator component", async () => {
 		let ctx!: Context;
 
-		async function* Component(this: Context) {
+		async function *Component(this: Context) {
 			ctx = this;
 			for await (const _ of this) {
 				yield <Header />;

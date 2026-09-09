@@ -19,7 +19,7 @@ import {createElement} from "./crank.js";
 export function lazy<T extends Component>(
 	initializer: () => Promise<T | {default: T}>,
 ): T {
-	return async function* LazyComponent(
+	return async function *LazyComponent(
 		this: Context,
 		props: any,
 	): AsyncGenerator<Children> {
@@ -79,7 +79,7 @@ function SuspenseChildren(this: Context, {children, schedule}: {
  * </Suspense>
  * ```
  */
-export async function* Suspense(this: Context, {children, fallback, timeout}: {
+export async function *Suspense(this: Context, {children, fallback, timeout}: {
 	children: Children;
 	fallback: Children;
 	timeout?: number;
@@ -189,7 +189,7 @@ declare global {
  * </SuspenseList>
  * ```
  */
-export function* SuspenseList(this: Context, {
+export function *SuspenseList(this: Context, {
 	revealOrder = "forwards",
 	tail = "collapsed",
 	timeout,

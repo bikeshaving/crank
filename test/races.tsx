@@ -158,7 +158,7 @@ describe("races", () => {
 			return <div>Fast</div>;
 		}
 
-		async function* Component(this: Context): AsyncGenerator<Child> {
+		async function *Component(this: Context): AsyncGenerator<Child> {
 			let i = 0;
 			for await (const _ of this) {
 				if (i % 2 === 0) {
@@ -199,7 +199,7 @@ describe("races", () => {
 
 		let ctx!: Context;
 
-		async function* Component(this: Context): AsyncGenerator<Child> {
+		async function *Component(this: Context): AsyncGenerator<Child> {
 			ctx = this;
 			let i = 0;
 			for await (const _ of this) {
@@ -236,7 +236,7 @@ describe("races", () => {
 			return <span>Slow {i}</span>;
 		}
 
-		async function* Component(this: Context): AsyncGenerator<Child, any, any> {
+		async function *Component(this: Context): AsyncGenerator<Child, any, any> {
 			let i = 0;
 			for await (const _ of this) {
 				yield (
@@ -283,7 +283,7 @@ describe("races", () => {
 
 		const slowFn = Sinon.fake();
 
-		async function* Slow(this: Context, {i}: {i: number}): AsyncGenerator<
+		async function *Slow(this: Context, {i}: {i: number}): AsyncGenerator<
 			Child
 		> {
 			slowFn();
@@ -293,7 +293,7 @@ describe("races", () => {
 			}
 		}
 
-		async function* Component(this: Context): AsyncGenerator<Child> {
+		async function *Component(this: Context): AsyncGenerator<Child> {
 			let i = 0;
 			for await ({} of this) {
 				yield (
@@ -334,7 +334,7 @@ describe("races", () => {
 	});
 
 	test("fast async generator vs slow async function", async () => {
-		async function* Fast(this: Context): AsyncGenerator<Element> {
+		async function *Fast(this: Context): AsyncGenerator<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			for await (const _ of this) {
 				yield <span>Fast</span>;
@@ -357,7 +357,7 @@ describe("races", () => {
 	});
 
 	test("slow async generator vs fast async function", async () => {
-		async function* Slow(this: Context): AsyncGenerator<Element> {
+		async function *Slow(this: Context): AsyncGenerator<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 200));
 			for await (const _ of this) {
 				yield <span>Slow</span>;
@@ -390,7 +390,7 @@ describe("races", () => {
 			return <span>Fast</span>;
 		}
 
-		function* SlowGen(): Generator<Element> {
+		function *SlowGen(): Generator<Element> {
 			while (true) {
 				yield <Slow />;
 			}
@@ -417,7 +417,7 @@ describe("races", () => {
 			return <span>Fast</span>;
 		}
 
-		function* FastGen(): Generator<Element> {
+		function *FastGen(): Generator<Element> {
 			while (true) {
 				yield <Fast />;
 			}

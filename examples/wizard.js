@@ -1,6 +1,6 @@
 import {renderer} from "@b9g/crank/dom";
 
-function* Wizard() {
+function *Wizard() {
   let step = 0;
   const formData = new FormData();
   this.addEventListener("submit", (ev) => {
