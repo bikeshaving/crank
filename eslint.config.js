@@ -20,10 +20,10 @@ export default [
 		// Tests deliberately write components in non-idiomatic ways.
 		files: ["test/**/*"],
 		rules: {
-			// The fixer unwraps {"a"} children. Two of those on adjacent lines
-			// become one whitespace-joined text node, which changes rendered
-			// output. Tests here assert exact text-node structure, so the
-			// failure this causes looks like a hydration bug.
+			// These tests assert what the renderer receives — exact children,
+			// text-node identity across re-renders — not what it prints.
+			// Unwrapping {"world"} can keep the rendered output identical while
+			// merging the children the test exists to exercise.
 			"@stylistic/jsx-curly-brace-presence": "off",
 			"crank/prefer-props-iterator": "off",
 			"crank/prefer-refresh-callback": "off",
