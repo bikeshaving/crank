@@ -10,7 +10,7 @@
   "module": "./dist/crank.js",
   "types": "./dist/crank.d.ts",
   "devDependencies": {
-    "@b9g/eslint-config": "^0.1.5",
+    "@b9g/eslint-config": "^0.1.6",
     "@b9g/libuild": "^0.2.20",
     "@b9g/skillpack": "^0.1.6",
     "@eslint/js": "^9.39.0",
