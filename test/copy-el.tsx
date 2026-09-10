@@ -193,9 +193,9 @@ describe("copy-el", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span></div>",
+		);
 		const span1 = document.body.firstChild!.childNodes[0];
 		const span2 = document.body.firstChild!.childNodes[1];
 		const span3 = document.body.firstChild!.childNodes[2];
@@ -212,9 +212,9 @@ describe("copy-el", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>7</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>7</span></div>",
+		);
 		renderer.render(
 			<div>
 				<span>1</span>
@@ -426,14 +426,14 @@ describe("copy-el", () => {
 			document.body,
 		) as HTMLElement;
 
-		expect(
-			document.body.innerHTML,
-		).toBe('<span><span class="test">Hello</span><span class="test">World</span></span>');
+		expect(document.body.innerHTML).toBe(
+			'<span><span class="test">Hello</span><span class="test">World</span></span>',
+		);
 
 		el.firstChild!.textContent = "Changed";
 		renderer.render(<Copy />, document.body);
-		expect(
-			document.body.innerHTML,
-		).toBe('<span><span class="test">Changed</span><span class="test">World</span></span>');
+		expect(document.body.innerHTML).toBe(
+			'<span><span class="test">Changed</span><span class="test">World</span></span>',
+		);
 	});
 });

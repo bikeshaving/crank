@@ -1542,13 +1542,13 @@ function diffHost<TNode, TScope, TRoot extends TNode | undefined>(
 	} else {
 		scope =
 			ret.scope =
-				adapter.scope({
-					tag,
-					tagName: getTagName(tag),
-					props: el.props,
-					scope,
-					root,
-				});
+			adapter.scope({
+				tag,
+				tagName: getTagName(tag),
+				props: el.props,
+				scope,
+				root,
+			});
 	}
 
 	return diffChildren(
@@ -2091,7 +2091,9 @@ class MetaProp {
 		}
 
 		if (!allBangs && !noBangs) {
-			console.error(`Invalid ${propName} prop "${propValue}".\nUse prop or !prop but not both.`);
+			console.error(
+				`Invalid ${propName} prop "${propValue}".\nUse prop or !prop but not both.`,
+			);
 			this.include = true;
 			this.props.clear();
 		} else {

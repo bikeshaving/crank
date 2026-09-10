@@ -19,19 +19,16 @@ function ColorSchemeScript() {
 	`;
 }
 
-export function *Root(this: Context, {
-	title,
-	children,
-	url,
-	description = "",
-	noFooter = false,
-}: {
-	title: string;
-	children: Children;
-	url: string;
-	description?: string;
-	noFooter?: boolean;
-}): Generator<Element> {
+export function *Root(
+	this: Context,
+	{title, children, url, description = "", noFooter = false}: {
+		title: string;
+		children: Children;
+		url: string;
+		description?: string;
+		noFooter?: boolean;
+	},
+): Generator<Element> {
 	for ({title, children, url, description = "", noFooter = false} of this) {
 		this.schedule(() => this.refresh());
 		const childrenHTML: string = yield jsx`

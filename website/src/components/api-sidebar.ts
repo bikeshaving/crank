@@ -176,10 +176,9 @@ const linkStyle = css`
 	}
 `;
 
-export function APISidebar({
-	modules,
-	url,
-}: {modules: APIModule[]; url: string}): Element {
+export function APISidebar(
+	{modules, url}: {modules: APIModule[]; url: string},
+): Element {
 	return jsx`
 		<div id="sidebar" class=${sidebarStyle}>
 			<h2 class=${css`

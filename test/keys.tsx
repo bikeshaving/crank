@@ -28,9 +28,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>",
+		);
 		renderer.render(
 			<div>
 				<span key="1">1</span>
@@ -41,9 +41,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>",
+		);
 	});
 
 	test("no shared keys", () => {
@@ -57,9 +57,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>",
+		);
 		const span1 = document.body.firstChild!.childNodes[0];
 		const span2 = document.body.firstChild!.childNodes[1];
 		const span3 = document.body.firstChild!.childNodes[2];
@@ -75,9 +75,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div>",
+		);
 		expect(span1).not.toBe(document.body.firstChild!.childNodes[0]);
 		expect(span2).not.toBe(document.body.firstChild!.childNodes[1]);
 		expect(span3).not.toBe(document.body.firstChild!.childNodes[2]);
@@ -175,9 +175,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>",
+		);
 		const span1 = document.body.firstChild!.childNodes[0];
 		const span2 = document.body.firstChild!.childNodes[1];
 		const span3 = document.body.firstChild!.childNodes[2];
@@ -218,9 +218,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span></div>",
+		);
 		const span1 = document.body.firstChild!.childNodes[0];
 		const span2 = document.body.firstChild!.childNodes[1];
 		const span3 = document.body.firstChild!.childNodes[2];
@@ -237,9 +237,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>7</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>7</span></div>",
+		);
 		renderer.render(
 			<div>
 				<span>1</span>
@@ -488,9 +488,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>0.5</span><span>1</span><span>1.5</span><span>2</span><span>2.5</span><span>3</span><span>3.5</span><span>4</span><span>4.5</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>0.5</span><span>1</span><span>1.5</span><span>2</span><span>2.5</span><span>3</span><span>3.5</span><span>4</span><span>4.5</span></div>",
+		);
 		expect(span1).toBe(document.body.firstChild!.childNodes[1]);
 		expect(span2).toBe(document.body.firstChild!.childNodes[3]);
 		expect(span3).toBe(document.body.firstChild!.childNodes[5]);
@@ -525,9 +525,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>",
+		);
 		const span1 = document.body.firstChild!.childNodes[0];
 		const span2 = document.body.firstChild!.childNodes[1];
 		const span3 = document.body.firstChild!.childNodes[2];
@@ -545,9 +545,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>5</span><span>2</span><span>3</span><span>4</span><span>6</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>5</span><span>2</span><span>3</span><span>4</span><span>6</span></div>",
+		);
 		expect(span1).toBe(document.body.firstChild!.childNodes[0]);
 		expect(span2).toBe(document.body.firstChild!.childNodes[2]);
 		expect(span3).toBe(document.body.firstChild!.childNodes[3]);
@@ -565,9 +565,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>",
+		);
 		expect(span1).toBe(document.body.firstChild!.childNodes[0]);
 		expect(span2).toBe(document.body.firstChild!.childNodes[1]);
 		expect(span3).toBe(document.body.firstChild!.childNodes[2]);
@@ -588,9 +588,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>",
+		);
 		const span1 = document.body.firstChild!.childNodes[0];
 		const span2 = document.body.firstChild!.childNodes[1];
 		const span3 = document.body.firstChild!.childNodes[2];
@@ -608,9 +608,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>3</span><span>4</span><span>5</span><span>2</span><span>6</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>3</span><span>4</span><span>5</span><span>2</span><span>6</span></div>",
+		);
 		expect(span1).toBe(document.body.firstChild!.childNodes[0]);
 		expect(span2).toBe(document.body.firstChild!.childNodes[4]);
 		expect(span3).toBe(document.body.firstChild!.childNodes[1]);
@@ -628,9 +628,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>",
+		);
 		expect(span1).toBe(document.body.firstChild!.childNodes[0]);
 		expect(span2).toBe(document.body.firstChild!.childNodes[1]);
 		expect(span3).toBe(document.body.firstChild!.childNodes[2]);
@@ -650,9 +650,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>",
+		);
 		const span1 = document.body.firstChild!.childNodes[0];
 		const span2 = document.body.firstChild!.childNodes[1];
 		const span3 = document.body.firstChild!.childNodes[2];
@@ -670,9 +670,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>5</span><span>3</span><span>4</span><span>2</span><span>6</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>5</span><span>3</span><span>4</span><span>2</span><span>6</span></div>",
+		);
 		expect(span1).toBe(document.body.firstChild!.childNodes[0]);
 		expect(span2).toBe(document.body.firstChild!.childNodes[4]);
 		expect(span3).toBe(document.body.firstChild!.childNodes[2]);
@@ -690,9 +690,9 @@ describe("keys", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>",
+		);
 		expect(span1).toBe(document.body.firstChild!.childNodes[0]);
 		expect(span2).toBe(document.body.firstChild!.childNodes[1]);
 		expect(span3).toBe(document.body.firstChild!.childNodes[2]);

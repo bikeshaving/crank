@@ -207,8 +207,10 @@ describe("async generator", () => {
 	});
 
 	test("for await...of", async () => {
-		async function *Component(this: Context, {message}: {message:
-		string;}): AsyncGenerator<Element> {
+		async function *Component(
+			this: Context,
+			{message}: {message: string},
+		): AsyncGenerator<Element> {
 			for await ({message} of this) {
 				yield <span>{message}</span>;
 			}
@@ -271,8 +273,10 @@ describe("async generator", () => {
 	test("for await...of multiple yields per update", async () => {
 		let resolve: ((value?: any) => void) | undefined;
 
-		async function *Component(this: Context, {message}: {message:
-		string;}): AsyncGenerator<Element> {
+		async function *Component(
+			this: Context,
+			{message}: {message: string},
+		): AsyncGenerator<Element> {
 			for await ({message} of this) {
 				yield <span>Loading</span>;
 				await new Promise((resolve1) => (resolve = resolve1));
@@ -307,8 +311,10 @@ describe("async generator", () => {
 	});
 
 	test("for await...of multiple yields per update sync", async () => {
-		async function *Component(this: Context, {message}: {message:
-		string;}): AsyncGenerator<Element> {
+		async function *Component(
+			this: Context,
+			{message}: {message: string},
+		): AsyncGenerator<Element> {
 			for await ({message} of this) {
 				yield <span>{message} 1</span>;
 				yield <span>{message} 2</span>;
@@ -875,9 +881,10 @@ describe("async generator", () => {
 	test("for...of enqueues", async () => {
 		const fn = Sinon.fake();
 
-		async function *Component(this: Context<typeof Component>, {message}: {
-			message: string;
-		}) {
+		async function *Component(
+			this: Context<typeof Component>,
+			{message}: {message: string},
+		) {
 			for ({message} of this) {
 				await new Promise((resolve) => setTimeout(resolve));
 				fn();
@@ -1185,9 +1192,9 @@ describe("async generator", () => {
 		expect(mock.callCount).toBe(1);
 		resolveNephew!();
 		await new Promise((resolve) => setTimeout(resolve));
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><div><div><span>Nephew</span></div></div><div>Children 2</div></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><div><div><span>Nephew</span></div></div><div>Children 2</div></div>",
+		);
 	});
 
 	// https://github.com/bikeshaving/crank/issues/334
