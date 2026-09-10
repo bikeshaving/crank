@@ -3177,8 +3177,9 @@ function runComponent<TNode, TResult>(
  * @returns {Promise<undefined> | undefined} A possible promise which
  * represents the duration during which the component is blocked.
  */
-function resumePropsAsyncIterator(ctx: ContextState): Promise<undefined> |
-	undefined {
+function resumePropsAsyncIterator(
+	ctx: ContextState,
+): Promise<undefined> | undefined {
 	if (ctx.onPropsProvided) {
 		ctx.onPropsProvided(ctx.ret.el.props);
 		ctx.onPropsProvided = undefined;
