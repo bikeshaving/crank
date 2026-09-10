@@ -34,9 +34,10 @@ export function createMockStatement(
 /**
  * Creates a mock callback node with a block statement body
  */
-export function createMockCallbackNode(
-	statements: Array<{type: string; text: string}>,
-): {body: {type: string; body: Array<{type: string; text: string}>}} {
+export function createMockCallbackNode(statements: Array<{
+	type: string;
+	text: string;
+}>): {body: {type: string; body: Array<{type: string; text: string}>}} {
 	return {body: {type: "BlockStatement", body: statements}};
 }
 
