@@ -48,11 +48,11 @@ export function arrayify<T>(
 	return value == null
 		? []
 		: Array.isArray(value)
-			? value
-			: typeof value === "string" ||
-				typeof (value as any)[Symbol.iterator] !== "function"
-				? [value as T]
-				: [...(value as NonStringIterable<T>)];
+		? value
+		: typeof value === "string" ||
+			typeof (value as any)[Symbol.iterator] !== "function"
+		? [value as T]
+		: [...(value as NonStringIterable<T>)];
 }
 
 export function isIteratorLike(value: any): value is Iterator<unknown> |

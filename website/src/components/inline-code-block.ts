@@ -4,13 +4,16 @@ import {css} from "@emotion/css";
 import {CodeEditor} from "./code-editor.js";
 import {CodePreview} from "./code-preview.js";
 
-export function *InlineCodeBlock(this: Context<typeof InlineCodeBlock>, {
-	value,
-	lang,
-	editable,
-	// TODO: This is narsty.
-	breakpoint = "1300px",
-}: {value: string; lang: string; editable: boolean; breakpoint: string}): any {
+export function *InlineCodeBlock(
+	this: Context<typeof InlineCodeBlock>,
+	{
+		value,
+		lang,
+		editable,
+		// TODO: This is narsty.
+		breakpoint = "1300px",
+	}: {value: string; lang: string; editable: boolean; breakpoint: string},
+): any {
 	let copied = false;
 
 	this.addEventListener("contentchange", (ev: any) => {

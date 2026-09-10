@@ -4,11 +4,9 @@ import type {Element} from "@b9g/crank/standalone";
 import type {DocInfo} from "../models/document.js";
 import {Search} from "./search.js";
 
-export function Sidebar({docs, title, url}: {
-	docs: DocInfo[];
-	url: string;
-	title: string;
-}): Element {
+export function Sidebar(
+	{docs, title, url}: {docs: DocInfo[]; url: string; title: string},
+): Element {
 	const links: Element[] = [];
 	for (const doc of docs) {
 		if (doc.attributes.publish) {

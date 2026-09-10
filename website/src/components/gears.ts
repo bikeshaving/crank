@@ -125,25 +125,19 @@ function calculateGear(
 	};
 }
 
-export function *Gear(this: Context<typeof Gear>, {
-	mod,
-	toothCount,
-	offset,
-	mask,
-	stroke,
-	strokeWidth,
-	fill,
-	circleRadius,
-}: {
-	mod: number;
-	toothCount: number;
-	offset: boolean | undefined;
-	mask?: string;
-	stroke?: string | number;
-	strokeWidth?: string | number;
-	fill?: string | number;
-	circleRadius?: number;
-}): Generator<any> {
+export function *Gear(
+	this: Context<typeof Gear>,
+	{mod, toothCount, offset, mask, stroke, strokeWidth, fill, circleRadius}: {
+		mod: number;
+		toothCount: number;
+		offset: boolean | undefined;
+		mask?: string;
+		stroke?: string | number;
+		strokeWidth?: string | number;
+		fill?: string | number;
+		circleRadius?: number;
+	},
+): Generator<any> {
 	const pressureAngle = radiansFromDegrees(20);
 	let path!: string;
 	let dedRadius = 0;
@@ -379,17 +373,14 @@ export function *GearInteractive(
 	}
 }
 
-export function GearLogo({
-	width = 400,
-	height = 400,
-	color = "var(--highlight-color)",
-	background,
-}: {
-	width?: number;
-	height?: number;
-	color?: string;
-	background?: string;
-}): Element {
+export function GearLogo(
+	{width = 400, height = 400, color = "var(--highlight-color)", background}: {
+		width?: number;
+		height?: number;
+		color?: string;
+		background?: string;
+	},
+): Element {
 	const style = background
 		? `flex: none; background-color: ${background};`
 		: "flex: none;";

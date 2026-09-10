@@ -610,7 +610,9 @@ function parseJSX(
 			const Tag = rootProps.components?.[tagName];
 			if (Tag) {
 				const token = {type: tagName, raw: html, ...frame.props};
-				results.push(jsx`<${Tag} token=${token} rootProps=${rootProps}>${frame.children}<//Tag>`);
+				results.push(
+					jsx`<${Tag} token=${token} rootProps=${rootProps}>${frame.children}<//Tag>`,
+				);
 			} else {
 				results.push(
 					jsx`<${Raw} value=${

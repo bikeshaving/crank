@@ -529,12 +529,14 @@ function patchProp(
 }
 
 export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
-	scope({scope: xmlns, tag, props, root}: {
-		scope: string | undefined;
-		tag: string | symbol;
-		props: Record<string, any>;
-		root: Node | undefined;
-	}): string | undefined {
+	scope(
+		{scope: xmlns, tag, props, root}: {
+			scope: string | undefined;
+			tag: string | symbol;
+			props: Record<string, any>;
+			root: Node | undefined;
+		},
+	): string | undefined {
 		switch (tag) {
 			case Portal: {
 				const ns = root && root.nodeType === ELEMENT_NODE
@@ -559,12 +561,14 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		return props.xmlns || xmlns;
 	},
 
-	create({tag, tagName, scope: xmlns, root}: {
-		tag: string | symbol;
-		tagName: string;
-		scope: string | undefined;
-		root: Node | undefined;
-	}): Node {
+	create(
+		{tag, tagName, scope: xmlns, root}: {
+			tag: string | symbol;
+			tagName: string;
+			scope: string | undefined;
+			root: Node | undefined;
+		},
+	): Node {
 		if (typeof tag !== "string") {
 			throw new Error(`Unknown tag: ${tagName}`);
 		} else if (tag.toLowerCase() === "svg") {
@@ -579,12 +583,14 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		return xmlns ? doc.createElementNS(xmlns, tag) : doc.createElement(tag);
 	},
 
-	adopt({tag, tagName, node, root}: {
-		tag: string | symbol;
-		tagName: string;
-		node: Node | undefined;
-		root: Node | undefined;
-	}): Node[] | undefined {
+	adopt(
+		{tag, tagName, node, root}: {
+			tag: string | symbol;
+			tagName: string;
+			node: Node | undefined;
+			root: Node | undefined;
+		},
+	): Node[] | undefined {
 		if (typeof tag !== "string" && tag !== Portal) {
 			throw new Error(`Unknown tag: ${tagName}`);
 		}
@@ -596,7 +602,9 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 			node === doc.documentElement ||
 			node === doc
 		) {
-			console.warn(`Hydrating ${node.nodeName.toLowerCase()} is discouraged as it is destructive and may remove unknown nodes.`);
+			console.warn(
+				`Hydrating ${node.nodeName.toLowerCase()} is discouraged as it is destructive and may remove unknown nodes.`,
+			);
 		}
 
 		if (
@@ -612,32 +620,36 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		return Array.from(node.childNodes);
 	},
 
-	patch({
-		tag,
-		tagName,
-		node,
-		props,
-		oldProps,
-		scope: xmlns,
-		copyProps,
-		quietProps,
-		isHydrating,
-	}: {
-		tag: string | symbol;
-		node: Node;
-		tagName: string;
-		props: Record<string, any>;
-		oldProps: Record<string, any> | undefined;
-		scope: string | undefined;
-		root: Node | undefined;
-		copyProps: Set<string> | undefined;
-		quietProps: Set<string> | undefined;
-		isHydrating: boolean;
-	}): void {
+	patch(
+		{
+			tag,
+			tagName,
+			node,
+			props,
+			oldProps,
+			scope: xmlns,
+			copyProps,
+			quietProps,
+			isHydrating,
+		}: {
+			tag: string | symbol;
+			node: Node;
+			tagName: string;
+			props: Record<string, any>;
+			oldProps: Record<string, any> | undefined;
+			scope: string | undefined;
+			root: Node | undefined;
+			copyProps: Set<string> | undefined;
+			quietProps: Set<string> | undefined;
+			isHydrating: boolean;
+		},
+	): void {
 		if (node.nodeType !== ELEMENT_NODE) {
 			throw new TypeError(`Cannot patch node: ${String(node)}`);
 		} else if (props.class && props.className) {
-			console.error(`Both "class" and "className" set in props for <${tagName}>. Use one or the other.`);
+			console.error(
+				`Both "class" and "className" set in props for <${tagName}>. Use one or the other.`,
+			);
 		}
 
 		const element = node as Element;
@@ -680,13 +692,15 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		}
 	},
 
-	arrange({tag, node, props, children}: {
-		tag: string | symbol;
-		node: Node;
-		props: Record<string, any>;
-		children: Node[];
-		root: Node | undefined;
-	}): void {
+	arrange(
+		{tag, node, props, children}: {
+			tag: string | symbol;
+			node: Node;
+			props: Record<string, any>;
+			children: Node[];
+			root: Node | undefined;
+		},
+	): void {
 		if (tag === Portal && (node == null || typeof node.nodeType !== "number")) {
 			throw new TypeError(
 				`<Portal> root is not a node. Received: ${String(node)}`,
@@ -715,23 +729,27 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		}
 	},
 
-	remove({node, parentNode, isNested}: {
-		node: Node;
-		parentNode: Node;
-		isNested: boolean;
-		root: Node | undefined;
-	}): void {
+	remove(
+		{node, parentNode, isNested}: {
+			node: Node;
+			parentNode: Node;
+			isNested: boolean;
+			root: Node | undefined;
+		},
+	): void {
 		if (!isNested && node.parentNode === parentNode) {
 			parentNode.removeChild(node);
 		}
 	},
 
-	text({value, oldNode, hydrationNodes, root}: {
-		value: string;
-		hydrationNodes: Node[] | undefined;
-		oldNode: Node | undefined;
-		root: Node | undefined;
-	}): Node {
+	text(
+		{value, oldNode, hydrationNodes, root}: {
+			value: string;
+			hydrationNodes: Node[] | undefined;
+			oldNode: Node | undefined;
+			root: Node | undefined;
+		},
+	): Node {
 		const doc = getRootDocument(root);
 		if (hydrationNodes != null) {
 			const node = hydrationNodes.shift();
@@ -775,20 +793,22 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		return doc.createTextNode(value);
 	},
 
-	raw({value, scope: xmlns, hydrationNodes, root}: {
-		value: string | Node;
-		scope: string | undefined;
-		hydrationNodes: Node[] | undefined;
-		root: Node | undefined;
-	}): ElementValue<Node> {
+	raw(
+		{value, scope: xmlns, hydrationNodes, root}: {
+			value: string | Node;
+			scope: string | undefined;
+			hydrationNodes: Node[] | undefined;
+			root: Node | undefined;
+		},
+	): ElementValue<Node> {
 		let nodes: Node[];
 		if (typeof value === "string") {
 			const doc = getRootDocument(root);
 			const el = xmlns == null
 				? doc.createElement("div")
 				: xmlns === SVG_NAMESPACE
-					? doc.createElementNS(xmlns, "svg")
-					: doc.createElementNS(xmlns, "math");
+				? doc.createElementNS(xmlns, "svg")
+				: doc.createElementNS(xmlns, "math");
 			el.innerHTML = value;
 			nodes = Array.from(el.childNodes);
 		} else {

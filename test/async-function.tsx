@@ -160,10 +160,9 @@ describe("async functions", () => {
 	});
 
 	test("out of order", async () => {
-		async function Component({
-			message,
-			delay,
-		}: {message: string; delay: number}): Promise<Element> {
+		async function Component(
+			{message, delay}: {message: string; delay: number},
+		): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, delay));
 			return <span>{message}</span>;
 		}

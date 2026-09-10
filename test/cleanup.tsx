@@ -761,9 +761,9 @@ describe("cleanup", () => {
 			document.body,
 		);
 
-		expect(
-			document.body.innerHTML,
-		).toBe('<div><div class="wrapper"><span>Modal</span></div><span>Sibling</span></div>');
+		expect(document.body.innerHTML).toBe(
+			'<div><div class="wrapper"><span>Modal</span></div><span>Sibling</span></div>',
+		);
 
 		renderer.render(
 			<div>
