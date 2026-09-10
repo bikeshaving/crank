@@ -17,7 +17,7 @@
         "eslint": "^9.39.0",
         "eslint-plugin-acrocase": "^0.1.0",
         "eslint-plugin-crank": "workspace:*",
-        "eslint-plugin-esfold": "^0.1.7",
+        "eslint-plugin-esfold": "^0.1.8",
         "playwright": "^1.62.1",
         "sinon": "^17.0.2",
         "typescript": "^5.8.3",
@@ -683,7 +683,7 @@
 
     "eslint-plugin-crank": ["eslint-plugin-crank@workspace:packages/eslint-plugin-crank"],
 
-    "eslint-plugin-esfold": ["eslint-plugin-esfold@0.1.7", "", { "peerDependencies": { "eslint": ">=9" } }, "sha512-w/kmQTxrJ4TzbUAaOMj5wTS/K6L/oG5wTekhd8i6DQ+YtUZKZywoj3vjePopxTELhMHaOU42aIVgpLJtO28zMA=="],
+    "eslint-plugin-esfold": ["eslint-plugin-esfold@0.1.8", "", { "peerDependencies": { "eslint": ">=9" } }, "sha512-WsluLaq6JLCPiKDcMwkoF85CqODfLuYQ+ObL0Edk37Gdtt5isTWqvkuG+RYhAokkOos7HH+omFvr6wgAk6+KNQ=="],
 
     "eslint-scope": ["eslint-scope@8.4.0", "", { "dependencies": { "esrecurse": "^4.3.0", "estraverse": "^5.2.0" } }, "sha512-sNXOfKCn74rt8RICKMvJS7XKV/Xk9kA7DyJr8mJik3S7Cwgy3qlkkmyS2uQB3jiJg6VNdZd/pDBJu0nvG2NlTg=="],
 
