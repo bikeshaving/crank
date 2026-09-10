@@ -95,9 +95,9 @@ describe("dom", () => {
 			document.body,
 		);
 		// this expectation is based on non-standard jsdom innerHTML behavior jsdom doesn‘t seem to reflect checked property
-		expect(
-			document.body.innerHTML,
-		).toBe('<input id="toggle" type="checkbox" data-checked=""><label for="toggle"></label>');
+		expect(document.body.innerHTML).toBe(
+			'<input id="toggle" type="checkbox" data-checked=""><label for="toggle"></label>',
+		);
 		expect((document.body.firstChild! as any).checked).toBe(true);
 		renderer.render(
 			<Fragment>
@@ -111,9 +111,9 @@ describe("dom", () => {
 			</Fragment>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe('<input id="toggle" type="checkbox"><label for="toggle" class="inactive"></label>');
+		expect(document.body.innerHTML).toBe(
+			'<input id="toggle" type="checkbox"><label for="toggle" class="inactive"></label>',
+		);
 		expect((document.body.firstChild! as any).checked).toBe(false);
 	});
 
@@ -359,9 +359,9 @@ describe("dom", () => {
 			</div>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>");
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>",
+		);
 		const span1 = document.body.firstChild!.childNodes[0];
 		const span2 = document.body.firstChild!.childNodes[1];
 		const span3 = document.body.firstChild!.childNodes[2];
@@ -519,9 +519,9 @@ describe("dom", () => {
 			/>,
 			document.body,
 		);
-		expect(
-			document.body.innerHTML,
-		).toBe('<div unknown="value" unknown-attribute="value" data-unknown-attribute="value"></div>');
+		expect(document.body.innerHTML).toBe(
+			'<div unknown="value" unknown-attribute="value" data-unknown-attribute="value"></div>',
+		);
 
 		const div = document.body.firstChild as HTMLDivElement;
 		expect(div.getAttribute("unknown")).toBe("value");

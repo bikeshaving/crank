@@ -705,9 +705,9 @@ describe("jsx static caching", () => {
 		expect(items[1]).toBe(items[2]);
 		for (let i = 0; i < 2; i++) {
 			renderer.render(jsx`<ul>${items}</ul>`, document.body);
-			expect(
-				document.body.innerHTML,
-			).toEqual("<ul><li class=\"s\">item</li><li class=\"s\">item</li><li class=\"s\">item</li></ul>");
+			expect(document.body.innerHTML).toEqual(
+				"<ul><li class=\"s\">item</li><li class=\"s\">item</li><li class=\"s\">item</li></ul>",
+			);
 		}
 	});
 

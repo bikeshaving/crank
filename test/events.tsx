@@ -302,21 +302,21 @@ describe("events", () => {
 		}
 
 		renderer.render(<Component />, document.body);
-		expect(
-			document.body.innerHTML,
-		).toBe('<div><button id="button">Click me</button><span>Button has been clicked 0 times</span></div>');
+		expect(document.body.innerHTML).toBe(
+			'<div><button id="button">Click me</button><span>Button has been clicked 0 times</span></div>',
+		);
 
 		const button = document.getElementById("button")!;
 		button.click();
-		expect(
-			document.body.innerHTML,
-		).toBe('<div><button id="button">Click me</button><span>Button has been clicked 1 times</span></div>');
+		expect(document.body.innerHTML).toBe(
+			'<div><button id="button">Click me</button><span>Button has been clicked 1 times</span></div>',
+		);
 		button.click();
 		button.click();
 		button.click();
-		expect(
-			document.body.innerHTML,
-		).toBe('<div><button id="button">Click me</button><span>Button has been clicked 4 times</span></div>');
+		expect(document.body.innerHTML).toBe(
+			'<div><button id="button">Click me</button><span>Button has been clicked 4 times</span></div>',
+		);
 	});
 
 	test("refresh callback", () => {
@@ -341,21 +341,21 @@ describe("events", () => {
 		}
 
 		renderer.render(<Component />, document.body);
-		expect(
-			document.body.innerHTML,
-		).toBe('<div><button id="button">Click me</button><span>Button has been clicked 0 times</span></div>');
+		expect(document.body.innerHTML).toBe(
+			'<div><button id="button">Click me</button><span>Button has been clicked 0 times</span></div>',
+		);
 
 		const button = document.getElementById("button")!;
 		button.click();
-		expect(
-			document.body.innerHTML,
-		).toBe('<div><button id="button">Click me</button><span>Button has been clicked 1 times</span></div>');
+		expect(document.body.innerHTML).toBe(
+			'<div><button id="button">Click me</button><span>Button has been clicked 1 times</span></div>',
+		);
 		button.click();
 		button.click();
 		button.click();
-		expect(
-			document.body.innerHTML,
-		).toBe('<div><button id="button">Click me</button><span>Button has been clicked 4 times</span></div>');
+		expect(document.body.innerHTML).toBe(
+			'<div><button id="button">Click me</button><span>Button has been clicked 4 times</span></div>',
+		);
 	});
 
 	test("async refresh callback", async () => {
@@ -383,23 +383,23 @@ describe("events", () => {
 		}
 
 		renderer.render(<Component />, document.body);
-		expect(
-			document.body.innerHTML,
-		).toBe('<div><button id="button">Click me</button><span>Button has been clicked 0 times</span></div>');
+		expect(document.body.innerHTML).toBe(
+			'<div><button id="button">Click me</button><span>Button has been clicked 0 times</span></div>',
+		);
 
 		const button = document.getElementById("button")!;
 		button.click();
 
-		expect(
-			document.body.innerHTML,
-		).toBe('<div><button id="button">Click me</button><span>Button has been clicked 0 times</span></div>');
+		expect(document.body.innerHTML).toBe(
+			'<div><button id="button">Click me</button><span>Button has been clicked 0 times</span></div>',
+		);
 
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve));
 
-		expect(
-			document.body.innerHTML,
-		).toBe('<div><button id="button">Click me</button><span>Button has been clicked 1 times</span></div>');
+		expect(document.body.innerHTML).toBe(
+			'<div><button id="button">Click me</button><span>Button has been clicked 1 times</span></div>',
+		);
 	});
 
 	test("unmount and dispatch", () => {

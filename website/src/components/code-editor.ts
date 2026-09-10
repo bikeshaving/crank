@@ -75,10 +75,10 @@ const IS_CLIENT = typeof document !== "undefined";
 // TODO: Custom tabs
 const TAB = "  ";
 
-function Line(this: Context<typeof Line>, {line, lineNumber}: {
-	line: Array<Token | string>;
-	lineNumber: number;
-}) {
+function Line(
+	this: Context<typeof Line>,
+	{line, lineNumber}: {line: Array<Token | string>; lineNumber: number},
+) {
 	return jsx`
 		<div
 			class="
@@ -124,17 +124,15 @@ function printTokens(
 	return result;
 }
 
-export function *CodeEditor(this: Context, {
-	value,
-	language,
-	editable,
-	showGutter,
-}: {
-	value: string;
-	language: string;
-	editable?: boolean;
-	showGutter?: boolean;
-}): Generator<Element> {
+export function *CodeEditor(
+	this: Context,
+	{value, language, editable, showGutter}: {
+		value: string;
+		language: string;
+		editable?: boolean;
+		showGutter?: boolean;
+	},
+): Generator<Element> {
 	const keyer = new Keyer();
 	let selectionRange: SelectionRange | undefined;
 	let renderSource: string | undefined;

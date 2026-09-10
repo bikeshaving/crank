@@ -213,7 +213,7 @@ export async function *Search(this: Context): AsyncGenerator<Element> {
 							`}>Searching...</div>
 						`
 								: results.length > 0
-									? results.map((r) => jsx`
+								? results.map((r) => jsx`
 							<a
 								href=${r.url}
 								class=${css`
@@ -255,15 +255,15 @@ export async function *Search(this: Context): AsyncGenerator<Element> {
 								/>
 							</a>
 						`)
-									: query.trim()
-										? jsx`
+								: query.trim()
+								? jsx`
 							<div class=${css`
 								padding: 1rem;
 								opacity: 0.6;
 								font-size: 0.85rem;
 							`}>No results found</div>
 						`
-										: null
+								: null
 						}
 					</div>
 				`

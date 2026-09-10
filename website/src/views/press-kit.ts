@@ -67,11 +67,9 @@ function CopySection() {
 	`;
 }
 
-function LogoCard({src, label, background}: {
-	src: string;
-	label: string;
-	background: string;
-}) {
+function LogoCard(
+	{src, label, background}: {src: string; label: string; background: string},
+) {
 	return jsx`
 		<div class=${css`
 			border: 1px solid var(--text-color);

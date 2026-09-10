@@ -34,10 +34,10 @@ describe("provisions", () => {
 		}
 	}
 
-	function Nested(this: Context, {depth, children}: {
-		depth: number;
-		children: Children;
-	}): Element {
+	function Nested(
+		this: Context,
+		{depth, children}: {depth: number; children: Children},
+	): Element {
 		if (depth <= 0) {
 			return <Fragment>{children}</Fragment>;
 		} else {

@@ -283,9 +283,10 @@ describe("races", () => {
 
 		const slowFn = Sinon.fake();
 
-		async function *Slow(this: Context, {i}: {i: number}): AsyncGenerator<
-			Child
-		> {
+		async function *Slow(
+			this: Context,
+			{i}: {i: number},
+		): AsyncGenerator<Child> {
 			slowFn();
 			for await ({i} of this) {
 				await new Promise((resolve) => setTimeout(resolve, 200));

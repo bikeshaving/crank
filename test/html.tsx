@@ -57,7 +57,9 @@ describe("html", () => {
 					<label for="toggle" />
 				</Fragment>,
 			),
-		).toBe('<input id="toggle" type="checkbox" checked data-checked><label for="toggle"></label>');
+		).toBe(
+			'<input id="toggle" type="checkbox" checked data-checked><label for="toggle"></label>',
+		);
 	});
 
 	test("styles", () => {
@@ -71,7 +73,9 @@ describe("html", () => {
 					/>
 				</Fragment>,
 			),
-		).toBe('<div style="color:red;"></div><img src="x" style="xss:foo;&quot; onerror=&quot;alert(&#039;hack&#039;)&quot; other=&quot;;">');
+		).toBe(
+			'<div style="color:red;"></div><img src="x" style="xss:foo;&quot; onerror=&quot;alert(&#039;hack&#039;)&quot; other=&quot;;">',
+		);
 	});
 
 	test("style null", () => {
@@ -97,7 +101,9 @@ describe("html", () => {
 					}}
 				/>,
 			),
-		).toBe('<div style="font-size:16px;background-color:red;margin-top:10px;border-radius:4px;-webkit-transform:rotate(45deg);"></div>');
+		).toBe(
+			'<div style="font-size:16px;background-color:red;margin-top:10px;border-radius:4px;-webkit-transform:rotate(45deg);"></div>',
+		);
 
 		// Test mixed camelCase and kebab-case
 		expect(
@@ -128,7 +134,9 @@ describe("html", () => {
 					}}
 				/>,
 			),
-		).toBe('<div style="width:100px;height:200px;opacity:0.5;z-index:10;font-size:16px;"></div>');
+		).toBe(
+			'<div style="width:100px;height:200px;opacity:0.5;z-index:10;font-size:16px;"></div>',
+		);
 	});
 
 	test("class and className", () => {
@@ -143,7 +151,9 @@ describe("html", () => {
 					<div class={undefined} />
 				</Fragment>,
 			),
-		).toBe('<div class="class1 class2"></div><div class="class1 class2"></div><div class="override"></div><div class="override"></div><div></div><div></div>');
+		).toBe(
+			'<div class="class1 class2"></div><div class="class1 class2"></div><div class="override"></div><div class="override"></div><div></div><div></div>',
+		);
 	});
 
 	test("class object syntax", () => {
@@ -218,7 +228,9 @@ describe("html", () => {
 					<span>6</span>
 				</div>,
 			),
-		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>");
+		).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>",
+		);
 	});
 
 	test("keyed array", () => {
@@ -235,7 +247,9 @@ describe("html", () => {
 					<span>5</span>
 				</div>,
 			),
-		).toBe("<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>");
+		).toBe(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>",
+		);
 	});
 
 	test("escaped text", () => {

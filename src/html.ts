@@ -135,12 +135,14 @@ function join(children: Array<TextNode | string>): string {
 
 export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 	{
-		scope({scope, tag}: {
-			scope: string | undefined;
-			tag: string | symbol;
-			props: Record<string, any>;
-			root: TextNode | undefined;
-		}): string | undefined {
+		scope(
+			{scope, tag}: {
+				scope: string | undefined;
+				tag: string | symbol;
+				props: Record<string, any>;
+				root: TextNode | undefined;
+			},
+		): string | undefined {
 			if (tag === Portal) {
 				return undefined;
 			}
@@ -177,15 +179,17 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 			}
 		},
 
-		arrange({tag, tagName, node, props, children, scope}: {
-			tag: string | symbol;
-			tagName: string;
-			node: TextNode;
-			props: Record<string, any>;
-			children: Array<TextNode | string>;
-			scope: string | undefined;
-			root: TextNode | undefined;
-		}): void {
+		arrange(
+			{tag, tagName, node, props, children, scope}: {
+				tag: string | symbol;
+				tagName: string;
+				node: TextNode;
+				props: Record<string, any>;
+				children: Array<TextNode | string>;
+				scope: string | undefined;
+				root: TextNode | undefined;
+			},
+		): void {
 			if (tag === Portal) {
 				return;
 			} else if (typeof tag !== "string") {
@@ -205,8 +209,8 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 				const contents = "innerHTML" in props
 					? props["innerHTML"]
 					: "dangerouslySetInnerHTML" in props
-						? (props["dangerouslySetInnerHTML"]?.__html ?? "")
-						: join(children);
+					? (props["dangerouslySetInnerHTML"]?.__html ?? "")
+					: join(children);
 				result = `${open}${contents}${close}`;
 			}
 

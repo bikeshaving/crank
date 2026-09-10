@@ -11,17 +11,19 @@ describe("schedule", () => {
 		resolves: Array<(value?: any) => void>;
 	}
 
-	const AsyncComponent =
-		async function ({children}: {children: Children}): Promise<Children> {
-			await new Promise((resolve) => AsyncComponent.resolves.push(resolve));
-			return children;
-		} as ResolvingComponent;
+	const AsyncComponent = async function (
+		{children}: {children: Children},
+	): Promise<Children> {
+		await new Promise((resolve) => AsyncComponent.resolves.push(resolve));
+		return children;
+	} as ResolvingComponent;
 
 	AsyncComponent.resolves = [];
 
-	const AsyncMountingComponent = function *(this: Context, {children}: {
-		children: Children;
-	}): Generator<Children> {
+	const AsyncMountingComponent = function *(
+		this: Context,
+		{children}: {children: Children},
+	): Generator<Children> {
 		this.schedule(() =>
 			new Promise((resolve) => AsyncMountingComponent.resolves.push(resolve)),
 		);

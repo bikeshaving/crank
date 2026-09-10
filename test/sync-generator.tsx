@@ -322,9 +322,9 @@ describe("sync generator", () => {
 	test("async children", async () => {
 		const mock = Sinon.fake();
 
-		async function Component({children}: {children: Children}): Promise<
-			Element
-		> {
+		async function Component(
+			{children}: {children: Children},
+		): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			return <span>{children}</span>;
 		}
