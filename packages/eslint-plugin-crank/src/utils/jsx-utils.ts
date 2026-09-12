@@ -11,20 +11,21 @@ export function createJSXAttributeMapper(
 	dataKeys: {from: string; to: string},
 ): (node: ESLintNode, context: Rule.RuleContext) => void {
 	return (node: ESLintNode, context: Rule.RuleContext) => {
-		if (node.name.type !== "JSXIdentifier") return;
+		if (node.name.type !== "JSXIdentifier") {
+			return;
+		}
 
 		const propName = node.name.name;
 		const mappedName = mappings[propName];
 
-		if (!mappedName) return;
+		if (!mappedName) {
+			return;
+		}
 
 		context.report({
 			node: node.name,
 			messageId,
-			data: {
-				[dataKeys.from]: propName,
-				[dataKeys.to]: mappedName,
-			},
+			data: {[dataKeys.from]: propName, [dataKeys.to]: mappedName},
 			fix: (fixer) => fixer.replaceText(node.name, mappedName),
 		});
 	};
@@ -69,21 +70,24 @@ export function createConditionalJSXAttributeMapper(
 	shouldApply: (node: ESLintNode) => boolean,
 ): (node: ESLintNode, context: Rule.RuleContext) => void {
 	return (node: ESLintNode, context: Rule.RuleContext) => {
-		if (node.name.type !== "JSXIdentifier") return;
-		if (!shouldApply(node)) return;
+		if (node.name.type !== "JSXIdentifier") {
+			return;
+		}
+		if (!shouldApply(node)) {
+			return;
+		}
 
 		const propName = node.name.name;
 		const mappedName = mappings[propName];
 
-		if (!mappedName) return;
+		if (!mappedName) {
+			return;
+		}
 
 		context.report({
 			node: node.name,
 			messageId,
-			data: {
-				[dataKeys.from]: propName,
-				[dataKeys.to]: mappedName,
-			},
+			data: {[dataKeys.from]: propName, [dataKeys.to]: mappedName},
 			fix: (fixer) => fixer.replaceText(node.name, mappedName),
 		});
 	};

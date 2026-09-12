@@ -1,11 +1,5 @@
-import {
-	Children,
-	Context,
-	ElementValue,
-	Portal,
-	Renderer,
-	RenderAdapter,
-} from "./crank.js";
+import type {Children, Context, ElementValue, RenderAdapter} from "./crank.js";
+import {Portal, Renderer} from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import {REACT_SVG_PROPS} from "./_svg.js";
 
@@ -88,7 +82,7 @@ function emitHydrationWarning(
 	actualValue: any,
 	element: Element,
 	displayName?: string,
-) {
+): void {
 	const checkName = propName;
 	const showName = displayName || propName;
 	if (!quietProps || !quietProps.has(checkName)) {
@@ -109,7 +103,7 @@ function emitHydrationWarning(
 				const origin = win.location.origin;
 				if (
 					new URL(expectedValue, origin).href ===
-					new URL(actualValue, origin).href
+						new URL(actualValue, origin).href
 				) {
 					// attrs which are URLs will often be resolved to their full
 					// href in the DOM, so we squash these errors
@@ -204,7 +198,7 @@ function patchProp(
 			} else if (typeof value === "string") {
 				if (style.cssText !== value) {
 					// TODO: Fix hydration warnings for styles
-					//if (isHydrating) {
+					// if (isHydrating) {
 					//	emitHydrationWarning(
 					//		name,
 					//		quietProps,
@@ -212,7 +206,7 @@ function patchProp(
 					//		style.cssText,
 					//		element,
 					//	);
-					//}
+					// }
 
 					style.cssText = value;
 				}
@@ -226,7 +220,9 @@ function patchProp(
 				// First pass: remove styles present in oldValue but not in value
 				if (oldValue) {
 					for (const styleName in oldValue) {
-						if (value && styleName in value) continue;
+						if (value && styleName in value) {
+							continue;
+						}
 						const cssName = camelToKebabCase(styleName);
 						if (isHydrating && style.getPropertyValue(cssName) !== "") {
 							emitHydrationWarning(
@@ -262,7 +258,7 @@ function patchProp(
 							const formattedValue = formatStyleValue(cssName, styleValue);
 							if (style.getPropertyValue(cssName) !== formattedValue) {
 								// TODO: hydration warnings for style props
-								//if (isHydrating) {
+								// if (isHydrating) {
 								//	emitHydrationWarning(
 								//		name,
 								//		quietProps,
@@ -271,7 +267,7 @@ function patchProp(
 								//		element,
 								//		`style.${styleName}`,
 								//	);
-								//}
+								// }
 								style.setProperty(cssName, formattedValue);
 							}
 						}
@@ -283,7 +279,9 @@ function patchProp(
 		}
 		case "class":
 		case "className":
-			if (name === "className" && "class" in props) break;
+			if (name === "className" && "class" in props) {
+				break;
+			}
 			if (value === true) {
 				if (isHydrating && element.getAttribute("class") !== "") {
 					emitHydrationWarning(
@@ -328,7 +326,9 @@ function patchProp(
 				// Remove pass: iterate oldValue for classes to remove
 				if (oldValue) {
 					for (const classNames in oldValue) {
-						if (value && value[classNames]) continue;
+						if (value && value[classNames]) {
+							continue;
+						}
 						const classes = classNames.split(/\s+/).filter(Boolean);
 						element.classList.remove(...classes);
 					}
@@ -337,7 +337,9 @@ function patchProp(
 				// Add pass: iterate value for classes to add
 				if (value) {
 					for (const classNames in value) {
-						if (!value[classNames]) continue;
+						if (!value[classNames]) {
+							continue;
+						}
 						const classes = classNames.split(/\s+/).filter(Boolean);
 						element.classList.add(...classes);
 						for (const className of classes) {
@@ -351,15 +353,12 @@ function patchProp(
 				}
 
 				if (
-					shouldIssueWarning ||
-					(hydratingClasses && hydratingClasses.size > 0)
+					shouldIssueWarning || (hydratingClasses && hydratingClasses.size > 0)
 				) {
 					emitHydrationWarning(
 						name,
 						quietProps,
-						Object.keys(value)
-							.filter((k) => value[k])
-							.join(" "),
+						Object.keys(value).filter((k) => value[k]).join(" "),
 						hydratingClassName || "",
 						element,
 					);
@@ -406,21 +405,24 @@ function patchProp(
 
 			break;
 		case "dangerouslySetInnerHTML": {
-			const htmlValue =
-				value && typeof value === "object" && "__html" in value
-					? (value.__html ?? "")
-					: "";
-			const oldHtmlValue =
-				oldValue && typeof oldValue === "object" && "__html" in oldValue
+			const htmlValue = value && typeof value === "object" && "__html" in value
+				? (value.__html ?? "")
+				: "";
+			const oldHTMLValue =
+				oldValue &&
+				typeof oldValue === "object" &&
+				"__html" in oldValue
 					? (oldValue.__html ?? "")
 					: "";
-			if (htmlValue !== oldHtmlValue) {
+			if (htmlValue !== oldHTMLValue) {
 				element.innerHTML = htmlValue as any;
 			}
 			break;
 		}
 		case "htmlFor":
-			if ("for" in props) break;
+			if ("for" in props) {
+				break;
+			}
 			if (value == null || value === false) {
 				element.removeAttribute("for");
 			} else {
@@ -458,7 +460,7 @@ function patchProp(
 				// For URL properties like src and href, the DOM property returns the
 				// resolved absolute URL. We need to resolve the prop value the same way
 				// to compare correctly.
-				let domValue = (element as any)[name];
+				const domValue = (element as any)[name];
 				let propValue = value;
 				if (
 					(name === "src" || name === "href") &&
@@ -467,8 +469,9 @@ function patchProp(
 				) {
 					try {
 						propValue = new URL(value, element.baseURI).href;
-					} catch {
-						// Invalid URL, use original value for comparison
+					} catch (err) {
+						// Invalid URL: keep the original value for comparison.
+						propValue = value;
 					}
 				}
 
@@ -530,29 +533,22 @@ function patchProp(
 }
 
 export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
-	scope({
-		scope: xmlns,
-		tag,
-		props,
-		root,
-	}: {
-		scope: string | undefined;
-		tag: string | symbol;
-		props: Record<string, any>;
-		root: Node | undefined;
-	}): string | undefined {
+	scope(
+		{scope: xmlns, tag, props, root}: {
+			scope: string | undefined;
+			tag: string | symbol;
+			props: Record<string, any>;
+			root: Node | undefined;
+		},
+	): string | undefined {
 		switch (tag) {
 			case Portal: {
-				const ns =
-					root && root.nodeType === ELEMENT_NODE
-						? (root as Element).namespaceURI
-						: null;
-				xmlns =
-					ns === SVG_NAMESPACE
-						? SVG_NAMESPACE
-						: ns === MATHML_NAMESPACE
-							? MATHML_NAMESPACE
-							: undefined;
+				const ns = root && root.nodeType === ELEMENT_NODE
+					? (root as Element).namespaceURI
+					: null;
+				xmlns = ns === SVG_NAMESPACE
+					? SVG_NAMESPACE
+					: ns === MATHML_NAMESPACE ? MATHML_NAMESPACE : undefined;
 				break;
 			}
 			case "svg":
@@ -569,17 +565,14 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		return props.xmlns || xmlns;
 	},
 
-	create({
-		tag,
-		tagName,
-		scope: xmlns,
-		root,
-	}: {
-		tag: string | symbol;
-		tagName: string;
-		scope: string | undefined;
-		root: Node | undefined;
-	}): Node {
+	create(
+		{tag, tagName, scope: xmlns, root}: {
+			tag: string | symbol;
+			tagName: string;
+			scope: string | undefined;
+			root: Node | undefined;
+		},
+	): Node {
 		if (typeof tag !== "string") {
 			throw new Error(`Unknown tag: ${tagName}`);
 		} else if (tag.toLowerCase() === "svg") {
@@ -594,17 +587,14 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		return xmlns ? doc.createElementNS(xmlns, tag) : doc.createElement(tag);
 	},
 
-	adopt({
-		tag,
-		tagName,
-		node,
-		root,
-	}: {
-		tag: string | symbol;
-		tagName: string;
-		node: Node | undefined;
-		root: Node | undefined;
-	}): Array<Node> | undefined {
+	adopt(
+		{tag, tagName, node, root}: {
+			tag: string | symbol;
+			tagName: string;
+			node: Node | undefined;
+			root: Node | undefined;
+		},
+	): Node[] | undefined {
 		if (typeof tag !== "string" && tag !== Portal) {
 			throw new Error(`Unknown tag: ${tagName}`);
 		}
@@ -634,28 +624,30 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		return Array.from(node.childNodes);
 	},
 
-	patch({
-		tag,
-		tagName,
-		node,
-		props,
-		oldProps,
-		scope: xmlns,
-		copyProps,
-		quietProps,
-		isHydrating,
-	}: {
-		tag: string | symbol;
-		node: Node;
-		tagName: string;
-		props: Record<string, any>;
-		oldProps: Record<string, any> | undefined;
-		scope: string | undefined;
-		root: Node | undefined;
-		copyProps: Set<string> | undefined;
-		quietProps: Set<string> | undefined;
-		isHydrating: boolean;
-	}): void {
+	patch(
+		{
+			tag,
+			tagName,
+			node,
+			props,
+			oldProps,
+			scope: xmlns,
+			copyProps,
+			quietProps,
+			isHydrating,
+		}: {
+			tag: string | symbol;
+			node: Node;
+			tagName: string;
+			props: Record<string, any>;
+			oldProps: Record<string, any> | undefined;
+			scope: string | undefined;
+			root: Node | undefined;
+			copyProps: Set<string> | undefined;
+			quietProps: Set<string> | undefined;
+			isHydrating: boolean;
+		},
+	): void {
 		if (node.nodeType !== ELEMENT_NODE) {
 			throw new TypeError(`Cannot patch node: ${String(node)}`);
 		} else if (props.class && props.className) {
@@ -669,8 +661,10 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		const isMathML = xmlns === MATHML_NAMESPACE;
 		// First pass: iterate oldProps to handle removals
 		if (oldProps) {
-			for (let name in oldProps) {
-				if (name in props) continue;
+			for (const name in oldProps) {
+				if (name in props) {
+					continue;
+				}
 				patchProp(
 					element,
 					name,
@@ -686,7 +680,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 			}
 		}
 		// Second pass: iterate props to handle additions and updates
-		for (let name in props) {
+		for (const name in props) {
 			patchProp(
 				element,
 				name,
@@ -702,18 +696,15 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		}
 	},
 
-	arrange({
-		tag,
-		node,
-		props,
-		children,
-	}: {
-		tag: string | symbol;
-		node: Node;
-		props: Record<string, any>;
-		children: Array<Node>;
-		root: Node | undefined;
-	}): void {
+	arrange(
+		{tag, node, props, children}: {
+			tag: string | symbol;
+			node: Node;
+			props: Record<string, any>;
+			children: Node[];
+			root: Node | undefined;
+		},
+	): void {
 		if (tag === Portal && (node == null || typeof node.nodeType !== "number")) {
 			throw new TypeError(
 				`<Portal> root is not a node. Received: ${String(node)}`,
@@ -742,35 +733,30 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		}
 	},
 
-	remove({
-		node,
-		parentNode,
-		isNested,
-	}: {
-		node: Node;
-		parentNode: Node;
-		isNested: boolean;
-		root: Node | undefined;
-	}): void {
+	remove(
+		{node, parentNode, isNested}: {
+			node: Node;
+			parentNode: Node;
+			isNested: boolean;
+			root: Node | undefined;
+		},
+	): void {
 		if (!isNested && node.parentNode === parentNode) {
 			parentNode.removeChild(node);
 		}
 	},
 
-	text({
-		value,
-		oldNode,
-		hydrationNodes,
-		root,
-	}: {
-		value: string;
-		hydrationNodes: Array<Node> | undefined;
-		oldNode: Node | undefined;
-		root: Node | undefined;
-	}): Node {
+	text(
+		{value, oldNode, hydrationNodes, root}: {
+			value: string;
+			hydrationNodes: Node[] | undefined;
+			oldNode: Node | undefined;
+			root: Node | undefined;
+		},
+	): Node {
 		const doc = getRootDocument(root);
 		if (hydrationNodes != null) {
-			let node = hydrationNodes.shift();
+			const node = hydrationNodes.shift();
 			if (!node || node.nodeType !== TEXT_NODE) {
 				console.warn(`Expected "${value}" while hydrating but found:`, node);
 			} else {
@@ -811,26 +797,22 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		return doc.createTextNode(value);
 	},
 
-	raw({
-		value,
-		scope: xmlns,
-		hydrationNodes,
-		root,
-	}: {
-		value: string | Node;
-		scope: string | undefined;
-		hydrationNodes: Array<Node> | undefined;
-		root: Node | undefined;
-	}): ElementValue<Node> {
-		let nodes: Array<Node>;
+	raw(
+		{value, scope: xmlns, hydrationNodes, root}: {
+			value: string | Node;
+			scope: string | undefined;
+			hydrationNodes: Node[] | undefined;
+			root: Node | undefined;
+		},
+	): ElementValue<Node> {
+		let nodes: Node[];
 		if (typeof value === "string") {
 			const doc = getRootDocument(root);
-			const el =
-				xmlns == null
-					? doc.createElement("div")
-					: xmlns === SVG_NAMESPACE
-						? doc.createElementNS(xmlns, "svg")
-						: doc.createElementNS(xmlns, "math");
+			const el = xmlns == null
+				? doc.createElement("div")
+				: xmlns === SVG_NAMESPACE
+				? doc.createElementNS(xmlns, "svg")
+				: doc.createElementNS(xmlns, "math");
 			el.innerHTML = value;
 			nodes = Array.from(el.childNodes);
 		} else {
@@ -860,9 +842,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 
 		return nodes.length === 0
 			? undefined
-			: nodes.length === 1
-				? nodes[0]
-				: nodes;
+			: nodes.length === 1 ? nodes[0] : nodes;
 	},
 };
 

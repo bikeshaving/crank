@@ -10,12 +10,7 @@ export default function crankIntegration() {
 					jsxImportSource: "@b9g/crank",
 				});
 				updateConfig({
-					vite: {
-						esbuild: {
-							jsx: "automatic",
-							jsxImportSource: "@b9g/crank",
-						},
-					},
+					vite: {esbuild: {jsx: "automatic", jsxImportSource: "@b9g/crank"}},
 				});
 			},
 		},

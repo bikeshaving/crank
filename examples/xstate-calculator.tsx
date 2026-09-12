@@ -3,13 +3,12 @@
 // Can't import from "xstate":
 // https://github.com/statelyai/xstate/pull/2318#issuecomment-864795216
 import {Machine, assign} from "xstate@4/dist/xstate.web.js";
-import {Context, createElement} from "@b9g/crank";
+import type {Context} from "@b9g/crank";
+import {createElement} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 
-const not =
-  (fn) =>
-  (...args) =>
-    !fn.apply(null, args);
+const not = (fn) => (...args) =>
+  !fn(...args);
 const isZero = (context, event) => event.key === 0;
 const isNotZero = not(isZero);
 const isMinus = (context, event) => event.operator === "-";
@@ -36,19 +35,9 @@ function doMath(operand1, operand2, operator) {
 export const calcMachine = Machine(
   {
     id: "calcMachine",
-    context: {
-      display: "0.",
-      operand1: null,
-      operand2: null,
-      operator: null,
-    },
+    context: {display: "0.", operand1: null, operand2: null, operator: null},
     // strict: true,
-    on: {
-      CLEAR_EVERYTHING: {
-        target: ".start",
-        actions: ["reset"],
-      },
-    },
+    on: {CLEAR_EVERYTHING: {target: ".start", actions: ["reset"]}},
     initial: "start",
     states: {
       start: {
@@ -78,18 +67,12 @@ export const calcMachine = Machine(
       },
       operand1: {
         on: {
-          OPERATOR: {
-            target: "operator_entered",
-            actions: ["recordOperator"],
-          },
+          OPERATOR: {target: "operator_entered", actions: ["recordOperator"]},
           PERCENTAGE: {
             target: "result",
             actions: ["storeResultAsOperand2", "computePercentage"],
           },
-          CLEAR_ENTRY: {
-            target: "operand1",
-            actions: ["defaultReadout"],
-          },
+          CLEAR_ENTRY: {target: "operand1", actions: ["defaultReadout"]},
         },
         initial: "zero",
         states: {
@@ -139,10 +122,7 @@ export const calcMachine = Machine(
             target: "operand1.after_decimal_point",
             actions: ["defaultNegativeReadout"],
           },
-          CLEAR_ENTRY: {
-            target: "start",
-            actions: ["defaultReadout"],
-          },
+          CLEAR_ENTRY: {target: "start", actions: ["defaultReadout"]},
         },
       },
       operator_entered: {
@@ -196,17 +176,11 @@ export const calcMachine = Machine(
             },
             {target: "alert", actions: ["divideByZeroAlert"]},
           ],
-          CLEAR_ENTRY: {
-            target: "operand2",
-            actions: ["defaultReadout"],
-          },
+          CLEAR_ENTRY: {target: "operand2", actions: ["defaultReadout"]},
         },
         initial: "hist",
         states: {
-          hist: {
-            type: "history",
-            target: "zero",
-          },
+          hist: {type: "history", target: "zero"},
           zero: {
             on: {
               NUMBER: {
@@ -262,11 +236,7 @@ export const calcMachine = Machine(
       result: {
         on: {
           NUMBER: [
-            {
-              cond: "isZero",
-              target: "operand1",
-              actions: ["defaultReadout"],
-            },
+            {cond: "isZero", target: "operand1", actions: ["defaultReadout"]},
             {
               cond: "isNotZero",
               target: "operand1.before_decimal_point",
@@ -281,35 +251,18 @@ export const calcMachine = Machine(
             target: "operator_entered",
             actions: ["storeResultAsOperand1", "recordOperator"],
           },
-          CLEAR_ENTRY: {
-            target: "start",
-            actions: ["defaultReadout"],
-          },
+          CLEAR_ENTRY: {target: "start", actions: ["defaultReadout"]},
         },
       },
-      alert: {
-        on: {
-          OK: "operand2.hist",
-        },
-      },
+      alert: {on: {OK: "operand2.hist"}},
     },
   },
   {
-    guards: {
-      isMinus,
-      isNotMinus,
-      isZero,
-      isNotZero,
-      notDivideByZero,
-    },
+    guards: {isMinus, isNotMinus, isZero, isNotZero, notDivideByZero},
     actions: {
-      defaultReadout: assign({
-        display: () => "0.",
-      }),
+      defaultReadout: assign({display: () => "0."}),
 
-      defaultNegativeReadout: assign({
-        display: () => "-0.",
-      }),
+      defaultNegativeReadout: assign({display: () => "-0."}),
 
       appendNumBeforeDecimal: assign({
         display: (context, event) =>
@@ -320,43 +273,31 @@ export const calcMachine = Machine(
         display: (context, event) => context.display + event.key,
       }),
 
-      setReadoutNum: assign({
-        display: (context, event) => event.key + ".",
-      }),
+      setReadoutNum: assign({display: (context, event) => event.key + "."}),
 
       setNegativeReadoutNum: assign({
         display: (context, event) => "-" + event.key + ".",
       }),
 
-      startNegativeNumber: assign({
-        display: () => "-",
-      }),
+      startNegativeNumber: assign({display: () => "-"}),
 
       recordOperator: assign({
         operand1: (context) => context.display,
         operator: (_, event) => event.operator,
       }),
 
-      setOperator: assign({
-        operator: ({operator}) => operator,
-      }),
+      setOperator: assign({operator: ({operator}) => operator}),
 
-      computePercentage: assign({
-        display: (context) => context.display / 100,
-      }),
+      computePercentage: assign({display: (context) => context.display / 100}),
 
       compute: assign({
         display: ({operand1, operand2, operator}) =>
           doMath(operand1, operand2, operator),
       }),
 
-      storeResultAsOperand1: assign({
-        operand1: (context) => context.display,
-      }),
+      storeResultAsOperand1: assign({operand1: (context) => context.display}),
 
-      storeResultAsOperand2: assign({
-        operand2: (context) => context.display,
-      }),
+      storeResultAsOperand2: assign({operand2: (context) => context.display}),
 
       divideByZeroAlert() {
         // have to put the alert in setTimeout because action is executed on event, before the transition to next state happens
@@ -406,17 +347,31 @@ function isOperator(label: string): boolean {
 }
 
 function buttonDescription(label: string): string {
-  if (Number.isInteger(+label)) return `NUMBER ${label}`;
-  if (isOperator(label)) return `OPERATOR ${label}`;
-  if (label === "C") return "CLEAR_EVERYTHING";
-  if (label === "CE") return "CLEAR_ENTRY";
-  if (label === ".") return "DECIMAL_POINT";
-  if (label === "%") return "PERCENTAGE";
-  if (label === "=") return "EQUALS";
+  if (Number.isInteger(+label)) {
+    return `NUMBER ${label}`;
+  }
+  if (isOperator(label)) {
+    return `OPERATOR ${label}`;
+  }
+  if (label === "C") {
+    return "CLEAR_EVERYTHING";
+  }
+  if (label === "CE") {
+    return "CLEAR_ENTRY";
+  }
+  if (label === ".") {
+    return "DECIMAL_POINT";
+  }
+  if (label === "%") {
+    return "PERCENTAGE";
+  }
+  if (label === "=") {
+    return "EQUALS";
+  }
   return "";
 }
 
-function* Calculator(this: Context) {
+function *Calculator(this: Context) {
   let state = calcMachine.initialState;
   this.addEventListener("click", (el) => {
     if ((el.target as Element).tagName === "BUTTON") {

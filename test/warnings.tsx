@@ -37,14 +37,14 @@ describe("warnings", () => {
 	});
 
 	test("sync generator component warns on implicit return", async () => {
-		function* Component() {}
+		function *Component() {}
 
 		await renderer.render(<Component />, document.body);
 		expect(mock.callCount).toBe(1);
 	});
 
 	test("for of with multiple yields", async () => {
-		function* Component(this: Context): Generator<Child> {
+		function *Component(this: Context): Generator<Child> {
 			for ({} of this) {
 				yield <div>Hello</div>;
 				yield <div>Goodbye</div>;
@@ -60,7 +60,8 @@ describe("warnings", () => {
 
 	test("for of with multiple yields is fine when scheduling", () => {
 		let ctx: Context;
-		function* Component(this: Context): Generator<Child> {
+
+		function *Component(this: Context): Generator<Child> {
 			ctx = this;
 			let renderCount = 0;
 			for ({} of this) {
@@ -92,7 +93,7 @@ describe("warnings", () => {
 	});
 
 	test("for of with multiple yields in async generator component", async () => {
-		async function* Component(this: Context): AsyncGenerator<Child> {
+		async function *Component(this: Context): AsyncGenerator<Child> {
 			for ({} of this) {
 				yield <div>Hello</div>;
 				yield <div>Goodbye</div>;
@@ -110,7 +111,8 @@ describe("warnings", () => {
 
 	test("for of with multiple yields is fine when scheduling in async generator component", async () => {
 		let ctx: Context;
-		async function* Component(this: Context): AsyncGenerator<Child> {
+
+		async function *Component(this: Context): AsyncGenerator<Child> {
 			ctx = this;
 			let renderCount = 0;
 			for ({} of this) {
@@ -242,6 +244,7 @@ describe("warnings", () => {
 		function TestComponent() {
 			return <div>Test</div>;
 		}
+
 		renderer.render(<TestComponent copy="!children" />, document.body);
 		expect(mock.callCount).toBe(1);
 		expect(mock.firstCall.args[0]).toMatch(
@@ -253,6 +256,7 @@ describe("warnings", () => {
 		function TestComponent() {
 			return <div>Test</div>;
 		}
+
 		renderer.render(<TestComponent hydrate="!children" />, document.body);
 		expect(mock.callCount).toBe(1);
 		expect(mock.firstCall.args[0]).toMatch(

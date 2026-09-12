@@ -1,6 +1,7 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 
-export function PartsOfJSX() {
+export function PartsOfJSX(): Element {
 	const tag = "#6cb8e6";
 	const prop = "#e9ae7e";
 	const child = "#c699e3";

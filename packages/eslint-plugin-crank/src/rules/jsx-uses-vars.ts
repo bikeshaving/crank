@@ -2,8 +2,8 @@
 // Original: Copyright (c) 2014 Yannick Croissant, MIT License
 // https://github.com/jsx-eslint/eslint-plugin-react
 
-import {Rule} from "eslint";
-import {ESLintNode} from "../utils/types.js";
+import type {Rule} from "eslint";
+import type {ESLintNode} from "../utils/types.js";
 
 const isTagName = (name: string) => /^[a-z]/.test(name);
 
@@ -30,7 +30,9 @@ export const jsxUsesVars: Rule.RuleModule = {
 
 				if (node.name.name) {
 					name = node.name.name;
-					if (isTagName(name!)) return;
+					if (isTagName(name!)) {
+						return;
+					}
 				} else if (node.name.object) {
 					let parent = node.name.object;
 					while (parent.object) {

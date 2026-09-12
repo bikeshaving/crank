@@ -4,9 +4,9 @@ interface WalkInfo {
 	filename: string;
 }
 
-async function* walk(
+async function *walk(
 	dir: FileSystemDirectoryHandle,
-	basePath: string = "",
+	basePath = "",
 ): AsyncGenerator<WalkInfo> {
 	const entries: Array<[string, FileSystemHandle]> = [];
 	for await (const entry of dir.entries()) {
@@ -17,7 +17,7 @@ async function* walk(
 	for (const [name, handle] of entries) {
 		const path = basePath ? `${basePath}/${name}` : name;
 		if (handle.kind === "directory") {
-			yield* walk(handle as FileSystemDirectoryHandle, path);
+			yield *walk(handle as FileSystemDirectoryHandle, path);
 		} else if (handle.kind === "file") {
 			yield {filename: path};
 		}
@@ -43,16 +43,17 @@ export interface DocInfo {
 export async function collectDocuments(
 	dir: FileSystemDirectoryHandle,
 	prefix?: string,
-): Promise<Array<DocInfo>> {
-	let docs: Array<DocInfo> = [];
+): Promise<DocInfo[]> {
+	const docs: DocInfo[] = [];
 	for await (const {filename} of walk(dir)) {
 		if (filename.endsWith(".md")) {
 			const fileHandle = await navigatePath(dir, filename);
 			const file = await fileHandle.getFile();
 			const md = await file.text();
-			let {attributes, body} = frontmatter(md) as unknown as DocInfo;
-			attributes.publish =
-				attributes.publish == null ? true : attributes.publish;
+			const {attributes, body} = frontmatter(md) as unknown as DocInfo;
+			attributes.publish = attributes.publish == null
+				? true
+				: attributes.publish;
 			if (attributes.publishDate != null) {
 				attributes.publishDate = new Date(attributes.publishDate);
 			}
@@ -63,7 +64,7 @@ export async function collectDocuments(
 					.replace(/\.md$/, "")
 					.replace(/([0-9]+-)+/, "")
 					.replace(/\/index$/, "") + // index.md -> parent directory URL
-				"/";
+					"/";
 			const docsRelativeFilename = prefix ? `${prefix}/${filename}` : filename;
 			docs.push({url, filename: docsRelativeFilename, body, attributes});
 		}

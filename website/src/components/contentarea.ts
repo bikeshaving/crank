@@ -11,33 +11,31 @@ interface SelectionRange {
 	selectionDirection: "forward" | "backward" | "none";
 }
 
-export function* ContentArea(
-	this: Context,
-	{
-		ref,
-		value,
-		children,
-		selectionRange,
-		renderSource,
-		...rest
-	}: {
-		ref?: (el: ContentAreaElement) => void;
-		children: unknown;
-		selectionRange?: SelectionRange | undefined;
-		value?: string | undefined;
-		renderSource?: string | undefined;
-	} & Record<string, any>,
-) {
+export function *ContentArea(this: Context, {
+	ref,
+	value,
+	children,
+	selectionRange,
+	renderSource,
+	...rest
+}: {
+	ref?: (el: ContentAreaElement) => void;
+	children: unknown;
+	selectionRange?: SelectionRange | undefined;
+	value?: string | undefined;
+	renderSource?: string | undefined;
+} & Record<string, any>): Generator<Element> {
 	let initial = true;
 	let contentArea!: ContentAreaElement;
 	for ({ref, value, children, selectionRange, renderSource, ...rest} of this) {
 		selectionRange =
 			selectionRange ||
-			(contentArea && {
-				selectionStart: contentArea.selectionStart,
-				selectionEnd: contentArea.selectionEnd,
-				selectionDirection: contentArea.selectionDirection,
-			});
+			(contentArea &&
+				{
+					selectionStart: contentArea.selectionStart,
+					selectionEnd: contentArea.selectionEnd,
+					selectionDirection: contentArea.selectionDirection,
+				});
 
 		if (!initial) {
 			this.after(() => {
@@ -47,9 +45,7 @@ export function* ContentArea(
 
 				if (typeof value === "string" && value !== contentArea.value) {
 					console.error(
-						`Expected value ${JSON.stringify(
-							value,
-						)} but received ${JSON.stringify(contentArea.value)} from the DOM`,
+						`Expected value ${JSON.stringify(value)} but received ${JSON.stringify(contentArea.value)} from the DOM`,
 					);
 				}
 

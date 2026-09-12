@@ -9,11 +9,11 @@ import type {ContentAreaElement} from "@b9g/revise/contentarea.js";
 
 import type {Token} from "prismjs";
 
-//import {parser} from "@lezer/javascript";
+// import {parser} from "@lezer/javascript";
 import {ContentArea} from "./contentarea.js";
 import {tokenize} from "../utils/prism.js";
 
-function* Gutter(this: Context<typeof Gutter>, {length}: {length: number}) {
+function *Gutter(this: Context<typeof Gutter>, {length}: {length: number}) {
 	let initial = true;
 	let newLength: number;
 	const lines = Array.from({length}, (_, i) => i + 1);
@@ -54,8 +54,7 @@ function* Gutter(this: Context<typeof Gutter>, {length}: {length: number}) {
 					left: 0;
 				`}"
 			>
-				${lines.map(
-					(line) => jsx`
+				${lines.map((line) => jsx`
 					<div
 						class="prism-line ${css`
 							border-top: 1px solid transparent;
@@ -63,8 +62,7 @@ function* Gutter(this: Context<typeof Gutter>, {length}: {length: number}) {
 						`}">
 							${line}
 						</div>
-				`,
-				)}
+				`)}
 			</div>
 		`;
 		initial = false;
@@ -79,13 +77,7 @@ const TAB = "  ";
 
 function Line(
 	this: Context<typeof Line>,
-	{
-		line,
-		lineNumber,
-	}: {
-		line: Array<Token | string>;
-		lineNumber: number;
-	},
+	{line, lineNumber}: {line: Array<Token | string>; lineNumber: number},
 ) {
 	return jsx`
 		<div
@@ -132,20 +124,15 @@ function printTokens(
 	return result;
 }
 
-export function* CodeEditor(
+export function *CodeEditor(
 	this: Context,
-	{
-		value,
-		language,
-		editable,
-		showGutter,
-	}: {
+	{value, language, editable, showGutter}: {
 		value: string;
 		language: string;
 		editable?: boolean;
 		showGutter?: boolean;
 	},
-) {
+): Generator<Element> {
 	const keyer = new Keyer();
 	let selectionRange: SelectionRange | undefined;
 	let renderSource: string | undefined;
@@ -181,7 +168,7 @@ export function* CodeEditor(
 		});
 	});
 
-	let editHistory = new EditHistory();
+	const editHistory = new EditHistory();
 	{
 		// history stuff
 		const undo = () => {
@@ -247,10 +234,7 @@ export function* CodeEditor(
 
 				ev.preventDefault();
 			} else if (
-				ev.keyCode === 0x59 /* Y */ &&
-				ev.ctrlKey &&
-				!ev.altKey &&
-				!ev.metaKey
+				ev.keyCode === 0x59 /* Y */ && ev.ctrlKey && !ev.altKey && !ev.metaKey
 			) {
 				redo();
 				ev.preventDefault();
@@ -281,9 +265,8 @@ export function* CodeEditor(
 				}
 
 				const prevLine = getPreviousLine(value, selectionStart);
-				const [, spaceBefore, bracket] = prevLine.match(
-					/(\s*).*?(\(|\[|{)?(?:\s*)$/,
-				)!;
+				const [, spaceBefore, bracket] =
+					prevLine.match(/(\s*).*?(\(|\[|{)?(?:\s*)$/)!;
 				let insert = "\n" + (spaceBefore || "");
 				if (bracket) {
 					insert += TAB;
@@ -374,8 +357,7 @@ export function* CodeEditor(
 							// TODO: only highlight visible lines
 							// TODO: line should probably be a custom Prism token with the
 							// length already calculated.
-							const length =
-								line.reduce((length, t) => length + t.length, 0) + "\n".length;
+							const length = line.reduce((length, t) => length + t.length, 0) + "\n".length;
 							try {
 								// TODO: using the virtualizer start and ends with static is breaking paste
 								return jsx`
@@ -397,7 +379,7 @@ export function* CodeEditor(
 	}
 }
 
-function getPreviousLine(text: string, index: number) {
+function getPreviousLine(text: string, index: number): string {
 	index = Math.max(0, index);
 	for (let i = index - 1; i >= 0; i--) {
 		if (text[i] === "\n" || text[i] === "\r") {
@@ -414,8 +396,11 @@ interface SelectionRange {
 	selectionDirection: string;
 }
 
-/*** Revise Logic ***/
-async function checkpointEditHistory(ctx: Context, editHistory: EditHistory) {
+/** * Revise Logic ***/
+async function checkpointEditHistory(
+	ctx: Context,
+	editHistory: EditHistory,
+): Promise<void> {
 	const contentArea = (
 		(await new Promise((resolve) => ctx.schedule(resolve))) as any
 	).querySelector("content-area");
@@ -439,7 +424,7 @@ async function checkpointEditHistory(ctx: Context, editHistory: EditHistory) {
 			(oldSelectionRange.selectionStart !== newSelectionRange.selectionStart ||
 				oldSelectionRange.selectionEnd !== newSelectionRange.selectionEnd ||
 				oldSelectionRange.selectionDirection !==
-					newSelectionRange.selectionDirection)
+				newSelectionRange.selectionDirection)
 		) {
 			editHistory.checkpoint();
 		}

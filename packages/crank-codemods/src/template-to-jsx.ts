@@ -92,10 +92,10 @@ function parseElementToJSX(
 							currentQuasi += part;
 						} else {
 							quasis.push(
-								j.templateElement(
-									{raw: currentQuasi, cooked: currentQuasi},
-									false,
-								),
+								j.templateElement({
+									raw: currentQuasi,
+									cooked: currentQuasi,
+								}, false),
 							);
 							currentQuasi = "";
 							exprs.push(part.value);
@@ -107,13 +107,10 @@ function parseElementToJSX(
 						first.value.cooked = first.value.cooked.replace(/^['"]/, "");
 					}
 					quasis.push(
-						j.templateElement(
-							{
-								raw: currentQuasi.replace(/['"]$/, ""),
-								cooked: currentQuasi.replace(/['"]$/, ""),
-							},
-							true,
-						),
+						j.templateElement({
+							raw: currentQuasi.replace(/['"]$/, ""),
+							cooked: currentQuasi.replace(/['"]$/, ""),
+						}, true),
 					);
 
 					attrValue = j.jsxExpressionContainer(
@@ -168,8 +165,7 @@ export default function transform(fileInfo: FileInfo, api: API): string | null {
 	root.find(j.TaggedTemplateExpression).forEach((path) => {
 		const {tag, quasi} = path.node;
 		if (
-			tag.type !== "Identifier" ||
-			(tag.name !== "jsx" && tag.name !== "html")
+			tag.type !== "Identifier" || (tag.name !== "jsx" && tag.name !== "html")
 		) {
 			return;
 		}

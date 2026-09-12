@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
 import {Root} from "../components/root.js";
@@ -22,11 +23,7 @@ const components = {
 				class="${css`
 					display: block;
 					text-align: center;
-					font-size: ${depth === 2
-						? "max(5vh, 40px)"
-						: depth === 3
-							? "max(4vh, 30px)"
-							: null};
+					font-size: ${depth === 2 ? "max(5vh, 40px)" : depth === 3 ? "max(4vh, 30px)" : null};
 					color: var(${depth === 3 ? "--highlight-color" : "--text-color"});
 					margin: 0.75em auto;
 					${(depth === 2 || depth === 3) && "padding: 0.75em 0"};
@@ -219,7 +216,7 @@ function AntiHero() {
 	`;
 }
 
-function BlogSection({posts}: {posts: Array<any>}) {
+function BlogSection({posts}: {posts: any[]}) {
 	return jsx`
 		<div class=${css`
 			max-width: 1200px;
@@ -271,7 +268,7 @@ function BlogSection({posts}: {posts: Array<any>}) {
 	`;
 }
 
-export default async function Home({url}: ViewProps) {
+export default async function Home({url}: ViewProps): Promise<Element> {
 	const docsDir = await self.directories.open("docs");
 	const docs = await collectDocuments(docsDir);
 	const md = docs.find((doc) => doc.filename === "index.md");

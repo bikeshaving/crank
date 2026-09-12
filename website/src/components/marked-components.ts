@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {InlineCodeBlock} from "./inline-code-block.js";
 import {SerializeScript} from "./serialize-javascript.js";
 import {PartsOfJSX} from "./parts-of-jsx.js";
@@ -14,31 +15,26 @@ function resolveMarkdownHref(href: string, basePath: string): string {
 	}
 
 	return (
-		"/" +
-		baseParts
-			.join("/")
-			.replace(/\.md$/, "")
-			.replace(/([0-9]+-)+/, "")
+		"/" + baseParts.join("/").replace(/\.md$/, "").replace(/([0-9]+-)+/, "")
 	);
 }
 
 export const components = {
 	PartsOfJSX,
 
-	link({token, rootProps, children}: any) {
+	link({token, rootProps, children}: any): Element {
 		const {href, title} = token;
-		const resolvedHref =
-			href && href.endsWith(".md") && rootProps.basePath
-				? resolveMarkdownHref(href, rootProps.basePath)
-				: href;
+		const resolvedHref = href && href.endsWith(".md") && rootProps.basePath
+			? resolveMarkdownHref(href, rootProps.basePath)
+			: href;
 		return jsx`<a href=${resolvedHref} title=${title}>${children}</a>`;
 	},
 
-	codespan({token}: any) {
+	codespan({token}: any): Element {
 		return jsx`<code class="inline">${token.text}</code>`;
 	},
 
-	code({token}: any) {
+	code({token}: any): Element {
 		const {text: code, lang} = token;
 		const isLive = lang.endsWith(" live");
 

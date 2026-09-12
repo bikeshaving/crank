@@ -1,7 +1,8 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
 
-import {createElement, Child, Context, Element} from "../src/crank.js";
+import type {Child, Context, Element} from "../src/crank.js";
+import {createElement} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("races", () => {
@@ -142,6 +143,7 @@ describe("races", () => {
 
 	test("slow vs fast in async generator updated via renderer.render", async () => {
 		const slowFn = Sinon.fake();
+
 		async function Slow(): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 200));
 			slowFn();
@@ -149,13 +151,14 @@ describe("races", () => {
 		}
 
 		const fastFn = Sinon.fake();
+
 		async function Fast(): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			fastFn();
 			return <div>Fast</div>;
 		}
 
-		async function* Component(this: Context): AsyncGenerator<Child> {
+		async function *Component(this: Context): AsyncGenerator<Child> {
 			let i = 0;
 			for await (const _ of this) {
 				if (i % 2 === 0) {
@@ -195,7 +198,8 @@ describe("races", () => {
 		}
 
 		let ctx!: Context;
-		async function* Component(this: Context): AsyncGenerator<Child> {
+
+		async function *Component(this: Context): AsyncGenerator<Child> {
 			ctx = this;
 			let i = 0;
 			for await (const _ of this) {
@@ -232,7 +236,7 @@ describe("races", () => {
 			return <span>Slow {i}</span>;
 		}
 
-		async function* Component(this: Context): AsyncGenerator<Child, any, any> {
+		async function *Component(this: Context): AsyncGenerator<Child, any, any> {
 			let i = 0;
 			for await (const _ of this) {
 				yield (
@@ -278,7 +282,8 @@ describe("races", () => {
 		}
 
 		const slowFn = Sinon.fake();
-		async function* Slow(
+
+		async function *Slow(
 			this: Context,
 			{i}: {i: number},
 		): AsyncGenerator<Child> {
@@ -289,7 +294,7 @@ describe("races", () => {
 			}
 		}
 
-		async function* Component(this: Context): AsyncGenerator<Child> {
+		async function *Component(this: Context): AsyncGenerator<Child> {
 			let i = 0;
 			for await ({} of this) {
 				yield (
@@ -330,7 +335,7 @@ describe("races", () => {
 	});
 
 	test("fast async generator vs slow async function", async () => {
-		async function* Fast(this: Context): AsyncGenerator<Element> {
+		async function *Fast(this: Context): AsyncGenerator<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			for await (const _ of this) {
 				yield <span>Fast</span>;
@@ -353,7 +358,7 @@ describe("races", () => {
 	});
 
 	test("slow async generator vs fast async function", async () => {
-		async function* Slow(this: Context): AsyncGenerator<Element> {
+		async function *Slow(this: Context): AsyncGenerator<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 200));
 			for await (const _ of this) {
 				yield <span>Slow</span>;
@@ -386,7 +391,7 @@ describe("races", () => {
 			return <span>Fast</span>;
 		}
 
-		function* SlowGen(): Generator<Element> {
+		function *SlowGen(): Generator<Element> {
 			while (true) {
 				yield <Slow />;
 			}
@@ -413,7 +418,7 @@ describe("races", () => {
 			return <span>Fast</span>;
 		}
 
-		function* FastGen(): Generator<Element> {
+		function *FastGen(): Generator<Element> {
 			while (true) {
 				yield <Fast />;
 			}
@@ -439,6 +444,7 @@ describe("races", () => {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			return <span>Fast</span>;
 		}
+
 		const p1 = renderer.render(<Fast />, document.body);
 		const p2 = renderer.render(
 			<div>

@@ -1,40 +1,31 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
 import {hangs} from "./utils.js";
-import {
-	createElement,
-	Children,
-	Context,
-	Copy,
-	Element,
-	Fragment,
-} from "../src/crank.js";
+import type {Children, Context, Element} from "../src/crank.js";
+import {createElement, Copy, Fragment} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("schedule", () => {
 	interface ResolvingComponent {
 		(props?: Record<string, any>): any;
-		resolves: Array<Function>;
+		resolves: Array<(value?: any) => void>;
 	}
 
-	const AsyncComponent = async function ({
-		children,
-	}: {
-		children: Children;
-	}): Promise<Children> {
+	const AsyncComponent = async function (
+		{children}: {children: Children},
+	): Promise<Children> {
 		await new Promise((resolve) => AsyncComponent.resolves.push(resolve));
 		return children;
 	} as ResolvingComponent;
 
 	AsyncComponent.resolves = [];
 
-	const AsyncMountingComponent = function* (
+	const AsyncMountingComponent = function *(
 		this: Context,
 		{children}: {children: Children},
 	): Generator<Children> {
-		this.schedule(
-			() =>
-				new Promise((resolve) => AsyncMountingComponent.resolves.push(resolve)),
+		this.schedule(() =>
+			new Promise((resolve) => AsyncMountingComponent.resolves.push(resolve)),
 		);
 		for ({children} of this) {
 			yield children;
@@ -57,6 +48,7 @@ describe("schedule", () => {
 	test("function once", () => {
 		let i = 0;
 		const fn = Sinon.fake();
+
 		function Component(this: Context): Element {
 			if (i === 0) {
 				this.schedule(fn);
@@ -90,6 +82,7 @@ describe("schedule", () => {
 	test("function every", () => {
 		let i = 0;
 		const fn = Sinon.fake();
+
 		function Component(this: Context): Element {
 			this.schedule(fn);
 			return <span>{i++}</span>;
@@ -118,7 +111,8 @@ describe("schedule", () => {
 
 	test("generator once", () => {
 		const fn = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			this.schedule(fn);
 			let i = 0;
 			for ({} of this) {
@@ -147,7 +141,8 @@ describe("schedule", () => {
 
 	test("generator every", () => {
 		const fn = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			let i = 0;
 			for ({} of this) {
 				this.schedule(fn);
@@ -180,6 +175,7 @@ describe("schedule", () => {
 	test("async function once", async () => {
 		let i = 0;
 		const fn = Sinon.fake();
+
 		async function Component(this: Context): Promise<Element> {
 			if (i === 0) {
 				this.schedule(fn);
@@ -213,6 +209,7 @@ describe("schedule", () => {
 	test("async function every", async () => {
 		let i = 0;
 		const fn = Sinon.fake();
+
 		async function Component(this: Context): Promise<Element> {
 			this.schedule(fn);
 			await new Promise((resolve) => setTimeout(resolve, 1));
@@ -242,7 +239,8 @@ describe("schedule", () => {
 
 	test("async generator once", async () => {
 		const fn = Sinon.fake();
-		async function* Component(this: Context): AsyncGenerator<Element> {
+
+		async function *Component(this: Context): AsyncGenerator<Element> {
 			this.schedule(fn);
 			let i = 0;
 			for await (const _ of this) {
@@ -271,7 +269,8 @@ describe("schedule", () => {
 
 	test("async generator every", async () => {
 		const fn = Sinon.fake();
-		async function* Component(this: Context): AsyncGenerator<Element> {
+
+		async function *Component(this: Context): AsyncGenerator<Element> {
 			let i = 0;
 			for await (const _ of this) {
 				this.schedule(fn);
@@ -302,7 +301,8 @@ describe("schedule", () => {
 
 	test("multiple calls, same fn", () => {
 		const fn = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			this.schedule(fn);
 			this.schedule(fn);
 			for ({} of this) {
@@ -326,7 +326,8 @@ describe("schedule", () => {
 	test("multiple calls, different fns", () => {
 		const fn1 = Sinon.fake();
 		const fn2 = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			this.schedule(fn1);
 			this.schedule(fn2);
 			for ({} of this) {
@@ -352,7 +353,8 @@ describe("schedule", () => {
 	test("multiple calls across updates", () => {
 		const fn1 = Sinon.fake();
 		const fn2 = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			let i = 0;
 			for ({} of this) {
 				this.schedule(fn1);
@@ -406,7 +408,8 @@ describe("schedule", () => {
 
 	test("refresh", () => {
 		const mock = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			let i = 0;
 			for ({} of this) {
 				mock();
@@ -442,7 +445,7 @@ describe("schedule", () => {
 	});
 
 	test("refresh copy", () => {
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			this.schedule(() => this.refresh());
 			const span = (yield <span />) as HTMLSpanElement;
 			for ({} of this) {
@@ -464,7 +467,7 @@ describe("schedule", () => {
 	});
 
 	test("refresh copy alternating", () => {
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			let i = 0;
 			let span: HTMLSpanElement | undefined;
 			for ({} of this) {
@@ -494,11 +497,12 @@ describe("schedule", () => {
 
 	test("component child", () => {
 		const fn = Sinon.fake();
+
 		function Child(): Element {
 			return <span>Hello</span>;
 		}
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			this.schedule(fn);
 			for ({} of this) {
 				yield <Child />;
@@ -520,7 +524,8 @@ describe("schedule", () => {
 
 	test("fragment child", () => {
 		const fn = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			this.schedule(fn);
 			for ({} of this) {
 				yield (
@@ -552,12 +557,13 @@ describe("schedule", () => {
 
 	test("async children once", async () => {
 		const fn = Sinon.fake();
+
 		async function Child({children}: {children: Children}): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 5));
 			return <span>{children}</span>;
 		}
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			this.schedule(fn);
 			for ({} of this) {
 				yield <Child>async</Child>;
@@ -579,12 +585,13 @@ describe("schedule", () => {
 
 	test("async children every", async () => {
 		const fn = Sinon.fake();
+
 		async function Child({children}: {children: Children}): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 5));
 			return <span>{children}</span>;
 		}
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			let i = 0;
 			for ({} of this) {
 				this.schedule(fn);
@@ -618,12 +625,13 @@ describe("schedule", () => {
 
 	test("hanging child", async () => {
 		const fn = Sinon.fake();
+
 		async function Hanging(): Promise<never> {
 			await new Promise(() => {});
 			throw new Error("This should never be reached");
 		}
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			this.schedule(fn);
 			for ({} of this) {
 				yield <Hanging />;
@@ -653,7 +661,7 @@ describe("schedule", () => {
 			return <p>{children}</p>;
 		}
 
-		function* Parent(this: Context) {
+		function *Parent(this: Context) {
 			this.schedule(() => this.refresh());
 			yield <p>Render 1</p>;
 			yield <Component>Render 2</Component>;
@@ -669,16 +677,14 @@ describe("schedule", () => {
 			return <p>{children}</p>;
 		}
 
-		function* Parent(this: Context) {
+		function *Parent(this: Context) {
 			this.schedule(() => this.refresh());
 			yield <p>Render 1</p>;
 			yield <Component>Render 2</Component>;
 		}
 
-		const result = renderer.render(
-			<Parent />,
-			document.body,
-		) as Promise<HTMLElement>;
+		const result =
+			renderer.render(<Parent />, document.body) as Promise<HTMLElement>;
 
 		expect((await result).outerHTML).toBe("<p>Render 2</p>");
 		expect(document.body.innerHTML).toBe("<p>Render 2</p>");
@@ -727,8 +733,9 @@ describe("schedule", () => {
 
 	// TODO: async updating
 	test("async schedule does not work after initial render", async () => {
-		let resolve!: Function;
-		function* Component(this: Context): Generator<Element> {
+		let resolve!: (value?: any) => void;
+
+		function *Component(this: Context): Generator<Element> {
 			let i = 0;
 			for ({} of this) {
 				this.schedule(() => new Promise((r) => (resolve = r)));
@@ -764,8 +771,9 @@ describe("schedule", () => {
 	});
 
 	test("async mount with refresh", async () => {
-		let resolve!: Function;
-		function* Component(this: Context): Generator<Element> {
+		let resolve!: (value?: any) => void;
+
+		function *Component(this: Context): Generator<Element> {
 			let i = 0;
 			for ({} of this) {
 				this.schedule(async () => {
@@ -881,7 +889,7 @@ describe("schedule", () => {
 	});
 
 	test("async mount inside async component", async () => {
-		let scheduleResolve!: Function;
+		let scheduleResolve!: (value?: any) => void;
 
 		async function AsyncComponent(this: Context): Promise<Element> {
 			this.schedule(() => new Promise((r) => (scheduleResolve = r)));
@@ -1139,7 +1147,8 @@ describe("schedule", () => {
 
 	test("async mount replacing stateful component", async () => {
 		let statefulCtx: Context;
-		function* StatefulComponent(this: Context): Generator<Element> {
+
+		function *StatefulComponent(this: Context): Generator<Element> {
 			statefulCtx = this;
 			let i = 0;
 			for ({} of this) {
@@ -1224,7 +1233,7 @@ describe("schedule", () => {
 	});
 
 	test("schedule refresh with an async component", async () => {
-		function* Component(this: Context) {
+		function *Component(this: Context) {
 			for ({} of this) {
 				this.schedule(() => this.refresh());
 				yield <span>Render 1</span>;
@@ -1235,6 +1244,7 @@ describe("schedule", () => {
 				);
 			}
 		}
+
 		const result1 = renderer.render(
 			<div>
 				<Component />

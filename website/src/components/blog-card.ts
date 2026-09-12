@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
 export interface BlogCardProps {
@@ -19,7 +20,7 @@ export function BlogCard({
 	readTime,
 	author,
 	featured,
-}: BlogCardProps) {
+}: BlogCardProps): Element {
 	const publishDateDisplay =
 		publishDate &&
 		publishDate.toLocaleString("en-US", {
@@ -57,8 +58,7 @@ export function BlogCard({
 			`}
 		>
 			${
-				hasMetadata &&
-				jsx`
+				hasMetadata && jsx`
 				<div class=${css`
 					display: flex;
 					flex-wrap: wrap;
@@ -86,8 +86,7 @@ export function BlogCard({
 				}
 			`}>${title}</h3>
 			${
-				description &&
-				jsx`
+				description && jsx`
 				<p class=${css`
 					margin: 0;
 					color: var(--text-color);
@@ -98,8 +97,7 @@ export function BlogCard({
 			`
 			}
 			${
-				author &&
-				jsx`
+				author && jsx`
 				<p class=${css`
 					margin: 1rem 0 0;
 					font-size: 0.85rem;

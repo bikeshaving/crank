@@ -51,6 +51,7 @@ describe("sync function", () => {
 
 	test("async children enqueue", async () => {
 		const fn = Sinon.fake();
+
 		async function Child({message}: {message: string}): Promise<Element> {
 			fn();
 			await new Promise((resolve) => setTimeout(resolve, 100));
@@ -90,6 +91,7 @@ describe("sync function", () => {
 
 	test("refresh called on unmounted component", () => {
 		let ctx!: Context;
+
 		function Component(this: Context) {
 			ctx = this;
 			return null;

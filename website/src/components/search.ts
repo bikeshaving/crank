@@ -1,6 +1,6 @@
 import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
-import type {Context} from "@b9g/crank";
+import type {Context, Element} from "@b9g/crank";
 
 interface SearchResult {
 	url: string;
@@ -33,7 +33,7 @@ declare global {
 	}
 }
 
-export async function* Search(this: Context) {
+export async function *Search(this: Context): AsyncGenerator<Element> {
 	let query = "";
 	let results: SearchResult[] = [];
 	let isOpen = false;
@@ -42,15 +42,18 @@ export async function* Search(this: Context) {
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const loadPagefind = async () => {
-		if (pagefind) return pagefind;
-		if (typeof window === "undefined") return null;
+		if (pagefind) {
+			return pagefind;
+		}
+		if (typeof window === "undefined") {
+			return null;
+		}
 
 		try {
 			// Pagefind generates its assets at /pagefind/
 			// Use Function constructor to avoid bundler trying to resolve the import
-			const importPagefind = new Function(
-				'return import("/pagefind/pagefind.js")',
-			);
+			const importPagefind =
+				new Function('return import("/pagefind/pagefind.js")');
 			pagefind = await importPagefind();
 			return pagefind;
 		} catch (e) {
@@ -99,13 +102,7 @@ export async function* Search(this: Context) {
 					];
 				}
 				// Fall back to page-level result
-				return [
-					{
-						url: d.url,
-						title: d.meta.title || d.url,
-						excerpt: d.excerpt,
-					},
-				];
+				return [{url: d.url, title: d.meta.title || d.url, excerpt: d.excerpt}];
 			})
 			.slice(0, 8);
 		this.refresh(() => {
@@ -118,7 +115,9 @@ export async function* Search(this: Context) {
 		query = (e.target as HTMLInputElement).value;
 		isOpen = true;
 
-		if (debounceTimer) clearTimeout(debounceTimer);
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
+		}
 		debounceTimer = setTimeout(() => doSearch(query), 150);
 		this.cleanup(() => clearTimeout(debounceTimer!));
 	};
@@ -214,8 +213,7 @@ export async function* Search(this: Context) {
 							`}>Searching...</div>
 						`
 								: results.length > 0
-									? results.map(
-											(r) => jsx`
+								? results.map((r) => jsx`
 							<a
 								href=${r.url}
 								class=${css`
@@ -256,17 +254,16 @@ export async function* Search(this: Context) {
 									innerHTML=${r.excerpt}
 								/>
 							</a>
-						`,
-										)
-									: query.trim()
-										? jsx`
+						`)
+								: query.trim()
+								? jsx`
 							<div class=${css`
 								padding: 1rem;
 								opacity: 0.6;
 								font-size: 0.85rem;
 							`}>No results found</div>
 						`
-										: null
+								: null
 						}
 					</div>
 				`

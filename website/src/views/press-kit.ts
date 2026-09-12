@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 import {Root} from "../components/root.js";
 
@@ -66,15 +67,9 @@ function CopySection() {
 	`;
 }
 
-function LogoCard({
-	src,
-	label,
-	background,
-}: {
-	src: string;
-	label: string;
-	background: string;
-}) {
+function LogoCard(
+	{src, label, background}: {src: string; label: string; background: string},
+) {
 	return jsx`
 		<div class=${css`
 			border: 1px solid var(--text-color);
@@ -143,8 +138,7 @@ function LogoSection() {
 				gap: 1rem;
 				align-items: end;
 			`}>
-				${[512, 256, 192, 128, 96, 64, 48, 32, 16].map(
-					(size) => jsx`
+				${[512, 256, 192, 128, 96, 64, 48, 32, 16].map((size) => jsx`
 						<a href=${`/static/logo-${size}.png`} download class=${css`
 							text-align: center;
 							text-decoration: none;
@@ -163,8 +157,7 @@ function LogoSection() {
 							/>
 							<small>${size}px</small>
 						</a>
-					`,
-				)}
+					`)}
 			</div>
 		</section>
 	`;
@@ -227,7 +220,7 @@ function TrademarkSection() {
 	`;
 }
 
-export default function PressKit({url}: ViewProps) {
+export default function PressKit({url}: ViewProps): Element {
 	return jsx`
 		<${Root} title=${"Press Kit \u2014 Crank.js"} url=${url}>
 			<${CopySection} />

@@ -1,18 +1,19 @@
-import {SourceCode} from "eslint";
+import type {SourceCode} from "eslint";
 import type {ESLintNode} from "./types";
 
 /**
  * Check if a statement is a final action in its scope (before return, throw, or end of block)
  */
 export function isFinalAction(node: ESLintNode): boolean {
-	if (!node.parent) return false;
+	if (!node.parent) {
+		return false;
+	}
 
 	// If the node is a CallExpression, we need to check if its parent ExpressionStatement
 	// is the final action in its block
 	let statementNode = node;
 	if (
-		node.type === "CallExpression" &&
-		node.parent.type === "ExpressionStatement"
+		node.type === "CallExpression" && node.parent.type === "ExpressionStatement"
 	) {
 		statementNode = node.parent;
 	}
@@ -81,16 +82,16 @@ export function traverseAST(
 	node: ESLintNode,
 	visitor: (node: ESLintNode) => void,
 ): void {
-	if (!node) return;
+	if (!node) {
+		return;
+	}
 
 	visitor(node);
 
 	// Recursively traverse all properties
 	for (const key in node) {
 		if (
-			key !== "parent" &&
-			typeof node[key] === "object" &&
-			node[key] !== null
+			key !== "parent" && typeof node[key] === "object" && node[key] !== null
 		) {
 			if (Array.isArray(node[key])) {
 				node[key].forEach((item: any) => traverseAST(item, visitor));
@@ -202,7 +203,9 @@ export function findAncestor(
  */
 export function getAssignedVariableName(node: ESLintNode): string | null {
 	const parent = node.parent;
-	if (!parent) return null;
+	if (!parent) {
+		return null;
+	}
 
 	// Variable declaration: const x = ...
 	if (parent.type === "VariableDeclarator" && parent.id.type === "Identifier") {
@@ -211,8 +214,7 @@ export function getAssignedVariableName(node: ESLintNode): string | null {
 
 	// Assignment expression: x = ...
 	if (
-		parent.type === "AssignmentExpression" &&
-		parent.left.type === "Identifier"
+		parent.type === "AssignmentExpression" && parent.left.type === "Identifier"
 	) {
 		return parent.left.name;
 	}
@@ -251,8 +253,7 @@ export function findIdentifierReferences(
 	const found = new Set<string>();
 	traverseAST(node, (current) => {
 		if (
-			current.type === "Identifier" &&
-			identifierNames.includes(current.name)
+			current.type === "Identifier" && identifierNames.includes(current.name)
 		) {
 			found.add(current.name);
 		}

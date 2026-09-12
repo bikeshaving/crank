@@ -1,5 +1,5 @@
-import {Rule} from "eslint";
-import {ESLintNode} from "../utils/types.js";
+import type {Rule} from "eslint";
+import type {ESLintNode} from "../utils/types.js";
 import {isThisMethodCall} from "../utils/ast-utils.js";
 
 const LIFECYCLE_METHODS = ["schedule", "after", "cleanup"];
@@ -65,10 +65,7 @@ export const noYieldInLifecycleMethods: Rule.RuleModule = {
 					context.report({
 						node,
 						messageId: "noYieldInLifecycle",
-						data: {
-							statement: "yield",
-							method,
-						},
+						data: {statement: "yield", method},
 					});
 				}
 			},
@@ -83,10 +80,7 @@ export const noYieldInLifecycleMethods: Rule.RuleModule = {
 						context.report({
 							node,
 							messageId: "noYieldInLifecycle",
-							data: {
-								statement: "return",
-								method,
-							},
+							data: {statement: "return", method},
 						});
 					}
 				}

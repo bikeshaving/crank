@@ -123,18 +123,14 @@ router.use(async (request) => {
 router.use(trailingSlash("append"));
 
 // Redirects for renamed URLs (handled in middleware to avoid router conflicts)
-const redirects: Record<string, string> = {
-	"/guides/special-props-and-tags/": "/guides/special-props-and-components/",
-};
+const redirects: Record<string, string> =
+	{"/guides/special-props-and-tags/": "/guides/special-props-and-components/"};
 
 router.use(async (request) => {
 	const url = new URL(request.url);
 	const newPath = redirects[url.pathname];
 	if (newPath) {
-		return new Response(null, {
-			status: 301,
-			headers: {Location: newPath},
-		});
+		return new Response(null, {status: 301, headers: {Location: newPath}});
 	}
 	return;
 });
@@ -160,17 +156,12 @@ router.route("/pagefind/:path*").get(async (request, context) => {
 		const content = await file.arrayBuffer();
 		const dotIndex = fileName.lastIndexOf(".");
 		const ext = dotIndex !== -1 ? fileName.slice(dotIndex).toLowerCase() : "";
-		const contentType =
-			ext === ".js"
-				? "application/javascript"
-				: ext === ".css"
-					? "text/css"
-					: "application/octet-stream";
+		const contentType = ext === ".js"
+			? "application/javascript"
+			: ext === ".css" ? "text/css" : "application/octet-stream";
 
-		return new Response(content, {
-			headers: {"Content-Type": contentType},
-		});
-	} catch {
+		return new Response(content, {headers: {"Content-Type": contentType}});
+	} catch (err) {
 		return new Response("Not Found (run static build first)", {status: 404});
 	}
 });
@@ -186,16 +177,16 @@ async function renderView(
 		url = url + "/";
 	}
 
-	const html = await renderer.render(jsx`
+	const html = await renderer.render(
+		jsx`
 		<${View}
 			url=${url}
 			params=${params}
 		/>
-	`);
+	`,
+	);
 
-	return new Response(html, {
-		headers: {"Content-Type": "text/html"},
-	});
+	return new Response(html, {headers: {"Content-Type": "text/html"}});
 }
 
 // Routes
@@ -250,11 +241,7 @@ router.route("/spec/").get(async () => {
 	try {
 		const proc = Bun.spawn(
 			["bikeshed", "spec", "--die-on=nothing", "docs/spec.bs", outFile],
-			{
-				cwd: import.meta.dirname + "/../..",
-				stdout: "pipe",
-				stderr: "pipe",
-			},
+			{cwd: import.meta.dirname + "/../..", stdout: "pipe", stderr: "pipe"},
 		);
 		const exitCode = await proc.exited;
 		if (exitCode !== 0) {
@@ -262,14 +249,11 @@ router.route("/spec/").get(async () => {
 			throw new Error(stderr || `bikeshed exited with code ${exitCode}`);
 		}
 		const html = await Bun.file(outFile).text();
-		return new Response(html, {
-			headers: {"Content-Type": "text/html"},
-		});
+		return new Response(html, {headers: {"Content-Type": "text/html"}});
 	} catch (error: any) {
-		const message =
-			error?.code === "ENOENT"
-				? "bikeshed is not installed. Run: pipx install bikeshed && bikeshed update"
-				: (error?.message ?? "Unknown error building spec");
+		const message = error?.code === "ENOENT"
+			? "bikeshed is not installed. Run: pipx install bikeshed && bikeshed update"
+			: (error?.message ?? "Unknown error building spec");
 		return new Response(
 			`<pre style="padding:2rem;font-family:monospace">${message}</pre>`,
 			{status: 500, headers: {"Content-Type": "text/html"}},
@@ -281,9 +265,8 @@ router.route("/spec/").get(async () => {
 router.route("/skill").get(async () => {
 	try {
 		const skillsDir = await self.directories.open("skills");
-		const fileHandle = await skillsDir.getFileHandle(
-			"crank-component-authoring.skill",
-		);
+		const fileHandle =
+			await skillsDir.getFileHandle("crank-component-authoring.skill");
 		const file = await fileHandle.getFile();
 		const content = await file.arrayBuffer();
 		return new Response(content, {
@@ -293,7 +276,7 @@ router.route("/skill").get(async () => {
 					'attachment; filename="crank-component-authoring.skill"',
 			},
 		});
-	} catch {
+	} catch (err) {
 		return new Response("Not Found", {status: 404});
 	}
 });
@@ -306,9 +289,7 @@ Sitemap: https://crank.js.org/sitemap.xml
 `;
 
 router.route("/robots.txt").get(async () => {
-	return new Response(robotsTxt, {
-		headers: {"Content-Type": "text/plain"},
-	});
+	return new Response(robotsTxt, {headers: {"Content-Type": "text/plain"}});
 });
 
 // Sitemap (dev route; static build writes the file directly)
@@ -353,9 +334,11 @@ router.route("/blog/feed.xml").get(async () => {
 // 404 catch-all (must be last)
 router.route("*").all(async (request) => {
 	const url = new URL(request.url);
-	const html = await renderer.render(jsx`
+	const html = await renderer.render(
+		jsx`
 		<${NotFoundView} url=${url.pathname} params=${{}} />
-	`);
+	`,
+	);
 	return new Response(html, {
 		status: 404,
 		headers: {"Content-Type": "text/html"},
@@ -372,7 +355,7 @@ self.addEventListener("install", (event) => {
 	event.waitUntil(generateStaticSite());
 });
 
-async function generateStaticSite() {
+async function generateStaticSite(): Promise<void> {
 	if (import.meta.env.MODE !== "production") {
 		return;
 	}
@@ -411,12 +394,11 @@ async function generateStaticSite() {
 
 		// Generate 404 page
 		const notFoundResponse = await fetch("/404.html");
-		const notFoundHtml = await notFoundResponse.text();
-		const notFoundHandle = await staticBucket.getFileHandle("404.html", {
-			create: true,
-		});
+		const notFoundHTML = await notFoundResponse.text();
+		const notFoundHandle =
+			await staticBucket.getFileHandle("404.html", {create: true});
 		const notFoundWritable = await notFoundHandle.createWritable();
-		await notFoundWritable.write(notFoundHtml);
+		await notFoundWritable.write(notFoundHTML);
 		await notFoundWritable.close();
 		logger.info("Generated 404.html");
 
@@ -428,22 +410,21 @@ async function generateStaticSite() {
 					const content = await response.text();
 					// Generate proper directory structure for static servers
 					// /blog/slug/ -> blog/slug/index.html
-					const filePath =
-						route === "/" ? "index.html" : `${route.slice(1)}index.html`;
+					const filePath = route === "/"
+						? "index.html"
+						: `${route.slice(1)}index.html`;
 
 					// Create nested directories if needed
 					const parts = filePath.split("/");
 					let currentDir = staticBucket;
 					for (let i = 0; i < parts.length - 1; i++) {
-						currentDir = await currentDir.getDirectoryHandle(parts[i], {
-							create: true,
-						});
+						currentDir =
+							await currentDir.getDirectoryHandle(parts[i], {create: true});
 					}
 
 					const fileName = parts[parts.length - 1];
-					const fileHandle = await currentDir.getFileHandle(fileName, {
-						create: true,
-					});
+					const fileHandle =
+						await currentDir.getFileHandle(fileName, {create: true});
 					const writable = await fileHandle.createWritable();
 					await writable.write(content);
 					await writable.close();
@@ -457,7 +438,7 @@ async function generateStaticSite() {
 
 		// Generate redirect HTML files for old URLs
 		for (const [oldPath, newPath] of Object.entries(redirects)) {
-			const redirectHtml = `<!DOCTYPE html>
+			const redirectHTML = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -474,26 +455,23 @@ async function generateStaticSite() {
 			const parts = filePath.split("/");
 			let currentDir = staticBucket;
 			for (let i = 0; i < parts.length - 1; i++) {
-				currentDir = await currentDir.getDirectoryHandle(parts[i], {
-					create: true,
-				});
+				currentDir =
+					await currentDir.getDirectoryHandle(parts[i], {create: true});
 			}
 
 			const fileName = parts[parts.length - 1];
-			const fileHandle = await currentDir.getFileHandle(fileName, {
-				create: true,
-			});
+			const fileHandle =
+				await currentDir.getFileHandle(fileName, {create: true});
 			const writable = await fileHandle.createWritable();
-			await writable.write(redirectHtml);
+			await writable.write(redirectHTML);
 			await writable.close();
 			logger.info(`Generated redirect ${oldPath} -> ${newPath}`);
 		}
 
 		// Generate sitemap.xml
 		const sitemapXML = generateSitemap(staticRoutes);
-		const sitemapHandle = await staticBucket.getFileHandle("sitemap.xml", {
-			create: true,
-		});
+		const sitemapHandle =
+			await staticBucket.getFileHandle("sitemap.xml", {create: true});
 		const sitemapWritable = await sitemapHandle.createWritable();
 		await sitemapWritable.write(sitemapXML);
 		await sitemapWritable.close();
@@ -501,21 +479,18 @@ async function generateStaticSite() {
 
 		// Generate RSS feed
 		const feedXML = generateFeed(blogDocs);
-		const blogOutputDir = await staticBucket.getDirectoryHandle("blog", {
-			create: true,
-		});
-		const feedHandle = await blogOutputDir.getFileHandle("feed.xml", {
-			create: true,
-		});
+		const blogOutputDir =
+			await staticBucket.getDirectoryHandle("blog", {create: true});
+		const feedHandle =
+			await blogOutputDir.getFileHandle("feed.xml", {create: true});
 		const feedWritable = await feedHandle.createWritable();
 		await feedWritable.write(feedXML);
 		await feedWritable.close();
 		logger.info("Generated blog/feed.xml");
 
 		// Generate robots.txt
-		const robotsHandle = await staticBucket.getFileHandle("robots.txt", {
-			create: true,
-		});
+		const robotsHandle =
+			await staticBucket.getFileHandle("robots.txt", {create: true});
 		const robotsWritable = await robotsHandle.createWritable();
 		await robotsWritable.write(robotsTxt);
 		await robotsWritable.close();
@@ -524,14 +499,12 @@ async function generateStaticSite() {
 		// Copy .skill archive for Claude Code skill installation
 		try {
 			const skillsDir = await self.directories.open("skills");
-			const skillHandle = await skillsDir.getFileHandle(
-				"crank-component-authoring.skill",
-			);
+			const skillHandle =
+				await skillsDir.getFileHandle("crank-component-authoring.skill");
 			const skillFile = await skillHandle.getFile();
 			const skillContent = await skillFile.arrayBuffer();
-			const skillDestHandle = await staticBucket.getFileHandle("skill", {
-				create: true,
-			});
+			const skillDestHandle =
+				await staticBucket.getFileHandle("skill", {create: true});
 			const skillWritable = await skillDestHandle.createWritable();
 			await skillWritable.write(skillContent);
 			await skillWritable.close();
@@ -546,7 +519,7 @@ async function generateStaticSite() {
 	}
 }
 
-function escapeXml(str: string): string {
+function escapeXML(str: string): string {
 	return str
 		.replace(/&/g, "&amp;")
 		.replace(/</g, "&lt;")
@@ -566,7 +539,7 @@ ${entries}
 `;
 }
 
-function generateFeed(blogDocs: Array<DocInfo>): string {
+function generateFeed(blogDocs: DocInfo[]): string {
 	const posts = [...blogDocs]
 		.filter((doc) => doc.attributes.publish)
 		.sort((a, b) => {
@@ -581,9 +554,9 @@ function generateFeed(blogDocs: Array<DocInfo>): string {
 				? post.attributes.publishDate.toUTCString()
 				: "";
 			return `    <item>
-      <title>${escapeXml(post.attributes.title)}</title>
+      <title>${escapeXML(post.attributes.title)}</title>
       <link>https://crank.js.org${post.url}</link>
-      <guid>https://crank.js.org${post.url}</guid>${pubDate ? `\n      <pubDate>${pubDate}</pubDate>` : ""}${post.attributes.description ? `\n      <description>${escapeXml(post.attributes.description)}</description>` : ""}${post.attributes.author ? `\n      <author>${escapeXml(post.attributes.author)}</author>` : ""}
+      <guid>https://crank.js.org${post.url}</guid>${pubDate ? `\n      <pubDate>${pubDate}</pubDate>` : ""}${post.attributes.description ? `\n      <description>${escapeXML(post.attributes.description)}</description>` : ""}${post.attributes.author ? `\n      <author>${escapeXML(post.attributes.author)}</author>` : ""}
     </item>`;
 		})
 		.join("\n");

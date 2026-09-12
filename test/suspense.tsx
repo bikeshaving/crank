@@ -61,7 +61,8 @@ describe("suspense", () => {
 
 	test("suspense with refresh", async () => {
 		let ctx!: Context;
-		async function* App(this: Context) {
+
+		async function *App(this: Context) {
 			ctx = this;
 			for await (const _ of this) {
 				yield (
@@ -85,7 +86,8 @@ describe("suspense", () => {
 
 	test("suspense with concurrent refresh", async () => {
 		let ctx!: Context;
-		async function* App(this: Context) {
+
+		async function *App(this: Context) {
 			ctx = this;
 			for await (const _ of this) {
 				yield (
@@ -111,7 +113,8 @@ describe("suspense", () => {
 
 	test("suspense with concurrent refresh in timeout", async () => {
 		let ctx!: Context;
-		async function* App(this: Context) {
+
+		async function *App(this: Context) {
 			ctx = this;
 			for await (const _ of this) {
 				yield (
@@ -137,7 +140,8 @@ describe("suspense", () => {
 
 	test("suspense with concurrent refresh after refresh fulfills", async () => {
 		let ctx!: Context;
-		async function* App(this: Context) {
+
+		async function *App(this: Context) {
 			ctx = this;
 			for await (const _ of this) {
 				yield (
@@ -164,7 +168,8 @@ describe("suspense", () => {
 	test("suspense preserves state on refresh", async () => {
 		let ctx!: Context;
 		const mock = Sinon.stub();
-		async function* StatefulChild(this: Context) {
+
+		async function *StatefulChild(this: Context) {
 			mock();
 			let count = 0;
 			for ({} of this) {
@@ -173,7 +178,7 @@ describe("suspense", () => {
 			}
 		}
 
-		async function* App(this: Context) {
+		async function *App(this: Context) {
 			ctx = this;
 			for await (const _ of this) {
 				yield (
@@ -206,7 +211,7 @@ describe("suspense", () => {
 				</Suspense>
 			</SuspenseList>,
 			document.body,
-		) as Promise<Array<HTMLElement>>;
+		) as Promise<HTMLElement[]>;
 
 		await new Promise((resolve) => setTimeout(resolve, 60));
 		expect(document.body.innerHTML).toBe("");
@@ -230,7 +235,7 @@ describe("suspense", () => {
 				<span>Another sync</span>
 			</SuspenseList>,
 			document.body,
-		) as Promise<Array<HTMLElement>>;
+		) as Promise<HTMLElement[]>;
 
 		await new Promise((resolve) => setTimeout(resolve, 60));
 		expect(document.body.innerHTML).toBe("");
@@ -261,7 +266,7 @@ describe("suspense", () => {
 				<span>Outer sync</span>
 			</SuspenseList>,
 			document.body,
-		) as Promise<Array<HTMLElement>>;
+		) as Promise<HTMLElement[]>;
 
 		await new Promise((resolve) => setTimeout(resolve, 60));
 		expect(document.body.innerHTML).toBe("");
@@ -314,7 +319,7 @@ describe("suspense", () => {
 				</Suspense>
 			</SuspenseList>,
 			document.body,
-		) as Promise<Array<HTMLElement>>;
+		) as Promise<HTMLElement[]>;
 
 		await new Promise((resolve) => setTimeout(resolve, 60));
 		expect(document.body.innerHTML).toBe("<span>Loading A...</span>");
@@ -339,7 +344,7 @@ describe("suspense", () => {
 				</Suspense>
 			</SuspenseList>,
 			document.body,
-		) as Promise<Array<HTMLElement>>;
+		) as Promise<HTMLElement[]>;
 
 		await new Promise((resolve) => setTimeout(resolve, 60));
 		expect(document.body.innerHTML).toBe("<span>Loading B...</span>");
@@ -364,7 +369,7 @@ describe("suspense", () => {
 				</Suspense>
 			</SuspenseList>,
 			document.body,
-		) as Promise<Array<HTMLElement>>;
+		) as Promise<HTMLElement[]>;
 
 		await new Promise((resolve) => setTimeout(resolve, 60));
 		expect(document.body.innerHTML).toBe("<span>Loading B...</span>");
@@ -393,7 +398,7 @@ describe("suspense", () => {
 				</Suspense>
 			</SuspenseList>,
 			document.body,
-		) as Promise<Array<HTMLElement>>;
+		) as Promise<HTMLElement[]>;
 
 		// After fallback timeouts (50ms), should show all fallbacks initially
 		await new Promise((resolve) => setTimeout(resolve, 60));
@@ -430,7 +435,7 @@ describe("suspense", () => {
 				</Suspense>
 			</SuspenseList>,
 			document.body,
-		) as Promise<Array<HTMLElement>>;
+		) as Promise<HTMLElement[]>;
 
 		expect(document.body.innerHTML).toBe("");
 
@@ -547,7 +552,7 @@ describe("suspense", () => {
 				</Suspense>
 			</SuspenseList>,
 			document.body,
-		) as Promise<Array<HTMLElement>>;
+		) as Promise<HTMLElement[]>;
 
 		expect((await result).map((el) => el.outerHTML)).toEqual([
 			"<span>Child 10</span>",
@@ -570,7 +575,7 @@ describe("suspense", () => {
 				</Suspense>
 			</SuspenseList>,
 			document.body,
-		) as Promise<Array<HTMLElement>>;
+		) as Promise<HTMLElement[]>;
 
 		expect((await result).map((el) => el.outerHTML)).toEqual([
 			"<span>Child 2</span>",
@@ -593,7 +598,7 @@ describe("suspense", () => {
 				</Suspense>
 			</SuspenseList>,
 			document.body,
-		) as Promise<Array<HTMLElement>>;
+		) as Promise<HTMLElement[]>;
 
 		expect((await result).map((el) => el.outerHTML)).toEqual([
 			"<span>Child 1</span>",
@@ -616,7 +621,7 @@ describe("suspense", () => {
 				</Suspense>
 			</SuspenseList>,
 			document.body,
-		) as Promise<Array<HTMLElement>>;
+		) as Promise<HTMLElement[]>;
 
 		expect((await result).map((el) => el.outerHTML)).toEqual([
 			"<span>Child 100</span>",
@@ -639,7 +644,7 @@ describe("suspense", () => {
 				</Suspense>
 			</SuspenseList>,
 			document.body,
-		) as Promise<Array<HTMLElement>>;
+		) as Promise<HTMLElement[]>;
 
 		expect((await result).map((el) => el.outerHTML)).toEqual([
 			"<span>Child 80</span>",
@@ -662,7 +667,7 @@ describe("suspense", () => {
 				</Suspense>
 			</SuspenseList>,
 			document.body,
-		) as Promise<Array<HTMLElement>>;
+		) as Promise<HTMLElement[]>;
 
 		expect((await result).map((el) => el.outerHTML)).toEqual([
 			"<span>Child 1</span>",
@@ -704,7 +709,7 @@ describe("suspense", () => {
 				</Suspense>
 			</SuspenseList>,
 			document.body,
-		) as Promise<Array<HTMLElement>>;
+		) as Promise<HTMLElement[]>;
 
 		expect((await result).map((el) => el.outerHTML)).toEqual([
 			"<span>Child 200</span>",
@@ -835,15 +840,11 @@ describe("suspense", () => {
 	// TODO: See if we can create a reproduction that does not use setInterval
 	test("suspense fallback and children render simultaneously", async () => {
 		// Simple loading fallback that refreshes periodically
-		function* LoadingFallback(this: Context) {
+		function *LoadingFallback(this: Context) {
 			let count = 0;
-			const interval = setInterval(
-				() =>
-					this.refresh(() => {
-						count++;
-					}),
-				100,
-			);
+			const interval = setInterval(() => this.refresh(() => {
+				count++;
+			}), 100);
 			this.cleanup(() => clearInterval(interval));
 
 			for ({} of this) {
@@ -853,6 +854,7 @@ describe("suspense", () => {
 
 		// Async component that takes time to resolve
 		let apiCallCount = 0;
+
 		async function SlowAsyncComponent() {
 			const id = ++apiCallCount;
 			// Simulate slow network request
@@ -861,7 +863,7 @@ describe("suspense", () => {
 		}
 
 		// Parent component with button that triggers refresh
-		function* App(this: Context) {
+		function *App(this: Context) {
 			for ({} of this) {
 				yield (
 					<Suspense fallback={<LoadingFallback />} timeout={300}>
@@ -894,8 +896,6 @@ describe("suspense", () => {
 		}
 
 		// Test fails if bug is detected
-		expect(
-			bugDetected,
-		).toBeFalsy() /* Fallback and content should not render simultaneously */;
+		expect(bugDetected).toBeFalsy();
 	});
 });

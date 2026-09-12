@@ -2,8 +2,8 @@
 // Original: Copyright (c) 2014 Yannick Croissant, MIT License
 // https://github.com/jsx-eslint/eslint-plugin-react
 
-import {Rule, Scope} from "eslint";
-import {ESLintNode} from "../utils/types.js";
+import type {Rule, Scope} from "eslint";
+import type {ESLintNode} from "../utils/types.js";
 
 const isTagName = (name: string) => /^[a-z]/.test(name);
 
@@ -18,31 +18,30 @@ export const jsxNoUndef: Rule.RuleModule = {
 		schema: [
 			{
 				type: "object",
-				properties: {
-					allowGlobals: {type: "boolean"},
-				},
+				properties: {allowGlobals: {type: "boolean"}},
 				additionalProperties: false,
 			},
 		],
-		messages: {
-			undefined: "'{{identifier}}' is not defined.",
-		},
+		messages: {undefined: "'{{identifier}}' is not defined."},
 	},
 
 	create(context) {
 		const config = context.options[0] || {};
 		const allowGlobals = config.allowGlobals || false;
 
-		function checkIdentifierInJSX(node: ESLintNode) {
-			if (node.name === "this") return;
+		function checkIdentifierInJSX(node: ESLintNode): void {
+			if (node.name === "this") {
+				return;
+			}
 
 			const sourceCode = context.sourceCode;
 			let scope: Scope.Scope = (sourceCode as any).getScope
 				? (sourceCode as any).getScope(node)
 				: (context as any).getScope();
 			const sourceType = sourceCode.ast?.sourceType;
-			const scopeUpperBound =
-				!allowGlobals && sourceType === "module" ? "module" : "global";
+			const scopeUpperBound = !allowGlobals && sourceType === "module"
+				? "module"
+				: "global";
 
 			let variables: Scope.Variable[] = scope.variables;
 
@@ -60,7 +59,9 @@ export const jsxNoUndef: Rule.RuleModule = {
 			}
 
 			for (const variable of variables) {
-				if (variable.name === node.name) return;
+				if (variable.name === node.name) {
+					return;
+				}
 			}
 
 			context.report({
@@ -74,7 +75,9 @@ export const jsxNoUndef: Rule.RuleModule = {
 			JSXOpeningElement(node: ESLintNode) {
 				switch (node.name.type) {
 					case "JSXIdentifier":
-						if (isTagName(node.name.name)) return;
+						if (isTagName(node.name.name)) {
+							return;
+						}
 						checkIdentifierInJSX(node.name);
 						break;
 					case "JSXMemberExpression": {

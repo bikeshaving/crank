@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 import type {DocInfo} from "../models/document.js";
 import {Search} from "./search.js";
@@ -10,10 +11,7 @@ export interface APIModule {
 	categories: Array<{
 		name: string;
 		slug: string;
-		items: Array<{
-			name: string;
-			url: string;
-		}>;
+		items: Array<{name: string; url: string}>;
 	}>;
 }
 
@@ -49,7 +47,9 @@ export function buildAPIModules(docs: DocInfo[]): APIModule[] {
 		// Parse URL: /api, /api/{module}, /api/{module}/{category}/{item}
 		const parts = doc.url.split("/").filter(Boolean); // ["api", "core", "functions", "createElement"]
 
-		if (parts.length < 2) continue; // Skip /api itself
+		if (parts.length < 2) {
+			continue;
+		} // Skip /api itself
 
 		const moduleSlug = parts[1];
 
@@ -103,8 +103,12 @@ export function buildAPIModules(docs: DocInfo[]): APIModule[] {
 
 	// Sort modules: core first, then alphabetically
 	modules.sort((a, b) => {
-		if (a.slug === "core") return -1;
-		if (b.slug === "core") return 1;
+		if (a.slug === "core") {
+			return -1;
+		}
+		if (b.slug === "core") {
+			return 1;
+		}
 		return a.name.localeCompare(b.name);
 	});
 
@@ -172,13 +176,9 @@ const linkStyle = css`
 	}
 `;
 
-export function APISidebar({
-	modules,
-	url,
-}: {
-	modules: APIModule[];
-	url: string;
-}) {
+export function APISidebar(
+	{modules, url}: {modules: APIModule[]; url: string},
+): Element {
 	return jsx`
 		<div id="sidebar" class=${sidebarStyle}>
 			<h2 class=${css`
@@ -196,8 +196,7 @@ export function APISidebar({
 			<div id="search-root">
 				<${Search} />
 			</div>
-			${modules.map(
-				(mod) => jsx`
+			${modules.map((mod) => jsx`
 				<div class=${moduleHeaderStyle}>
 					<a
 						href=${mod.url}
@@ -207,22 +206,17 @@ export function APISidebar({
 						aria-current=${url === mod.url && "page"}
 					>${mod.name}</a>
 				</div>
-				${mod.categories.map(
-					(category) => jsx`
+				${mod.categories.map((category) => jsx`
 					<div class=${categoryStyle}>${category.name}</div>
-					${category.items.map(
-						(item) => jsx`
+					${category.items.map((item) => jsx`
 						<a
 							href=${item.url}
 							class=${linkStyle}
 							aria-current=${url === item.url && "page"}
 						>${item.name}</a>
-					`,
-					)}
-				`,
-				)}
-			`,
-			)}
+					`)}
+				`)}
+			`)}
 		</div>
 	`;
 }

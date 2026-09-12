@@ -17,13 +17,7 @@ describe("reuse", () => {
 
 	test("reused intrinsic", () => {
 		const el = <span>1</span>;
-		renderer.render(
-			<div>
-				{el}
-				{el}
-			</div>,
-			document.body,
-		);
+		renderer.render(<div>{el}{el}</div>, document.body);
 
 		expect(document.body.innerHTML).toBe(
 			"<div><span>1</span><span>1</span></div>",
@@ -48,19 +42,14 @@ describe("reuse", () => {
 
 	test("reused function component", () => {
 		const fn = Sinon.fake();
+
 		function Component() {
 			fn();
 			return <span>1</span>;
 		}
 
 		const el = <Component />;
-		renderer.render(
-			<div>
-				{el}
-				{el}
-			</div>,
-			document.body,
-		);
+		renderer.render(<div>{el}{el}</div>, document.body);
 
 		expect(document.body.innerHTML).toBe(
 			"<div><span>1</span><span>1</span></div>",
@@ -70,7 +59,8 @@ describe("reuse", () => {
 
 	test("reused generator component", () => {
 		const fn = Sinon.fake();
-		function* Component() {
+
+		function *Component() {
 			fn();
 			while (true) {
 				yield <span>1</span>;
@@ -78,13 +68,7 @@ describe("reuse", () => {
 		}
 
 		const el = <Component />;
-		renderer.render(
-			<div>
-				{el}
-				{el}
-			</div>,
-			document.body,
-		);
+		renderer.render(<div>{el}{el}</div>, document.body);
 
 		expect(document.body.innerHTML).toBe(
 			"<div><span>1</span><span>1</span></div>",
@@ -93,7 +77,7 @@ describe("reuse", () => {
 	});
 
 	test("toggle reused element", () => {
-		function* Component() {
+		function *Component() {
 			let toggle = true;
 			const el = <span>1</span>;
 			while (true) {

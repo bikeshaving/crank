@@ -4,19 +4,14 @@ import type {Element} from "@b9g/crank/standalone";
 import type {DocInfo} from "../models/document.js";
 import {Search} from "./search.js";
 
-export function Sidebar({
-	docs,
-	title,
-	url,
-}: {
-	docs: Array<DocInfo>;
-	url: string;
-	title: string;
-}) {
-	const links: Array<Element> = [];
+export function Sidebar(
+	{docs, title, url}: {docs: DocInfo[]; url: string; title: string},
+): Element {
+	const links: Element[] = [];
 	for (const doc of docs) {
 		if (doc.attributes.publish) {
-			links.push(jsx`
+			links.push(
+				jsx`
 				<div class=${css`
 					margin: 10px 0;
 				`}>
@@ -28,7 +23,8 @@ export function Sidebar({
 						`}
 					>${doc.attributes.title}</a>
 				</div>
-			`);
+			`,
+			);
 		}
 	}
 
@@ -73,7 +69,7 @@ export function Sidebar({
 	`;
 }
 
-export function Main({children}: {children: unknown}) {
+export function Main({children}: {children: unknown}): Element {
 	return jsx`
 		<main data-pagefind-body class=${css`
 			margin: 0 auto;

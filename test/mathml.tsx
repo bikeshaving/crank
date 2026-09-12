@@ -128,12 +128,12 @@ describe("mathml", () => {
 		expect(semantics!.namespaceURI).toBe("http://www.w3.org/1998/Math/MathML");
 
 		// Check annotation-xml element
-		const annotationXml = mathRoot.querySelector("annotation-xml");
-		expect(annotationXml instanceof Element).toBeTruthy();
+		const annotationXML = mathRoot.querySelector("annotation-xml");
+		expect(annotationXML instanceof Element).toBeTruthy();
 		if (typeof MathMLElement !== "undefined") {
-			expect(annotationXml instanceof MathMLElement).toBeTruthy();
+			expect(annotationXML instanceof MathMLElement).toBeTruthy();
 		}
-		expect(annotationXml!.namespaceURI).toBe(
+		expect(annotationXML!.namespaceURI).toBe(
 			"http://www.w3.org/1998/Math/MathML",
 		);
 	});

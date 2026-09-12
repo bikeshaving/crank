@@ -1,15 +1,16 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
 const GITHUB_REPO = "bikeshaving/crank";
 const GITHUB_BRANCH = "main";
 
-export function EditOnGitHub({filename}: {filename: string}) {
-	const editUrl = `https://github.com/${GITHUB_REPO}/edit/${GITHUB_BRANCH}/docs/${filename}`;
+export function EditOnGitHub({filename}: {filename: string}): Element {
+	const editURL = `https://github.com/${GITHUB_REPO}/edit/${GITHUB_BRANCH}/docs/${filename}`;
 
 	return jsx`
 		<a
-			href=${editUrl}
+			href=${editURL}
 			target="_blank"
 			rel="noopener noreferrer"
 			class=${css`
