@@ -63,7 +63,8 @@ async function loadExamples(): Promise<Array<{
 	for (const [file, handle] of exampleFiles) {
 		const dotIndex = file.lastIndexOf(".");
 		const name = dotIndex !== -1 ? file.slice(0, dotIndex) : file;
-		const label = exampleLabels[file] ||
+		const label =
+			exampleLabels[file] ||
 			name.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 		const fileObj = await (handle as FileSystemFileHandle).getFile();
 		const code = await fileObj.text();

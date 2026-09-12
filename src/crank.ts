@@ -3542,7 +3542,8 @@ function isRetainerActive<TNode>(
 
 		// Add direct children to stack (skip if this is a host boundary)
 		// Host boundaries are: DOM elements (string tags) or Portal, but NOT Fragment
-		const isHostBoundary = current !== host &&
+		const isHostBoundary =
+			current !== host &&
 			((typeof current.el.tag === "string" && current.el.tag !== Fragment) ||
 				current.el.tag === Portal);
 		if (current.children && !isHostBoundary) {

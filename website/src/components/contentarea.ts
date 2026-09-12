@@ -28,7 +28,8 @@ export function *ContentArea(this: Context, {
 	let initial = true;
 	let contentArea!: ContentAreaElement;
 	for ({ref, value, children, selectionRange, renderSource, ...rest} of this) {
-		selectionRange = selectionRange ||
+		selectionRange =
+			selectionRange ||
 			(contentArea &&
 				{
 					selectionStart: contentArea.selectionStart,
@@ -64,11 +65,13 @@ export function *ContentArea(this: Context, {
 				}
 
 				const selection = document.getSelection();
-				if (selection &&
+				if (
+					selection &&
 					// TODO: think more about using renderSource
 					renderSource !== "refresh" &&
 					contentArea.contains(document.activeElement) &&
-					contentArea.contains(selection.focusNode)) {
+					contentArea.contains(selection.focusNode)
+				) {
 					let focusNode = selection.focusNode! as Element;
 					if (focusNode && focusNode.nodeType === Node.TEXT_NODE) {
 						focusNode = focusNode.parentNode as Element;

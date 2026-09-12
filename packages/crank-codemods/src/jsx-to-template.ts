@@ -332,9 +332,8 @@ export default function transform(fileInfo: FileInfo, api: API): string | null {
 				parts = parts.slice();
 				// Add newline + content indent at start, newline + statement indent before closing backtick
 				parts[0] = "\n" + " ".repeat(contentIndent) + parts[0];
-				parts[parts.length - 1] = parts[parts.length - 1] +
-					"\n" +
-					" ".repeat(stmtIndent);
+				parts[parts.length - 1] =
+					parts[parts.length - 1] + "\n" + " ".repeat(stmtIndent);
 			}
 
 			const templateLiteral = j.templateLiteral(
