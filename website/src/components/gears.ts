@@ -65,8 +65,8 @@ function calculateGear(
 	}
 
 	// TODO: I found this value by guess and check and I have no idea why it is correct
-	const mirrorAngle = toothAngle / 2 +
-		invIntersectAngle(pitchRadius, baseRadius) * 2;
+	const mirrorAngle =
+		toothAngle / 2 + invIntersectAngle(pitchRadius, baseRadius) * 2;
 	// build the reverse side of the tooth
 	{
 		const points1 = points
@@ -205,7 +205,8 @@ function Rack({mod, height}: {mod: number; height: number}) {
 		);
 	}
 
-	const path = `M${points[0][0]} ${points[0][1]}` +
+	const path =
+		`M${points[0][0]} ${points[0][1]}` +
 		points.slice(1).map(([x, y]) => `L ${x} ${y}`).join(" ");
 	return jsx`
 		<path d=${path} />
@@ -292,8 +293,9 @@ export function *GearInteractive(
 	for ({} of this) {
 		// TODO: resize observer
 		const width = x2 * 2;
-		const height = (typeof document !== "undefined" &&
-			document.scrollingElement?.clientHeight) || 1000;
+		const height =
+			(typeof document !== "undefined" &&
+				document.scrollingElement?.clientHeight) || 1000;
 		const scrollAng = (-scrollTop * speed) / pitchRadius1 + idleOffset;
 		// Linear rack movement derived from gear rotation
 		const rackOffset = -scrollAng * pitchRadius1;

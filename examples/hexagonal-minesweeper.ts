@@ -32,7 +32,8 @@ function centerCoordsFor(cell, size, rows, cols) {
 
   return {
     cx: cell.col * colSpacing + offsetX,
-    cy: cell.row * rowSpacing +
+    cy:
+      cell.row * rowSpacing +
       (cell.col % 2 === 0 ? 0 : rowSpacing / 2) +
       offsetY,
   };

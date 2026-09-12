@@ -1,5 +1,5 @@
-const supportsUserTiming = typeof performance !== "undefined" &&
-	typeof performance.mark === "function";
+const supportsUserTiming =
+	typeof performance !== "undefined" && typeof performance.mark === "function";
 
 let profiling = false;
 
