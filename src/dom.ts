@@ -61,7 +61,8 @@ function isWritableProperty(element: Element, name: string): boolean {
 	let result = false;
 	if (propOwner !== null) {
 		const descriptor = Object.getOwnPropertyDescriptor(propOwner, name);
-		result = descriptor != null &&
+		result =
+			descriptor != null &&
 			(descriptor.writable === true || descriptor.set !== undefined);
 	}
 
@@ -407,11 +408,12 @@ function patchProp(
 			const htmlValue = value && typeof value === "object" && "__html" in value
 				? (value.__html ?? "")
 				: "";
-			const oldHTMLValue = oldValue &&
+			const oldHTMLValue =
+				oldValue &&
 				typeof oldValue === "object" &&
 				"__html" in oldValue
-				? (oldValue.__html ?? "")
-				: "";
+					? (oldValue.__html ?? "")
+					: "";
 			if (htmlValue !== oldHTMLValue) {
 				element.innerHTML = htmlValue as any;
 			}
@@ -444,7 +446,8 @@ function patchProp(
 			}
 
 			// try to set the property directly
-			if (name in element &&
+			if (
+				name in element &&
 				// boolean properties will coerce strings, but sometimes they map to
 				// enumerated attributes, where truthy strings ("false", "no") map to
 				// falsy properties, so we force using setAttribute.
@@ -452,7 +455,8 @@ function patchProp(
 					typeof value === "string" &&
 					typeof (element as any)[name] === "boolean"
 				) &&
-				isWritableProperty(element, name)) {
+				isWritableProperty(element, name)
+			) {
 				// For URL properties like src and href, the DOM property returns the
 				// resolved absolute URL. We need to resolve the prop value the same way
 				// to compare correctly.

@@ -22,7 +22,7 @@
     "eslint": "^9.39.0",
     "eslint-plugin-acrocase": "^0.1.0",
     "eslint-plugin-crank": "workspace:*",
-    "eslint-plugin-esfold": "^0.1.8",
+    "eslint-plugin-esfold": "^0.1.10",
     "playwright": "^1.62.1",
     "sinon": "^17.0.2",
     "typescript": "^5.8.3"

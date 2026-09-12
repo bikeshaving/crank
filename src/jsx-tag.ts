@@ -611,8 +611,8 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 }
 
 function markStatic(el: ParseElement, targets: Set<object>): boolean {
-	let isStatic = !targets.has(el.open) &&
-		(el.close === null || !targets.has(el.close));
+	let isStatic =
+		!targets.has(el.open) && (el.close === null || !targets.has(el.close));
 	for (let i = 0; i < el.props.length; i++) {
 		const prop = el.props[i];
 		if (prop.type === "value") {

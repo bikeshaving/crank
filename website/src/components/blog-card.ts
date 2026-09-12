@@ -21,7 +21,8 @@ export function BlogCard({
 	author,
 	featured,
 }: BlogCardProps): Element {
-	const publishDateDisplay = publishDate &&
+	const publishDateDisplay =
+		publishDate &&
 		publishDate.toLocaleString("en-US", {
 			month: "short",
 			day: "numeric",

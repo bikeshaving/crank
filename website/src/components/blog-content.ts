@@ -22,7 +22,8 @@ export function BlogContent({
 	readTime,
 	children,
 }: BlogContentProps): Element {
-	const publishDateDisplay = publishDate &&
+	const publishDateDisplay =
+		publishDate &&
 		publishDate.toLocaleString("en-US", {
 			month: "long",
 			year: "numeric",
