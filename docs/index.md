@@ -339,21 +339,26 @@ loading states.
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 import {Suspense} from "@b9g/crank/async";
-function formatNumber(number, type) {
-  number = number.padEnd(16, "0");
-  if (type === "American Express") {
-    return [number.slice(0, 4), number.slice(4, 10), number.slice(10, 15)].join(" ");
-  }
+const CITIES = [
+  {name: "New York", latitude: 40.71, longitude: -74.01},
+  {name: "London", latitude: 51.51, longitude: -0.13},
+  {name: "Tokyo", latitude: 35.68, longitude: 139.69},
+  {name: "Sydney", latitude: -33.87, longitude: 151.21},
+  {name: "Lagos", latitude: 6.46, longitude: 3.39},
+  {name: "São Paulo", latitude: -23.55, longitude: -46.63},
+];
 
-  return [
-    number.slice(0, 4),
-    number.slice(4, 8),
-    number.slice(8, 12),
-    number.slice(12),
-  ].join(" ");
+function describeWeather(code) {
+  if (code === 0) return "Clear";
+  if (code <= 3) return "Partly cloudy";
+  if (code <= 48) return "Foggy";
+  if (code <= 67) return "Rainy";
+  if (code <= 77) return "Snowy";
+  if (code <= 82) return "Showers";
+  return "Stormy";
 }
 
-function CreditCard({type, expiration, number, owner}) {
+function WeatherCard({city, conditions, temperature, windspeed}) {
   return (
     <div style={`
       padding: 10px;
@@ -364,16 +369,16 @@ function CreditCard({type, expiration, number, owner}) {
       border: 1px solid currentcolor;
       border-radius: 10px;
     `}>
-      <pre>{formatNumber(number, type)}</pre>
-      <pre>Exp: {expiration}</pre>
+      <pre>{city}</pre>
+      <pre>{conditions}</pre>
 
-      <pre>{type}</pre>
-      <pre>{owner}</pre>
+      <pre>{temperature}</pre>
+      <pre>{windspeed}</pre>
     </div>
   );
 }
 
-async function *LoadingCreditCard() {
+async function *LoadingWeatherCard() {
   let count = 0;
   const interval = setInterval(() => {
     this.refresh(() => count++);
@@ -383,51 +388,53 @@ async function *LoadingCreditCard() {
 
   for ({} of this) {
     yield (
-      <CreditCard
-        number={"*".repeat(count) + "?".repeat(Math.max(0, 16 - count))}
-        type={"Loading" + ".".repeat(count % 4)}
-        owner="__ __"
-        expiration="__/__"
+      <WeatherCard
+        city={"Loading" + ".".repeat(count % 4)}
+        conditions="??"
+        temperature="__°C"
+        windspeed="__ km/h"
       />
     );
   }
 }
 
-async function MockCreditCard({throttle}) {
+async function CityWeather({city, throttle}) {
   if (throttle) {
     await new Promise((r) => setTimeout(r, 2000));
   }
-  // Mock credit card data courtesy https://fakerapi.it/en
-  const res = await fetch("https://fakerapi.it/api/v2/creditCards?_quantity=1");
-  if (res.status === 429) {
-    return (
-      <marquee>Too many requests. Please use free APIs responsibly.</marquee>
-    );
-  }
-  const {data: [card]} = await res.json();
+  // Weather data courtesy https://open-meteo.com
+  const res = await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${city.latitude}&longitude=${city.longitude}&current_weather=true`,
+  );
+  const {current_weather: weather} = await res.json();
   return (
-    <CreditCard
-      number={card.number}
-      type={card.type}
-      owner={card.owner}
-      expiration={card.expiration}
+    <WeatherCard
+      city={city.name}
+      conditions={describeWeather(weather.weathercode)}
+      temperature={`${weather.temperature}°C`}
+      windspeed={`${weather.windspeed} km/h`}
     />
   );
 }
 
-function RandomCreditCard({throttle}) {
+function CityWeatherCard({city, throttle}) {
   return (
-    <Suspense fallback={<LoadingCreditCard />}>
-      <MockCreditCard throttle={throttle} />
+    <Suspense fallback={<LoadingWeatherCard />}>
+      <CityWeather city={city} throttle={throttle} />
     </Suspense>
   );
 }
 
-function *CreditCardGenerator() {
+function *WeatherStation() {
+  let city = CITIES[0];
   let throttle = false;
+  const nextCity = () => {
+    this.refresh(() => {
+      city = CITIES[(CITIES.indexOf(city) + 1) % CITIES.length];
+    });
+  };
+
   const toggleThrottle = () => {
-    // TODO: A nicer user behavior would be to not generate a new card
-    // when toggling the throttle.
     this.refresh(() => throttle = !throttle);
   };
 
@@ -435,19 +442,19 @@ function *CreditCardGenerator() {
     yield (
       <div>
         <div>
-          <button onclick={() => this.refresh()}>
-            Generate new card
+          <button onclick={nextCity}>
+            Next city
           </button>
           {" "}
           <button onclick={toggleThrottle}>
             {throttle ? "Unthrottle" : "Throttle"} API
           </button>
         </div>
-        <RandomCreditCard throttle={throttle} />
+        <CityWeatherCard city={city} throttle={throttle} />
       </div>
     );
   }
 }
 
-renderer.render(<CreditCardGenerator />, document.body);
+renderer.render(<WeatherStation />, document.body);
 ```

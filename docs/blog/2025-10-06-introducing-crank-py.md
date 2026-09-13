@@ -92,27 +92,23 @@ import asyncio
 @component
 async def Definition(ctx, props):
     word = props['word']
-    # API courtesy https://dictionaryapi.dev
-    res = await pyfetch(f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}")
-    data = await res.json()
-
-    # Check if API returned an error (not an array)
-    if not isinstance(data, list):
+    # API courtesy https://en.wiktionary.org
+    res = await pyfetch(f"https://en.wiktionary.org/api/rest_v1/page/definition/{word.lower()}")
+    if not res.ok:
         return h.div[f"No definition found for {word}"]
 
+    data = await res.json()
+
     # Extract data exactly like the JavaScript version
-    # const {phonetic, meanings} = data[0];
-    # const {partOfSpeech, definitions} = meanings[0];
+    # const [{partOfSpeech, definitions}] = data.en || Object.values(data)[0];
     # const {definition} = definitions[0];
-    phonetic = data[0].get('phonetic', '')
-    meanings = data[0]['meanings']
-    part_of_speech = meanings[0]['partOfSpeech']
-    definitions = meanings[0]['definitions']
-    definition = definitions[0]['definition']
+    entries = data.get('en') or next(iter(data.values()))
+    part_of_speech = entries[0]['partOfSpeech']
+    definition = entries[0]['definitions'][0]['definition']
 
     return h.div[
-        h.p[word, " ", h.code[phonetic]],
-        h.p[h.b[f"{part_of_speech}."], " ", definition]
+        h.p[h.b[word], " ", h.i[f"{part_of_speech.lower()}."]],
+        h.p(innerHTML=definition)
     ]
 
 @component
