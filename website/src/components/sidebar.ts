@@ -12,18 +12,18 @@ export function Sidebar(
 		if (doc.attributes.publish) {
 			links.push(
 				jsx`
-				<div class=${css`
-					margin: 10px 0;
-				`}>
-					<a
-						href=${doc.url}
-						aria-current=${doc.url === url && "page"}
-						class=${css`
-							text-decoration: none;
-						`}
-					>${doc.attributes.title}</a>
-				</div>
-			`,
+					<div class=${css`
+						margin: 10px 0;
+					`}>
+						<a
+							href=${doc.url}
+							aria-current=${doc.url === url && "page"}
+							class=${css`
+								text-decoration: none;
+							`}
+						>${doc.attributes.title}</a>
+					</div>
+				`,
 			);
 		}
 	}

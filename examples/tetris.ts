@@ -130,14 +130,14 @@ function Piece({piece}) {
 
 function Board({field}) {
   return field.map((row, r) => row.map((data, c) => jsx`
-      <rect
-        width=${UNIT}
-        height=${UNIT}
-        fill=${data && "blue"}
-        x=${c * UNIT}
-        y=${r * UNIT}
-      />
-    `));
+    <rect
+      width=${UNIT}
+      height=${UNIT}
+      fill=${data && "blue"}
+      x=${c * UNIT}
+      y=${r * UNIT}
+    />
+  `));
 }
 
 function *App() {

@@ -179,11 +179,11 @@ async function renderView(
 
 	const html = await renderer.render(
 		jsx`
-		<${View}
-			url=${url}
-			params=${params}
-		/>
-	`,
+			<${View}
+				url=${url}
+				params=${params}
+			/>
+		`,
 	);
 
 	return new Response(html, {headers: {"Content-Type": "text/html"}});
@@ -336,8 +336,8 @@ router.route("*").all(async (request) => {
 	const url = new URL(request.url);
 	const html = await renderer.render(
 		jsx`
-		<${NotFoundView} url=${url.pathname} params=${{}} />
-	`,
+			<${NotFoundView} url=${url.pathname} params=${{}} />
+		`,
 	);
 	return new Response(html, {
 		status: 404,

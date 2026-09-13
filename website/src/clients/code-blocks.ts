@@ -46,12 +46,12 @@ if (containers.length > 0) {
 				const {code, lang} = extractData(propsScript);
 				renderer.hydrate(
 					jsx`
-					<${InlineCodeBlock}
-						value=${code}
-						lang=${lang}
-						editable=${lang.endsWith(" live")}
-					/>
-				`,
+						<${InlineCodeBlock}
+							value=${code}
+							lang=${lang}
+							editable=${lang.endsWith(" live")}
+						/>
+					`,
 					container,
 				);
 			}
