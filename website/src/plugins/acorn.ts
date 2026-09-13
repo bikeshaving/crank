@@ -879,8 +879,19 @@ function transformJSXChildren(
 
 	for (const child of children) {
 		if (child.type === "JSXText") {
-			const text = child.value.replace(/^\s+|\s+$/g, " ").replace(/\n\s*/g, "");
-			if (text.trim()) {
+			// Match standard JSX semantics: whitespace containing a newline is
+			// layout and collapses away; same-line whitespace is content.
+			const value = child.value;
+			let text;
+			if (!value.trim()) {
+				text = value.includes("\n") ? "" : value;
+			} else {
+				text = value
+					.replace(/^\s*\n\s*/, "")
+					.replace(/\s*\n\s*$/, "")
+					.replace(/\s*\n\s*/g, " ");
+			}
+			if (text) {
 				result.push({type: "Literal", value: text});
 			}
 		} else if (child.type === "JSXExpressionContainer") {
