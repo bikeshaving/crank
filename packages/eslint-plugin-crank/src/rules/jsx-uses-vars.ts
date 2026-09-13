@@ -30,9 +30,7 @@ export const jsxUsesVars: Rule.RuleModule = {
 
 				if (node.name.name) {
 					name = node.name.name;
-					if (isTagName(name!)) {
-						return;
-					}
+					if (isTagName(name!)) return;
 				} else if (node.name.object) {
 					let parent = node.name.object;
 					while (parent.object) {

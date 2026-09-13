@@ -103,12 +103,8 @@ export function buildAPIModules(docs: DocInfo[]): APIModule[] {
 
 	// Sort modules: core first, then alphabetically
 	modules.sort((a, b) => {
-		if (a.slug === "core") {
-			return -1;
-		}
-		if (b.slug === "core") {
-			return 1;
-		}
+		if (a.slug === "core") return -1;
+		if (b.slug === "core") return 1;
 		return a.name.localeCompare(b.name);
 	});
 

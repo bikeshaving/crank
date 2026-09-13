@@ -186,9 +186,7 @@ export function normalizeIndentation(
 
 	const normalizedLines = lines.map((line: string) => {
 		const trimmed = line.trim();
-		if (trimmed.length === 0) {
-			return "";
-		}
+		if (trimmed.length === 0) return "";
 
 		// Handle indentation changes based on block structure
 		if (trimmed.startsWith("} catch") || trimmed.startsWith("} finally")) {

@@ -8,9 +8,7 @@ export function isRefreshCall(
 	node: ESLintNode,
 	contextVar: string | null = null,
 ): boolean {
-	if (node.type !== "CallExpression") {
-		return false;
-	}
+	if (node.type !== "CallExpression") return false;
 
 	if (node.callee.type === "MemberExpression") {
 		const object = node.callee.object;
