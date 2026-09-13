@@ -339,15 +339,6 @@ loading states.
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 import {Suspense} from "@b9g/crank/async";
-const CITIES = [
-  {name: "New York", latitude: 40.71, longitude: -74.01},
-  {name: "London", latitude: 51.51, longitude: -0.13},
-  {name: "Tokyo", latitude: 35.68, longitude: 139.69},
-  {name: "Sydney", latitude: -33.87, longitude: 151.21},
-  {name: "Lagos", latitude: 6.46, longitude: 3.39},
-  {name: "São Paulo", latitude: -23.55, longitude: -46.63},
-];
-
 function describeWeather(code) {
   if (code === 0) return "Clear";
   if (code <= 3) return "Partly cloudy";
@@ -402,14 +393,22 @@ async function CityWeather({city, throttle}) {
   if (throttle) {
     await new Promise((r) => setTimeout(r, 2000));
   }
-  // Weather data courtesy https://open-meteo.com
+  // Geocoding and weather data courtesy https://open-meteo.com
+  const geoRes = await fetch(
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`,
+  );
+  const {results: [place] = []} = await geoRes.json();
+  if (!place) {
+    return <div>No weather found for {city}.</div>;
+  }
+
   const res = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${city.latitude}&longitude=${city.longitude}&current_weather=true`,
+    `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current_weather=true`,
   );
   const {current_weather: weather} = await res.json();
   return (
     <WeatherCard
-      city={city.name}
+      city={place.name}
       conditions={describeWeather(weather.weathercode)}
       temperature={`${weather.temperature}°C`}
       windspeed={`${weather.windspeed} km/h`}
@@ -426,12 +425,14 @@ function CityWeatherCard({city, throttle}) {
 }
 
 function *WeatherStation() {
-  let city = CITIES[0];
+  let city = "New York";
   let throttle = false;
-  const nextCity = () => {
-    this.refresh(() => {
-      city = CITIES[(CITIES.indexOf(city) + 1) % CITIES.length];
-    });
+  const onsubmit = (ev) => {
+    ev.preventDefault();
+    const city1 = new FormData(ev.target).get("city");
+    if (city1.trim()) {
+      this.refresh(() => city = city1);
+    }
   };
 
   const toggleThrottle = () => {
@@ -441,15 +442,17 @@ function *WeatherStation() {
   for ({} of this) {
     yield (
       <div>
-        <div>
-          <button onclick={nextCity}>
-            Next city
-          </button>
+        <form action="" method="get" onsubmit={onsubmit}>
+          <label for="city">City:</label>
           {" "}
-          <button onclick={toggleThrottle}>
+          <input type="text" name="city" id="city" value={city} required />
+          {" "}
+          <input type="submit" value="Get weather" />
+          {" "}
+          <button type="button" onclick={toggleThrottle}>
             {throttle ? "Unthrottle" : "Throttle"} API
           </button>
-        </div>
+        </form>
         <CityWeatherCard city={city} throttle={throttle} />
       </div>
     );
