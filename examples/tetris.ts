@@ -2,7 +2,7 @@ import {jsx, renderer} from "@b9g/crank/standalone";
 
 // tetronimo shapes represented as 2d arrays
 type Tet = number[][];
-/* eslint-disable esfold/breaks */
+// esfold-ignore
 const tets: Record<string, Tet> = {
   I: [
     [0, 0, 0, 0],
@@ -40,7 +40,6 @@ const tets: Record<string, Tet> = {
     [0, 0, 0],
   ],
 };
-/* eslint-enable esfold/breaks */
 
 function randomTet() {
   const tetValues = Array.from(Object.values(tets));
