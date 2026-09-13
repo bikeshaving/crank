@@ -126,13 +126,9 @@ const tsGenerator: any = {
 	},
 
 	FunctionDeclaration(node: any, state: any) {
-		if (node.async) {
-			state.write("async ");
-		}
+		if (node.async) state.write("async ");
 		state.write("function");
-		if (node.generator) {
-			state.write("*");
-		}
+		if (node.generator) state.write("*");
 		if (node.id) {
 			state.write(" ");
 			state.write(node.id.name);
@@ -141,13 +137,9 @@ const tsGenerator: any = {
 	},
 
 	FunctionExpression(node: any, state: any) {
-		if (node.async) {
-			state.write("async ");
-		}
+		if (node.async) state.write("async ");
 		state.write("function");
-		if (node.generator) {
-			state.write("*");
-		}
+		if (node.generator) state.write("*");
 		if (node.id) {
 			state.write(" ");
 			state.write(node.id.name);
@@ -156,9 +148,7 @@ const tsGenerator: any = {
 	},
 
 	ArrowFunctionExpression(node: any, state: any) {
-		if (node.async) {
-			state.write("async ");
-		}
+		if (node.async) state.write("async ");
 		const params = node.params;
 		if (
 			params.length === 1 &&
@@ -169,9 +159,7 @@ const tsGenerator: any = {
 		} else {
 			state.write("(");
 			for (let i = 0; i < params.length; i++) {
-				if (i > 0) {
-					state.write(", ");
-				}
+				if (i > 0) state.write(", ");
 				formatParam(params[i], state, this);
 			}
 			state.write(")");
@@ -181,13 +169,9 @@ const tsGenerator: any = {
 			this.BlockStatement(node.body, state);
 		} else {
 			const needsParens = node.body.type === "ObjectExpression";
-			if (needsParens) {
-				state.write("(");
-			}
+			if (needsParens) state.write("(");
 			this[node.body.type](node.body, state);
-			if (needsParens) {
-				state.write(")");
-			}
+			if (needsParens) state.write(")");
 		}
 	},
 
@@ -232,20 +216,11 @@ const tsGenerator: any = {
 	},
 
 	MethodDefinition(node: any, state: any) {
-		if (node.static) {
-			state.write("static ");
-		}
-		if (node.kind === "get") {
-			state.write("get ");
-		} else if (node.kind === "set") {
-			state.write("set ");
-		}
-		if (node.value.async) {
-			state.write("async ");
-		}
-		if (node.value.generator) {
-			state.write("*");
-		}
+		if (node.static) state.write("static ");
+		if (node.kind === "get") state.write("get ");
+		else if (node.kind === "set") state.write("set ");
+		if (node.value.async) state.write("async ");
+		if (node.value.generator) state.write("*");
 		if (node.computed) {
 			state.write("[");
 			this[node.key.type](node.key, state);
@@ -257,9 +232,7 @@ const tsGenerator: any = {
 	},
 
 	PropertyDefinition(node: any, state: any) {
-		if (node.static) {
-			state.write("static ");
-		}
+		if (node.static) state.write("static ");
 		if (node.computed) {
 			state.write("[");
 			this[node.key.type](node.key, state);
@@ -275,9 +248,7 @@ const tsGenerator: any = {
 	},
 
 	ImportDeclaration(node: any, state: any) {
-		if (node.importKind === "type") {
-			return;
-		}
+		if (node.importKind === "type") return;
 		state.write("import ");
 		const specifiers = node.specifiers;
 		const defaultSpecifier = specifiers.find(
@@ -295,9 +266,7 @@ const tsGenerator: any = {
 
 		if (defaultSpecifier) {
 			state.write(defaultSpecifier.local.name);
-			if (namespaceSpecifier || namedSpecifiers.length > 0) {
-				state.write(", ");
-			}
+			if (namespaceSpecifier || namedSpecifiers.length > 0) state.write(", ");
 		}
 		if (namespaceSpecifier) {
 			state.write("* as ");
@@ -306,9 +275,7 @@ const tsGenerator: any = {
 		if (namedSpecifiers.length > 0) {
 			state.write("{ ");
 			for (let i = 0; i < namedSpecifiers.length; i++) {
-				if (i > 0) {
-					state.write(", ");
-				}
+				if (i > 0) state.write(", ");
 				const spec = namedSpecifiers[i];
 				if (spec.imported.name !== spec.local.name) {
 					state.write(spec.imported.name);
@@ -318,17 +285,13 @@ const tsGenerator: any = {
 			}
 			state.write(" }");
 		}
-		if (specifiers.length > 0) {
-			state.write(" from ");
-		}
+		if (specifiers.length > 0) state.write(" from ");
 		state.write(JSON.stringify(node.source.value));
 		state.write(";");
 	},
 
 	ExportNamedDeclaration(node: any, state: any) {
-		if (node.exportKind === "type") {
-			return;
-		}
+		if (node.exportKind === "type") return;
 		state.write("export ");
 		if (node.declaration) {
 			this[node.declaration.type](node.declaration, state);
@@ -340,9 +303,7 @@ const tsGenerator: any = {
 				(s: any) => s.exportKind !== "type",
 			);
 			for (let i = 0; i < specifiers.length; i++) {
-				if (i > 0) {
-					state.write(", ");
-				}
+				if (i > 0) state.write(", ");
 				const spec = specifiers[i];
 				state.write(spec.local.name);
 				if (spec.exported.name !== spec.local.name) {
@@ -371,9 +332,7 @@ const tsGenerator: any = {
 	},
 
 	ExportAllDeclaration(node: any, state: any) {
-		if (node.exportKind === "type") {
-			return;
-		}
+		if (node.exportKind === "type") return;
 		state.write("export * ");
 		if (node.exported) {
 			state.write("as ");
@@ -420,9 +379,7 @@ function formatFunction(node: any, state: any, generator: any): void {
 		(p: any) => !(p.type === "Identifier" && p.name === "this"),
 	);
 	for (let i = 0; i < params.length; i++) {
-		if (i > 0) {
-			state.write(", ");
-		}
+		if (i > 0) state.write(", ");
 		formatParam(params[i], state, generator);
 	}
 	state.write(") ");
@@ -466,9 +423,7 @@ const MAX_ITERATIONS = Math.pow(2, 20); // ~1 million iterations
 
 function injectLoopGuards(ast: any): void {
 	function walk(node: any): void {
-		if (!node || typeof node !== "object") {
-			return;
-		}
+		if (!node || typeof node !== "object") return;
 
 		// Only guard while, do-while, and for loops (not for-in/for-of)
 		if (
@@ -530,9 +485,7 @@ function injectLoopGuards(ast: any): void {
 	// Second pass: insert loop counter declarations
 
 	function wrapLoops(node: any): void {
-		if (!node || typeof node !== "object") {
-			return;
-		}
+		if (!node || typeof node !== "object") return;
 
 		if (node.__loopGuardId !== undefined) {
 			const id = node.__loopGuardId;
@@ -591,9 +544,7 @@ function transformJSX(
 		parentKey: string | null = null,
 		parentIndex: number | null = null,
 	): void {
-		if (!node || typeof node !== "object") {
-			return;
-		}
+		if (!node || typeof node !== "object") return;
 
 		if (node.type === "JSXElement") {
 			const transformed = transformJSXElement(node, pragma);
@@ -949,9 +900,7 @@ function addJSXRuntimeImport(
 	ast: any,
 	pragma: ReturnType<typeof parseJSXPragma>,
 ): void {
-	if (pragma.jsxRuntime !== "automatic") {
-		return;
-	}
+	if (pragma.jsxRuntime !== "automatic") return;
 
 	const importDecl = {
 		type: "ImportDeclaration",
@@ -995,9 +944,7 @@ function rewriteBareModuleSpecifiers(ast: any): void {
 	}
 
 	function walk(node: any): void {
-		if (!node || typeof node !== "object") {
-			return;
-		}
+		if (!node || typeof node !== "object") return;
 
 		if (node.type === "ImportDeclaration" && node.source) {
 			node.source.value = rewrite(node.source.value);

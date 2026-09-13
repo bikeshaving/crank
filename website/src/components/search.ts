@@ -42,12 +42,8 @@ export async function *Search(this: Context): AsyncGenerator<Element> {
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const loadPagefind = async () => {
-		if (pagefind) {
-			return pagefind;
-		}
-		if (typeof window === "undefined") {
-			return null;
-		}
+		if (pagefind) return pagefind;
+		if (typeof window === "undefined") return null;
 
 		try {
 			// Pagefind generates its assets at /pagefind/
@@ -115,9 +111,7 @@ export async function *Search(this: Context): AsyncGenerator<Element> {
 		query = (e.target as HTMLInputElement).value;
 		isOpen = true;
 
-		if (debounceTimer) {
-			clearTimeout(debounceTimer);
-		}
+		if (debounceTimer) clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => doSearch(query), 150);
 		this.cleanup(() => clearTimeout(debounceTimer!));
 	};

@@ -30,9 +30,7 @@ export const jsxNoUndef: Rule.RuleModule = {
 		const allowGlobals = config.allowGlobals || false;
 
 		function checkIdentifierInJSX(node: ESLintNode): void {
-			if (node.name === "this") {
-				return;
-			}
+			if (node.name === "this") return;
 
 			const sourceCode = context.sourceCode;
 			let scope: Scope.Scope = (sourceCode as any).getScope
@@ -59,9 +57,7 @@ export const jsxNoUndef: Rule.RuleModule = {
 			}
 
 			for (const variable of variables) {
-				if (variable.name === node.name) {
-					return;
-				}
+				if (variable.name === node.name) return;
 			}
 
 			context.report({
@@ -75,9 +71,7 @@ export const jsxNoUndef: Rule.RuleModule = {
 			JSXOpeningElement(node: ESLintNode) {
 				switch (node.name.type) {
 					case "JSXIdentifier":
-						if (isTagName(node.name.name)) {
-							return;
-						}
+						if (isTagName(node.name.name)) return;
 						checkIdentifierInJSX(node.name);
 						break;
 					case "JSXMemberExpression": {

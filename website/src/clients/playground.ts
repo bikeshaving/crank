@@ -123,9 +123,7 @@ function *Playground(this: Context) {
 
 	const updateWidth = (clientX: number) => {
 		const container = document.querySelector(".playground") as HTMLElement;
-		if (!container) {
-			return;
-		}
+		if (!container) return;
 		const rect = container.getBoundingClientRect();
 		const newWidth = ((clientX - rect.left) / rect.width) * 100;
 		// Clamp between 20% and 80%
@@ -137,16 +135,12 @@ function *Playground(this: Context) {
 	};
 
 	const onMouseMove = (ev: MouseEvent) => {
-		if (!isDragging) {
-			return;
-		}
+		if (!isDragging) return;
 		updateWidth(ev.clientX);
 	};
 
 	const onTouchMove = (ev: TouchEvent) => {
-		if (!isDragging) {
-			return;
-		}
+		if (!isDragging) return;
 		updateWidth(ev.touches[0].clientX);
 	};
 

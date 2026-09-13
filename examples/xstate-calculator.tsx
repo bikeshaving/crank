@@ -347,27 +347,13 @@ function isOperator(label: string): boolean {
 }
 
 function buttonDescription(label: string): string {
-  if (Number.isInteger(+label)) {
-    return `NUMBER ${label}`;
-  }
-  if (isOperator(label)) {
-    return `OPERATOR ${label}`;
-  }
-  if (label === "C") {
-    return "CLEAR_EVERYTHING";
-  }
-  if (label === "CE") {
-    return "CLEAR_ENTRY";
-  }
-  if (label === ".") {
-    return "DECIMAL_POINT";
-  }
-  if (label === "%") {
-    return "PERCENTAGE";
-  }
-  if (label === "=") {
-    return "EQUALS";
-  }
+  if (Number.isInteger(+label)) return `NUMBER ${label}`;
+  if (isOperator(label)) return `OPERATOR ${label}`;
+  if (label === "C") return "CLEAR_EVERYTHING";
+  if (label === "CE") return "CLEAR_ENTRY";
+  if (label === ".") return "DECIMAL_POINT";
+  if (label === "%") return "PERCENTAGE";
+  if (label === "=") return "EQUALS";
   return "";
 }
 
