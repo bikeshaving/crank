@@ -179,88 +179,88 @@ export async function *Search(this: Context): AsyncGenerator<Element> {
 				${
 					isOpen && (query.trim() || loading)
 						? jsx`
-					<div class=${css`
-						position: absolute;
-						top: 100%;
-						left: 0;
-						right: 0;
-						margin-top: 0.25rem;
-						background: var(--bg-color);
-						border: 1px solid var(--text-color);
-						border-radius: 4px;
-						max-height: 400px;
-						overflow-y: auto;
-						z-index: 100;
-						text-align: left;
-
-						@media screen and (min-width: 800px) {
-							min-width: 300px;
-						}
-					`}>
-						${
-							loading
-								? jsx`
 							<div class=${css`
-								padding: 1rem;
-								opacity: 0.6;
-								font-size: 0.85rem;
-							`}>Searching...</div>
+								position: absolute;
+								top: 100%;
+								left: 0;
+								right: 0;
+								margin-top: 0.25rem;
+								background: var(--bg-color);
+								border: 1px solid var(--text-color);
+								border-radius: 4px;
+								max-height: 400px;
+								overflow-y: auto;
+								z-index: 100;
+								text-align: left;
+
+								@media screen and (min-width: 800px) {
+									min-width: 300px;
+								}
+							`}>
+								${
+									loading
+										? jsx`
+											<div class=${css`
+												padding: 1rem;
+												opacity: 0.6;
+												font-size: 0.85rem;
+											`}>Searching...</div>
+										`
+										: results.length > 0
+										? results.map((r) => jsx`
+											<a
+												href=${r.url}
+												class=${css`
+													display: block;
+													padding: 0.75rem;
+													text-decoration: none;
+													border-bottom: 1px solid var(--text-color);
+													border-bottom-color: rgba(128, 128, 128, 0.2);
+
+													&:last-child {
+														border-bottom: none;
+													}
+
+													&:hover {
+														background: rgba(128, 128, 128, 0.1);
+													}
+												`}
+											>
+												<div class=${css`
+													font-weight: 600;
+													font-size: 0.9rem;
+													margin-bottom: 0.25rem;
+													color: var(--highlight-color);
+												`}>${r.title}</div>
+												<div
+													class=${css`
+														font-size: 0.8rem;
+														line-height: 1.4;
+														color: var(--text-color);
+
+														mark {
+															background: var(--highlight-color);
+															color: var(--bg-color);
+															padding: 0 2px;
+															border-radius: 2px;
+														}
+													`}
+													innerHTML=${r.excerpt}
+												/>
+											</a>
+										`)
+										: query.trim()
+										? jsx`
+											<div class=${css`
+												padding: 1rem;
+												opacity: 0.6;
+												font-size: 0.85rem;
+											`}>No results found</div>
+										`
+										: null
+								}
+							</div>
 						`
-								: results.length > 0
-								? results.map((r) => jsx`
-							<a
-								href=${r.url}
-								class=${css`
-									display: block;
-									padding: 0.75rem;
-									text-decoration: none;
-									border-bottom: 1px solid var(--text-color);
-									border-bottom-color: rgba(128, 128, 128, 0.2);
-
-									&:last-child {
-										border-bottom: none;
-									}
-
-									&:hover {
-										background: rgba(128, 128, 128, 0.1);
-									}
-								`}
-							>
-								<div class=${css`
-									font-weight: 600;
-									font-size: 0.9rem;
-									margin-bottom: 0.25rem;
-									color: var(--highlight-color);
-								`}>${r.title}</div>
-								<div
-									class=${css`
-										font-size: 0.8rem;
-										line-height: 1.4;
-										color: var(--text-color);
-
-										mark {
-											background: var(--highlight-color);
-											color: var(--bg-color);
-											padding: 0 2px;
-											border-radius: 2px;
-										}
-									`}
-									innerHTML=${r.excerpt}
-								/>
-							</a>
-						`)
-								: query.trim()
-								? jsx`
-							<div class=${css`
-								padding: 1rem;
-								opacity: 0.6;
-								font-size: 0.85rem;
-							`}>No results found</div>
-						`
-								: null
-						}
-					</div>
-				`
 						: null
 				}
 			</div>

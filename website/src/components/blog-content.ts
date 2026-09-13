@@ -62,20 +62,20 @@ export function BlogContent({
 				`}>
 					${
 						author && jsx`
-						<span>
-							By ${
-								authorURL
-									? jsx`<a href=${authorURL} rel="author" class=${css`
+							<span>
+								By ${
+									authorURL
+										? jsx`<a href=${authorURL} rel="author" class=${css`
 											color: var(--highlight-color);
 											text-decoration: none;
 											&:hover {
 												text-decoration: underline;
 											}
 										`}>${author}</a>`
-									: author
-							}
-						</span>
-					`
+										: author
+								}
+							</span>
+						`
 					}
 					${publishDateDisplay && jsx`<span style="opacity: 0.5">/</span><span>${publishDateDisplay}</span>`}
 					${readTime && jsx`<span style="opacity: 0.5">/</span><span>${readTime} min read</span>`}
@@ -83,15 +83,15 @@ export function BlogContent({
 
 				${
 					description && jsx`
-					<p class=${css`
-						font-size: 1.2rem;
-						line-height: 1.6;
-						color: var(--text-color);
-						opacity: 0.85;
-						margin: 1.5rem 0 0;
-						font-style: italic;
-					`}>${description}</p>
-				`
+						<p class=${css`
+							font-size: 1.2rem;
+							line-height: 1.6;
+							color: var(--text-color);
+							opacity: 0.85;
+							margin: 1.5rem 0 0;
+							font-style: italic;
+						`}>${description}</p>
+					`
 				}
 			</header>
 

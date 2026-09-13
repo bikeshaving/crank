@@ -458,10 +458,10 @@ function build(
 
 		emit(
 			jsx`
-			<${Tag} token=${token} rootProps=${rootProps}>
-				${children}
-			<//Tag>
-		`,
+				<${Tag} token=${token} rootProps=${rootProps}>
+					${children}
+				<//Tag>
+			`,
 		);
 	}
 

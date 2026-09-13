@@ -139,25 +139,25 @@ function LogoSection() {
 				align-items: end;
 			`}>
 				${[512, 256, 192, 128, 96, 64, 48, 32, 16].map((size) => jsx`
-						<a href=${`/static/logo-${size}.png`} download class=${css`
-							text-align: center;
-							text-decoration: none;
-							color: var(--text-color);
-						`}>
-							<img
-								src=${`/static/logo-${size}.png`}
-								width=${Math.min(size, 128)}
-								height=${Math.min(size, 128)}
-								alt=${`${size}x${size} logo`}
-								class=${css`
-									display: block;
-									margin: 0 auto 0.25rem;
-									image-rendering: pixelated;
-								`}
-							/>
-							<small>${size}px</small>
-						</a>
-					`)}
+					<a href=${`/static/logo-${size}.png`} download class=${css`
+						text-align: center;
+						text-decoration: none;
+						color: var(--text-color);
+					`}>
+						<img
+							src=${`/static/logo-${size}.png`}
+							width=${Math.min(size, 128)}
+							height=${Math.min(size, 128)}
+							alt=${`${size}x${size} logo`}
+							class=${css`
+								display: block;
+								margin: 0 auto 0.25rem;
+								image-rendering: pixelated;
+							`}
+						/>
+						<small>${size}px</small>
+					</a>
+				`)}
 			</div>
 		</section>
 	`;
