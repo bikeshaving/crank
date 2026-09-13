@@ -3,14 +3,11 @@ import {renderer} from "@b9g/crank/dom";
 // Custom TodoMVC event that bubbles by default
 class TodoEvent extends CustomEvent {
   constructor(type, detail = {}) {
-    super(type, {
-      bubbles: true,
-      detail,
-    });
+    super(type, {bubbles: true, detail});
   }
 }
 
-function* Header() {
+function *Header() {
   let title = "";
 
   const oninput = (ev) => {
@@ -42,16 +39,13 @@ function* Header() {
   }
 }
 
-function* TodoItem({todo}) {
+function *TodoItem({todo}) {
   let editing = false;
   let editTitle = todo.title;
 
   const ontoggle = () => {
     this.dispatchEvent(
-      new TodoEvent("todotoggle", {
-        id: todo.id,
-        completed: !todo.completed,
-      }),
+      new TodoEvent("todotoggle", {id: todo.id, completed: !todo.completed}),
     );
   };
 
@@ -69,10 +63,7 @@ function* TodoItem({todo}) {
   const onsave = () => {
     if (editTitle.trim()) {
       this.dispatchEvent(
-        new TodoEvent("todoedit", {
-          id: todo.id,
-          title: editTitle.trim(),
-        }),
+        new TodoEvent("todoedit", {id: todo.id, title: editTitle.trim()}),
       );
     }
     this.refresh(() => (editing = false));
@@ -122,7 +113,7 @@ function* TodoItem({todo}) {
   }
 }
 
-function* TodoList({todos, filter}) {
+function *TodoList({todos, filter}) {
   for ({todos, filter} of this) {
     const filteredTodos = todos.filter((todo) => {
       if (filter === "active") return !todo.completed;
@@ -140,7 +131,7 @@ function* TodoList({todos, filter}) {
   }
 }
 
-function* Footer({todos, filter}) {
+function *Footer({todos, filter}) {
   const setFilter = (newFilter) => {
     this.dispatchEvent(new TodoEvent("filterchange", {filter: newFilter}));
   };
@@ -181,18 +172,14 @@ function* Footer({todos, filter}) {
   }
 }
 
-function* App() {
+function *App() {
   let todos = [];
   let nextId = 1;
   let filter = "";
 
   this.addEventListener("todocreate", (ev) => {
     this.refresh(() => {
-      todos.push({
-        id: nextId++,
-        title: ev.detail.title,
-        completed: false,
-      });
+      todos.push({id: nextId++, title: ev.detail.title, completed: false});
     });
   });
 

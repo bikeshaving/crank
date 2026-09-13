@@ -2,7 +2,7 @@ import {renderer} from "@b9g/crank/dom";
 
 // Adapted from https://backbonenotbad.hyperclay.com/
 // https://gist.github.com/panphora/8f4d620ae92e8b28dcb4f20152185749
-function* PasswordStrength() {
+function *PasswordStrength() {
   const requirements = [
     {label: "8+ characters", check: (pwd) => pwd.length >= 8},
     {label: "12+ characters", check: (pwd) => pwd.length >= 12},
