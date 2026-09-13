@@ -36,20 +36,18 @@ function *Timer() {
 renderer.render(<Timer />, document.body);
 
 async function Definition({word}) {
-  // API courtesy https://dictionaryapi.dev
-  const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-  const data = await res.json();
-  if (!Array.isArray(data)) {
+  // API courtesy https://en.wiktionary.org
+  const res = await fetch(`https://en.wiktionary.org/api/rest_v1/page/definition/${word.toLowerCase()}`);
+  if (!res.ok) {
     return <p>No definition found for {word}</p>;
   }
 
-  const {phonetic, meanings} = data[0];
-  const {partOfSpeech, definitions} = meanings[0];
+  const data = await res.json();
+  const [{partOfSpeech, definitions}] = data.en || Object.values(data)[0];
   const {definition} = definitions[0];
   return <>
-    <p>{word} <code>{phonetic}</code></p>
-    <p><b>{partOfSpeech}.</b>{" "}{definition}</p>
-    {/*<pre>{JSON.stringify(data, null, 4)}</pre>*/}
+    <p><b>{word}</b> <i>{partOfSpeech.toLowerCase()}.</i></p>
+    <p innerHTML={definition} />
   </>;
 }
 
@@ -277,22 +275,21 @@ can await `fetch()` directly in any component, client or server.
 import {renderer} from "@b9g/crank/dom";
 
 async function Definition({word}) {
-  // API courtesy https://dictionaryapi.dev
-  const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-  const data = await res.json();
-  if (!Array.isArray(data)) {
+  // API courtesy https://en.wiktionary.org
+  const res = await fetch(`https://en.wiktionary.org/api/rest_v1/page/definition/${word.toLowerCase()}`);
+  if (!res.ok) {
     return (
       <div>No definition found for {word}</div>
     );
   }
 
-  const {phonetic, meanings} = data[0];
-  const {partOfSpeech, definitions} = meanings[0];
+  const data = await res.json();
+  const [{partOfSpeech, definitions}] = data.en || Object.values(data)[0];
   const {definition} = definitions[0];
   return (
     <div>
-      <p>{word} <code>{phonetic}</code></p>
-      <p><b>{partOfSpeech}.</b>{" "}{definition}</p>
+      <p><b>{word}</b> <i>{partOfSpeech.toLowerCase()}.</i></p>
+      <p innerHTML={definition} />
     </div>
   );
 }
