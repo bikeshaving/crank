@@ -2,15 +2,45 @@ import {jsx, renderer} from "@b9g/crank/standalone";
 
 // tetronimo shapes represented as 2d arrays
 type Tet = number[][];
+/* eslint-disable esfold/breaks */
 const tets: Record<string, Tet> = {
-  I: [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]],
-  O: [[1, 1], [1, 1]],
-  T: [[0, 1, 0], [1, 1, 1], [0, 0, 0]],
-  J: [[0, 0, 1], [1, 1, 1], [0, 0, 0]],
-  L: [[1, 0, 0], [1, 1, 1], [0, 0, 0]],
-  S: [[0, 1, 1], [1, 1, 0], [0, 0, 0]],
-  Z: [[1, 1, 0], [0, 1, 1], [0, 0, 0]],
+  I: [
+    [0, 0, 0, 0],
+    [1, 1, 1, 1],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+  ],
+  O: [
+    [1, 1],
+    [1, 1],
+  ],
+  T: [
+    [0, 1, 0],
+    [1, 1, 1],
+    [0, 0, 0],
+  ],
+  J: [
+    [0, 0, 1],
+    [1, 1, 1],
+    [0, 0, 0],
+  ],
+  L: [
+    [1, 0, 0],
+    [1, 1, 1],
+    [0, 0, 0],
+  ],
+  S: [
+    [0, 1, 1],
+    [1, 1, 0],
+    [0, 0, 0],
+  ],
+  Z: [
+    [1, 1, 0],
+    [0, 1, 1],
+    [0, 0, 0],
+  ],
 };
+/* eslint-enable esfold/breaks */
 
 function randomTet() {
   const tetValues = Array.from(Object.values(tets));
