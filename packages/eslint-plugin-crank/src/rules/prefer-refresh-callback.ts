@@ -49,9 +49,7 @@ export const preferRefreshCallback: Rule.RuleModule = {
 			node: ESLintNode,
 			contextVar: string | null,
 		): boolean {
-			if (node.callee.type !== "MemberExpression") {
-				return false;
-			}
+			if (node.callee.type !== "MemberExpression") return false;
 
 			const object = node.callee.object;
 			return isContextReference(object, contextVar);
@@ -67,9 +65,7 @@ export const preferRefreshCallback: Rule.RuleModule = {
 			while (current) {
 				current = current.parent;
 
-				if (!current) {
-					return null;
-				}
+				if (!current) return null;
 
 				// Check if we found a function node
 				if (
@@ -187,27 +183,15 @@ export const preferRefreshCallback: Rule.RuleModule = {
 				const contextVar = currentFunction?.contextVariable || null;
 
 				// Early returns for non-applicable cases
-				if (!isRefreshCall(node, contextVar)) {
-					return;
-				}
-				if (node.arguments.length > 0) {
-					return;
-				}
-				if (!currentFunction) {
-					return;
-				}
-				if (!isMatchingContext(node, contextVar)) {
-					return;
-				}
-				if (!isInsideCallback(node)) {
-					return;
-				}
+				if (!isRefreshCall(node, contextVar)) return;
+				if (node.arguments.length > 0) return;
+				if (!currentFunction) return;
+				if (!isMatchingContext(node, contextVar)) return;
+				if (!isInsideCallback(node)) return;
 
 				// Find the callback containing this refresh call
 				const callbackNode = findContainingCallback(node);
-				if (!callbackNode) {
-					return;
-				}
+				if (!callbackNode) return;
 
 				// Find all final action refresh calls in this callback
 				const allRefreshCalls = findRefreshCalls(callbackNode, contextVar);
@@ -216,14 +200,10 @@ export const preferRefreshCallback: Rule.RuleModule = {
 				);
 
 				// Only flag if there's at least one final action refresh call
-				if (finalActionRefreshCalls.length === 0) {
-					return;
-				}
+				if (finalActionRefreshCalls.length === 0) return;
 
 				// Only flag the first final action refresh call to avoid duplicate errors
-				if (finalActionRefreshCalls[0] !== node) {
-					return;
-				}
+				if (finalActionRefreshCalls[0] !== node) return;
 
 				// Generate and report the suggestion
 				const sourceCode = context.sourceCode;

@@ -103,7 +103,7 @@ function emitHydrationWarning(
 				const origin = win.location.origin;
 				if (
 					new URL(expectedValue, origin).href ===
-						new URL(actualValue, origin).href
+					new URL(actualValue, origin).href
 				) {
 					// attrs which are URLs will often be resolved to their full
 					// href in the DOM, so we squash these errors
@@ -220,9 +220,7 @@ function patchProp(
 				// First pass: remove styles present in oldValue but not in value
 				if (oldValue) {
 					for (const styleName in oldValue) {
-						if (value && styleName in value) {
-							continue;
-						}
+						if (value && styleName in value) continue;
 						const cssName = camelToKebabCase(styleName);
 						if (isHydrating && style.getPropertyValue(cssName) !== "") {
 							emitHydrationWarning(
@@ -279,9 +277,7 @@ function patchProp(
 		}
 		case "class":
 		case "className":
-			if (name === "className" && "class" in props) {
-				break;
-			}
+			if (name === "className" && "class" in props) break;
 			if (value === true) {
 				if (isHydrating && element.getAttribute("class") !== "") {
 					emitHydrationWarning(
@@ -326,9 +322,7 @@ function patchProp(
 				// Remove pass: iterate oldValue for classes to remove
 				if (oldValue) {
 					for (const classNames in oldValue) {
-						if (value && value[classNames]) {
-							continue;
-						}
+						if (value && value[classNames]) continue;
 						const classes = classNames.split(/\s+/).filter(Boolean);
 						element.classList.remove(...classes);
 					}
@@ -337,9 +331,7 @@ function patchProp(
 				// Add pass: iterate value for classes to add
 				if (value) {
 					for (const classNames in value) {
-						if (!value[classNames]) {
-							continue;
-						}
+						if (!value[classNames]) continue;
 						const classes = classNames.split(/\s+/).filter(Boolean);
 						element.classList.add(...classes);
 						for (const className of classes) {
@@ -420,9 +412,7 @@ function patchProp(
 			break;
 		}
 		case "htmlFor":
-			if ("for" in props) {
-				break;
-			}
+			if ("for" in props) break;
 			if (value == null || value === false) {
 				element.removeAttribute("for");
 			} else {
@@ -662,9 +652,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		// First pass: iterate oldProps to handle removals
 		if (oldProps) {
 			for (const name in oldProps) {
-				if (name in props) {
-					continue;
-				}
+				if (name in props) continue;
 				patchProp(
 					element,
 					name,
