@@ -943,344 +943,365 @@ loading states.</span></p><div class="
 			" data-index="1"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>Suspense<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/async&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code><span class="token keyword">function</span> <span class="token function">formatNumber</span><span class="token punctuation">(</span><span class="token parameter">number<span class="token punctuation">,</span> type</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="2"><code><span class="token keyword">const</span> <span class="token constant">CITIES</span> <span class="token operator">=</span> <span class="token punctuation">[</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code>  number <span class="token operator">=</span> number<span class="token punctuation">.</span><span class="token function">padEnd</span><span class="token punctuation">(</span><span class="token number">16</span><span class="token punctuation">,</span> <span class="token string">&quot;0&quot;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="3"><code>  <span class="token punctuation">{</span><span class="token literal-property property">name</span><span class="token operator">:</span> <span class="token string">&quot;New York&quot;</span><span class="token punctuation">,</span> <span class="token literal-property property">latitude</span><span class="token operator">:</span> <span class="token number">40.71</span><span class="token punctuation">,</span> <span class="token literal-property property">longitude</span><span class="token operator">:</span> <span class="token operator">-</span><span class="token number">74.01</span><span class="token punctuation">}</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>type <span class="token operator">===</span> <span class="token string">&quot;American Express&quot;</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="4"><code>  <span class="token punctuation">{</span><span class="token literal-property property">name</span><span class="token operator">:</span> <span class="token string">&quot;London&quot;</span><span class="token punctuation">,</span> <span class="token literal-property property">latitude</span><span class="token operator">:</span> <span class="token number">51.51</span><span class="token punctuation">,</span> <span class="token literal-property property">longitude</span><span class="token operator">:</span> <span class="token operator">-</span><span class="token number">0.13</span><span class="token punctuation">}</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>    <span class="token keyword">return</span> <span class="token punctuation">[</span>number<span class="token punctuation">.</span><span class="token function">slice</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">4</span><span class="token punctuation">)</span><span class="token punctuation">,</span> number<span class="token punctuation">.</span><span class="token function">slice</span><span class="token punctuation">(</span><span class="token number">4</span><span class="token punctuation">,</span> <span class="token number">10</span><span class="token punctuation">)</span><span class="token punctuation">,</span> number<span class="token punctuation">.</span><span class="token function">slice</span><span class="token punctuation">(</span><span class="token number">10</span><span class="token punctuation">,</span> <span class="token number">15</span><span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token punctuation">.</span><span class="token function">join</span><span class="token punctuation">(</span><span class="token string">&quot; &quot;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="5"><code>  <span class="token punctuation">{</span><span class="token literal-property property">name</span><span class="token operator">:</span> <span class="token string">&quot;Tokyo&quot;</span><span class="token punctuation">,</span> <span class="token literal-property property">latitude</span><span class="token operator">:</span> <span class="token number">35.68</span><span class="token punctuation">,</span> <span class="token literal-property property">longitude</span><span class="token operator">:</span> <span class="token number">139.69</span><span class="token punctuation">}</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="6"><code>  <span class="token punctuation">{</span><span class="token literal-property property">name</span><span class="token operator">:</span> <span class="token string">&quot;Sydney&quot;</span><span class="token punctuation">,</span> <span class="token literal-property property">latitude</span><span class="token operator">:</span> <span class="token operator">-</span><span class="token number">33.87</span><span class="token punctuation">,</span> <span class="token literal-property property">longitude</span><span class="token operator">:</span> <span class="token number">151.21</span><span class="token punctuation">}</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><br></div><div class="
+			" data-index="7"><code>  <span class="token punctuation">{</span><span class="token literal-property property">name</span><span class="token operator">:</span> <span class="token string">&quot;Lagos&quot;</span><span class="token punctuation">,</span> <span class="token literal-property property">latitude</span><span class="token operator">:</span> <span class="token number">6.46</span><span class="token punctuation">,</span> <span class="token literal-property property">longitude</span><span class="token operator">:</span> <span class="token number">3.39</span><span class="token punctuation">}</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code>  <span class="token keyword">return</span> <span class="token punctuation">[</span></code><br></div><div class="
+			" data-index="8"><code>  <span class="token punctuation">{</span><span class="token literal-property property">name</span><span class="token operator">:</span> <span class="token string">&quot;São Paulo&quot;</span><span class="token punctuation">,</span> <span class="token literal-property property">latitude</span><span class="token operator">:</span> <span class="token operator">-</span><span class="token number">23.55</span><span class="token punctuation">,</span> <span class="token literal-property property">longitude</span><span class="token operator">:</span> <span class="token operator">-</span><span class="token number">46.63</span><span class="token punctuation">}</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code>    number<span class="token punctuation">.</span><span class="token function">slice</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">4</span><span class="token punctuation">)</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="9"><code><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code>    number<span class="token punctuation">.</span><span class="token function">slice</span><span class="token punctuation">(</span><span class="token number">4</span><span class="token punctuation">,</span> <span class="token number">8</span><span class="token punctuation">)</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="10"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="11"><code>    number<span class="token punctuation">.</span><span class="token function">slice</span><span class="token punctuation">(</span><span class="token number">8</span><span class="token punctuation">,</span> <span class="token number">12</span><span class="token punctuation">)</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="11"><code><span class="token keyword">function</span> <span class="token function">describeWeather</span><span class="token punctuation">(</span><span class="token parameter">code</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="12"><code>    number<span class="token punctuation">.</span><span class="token function">slice</span><span class="token punctuation">(</span><span class="token number">12</span><span class="token punctuation">)</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="12"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>code <span class="token operator">===</span> <span class="token number">0</span><span class="token punctuation">)</span> <span class="token keyword">return</span> <span class="token string">&quot;Clear&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="13"><code>  <span class="token punctuation">]</span><span class="token punctuation">.</span><span class="token function">join</span><span class="token punctuation">(</span><span class="token string">&quot; &quot;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="13"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>code <span class="token operator">&lt;=</span> <span class="token number">3</span><span class="token punctuation">)</span> <span class="token keyword">return</span> <span class="token string">&quot;Partly cloudy&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="14"><code><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="14"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>code <span class="token operator">&lt;=</span> <span class="token number">48</span><span class="token punctuation">)</span> <span class="token keyword">return</span> <span class="token string">&quot;Foggy&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="15"><br></div><div class="
+			" data-index="15"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>code <span class="token operator">&lt;=</span> <span class="token number">67</span><span class="token punctuation">)</span> <span class="token keyword">return</span> <span class="token string">&quot;Rainy&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="16"><code><span class="token keyword">function</span> <span class="token function">CreditCard</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>type<span class="token punctuation">,</span> expiration<span class="token punctuation">,</span> number<span class="token punctuation">,</span> owner<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="16"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>code <span class="token operator">&lt;=</span> <span class="token number">77</span><span class="token punctuation">)</span> <span class="token keyword">return</span> <span class="token string">&quot;Snowy&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="17"><code>  <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
+			" data-index="17"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>code <span class="token operator">&lt;=</span> <span class="token number">82</span><span class="token punctuation">)</span> <span class="token keyword">return</span> <span class="token string">&quot;Showers&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="18"><code>    <span class="token operator">&lt;</span>div style<span class="token operator">=</span><span class="token punctuation">{</span><span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div><div class="
+			" data-index="18"><code>  <span class="token keyword">return</span> <span class="token string">&quot;Stormy&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="19"><code><span class="token template-string"><span class="token string">      padding: 10px;</span></span></code><br></div><div class="
+			" data-index="19"><code><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="20"><code><span class="token template-string"><span class="token string">      margin: 10px 0;</span></span></code><br></div><div class="
+			" data-index="20"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="21"><code><span class="token template-string"><span class="token string">      display: grid;</span></span></code><br></div><div class="
+			" data-index="21"><code><span class="token keyword">function</span> <span class="token function">WeatherCard</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>city<span class="token punctuation">,</span> conditions<span class="token punctuation">,</span> temperature<span class="token punctuation">,</span> windspeed<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="22"><code><span class="token template-string"><span class="token string">      grid-template-columns: repeat(2, 1fr);</span></span></code><br></div><div class="
+			" data-index="22"><code>  <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="23"><code><span class="token template-string"><span class="token string">      grid-template-rows: repeat(2, 1fr);</span></span></code><br></div><div class="
+			" data-index="23"><code>    <span class="token operator">&lt;</span>div style<span class="token operator">=</span><span class="token punctuation">{</span><span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="24"><code><span class="token template-string"><span class="token string">      border: 1px solid currentcolor;</span></span></code><br></div><div class="
+			" data-index="24"><code><span class="token template-string"><span class="token string">      padding: 10px;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="25"><code><span class="token template-string"><span class="token string">      border-radius: 10px;</span></span></code><br></div><div class="
+			" data-index="25"><code><span class="token template-string"><span class="token string">      margin: 10px 0;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="26"><code><span class="token template-string"><span class="token string">    </span><span class="token template-punctuation string">`</span></span><span class="token punctuation">}</span><span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="26"><code><span class="token template-string"><span class="token string">      display: grid;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="27"><code>      <span class="token operator">&lt;</span>pre<span class="token operator">&gt;</span><span class="token punctuation">{</span><span class="token function">formatNumber</span><span class="token punctuation">(</span>number<span class="token punctuation">,</span> type<span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>pre<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="27"><code><span class="token template-string"><span class="token string">      grid-template-columns: repeat(2, 1fr);</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="28"><code>      <span class="token operator">&lt;</span>pre<span class="token operator">&gt;</span>Exp<span class="token operator">:</span> <span class="token punctuation">{</span>expiration<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>pre<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="28"><code><span class="token template-string"><span class="token string">      grid-template-rows: repeat(2, 1fr);</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="29"><br></div><div class="
+			" data-index="29"><code><span class="token template-string"><span class="token string">      border: 1px solid currentcolor;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="30"><code>      <span class="token operator">&lt;</span>pre<span class="token operator">&gt;</span><span class="token punctuation">{</span>type<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>pre<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="30"><code><span class="token template-string"><span class="token string">      border-radius: 10px;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="31"><code>      <span class="token operator">&lt;</span>pre<span class="token operator">&gt;</span><span class="token punctuation">{</span>owner<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>pre<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="31"><code><span class="token template-string"><span class="token string">    </span><span class="token template-punctuation string">`</span></span><span class="token punctuation">}</span><span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="32"><code>    <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="32"><code>      <span class="token operator">&lt;</span>pre<span class="token operator">&gt;</span><span class="token punctuation">{</span>city<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>pre<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="33"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="33"><code>      <span class="token operator">&lt;</span>pre<span class="token operator">&gt;</span><span class="token punctuation">{</span>conditions<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>pre<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="34"><code><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="34"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="35"><br></div><div class="
+			" data-index="35"><code>      <span class="token operator">&lt;</span>pre<span class="token operator">&gt;</span><span class="token punctuation">{</span>temperature<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>pre<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="36"><code><span class="token keyword">async</span> <span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">LoadingCreditCard</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="36"><code>      <span class="token operator">&lt;</span>pre<span class="token operator">&gt;</span><span class="token punctuation">{</span>windspeed<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>pre<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="37"><code>  <span class="token keyword">let</span> count <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="37"><code>    <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="38"><code>  <span class="token keyword">const</span> interval <span class="token operator">=</span> <span class="token function">setInterval</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="38"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="39"><code>    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> count<span class="token operator">++</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="39"><code><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="40"><code>  <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token number">250</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="40"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="41"><br></div><div class="
+			" data-index="41"><code><span class="token keyword">async</span> <span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">LoadingWeatherCard</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="42"><code>  <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">cleanup</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token function">clearInterval</span><span class="token punctuation">(</span>interval<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="42"><code>  <span class="token keyword">let</span> count <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="43"><br></div><div class="
+			" data-index="43"><code>  <span class="token keyword">const</span> interval <span class="token operator">=</span> <span class="token function">setInterval</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="44"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="44"><code>    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> count<span class="token operator">++</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="45"><code>    <span class="token keyword">yield</span> <span class="token punctuation">(</span></code><br></div><div class="
+			" data-index="45"><code>  <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token number">250</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="46"><code>      <span class="token operator">&lt;</span>CreditCard</code><br></div><div class="
+			" data-index="46"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="47"><code>        number<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">&quot;*&quot;</span><span class="token punctuation">.</span><span class="token function">repeat</span><span class="token punctuation">(</span>count<span class="token punctuation">)</span> <span class="token operator">+</span> <span class="token string">&quot;?&quot;</span><span class="token punctuation">.</span><span class="token function">repeat</span><span class="token punctuation">(</span>Math<span class="token punctuation">.</span><span class="token function">max</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">16</span> <span class="token operator">-</span> count<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="47"><code>  <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">cleanup</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token function">clearInterval</span><span class="token punctuation">(</span>interval<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="48"><code>        type<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">&quot;Loading&quot;</span> <span class="token operator">+</span> <span class="token string">&quot;.&quot;</span><span class="token punctuation">.</span><span class="token function">repeat</span><span class="token punctuation">(</span>count <span class="token operator">%</span> <span class="token number">4</span><span class="token punctuation">)</span><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="48"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="49"><code>        owner<span class="token operator">=</span><span class="token string">&quot;__ __&quot;</span></code><br></div><div class="
+			" data-index="49"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="50"><code>        expiration<span class="token operator">=</span><span class="token string">&quot;__/__&quot;</span></code><br></div><div class="
+			" data-index="50"><code>    <span class="token keyword">yield</span> <span class="token punctuation">(</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="51"><code>      <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="51"><code>      <span class="token operator">&lt;</span>WeatherCard</code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="52"><code>    <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="52"><code>        city<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">&quot;Loading&quot;</span> <span class="token operator">+</span> <span class="token string">&quot;.&quot;</span><span class="token punctuation">.</span><span class="token function">repeat</span><span class="token punctuation">(</span>count <span class="token operator">%</span> <span class="token number">4</span><span class="token punctuation">)</span><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="53"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="53"><code>        conditions<span class="token operator">=</span><span class="token string">&quot;??&quot;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="54"><code><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="54"><code>        temperature<span class="token operator">=</span><span class="token string">&quot;__°C&quot;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="55"><br></div><div class="
+			" data-index="55"><code>        windspeed<span class="token operator">=</span><span class="token string">&quot;__ km/h&quot;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="56"><code><span class="token keyword">async</span> <span class="token keyword">function</span> <span class="token function">MockCreditCard</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>throttle<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="56"><code>      <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="57"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>throttle<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="57"><code>    <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="58"><code>    <span class="token keyword">await</span> <span class="token keyword">new</span> <span class="token class-name">Promise</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token parameter">r</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token function">setTimeout</span><span class="token punctuation">(</span>r<span class="token punctuation">,</span> <span class="token number">2000</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="58"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="59"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="59"><code><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="60"><code>  <span class="token comment">// Mock credit card data courtesy https://fakerapi.it/en</span></code><br></div><div class="
+			" data-index="60"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="61"><code>  <span class="token keyword">const</span> res <span class="token operator">=</span> <span class="token keyword">await</span> <span class="token function">fetch</span><span class="token punctuation">(</span><span class="token string">&quot;https://fakerapi.it/api/v2/creditCards?_quantity=1&quot;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="61"><code><span class="token keyword">async</span> <span class="token keyword">function</span> <span class="token function">CityWeather</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>city<span class="token punctuation">,</span> throttle<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="62"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>res<span class="token punctuation">.</span>status <span class="token operator">===</span> <span class="token number">429</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="62"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>throttle<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="63"><code>    <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
+			" data-index="63"><code>    <span class="token keyword">await</span> <span class="token keyword">new</span> <span class="token class-name">Promise</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token parameter">r</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token function">setTimeout</span><span class="token punctuation">(</span>r<span class="token punctuation">,</span> <span class="token number">2000</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="64"><code>      <span class="token operator">&lt;</span>marquee<span class="token operator">&gt;</span>Too many requests<span class="token punctuation">.</span> Please use free APIs responsibly<span class="token punctuation">.</span><span class="token operator">&lt;</span><span class="token operator">/</span>marquee<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="64"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="65"><code>    <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="65"><code>  <span class="token comment">// Weather data courtesy https://open-meteo.com</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="66"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="66"><code>  <span class="token keyword">const</span> res <span class="token operator">=</span> <span class="token keyword">await</span> <span class="token function">fetch</span><span class="token punctuation">(</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="67"><code>  <span class="token keyword">const</span> <span class="token punctuation">{</span><span class="token literal-property property">data</span><span class="token operator">:</span> <span class="token punctuation">[</span>card<span class="token punctuation">]</span><span class="token punctuation">}</span> <span class="token operator">=</span> <span class="token keyword">await</span> res<span class="token punctuation">.</span><span class="token function">json</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="67"><code>    <span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string">https://api.open-meteo.com/v1/forecast?latitude=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>city<span class="token punctuation">.</span>latitude<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&amp;longitude=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>city<span class="token punctuation">.</span>longitude<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&amp;current_weather=true</span><span class="token template-punctuation string">`</span></span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="68"><code>  <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
+			" data-index="68"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="69"><code>    <span class="token operator">&lt;</span>CreditCard</code><br></div><div class="
+			" data-index="69"><code>  <span class="token keyword">const</span> <span class="token punctuation">{</span><span class="token literal-property property">current_weather</span><span class="token operator">:</span> weather<span class="token punctuation">}</span> <span class="token operator">=</span> <span class="token keyword">await</span> res<span class="token punctuation">.</span><span class="token function">json</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="70"><code>      number<span class="token operator">=</span><span class="token punctuation">{</span>card<span class="token punctuation">.</span>number<span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="70"><code>  <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="71"><code>      type<span class="token operator">=</span><span class="token punctuation">{</span>card<span class="token punctuation">.</span>type<span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="71"><code>    <span class="token operator">&lt;</span>WeatherCard</code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="72"><code>      owner<span class="token operator">=</span><span class="token punctuation">{</span>card<span class="token punctuation">.</span>owner<span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="72"><code>      city<span class="token operator">=</span><span class="token punctuation">{</span>city<span class="token punctuation">.</span>name<span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="73"><code>      expiration<span class="token operator">=</span><span class="token punctuation">{</span>card<span class="token punctuation">.</span>expiration<span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="73"><code>      conditions<span class="token operator">=</span><span class="token punctuation">{</span><span class="token function">describeWeather</span><span class="token punctuation">(</span>weather<span class="token punctuation">.</span>weathercode<span class="token punctuation">)</span><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="74"><code>    <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="74"><code>      temperature<span class="token operator">=</span><span class="token punctuation">{</span><span class="token template-string"><span class="token template-punctuation string">`</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>weather<span class="token punctuation">.</span>temperature<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">°C</span><span class="token template-punctuation string">`</span></span><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="75"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="75"><code>      windspeed<span class="token operator">=</span><span class="token punctuation">{</span><span class="token template-string"><span class="token template-punctuation string">`</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>weather<span class="token punctuation">.</span>windspeed<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> km/h</span><span class="token template-punctuation string">`</span></span><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="76"><code><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="76"><code>    <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="77"><br></div><div class="
+			" data-index="77"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="78"><code><span class="token keyword">function</span> <span class="token function">RandomCreditCard</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>throttle<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="78"><code><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="79"><code>  <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
+			" data-index="79"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="80"><code>    <span class="token operator">&lt;</span>Suspense fallback<span class="token operator">=</span><span class="token punctuation">{</span><span class="token operator">&lt;</span>LoadingCreditCard <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">}</span><span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="80"><code><span class="token keyword">function</span> <span class="token function">CityWeatherCard</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>city<span class="token punctuation">,</span> throttle<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="81"><code>      <span class="token operator">&lt;</span>MockCreditCard throttle<span class="token operator">=</span><span class="token punctuation">{</span>throttle<span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="81"><code>  <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="82"><code>    <span class="token operator">&lt;</span><span class="token operator">/</span>Suspense<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="82"><code>    <span class="token operator">&lt;</span>Suspense fallback<span class="token operator">=</span><span class="token punctuation">{</span><span class="token operator">&lt;</span>LoadingWeatherCard <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">}</span><span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="83"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="83"><code>      <span class="token operator">&lt;</span>CityWeather city<span class="token operator">=</span><span class="token punctuation">{</span>city<span class="token punctuation">}</span> throttle<span class="token operator">=</span><span class="token punctuation">{</span>throttle<span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="84"><code><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="84"><code>    <span class="token operator">&lt;</span><span class="token operator">/</span>Suspense<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="85"><br></div><div class="
+			" data-index="85"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="86"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">CreditCardGenerator</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="86"><code><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="87"><code>  <span class="token keyword">let</span> throttle <span class="token operator">=</span> <span class="token boolean">false</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="87"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="88"><code>  <span class="token keyword">const</span> <span class="token function-variable function">toggleThrottle</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="88"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">WeatherStation</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="89"><code>    <span class="token comment">// TODO: A nicer user behavior would be to not generate a new card</span></code><br></div><div class="
+			" data-index="89"><code>  <span class="token keyword">let</span> city <span class="token operator">=</span> <span class="token constant">CITIES</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="90"><code>    <span class="token comment">// when toggling the throttle.</span></code><br></div><div class="
+			" data-index="90"><code>  <span class="token keyword">let</span> throttle <span class="token operator">=</span> <span class="token boolean">false</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="91"><code>    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> throttle <span class="token operator">=</span> <span class="token operator">!</span>throttle<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="91"><code>  <span class="token keyword">const</span> <span class="token function-variable function">nextCity</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="92"><code>  <span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="92"><code>    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="93"><br></div><div class="
+			" data-index="93"><code>      city <span class="token operator">=</span> <span class="token constant">CITIES</span><span class="token punctuation">[</span><span class="token punctuation">(</span><span class="token constant">CITIES</span><span class="token punctuation">.</span><span class="token function">indexOf</span><span class="token punctuation">(</span>city<span class="token punctuation">)</span> <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">)</span> <span class="token operator">%</span> <span class="token constant">CITIES</span><span class="token punctuation">.</span>length<span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="94"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="94"><code>    <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="95"><code>    <span class="token keyword">yield</span> <span class="token punctuation">(</span></code><br></div><div class="
+			" data-index="95"><code>  <span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="96"><code>      <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="96"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="97"><code>        <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="97"><code>  <span class="token keyword">const</span> <span class="token function-variable function">toggleThrottle</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="98"><code>          <span class="token operator">&lt;</span>button onclick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="98"><code>    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> throttle <span class="token operator">=</span> <span class="token operator">!</span>throttle<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="99"><code>            Generate <span class="token keyword">new</span> <span class="token class-name">card</span></code><br></div><div class="
+			" data-index="99"><code>  <span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="100"><code>          <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="100"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="101"><code>          <span class="token punctuation">{</span><span class="token string">&quot; &quot;</span><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="101"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="102"><code>          <span class="token operator">&lt;</span>button onclick<span class="token operator">=</span><span class="token punctuation">{</span>toggleThrottle<span class="token punctuation">}</span><span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="102"><code>    <span class="token keyword">yield</span> <span class="token punctuation">(</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="103"><code>            <span class="token punctuation">{</span>throttle <span class="token operator">?</span> <span class="token string">&quot;Unthrottle&quot;</span> <span class="token operator">:</span> <span class="token string">&quot;Throttle&quot;</span><span class="token punctuation">}</span> <span class="token constant">API</span></code><br></div><div class="
+			" data-index="103"><code>      <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="104"><code>          <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="104"><code>        <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="105"><code>        <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="105"><code>          <span class="token operator">&lt;</span>button onclick<span class="token operator">=</span><span class="token punctuation">{</span>nextCity<span class="token punctuation">}</span><span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="106"><code>        <span class="token operator">&lt;</span>RandomCreditCard throttle<span class="token operator">=</span><span class="token punctuation">{</span>throttle<span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="106"><code>            Next city</code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="107"><code>      <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="107"><code>          <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="108"><code>    <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="108"><code>          <span class="token punctuation">{</span><span class="token string">&quot; &quot;</span><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="109"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="109"><code>          <span class="token operator">&lt;</span>button onclick<span class="token operator">=</span><span class="token punctuation">{</span>toggleThrottle<span class="token punctuation">}</span><span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="110"><code><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="110"><code>            <span class="token punctuation">{</span>throttle <span class="token operator">?</span> <span class="token string">&quot;Unthrottle&quot;</span> <span class="token operator">:</span> <span class="token string">&quot;Throttle&quot;</span><span class="token punctuation">}</span> <span class="token constant">API</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="111"><br></div><div class="
+			" data-index="111"><code>          <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="112"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>CreditCardGenerator <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-xsa4ll"><div class="css-rp15d"><div class="css-1j6wuma css-fxcfu0"><iframe class="
+			" data-index="112"><code>        <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="113"><code>        <span class="token operator">&lt;</span>CityWeatherCard city<span class="token operator">=</span><span class="token punctuation">{</span>city<span class="token punctuation">}</span> throttle<span class="token operator">=</span><span class="token punctuation">{</span>throttle<span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="114"><code>      <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="115"><code>    <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="116"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="117"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="118"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="119"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>WeatherStation <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-xsa4ll"><div class="css-rp15d"><div class="css-1j6wuma css-fxcfu0"><iframe class="
 							playground-iframe
 							css-hjkbgb
 						" style="min-height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-8" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-8'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\nimport {Suspense} from \"@b9g\u002Fcrank\u002Fasync\";\nfunction formatNumber(number, type) {\n  number = number.padEnd(16, \"0\");\n  if (type === \"American Express\") {\n    return [number.slice(0, 4), number.slice(4, 10), number.slice(10, 15)].join(\" \");\n  }\n\n  return [\n    number.slice(0, 4),\n    number.slice(4, 8),\n    number.slice(8, 12),\n    number.slice(12),\n  ].join(\" \");\n}\n\nfunction CreditCard({type, expiration, number, owner}) {\n  return (\n    \u003Cdiv style={`\n      padding: 10px;\n      margin: 10px 0;\n      display: grid;\n      grid-template-columns: repeat(2, 1fr);\n      grid-template-rows: repeat(2, 1fr);\n      border: 1px solid currentcolor;\n      border-radius: 10px;\n    `}\u003E\n      \u003Cpre\u003E{formatNumber(number, type)}\u003C\u002Fpre\u003E\n      \u003Cpre\u003EExp: {expiration}\u003C\u002Fpre\u003E\n\n      \u003Cpre\u003E{type}\u003C\u002Fpre\u003E\n      \u003Cpre\u003E{owner}\u003C\u002Fpre\u003E\n    \u003C\u002Fdiv\u003E\n  );\n}\n\nasync function *LoadingCreditCard() {\n  let count = 0;\n  const interval = setInterval(() =\u003E {\n    this.refresh(() =\u003E count++);\n  }, 250);\n\n  this.cleanup(() =\u003E clearInterval(interval));\n\n  for ({} of this) {\n    yield (\n      \u003CCreditCard\n        number={\"*\".repeat(count) + \"?\".repeat(Math.max(0, 16 - count))}\n        type={\"Loading\" + \".\".repeat(count % 4)}\n        owner=\"__ __\"\n        expiration=\"__\u002F__\"\n      \u002F\u003E\n    );\n  }\n}\n\nasync function MockCreditCard({throttle}) {\n  if (throttle) {\n    await new Promise((r) =\u003E setTimeout(r, 2000));\n  }\n  \u002F\u002F Mock credit card data courtesy https:\u002F\u002Ffakerapi.it\u002Fen\n  const res = await fetch(\"https:\u002F\u002Ffakerapi.it\u002Fapi\u002Fv2\u002FcreditCards?_quantity=1\");\n  if (res.status === 429) {\n    return (\n      \u003Cmarquee\u003EToo many requests. Please use free APIs responsibly.\u003C\u002Fmarquee\u003E\n    );\n  }\n  const {data: [card]} = await res.json();\n  return (\n    \u003CCreditCard\n      number={card.number}\n      type={card.type}\n      owner={card.owner}\n      expiration={card.expiration}\n    \u002F\u003E\n  );\n}\n\nfunction RandomCreditCard({throttle}) {\n  return (\n    \u003CSuspense fallback={\u003CLoadingCreditCard \u002F\u003E}\u003E\n      \u003CMockCreditCard throttle={throttle} \u002F\u003E\n    \u003C\u002FSuspense\u003E\n  );\n}\n\nfunction *CreditCardGenerator() {\n  let throttle = false;\n  const toggleThrottle = () =\u003E {\n    \u002F\u002F TODO: A nicer user behavior would be to not generate a new card\n    \u002F\u002F when toggling the throttle.\n    this.refresh(() =\u003E throttle = !throttle);\n  };\n\n  for ({} of this) {\n    yield (\n      \u003Cdiv\u003E\n        \u003Cdiv\u003E\n          \u003Cbutton onclick={() =\u003E this.refresh()}\u003E\n            Generate new card\n          \u003C\u002Fbutton\u003E\n          {\" \"}\n          \u003Cbutton onclick={toggleThrottle}\u003E\n            {throttle ? \"Unthrottle\" : \"Throttle\"} API\n          \u003C\u002Fbutton\u003E\n        \u003C\u002Fdiv\u003E\n        \u003CRandomCreditCard throttle={throttle} \u002F\u003E\n      \u003C\u002Fdiv\u003E\n    );\n  }\n}\n\nrenderer.render(\u003CCreditCardGenerator \u002F\u003E, document.body);","lang":"jsx live"};
+			window.__embeddedJSON__['inline-code-block-props-8'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\nimport {Suspense} from \"@b9g\u002Fcrank\u002Fasync\";\nconst CITIES = [\n  {name: \"New York\", latitude: 40.71, longitude: -74.01},\n  {name: \"London\", latitude: 51.51, longitude: -0.13},\n  {name: \"Tokyo\", latitude: 35.68, longitude: 139.69},\n  {name: \"Sydney\", latitude: -33.87, longitude: 151.21},\n  {name: \"Lagos\", latitude: 6.46, longitude: 3.39},\n  {name: \"São Paulo\", latitude: -23.55, longitude: -46.63},\n];\n\nfunction describeWeather(code) {\n  if (code === 0) return \"Clear\";\n  if (code \u003C= 3) return \"Partly cloudy\";\n  if (code \u003C= 48) return \"Foggy\";\n  if (code \u003C= 67) return \"Rainy\";\n  if (code \u003C= 77) return \"Snowy\";\n  if (code \u003C= 82) return \"Showers\";\n  return \"Stormy\";\n}\n\nfunction WeatherCard({city, conditions, temperature, windspeed}) {\n  return (\n    \u003Cdiv style={`\n      padding: 10px;\n      margin: 10px 0;\n      display: grid;\n      grid-template-columns: repeat(2, 1fr);\n      grid-template-rows: repeat(2, 1fr);\n      border: 1px solid currentcolor;\n      border-radius: 10px;\n    `}\u003E\n      \u003Cpre\u003E{city}\u003C\u002Fpre\u003E\n      \u003Cpre\u003E{conditions}\u003C\u002Fpre\u003E\n\n      \u003Cpre\u003E{temperature}\u003C\u002Fpre\u003E\n      \u003Cpre\u003E{windspeed}\u003C\u002Fpre\u003E\n    \u003C\u002Fdiv\u003E\n  );\n}\n\nasync function *LoadingWeatherCard() {\n  let count = 0;\n  const interval = setInterval(() =\u003E {\n    this.refresh(() =\u003E count++);\n  }, 250);\n\n  this.cleanup(() =\u003E clearInterval(interval));\n\n  for ({} of this) {\n    yield (\n      \u003CWeatherCard\n        city={\"Loading\" + \".\".repeat(count % 4)}\n        conditions=\"??\"\n        temperature=\"__°C\"\n        windspeed=\"__ km\u002Fh\"\n      \u002F\u003E\n    );\n  }\n}\n\nasync function CityWeather({city, throttle}) {\n  if (throttle) {\n    await new Promise((r) =\u003E setTimeout(r, 2000));\n  }\n  \u002F\u002F Weather data courtesy https:\u002F\u002Fopen-meteo.com\n  const res = await fetch(\n    `https:\u002F\u002Fapi.open-meteo.com\u002Fv1\u002Fforecast?latitude=${city.latitude}&longitude=${city.longitude}&current_weather=true`,\n  );\n  const {current_weather: weather} = await res.json();\n  return (\n    \u003CWeatherCard\n      city={city.name}\n      conditions={describeWeather(weather.weathercode)}\n      temperature={`${weather.temperature}°C`}\n      windspeed={`${weather.windspeed} km\u002Fh`}\n    \u002F\u003E\n  );\n}\n\nfunction CityWeatherCard({city, throttle}) {\n  return (\n    \u003CSuspense fallback={\u003CLoadingWeatherCard \u002F\u003E}\u003E\n      \u003CCityWeather city={city} throttle={throttle} \u002F\u003E\n    \u003C\u002FSuspense\u003E\n  );\n}\n\nfunction *WeatherStation() {\n  let city = CITIES[0];\n  let throttle = false;\n  const nextCity = () =\u003E {\n    this.refresh(() =\u003E {\n      city = CITIES[(CITIES.indexOf(city) + 1) % CITIES.length];\n    });\n  };\n\n  const toggleThrottle = () =\u003E {\n    this.refresh(() =\u003E throttle = !throttle);\n  };\n\n  for ({} of this) {\n    yield (\n      \u003Cdiv\u003E\n        \u003Cdiv\u003E\n          \u003Cbutton onclick={nextCity}\u003E\n            Next city\n          \u003C\u002Fbutton\u003E\n          {\" \"}\n          \u003Cbutton onclick={toggleThrottle}\u003E\n            {throttle ? \"Unthrottle\" : \"Throttle\"} API\n          \u003C\u002Fbutton\u003E\n        \u003C\u002Fdiv\u003E\n        \u003CCityWeatherCard city={city} throttle={throttle} \u002F\u003E\n      \u003C\u002Fdiv\u003E\n    );\n  }\n}\n\nrenderer.render(\u003CWeatherStation \u002F\u003E, document.body);","lang":"jsx live"};
 		</script></div><div class="css-1cw4ivo"><h2 class="css-13q0ntc">From the Blog</h2><div class="css-1ude83u"><a href="/blog/introducing-crank-py/" class="css-12y462z"><h3 class="css-pt4lut">Introducing Crank.py</h3><p class="css-1acyv1n">A deep dive into Crank.py, the Python adapter for Crank.js that makes Python functions components for frontend development.</p></a><a href="/blog/why-be-reactive/" class="css-12y462z"><h3 class="css-pt4lut">Why Be Reactive?</h3><p class="css-1acyv1n">Reactive frameworks promise automatic UI updates but create subtle bugs and performance traps. Crank’s explicit refresh() calls aren’t a limitation — they’re a superpower for building ambitious web applications. This essay examines common gotchas of reactive abstractions and provides a philosophical grounding for why Crank will never ship one.</p></a><a href="/blog/writing-crank-from-scratch/" class="css-12y462z"><h3 class="css-pt4lut">Writing Crank from Scratch</h3><p class="css-1acyv1n">A step-by-step guide to building Crank.js from the ground up, demonstrating how virtual DOM libraries work and showcasing advanced techniques with iterators and promises.</p></a><a href="/blog/introducing-crank/" class="css-12y462z"><h3 class="css-pt4lut">Introducing Crank</h3><p class="css-1acyv1n">A deep dive into why Crank.js was created, exploring the limitations of React’s Suspense API and the philosophy behind using generators and async functions for components.</p></a></div><div class="css-rt0jnf"><a href="/blog/" class="css-h5ygd3">All posts →</a></div></div></div><div class="css-1qz05fc"></div><footer class="css-1nd56js"><nav class="css-nf2n4z"><a href="/guides/getting-started/">Docs</a><a href="/blog/">Blog</a><a href="/playground/">Playground</a><a href="/press-kit/">Press Kit</a><a href="https://github.com/bikeshaving/crank">GitHub</a><a href="https://www.npmjs.com/package/@b9g/crank">NPM</a></nav><p class="css-1st8n6b">MIT Licensed · Made with Crank.js</p></footer><script data-name="embedded-json-9" id="static-urls">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};

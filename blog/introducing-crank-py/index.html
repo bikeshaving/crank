@@ -228,182 +228,170 @@ You can use generator functions to define component state, reference it with Pyt
 			" data-index="8"><code>    word <span class="token operator">=</span> props<span class="token punctuation">[</span><span class="token string">&#039;word&#039;</span><span class="token punctuation">]</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code>    # <span class="token constant">API</span> courtesy https<span class="token operator">:</span><span class="token operator">/</span><span class="token operator">/</span>dictionaryapi<span class="token punctuation">.</span>dev</code><br></div><div class="
+			" data-index="9"><code>    # <span class="token constant">API</span> courtesy https<span class="token operator">:</span><span class="token operator">/</span><span class="token operator">/</span>en<span class="token punctuation">.</span>wiktionary<span class="token punctuation">.</span>org</code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code>    res <span class="token operator">=</span> <span class="token keyword">await</span> <span class="token function">pyfetch</span><span class="token punctuation">(</span>f<span class="token string">&quot;https://api.dictionaryapi.dev/api/v2/entries/en/{word}&quot;</span><span class="token punctuation">)</span></code><br></div><div class="
+			" data-index="10"><code>    res <span class="token operator">=</span> <span class="token keyword">await</span> <span class="token function">pyfetch</span><span class="token punctuation">(</span>f<span class="token string">&quot;https://en.wiktionary.org/api/rest_v1/page/definition/{word.lower()}&quot;</span><span class="token punctuation">)</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="11"><code>    data <span class="token operator">=</span> <span class="token keyword">await</span> res<span class="token punctuation">.</span><span class="token function">json</span><span class="token punctuation">(</span><span class="token punctuation">)</span></code><br></div><div class="
+			" data-index="11"><code>    <span class="token keyword">if</span> not res<span class="token punctuation">.</span>ok<span class="token operator">:</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="12"><br></div><div class="
+			" data-index="12"><code>        <span class="token keyword">return</span> h<span class="token punctuation">.</span>div<span class="token punctuation">[</span>f<span class="token string">&quot;No definition found for {word}&quot;</span><span class="token punctuation">]</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="13"><code>    # Check <span class="token keyword">if</span> <span class="token constant">API</span> returned an <span class="token function">error</span> <span class="token punctuation">(</span>not an array<span class="token punctuation">)</span></code><br></div><div class="
+			" data-index="13"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="14"><code>    <span class="token keyword">if</span> not <span class="token function">isinstance</span><span class="token punctuation">(</span>data<span class="token punctuation">,</span> list<span class="token punctuation">)</span><span class="token operator">:</span></code><br></div><div class="
+			" data-index="14"><code>    data <span class="token operator">=</span> <span class="token keyword">await</span> res<span class="token punctuation">.</span><span class="token function">json</span><span class="token punctuation">(</span><span class="token punctuation">)</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="15"><code>        <span class="token keyword">return</span> h<span class="token punctuation">.</span>div<span class="token punctuation">[</span>f<span class="token string">&quot;No definition found for {word}&quot;</span><span class="token punctuation">]</span></code><br></div><div class="
+			" data-index="15"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="16"><br></div><div class="
+			" data-index="16"><code>    # Extract data exactly like the JavaScript version</code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="17"><code>    # Extract data exactly like the JavaScript version</code><br></div><div class="
+			" data-index="17"><code>    # <span class="token keyword">const</span> <span class="token punctuation">[</span><span class="token punctuation">{</span>partOfSpeech<span class="token punctuation">,</span> definitions<span class="token punctuation">}</span><span class="token punctuation">]</span> <span class="token operator">=</span> data<span class="token punctuation">.</span>en <span class="token operator">||</span> Object<span class="token punctuation">.</span><span class="token function">values</span><span class="token punctuation">(</span>data<span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="18"><code>    # <span class="token keyword">const</span> <span class="token punctuation">{</span>phonetic<span class="token punctuation">,</span> meanings<span class="token punctuation">}</span> <span class="token operator">=</span> data<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="18"><code>    # <span class="token keyword">const</span> <span class="token punctuation">{</span>definition<span class="token punctuation">}</span> <span class="token operator">=</span> definitions<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="19"><code>    # <span class="token keyword">const</span> <span class="token punctuation">{</span>partOfSpeech<span class="token punctuation">,</span> definitions<span class="token punctuation">}</span> <span class="token operator">=</span> meanings<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="19"><code>    entries <span class="token operator">=</span> data<span class="token punctuation">.</span><span class="token function">get</span><span class="token punctuation">(</span><span class="token string">&#039;en&#039;</span><span class="token punctuation">)</span> or <span class="token function">next</span><span class="token punctuation">(</span><span class="token function">iter</span><span class="token punctuation">(</span>data<span class="token punctuation">.</span><span class="token function">values</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="20"><code>    # <span class="token keyword">const</span> <span class="token punctuation">{</span>definition<span class="token punctuation">}</span> <span class="token operator">=</span> definitions<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="20"><code>    part_of_speech <span class="token operator">=</span> entries<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">&#039;partOfSpeech&#039;</span><span class="token punctuation">]</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="21"><code>    phonetic <span class="token operator">=</span> data<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">.</span><span class="token function">get</span><span class="token punctuation">(</span><span class="token string">&#039;phonetic&#039;</span><span class="token punctuation">,</span> <span class="token string">&#039;&#039;</span><span class="token punctuation">)</span></code><br></div><div class="
+			" data-index="21"><code>    definition <span class="token operator">=</span> entries<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">&#039;definitions&#039;</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">&#039;definition&#039;</span><span class="token punctuation">]</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="22"><code>    meanings <span class="token operator">=</span> data<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">&#039;meanings&#039;</span><span class="token punctuation">]</span></code><br></div><div class="
+			" data-index="22"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="23"><code>    part_of_speech <span class="token operator">=</span> meanings<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">&#039;partOfSpeech&#039;</span><span class="token punctuation">]</span></code><br></div><div class="
+			" data-index="23"><code>    <span class="token keyword">return</span> h<span class="token punctuation">.</span>div<span class="token punctuation">[</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="24"><code>    definitions <span class="token operator">=</span> meanings<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">&#039;definitions&#039;</span><span class="token punctuation">]</span></code><br></div><div class="
+			" data-index="24"><code>        h<span class="token punctuation">.</span>p<span class="token punctuation">[</span>h<span class="token punctuation">.</span>b<span class="token punctuation">[</span>word<span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token string">&quot; &quot;</span><span class="token punctuation">,</span> h<span class="token punctuation">.</span>i<span class="token punctuation">[</span>f<span class="token string">&quot;{part_of_speech.lower()}.&quot;</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="25"><code>    definition <span class="token operator">=</span> definitions<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">&#039;definition&#039;</span><span class="token punctuation">]</span></code><br></div><div class="
+			" data-index="25"><code>        h<span class="token punctuation">.</span><span class="token function">p</span><span class="token punctuation">(</span>innerHTML<span class="token operator">=</span>definition<span class="token punctuation">)</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="26"><br></div><div class="
+			" data-index="26"><code>    <span class="token punctuation">]</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="27"><code>    <span class="token keyword">return</span> h<span class="token punctuation">.</span>div<span class="token punctuation">[</span></code><br></div><div class="
+			" data-index="27"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="28"><code>        h<span class="token punctuation">.</span>p<span class="token punctuation">[</span>word<span class="token punctuation">,</span> <span class="token string">&quot; &quot;</span><span class="token punctuation">,</span> h<span class="token punctuation">.</span>code<span class="token punctuation">[</span>phonetic<span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="28"><code>@component</code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="29"><code>        h<span class="token punctuation">.</span>p<span class="token punctuation">[</span>h<span class="token punctuation">.</span>b<span class="token punctuation">[</span>f<span class="token string">&quot;{part_of_speech}.&quot;</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token string">&quot; &quot;</span><span class="token punctuation">,</span> definition<span class="token punctuation">]</span></code><br></div><div class="
+			" data-index="29"><code>def <span class="token function">Dictionary</span><span class="token punctuation">(</span>ctx<span class="token punctuation">)</span><span class="token operator">:</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="30"><code>    <span class="token punctuation">]</span></code><br></div><div class="
+			" data-index="30"><code>    word <span class="token operator">=</span> <span class="token string">&quot;&quot;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="31"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="32"><code>@component</code><br></div><div class="
+			" data-index="32"><code>    @ctx<span class="token punctuation">.</span>refresh</code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="33"><code>def <span class="token function">Dictionary</span><span class="token punctuation">(</span>ctx<span class="token punctuation">)</span><span class="token operator">:</span></code><br></div><div class="
+			" data-index="33"><code>    def <span class="token function">onsubmit</span><span class="token punctuation">(</span>ev<span class="token punctuation">)</span><span class="token operator">:</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="34"><code>    word <span class="token operator">=</span> <span class="token string">&quot;&quot;</span></code><br></div><div class="
+			" data-index="34"><code>        nonlocal word</code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="35"><br></div><div class="
+			" data-index="35"><code>        ev<span class="token punctuation">.</span><span class="token function">preventDefault</span><span class="token punctuation">(</span><span class="token punctuation">)</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="36"><code>    @ctx<span class="token punctuation">.</span>refresh</code><br></div><div class="
+			" data-index="36"><code>        # Get the input value directly from the <span class="token constant">DOM</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="37"><code>    def <span class="token function">onsubmit</span><span class="token punctuation">(</span>ev<span class="token punctuation">)</span><span class="token operator">:</span></code><br></div><div class="
+			" data-index="37"><code>        input_el <span class="token operator">=</span> document<span class="token punctuation">.</span><span class="token function">getElementById</span><span class="token punctuation">(</span><span class="token string">&quot;word&quot;</span><span class="token punctuation">)</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="38"><code>        nonlocal word</code><br></div><div class="
+			" data-index="38"><code>        word1 <span class="token operator">=</span> input_el<span class="token punctuation">.</span>value</code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="39"><code>        ev<span class="token punctuation">.</span><span class="token function">preventDefault</span><span class="token punctuation">(</span><span class="token punctuation">)</span></code><br></div><div class="
+			" data-index="39"><code>        <span class="token keyword">if</span> word1 and word1<span class="token punctuation">.</span><span class="token function">strip</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">:</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="40"><code>        # Get the input value directly from the <span class="token constant">DOM</span></code><br></div><div class="
+			" data-index="40"><code>            word <span class="token operator">=</span> word1<span class="token punctuation">.</span><span class="token function">strip</span><span class="token punctuation">(</span><span class="token punctuation">)</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="41"><code>        input_el <span class="token operator">=</span> document<span class="token punctuation">.</span><span class="token function">getElementById</span><span class="token punctuation">(</span><span class="token string">&quot;word&quot;</span><span class="token punctuation">)</span></code><br></div><div class="
+			" data-index="41"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="42"><code>        word1 <span class="token operator">=</span> input_el<span class="token punctuation">.</span>value</code><br></div><div class="
+			" data-index="42"><code>    <span class="token keyword">for</span> _ <span class="token keyword">in</span> <span class="token literal-property property">ctx</span><span class="token operator">:</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="43"><code>        <span class="token keyword">if</span> word1 and word1<span class="token punctuation">.</span><span class="token function">strip</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">:</span></code><br></div><div class="
+			" data-index="43"><code>        <span class="token keyword">yield</span> h<span class="token punctuation">.</span>div<span class="token punctuation">[</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="44"><code>            word <span class="token operator">=</span> word1<span class="token punctuation">.</span><span class="token function">strip</span><span class="token punctuation">(</span><span class="token punctuation">)</span></code><br></div><div class="
+			" data-index="44"><code>            h<span class="token punctuation">.</span><span class="token function">form</span><span class="token punctuation">(</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="45"><br></div><div class="
+			" data-index="45"><code>                action<span class="token operator">=</span><span class="token string">&quot;&quot;</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="46"><code>    <span class="token keyword">for</span> _ <span class="token keyword">in</span> <span class="token literal-property property">ctx</span><span class="token operator">:</span></code><br></div><div class="
+			" data-index="46"><code>                method<span class="token operator">=</span><span class="token string">&quot;get&quot;</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="47"><code>        <span class="token keyword">yield</span> h<span class="token punctuation">.</span>div<span class="token punctuation">[</span></code><br></div><div class="
+			" data-index="47"><code>                onsubmit<span class="token operator">=</span>onsubmit<span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="48"><code>            h<span class="token punctuation">.</span><span class="token function">form</span><span class="token punctuation">(</span></code><br></div><div class="
+			" data-index="48"><code>                style<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string-property property">&quot;margin-bottom&quot;</span><span class="token operator">:</span> <span class="token string">&quot;15px&quot;</span><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="49"><code>                action<span class="token operator">=</span><span class="token string">&quot;&quot;</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="49"><code>            <span class="token punctuation">)</span><span class="token punctuation">[</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="50"><code>                method<span class="token operator">=</span><span class="token string">&quot;get&quot;</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="50"><code>                h<span class="token punctuation">.</span><span class="token function">div</span><span class="token punctuation">(</span>style<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string-property property">&quot;margin-bottom&quot;</span><span class="token operator">:</span> <span class="token string">&quot;15px&quot;</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">[</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="51"><code>                onsubmit<span class="token operator">=</span>onsubmit<span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="51"><code>                    h<span class="token punctuation">.</span><span class="token function">label</span><span class="token punctuation">(</span>htmlFor<span class="token operator">=</span><span class="token string">&quot;word&quot;</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token string">&quot;Define: &quot;</span><span class="token punctuation">]</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="52"><code>                style<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string-property property">&quot;margin-bottom&quot;</span><span class="token operator">:</span> <span class="token string">&quot;15px&quot;</span><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="52"><code>                    h<span class="token punctuation">.</span><span class="token function">input</span><span class="token punctuation">(</span>type<span class="token operator">=</span><span class="token string">&quot;text&quot;</span><span class="token punctuation">,</span> name<span class="token operator">=</span><span class="token string">&quot;word&quot;</span><span class="token punctuation">,</span> id<span class="token operator">=</span><span class="token string">&quot;word&quot;</span><span class="token punctuation">,</span> required<span class="token operator">=</span>True<span class="token punctuation">)</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="53"><code>            <span class="token punctuation">)</span><span class="token punctuation">[</span></code><br></div><div class="
+			" data-index="53"><code>                <span class="token punctuation">]</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="54"><code>                h<span class="token punctuation">.</span><span class="token function">div</span><span class="token punctuation">(</span>style<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string-property property">&quot;margin-bottom&quot;</span><span class="token operator">:</span> <span class="token string">&quot;15px&quot;</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">[</span></code><br></div><div class="
+			" data-index="54"><code>                h<span class="token punctuation">.</span>div<span class="token punctuation">[</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="55"><code>                    h<span class="token punctuation">.</span><span class="token function">label</span><span class="token punctuation">(</span>htmlFor<span class="token operator">=</span><span class="token string">&quot;word&quot;</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token string">&quot;Define: &quot;</span><span class="token punctuation">]</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="55"><code>                    h<span class="token punctuation">.</span><span class="token function">input</span><span class="token punctuation">(</span>type<span class="token operator">=</span><span class="token string">&quot;submit&quot;</span><span class="token punctuation">,</span> value<span class="token operator">=</span><span class="token string">&quot;Search&quot;</span><span class="token punctuation">)</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="56"><code>                    h<span class="token punctuation">.</span><span class="token function">input</span><span class="token punctuation">(</span>type<span class="token operator">=</span><span class="token string">&quot;text&quot;</span><span class="token punctuation">,</span> name<span class="token operator">=</span><span class="token string">&quot;word&quot;</span><span class="token punctuation">,</span> id<span class="token operator">=</span><span class="token string">&quot;word&quot;</span><span class="token punctuation">,</span> required<span class="token operator">=</span>True<span class="token punctuation">)</span></code><br></div><div class="
+			" data-index="56"><code>                <span class="token punctuation">]</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="57"><code>                <span class="token punctuation">]</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="57"><code>            <span class="token punctuation">]</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="58"><code>                h<span class="token punctuation">.</span>div<span class="token punctuation">[</span></code><br></div><div class="
+			" data-index="58"><code>            <span class="token function">h</span><span class="token punctuation">(</span>Definition<span class="token punctuation">,</span> word<span class="token operator">=</span>word<span class="token punctuation">)</span> <span class="token keyword">if</span> word <span class="token keyword">else</span> None</code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="59"><code>                    h<span class="token punctuation">.</span><span class="token function">input</span><span class="token punctuation">(</span>type<span class="token operator">=</span><span class="token string">&quot;submit&quot;</span><span class="token punctuation">,</span> value<span class="token operator">=</span><span class="token string">&quot;Search&quot;</span><span class="token punctuation">)</span></code><br></div><div class="
+			" data-index="59"><code>        <span class="token punctuation">]</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="60"><code>                <span class="token punctuation">]</span></code><br></div><div class="
+			" data-index="60"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="61"><code>            <span class="token punctuation">]</span><span class="token punctuation">,</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="62"><code>            <span class="token function">h</span><span class="token punctuation">(</span>Definition<span class="token punctuation">,</span> word<span class="token operator">=</span>word<span class="token punctuation">)</span> <span class="token keyword">if</span> word <span class="token keyword">else</span> None</code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="63"><code>        <span class="token punctuation">]</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="64"><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="65"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token function">h</span><span class="token punctuation">(</span>Dictionary<span class="token punctuation">)</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span></code><br></div></pre></content-area></div></div></div><div class="css-37p1l2"><div class="css-rp15d"><div class="css-1j6wuma css-fxcfu0"><iframe class="
+			" data-index="61"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token function">h</span><span class="token punctuation">(</span>Dictionary<span class="token punctuation">)</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span></code><br></div></pre></content-area></div></div></div><div class="css-37p1l2"><div class="css-rp15d"><div class="css-1j6wuma css-fxcfu0"><iframe class="
 							playground-iframe
 							css-hjkbgb
 						" style="min-height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-79" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-79'] = {"code":"from js import document, FormData\nfrom pyodide.http import pyfetch\nfrom crank import component, h\nfrom crank.dom import renderer\nimport asyncio\n\n@component\nasync def Definition(ctx, props):\n    word = props['word']\n    # API courtesy https:\u002F\u002Fdictionaryapi.dev\n    res = await pyfetch(f\"https:\u002F\u002Fapi.dictionaryapi.dev\u002Fapi\u002Fv2\u002Fentries\u002Fen\u002F{word}\")\n    data = await res.json()\n\n    # Check if API returned an error (not an array)\n    if not isinstance(data, list):\n        return h.div[f\"No definition found for {word}\"]\n\n    # Extract data exactly like the JavaScript version\n    # const {phonetic, meanings} = data[0];\n    # const {partOfSpeech, definitions} = meanings[0];\n    # const {definition} = definitions[0];\n    phonetic = data[0].get('phonetic', '')\n    meanings = data[0]['meanings']\n    part_of_speech = meanings[0]['partOfSpeech']\n    definitions = meanings[0]['definitions']\n    definition = definitions[0]['definition']\n\n    return h.div[\n        h.p[word, \" \", h.code[phonetic]],\n        h.p[h.b[f\"{part_of_speech}.\"], \" \", definition]\n    ]\n\n@component\ndef Dictionary(ctx):\n    word = \"\"\n\n    @ctx.refresh\n    def onsubmit(ev):\n        nonlocal word\n        ev.preventDefault()\n        # Get the input value directly from the DOM\n        input_el = document.getElementById(\"word\")\n        word1 = input_el.value\n        if word1 and word1.strip():\n            word = word1.strip()\n\n    for _ in ctx:\n        yield h.div[\n            h.form(\n                action=\"\",\n                method=\"get\",\n                onsubmit=onsubmit,\n                style={\"margin-bottom\": \"15px\"}\n            )[\n                h.div(style={\"margin-bottom\": \"15px\"})[\n                    h.label(htmlFor=\"word\")[\"Define: \"],\n                    h.input(type=\"text\", name=\"word\", id=\"word\", required=True)\n                ],\n                h.div[\n                    h.input(type=\"submit\", value=\"Search\")\n                ]\n            ],\n            h(Definition, word=word) if word else None\n        ]\n\nrenderer.render(h(Dictionary), document.body)","lang":"python live"};
+			window.__embeddedJSON__['inline-code-block-props-79'] = {"code":"from js import document, FormData\nfrom pyodide.http import pyfetch\nfrom crank import component, h\nfrom crank.dom import renderer\nimport asyncio\n\n@component\nasync def Definition(ctx, props):\n    word = props['word']\n    # API courtesy https:\u002F\u002Fen.wiktionary.org\n    res = await pyfetch(f\"https:\u002F\u002Fen.wiktionary.org\u002Fapi\u002Frest_v1\u002Fpage\u002Fdefinition\u002F{word.lower()}\")\n    if not res.ok:\n        return h.div[f\"No definition found for {word}\"]\n\n    data = await res.json()\n\n    # Extract data exactly like the JavaScript version\n    # const [{partOfSpeech, definitions}] = data.en || Object.values(data)[0];\n    # const {definition} = definitions[0];\n    entries = data.get('en') or next(iter(data.values()))\n    part_of_speech = entries[0]['partOfSpeech']\n    definition = entries[0]['definitions'][0]['definition']\n\n    return h.div[\n        h.p[h.b[word], \" \", h.i[f\"{part_of_speech.lower()}.\"]],\n        h.p(innerHTML=definition)\n    ]\n\n@component\ndef Dictionary(ctx):\n    word = \"\"\n\n    @ctx.refresh\n    def onsubmit(ev):\n        nonlocal word\n        ev.preventDefault()\n        # Get the input value directly from the DOM\n        input_el = document.getElementById(\"word\")\n        word1 = input_el.value\n        if word1 and word1.strip():\n            word = word1.strip()\n\n    for _ in ctx:\n        yield h.div[\n            h.form(\n                action=\"\",\n                method=\"get\",\n                onsubmit=onsubmit,\n                style={\"margin-bottom\": \"15px\"}\n            )[\n                h.div(style={\"margin-bottom\": \"15px\"})[\n                    h.label(htmlFor=\"word\")[\"Define: \"],\n                    h.input(type=\"text\", name=\"word\", id=\"word\", required=True)\n                ],\n                h.div[\n                    h.input(type=\"submit\", value=\"Search\")\n                ]\n            ],\n            h(Definition, word=word) if word else None\n        ]\n\nrenderer.render(h(Dictionary), document.body)","lang":"python live"};
 		</script></div><h2 id="pythonic-ui-development">Pythonic UI development <a class="heading-anchor" href="#pythonic-ui-development">#</a></h2><p>While Bernhardt might have overstated the death of JavaScript, we’re closely approaching a time when Python frontend web development is both possible and appealing. You can use Crank.py with the Pyodide WASM backend, to take advantage of the entire Python ecosystem, or with the MicroPython WASM backend to write (relatively) lightweight frontends.</p><p>Crank.py is open source and available on <a href="https://github.com/bikeshaving/crankpy">GitHub</a>. You can also see a <a href="https://pyscript.com/@brainkim/crank-todomvc/latest?files=main.py,index.html">basic TodoMVC implementation on PyScript.com</a>. It is still under development, and there are likely PyScript FFI and other bugs in the implementation, but is backed by the stable Crank.js framework under the hood. Somehow, making Crank.js a “Just JavaScript” framework has paved the way for Crank.py as a “Just Python” framework. It would have been much more difficult to create adapters for other frameworks, which use compilers or insane <code class="inline">useCallback()</code> APIs, and I think Crank’s <a href="https://crank.js.org/blog/why-be-reactive/">non-reactive</a>, generator and promise driven component model will be a breath of fresh air for Python developers who view the complications of JavaScript frontend development with justified skepticism.</p><h2 id="acknowledgements">Acknowledgements <a class="heading-anchor" href="#acknowledgements">#</a></h2><p>Crank.py is only possible because of years of hard work by the PyScript maintainers. In addition, development was mostly done by Claude Code, who helped me with the tricky FFI support. An interesting note, both Claude and ChatGPT independently suggested the <code class="inline">h.div(className=&quot;class&quot;)[&quot;children&quot;]</code> syntax during brainstorming for this library. My hope is that this is the first of many language bindings for Crank, so that we might achieve the polyglot browser future which Bernhardt dreamed of.</p></div></article><div class="css-1gworah"><a href="https://github.com/bikeshaving/crank/edit/main/docs/blog/2025-10-06-introducing-crank-py.md" target="_blank" rel="noopener noreferrer" class="css-vrpffa"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>Edit on GitHub</a></div><div class="css-9hlwm"><script src="https://giscus.app/client.js" data-repo="bikeshaving/crank" data-repo-id="MDEwOlJlcG9zaXRvcnkyMDY0Mzk3MDc=" data-category="Comments" data-category-id="DIC_kwDODE4FG84Cw3V5" data-mapping="url" data-strict="1" data-reactions-enabled="1" data-emit-metadata="1" data-input-position="top" data-theme="preferred_color_scheme" data-lang="en" data-loading="lazy" crossorigin="anonymous" async></script></div></main><footer class="css-1nd56js"><nav class="css-nf2n4z"><a href="/guides/getting-started/">Docs</a><a href="/blog/">Blog</a><a href="/playground/">Playground</a><a href="/press-kit/">Press Kit</a><a href="https://github.com/bikeshaving/crank">GitHub</a><a href="https://www.npmjs.com/package/@b9g/crank">NPM</a></nav><p class="css-1st8n6b">MIT Licensed · Made with Crank.js</p></footer><script data-name="embedded-json-80" id="static-urls">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
