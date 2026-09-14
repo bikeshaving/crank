@@ -62,7 +62,7 @@
 ### New API
 - **`@b9g/crank/web-components` — write Web Components with Crank**
   A `CrankHTMLElement` base class: declare configuration as static fields
-  (`observedAttributes`, `events`, `shadowDOM`, `styles`, `formAssociated`) and
+  (`observedAttributes`, `events`, `shadowDOM`, `formAssociated`) and
   write a `render` method, which is a normal Crank component in any of the four
   forms.
 

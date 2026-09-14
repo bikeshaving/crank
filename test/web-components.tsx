@@ -171,34 +171,6 @@ describe("web-components", () => {
 		).toEqual(true);
 	});
 
-	test("static styles is adopted once per class into the shadow root", () => {
-		class El extends CrankHTMLElement {
-			static shadowDOM = true;
-			static styles = `:host { display: block }`;
-			render() {
-				return <slot />;
-			}
-		}
-
-		const name = tag("x-styled");
-		customElements.define(name, El);
-		const a = document.createElement(name);
-		const b = document.createElement(name);
-		document.body.append(a, b);
-
-		expect(a.shadowRoot!.adoptedStyleSheets.length).toBe(1);
-		// Shared by reference across instances.
-		expect(a.shadowRoot!.adoptedStyleSheets[0]).toBe(
-			b.shadowRoot!.adoptedStyleSheets[0],
-		);
-		expect(
-			a.shadowRoot!.adoptedStyleSheets[0].cssRules[0].cssText.replace(
-				/\s+/g,
-				" ",
-			),
-		).toBe(":host { display: block; }");
-	});
-
 	test("static events generates on<type> that fires on dispatch", () => {
 		class El extends CrankHTMLElement {
 			static events = ["bounce"] as const;
@@ -562,48 +534,6 @@ describe("web-components", () => {
 		expect(el.innerHTML).toBe("<span>off</span>");
 	});
 
-	test("light DOM styles adopt into document, deduped per class", () => {
-		class El extends CrankHTMLElement {
-			static styles = `[data-x-lite] { color: red }`;
-			render() {
-				return <span />;
-			}
-		}
-
-		const name = tag("x-lite");
-		customElements.define(name, El);
-		const before = document.adoptedStyleSheets.length;
-		document.body.append(
-			document.createElement(name),
-			document.createElement(name),
-		);
-
-		// One sheet, despite two instances.
-		expect(document.adoptedStyleSheets.length).toBe(before + 1);
-	});
-
-	test("styles accepts an array and a pre-built CSSStyleSheet", () => {
-		const sheet = new CSSStyleSheet();
-		sheet.replaceSync(":host { color: blue }");
-		class El extends CrankHTMLElement {
-			static shadowDOM = true;
-			static styles = [":host { color: red }", sheet];
-			render() {
-				return <slot />;
-			}
-		}
-
-		const name = tag("x-multi");
-		customElements.define(name, El);
-		const el = document.createElement(name);
-		document.body.appendChild(el);
-
-		const adopted = el.shadowRoot!.adoptedStyleSheets;
-		expect(adopted.length).toBe(2);
-		// The pre-built sheet is used by reference, not re-parsed.
-		expect(adopted[1]).toBe(sheet);
-	});
-
 	test("shadowDOM accepts a ShadowRootInit", () => {
 		class El extends CrankHTMLElement {
 			static shadowDOM = {mode: "open", delegatesFocus: true} as const;
@@ -799,24 +729,6 @@ describe("web-components", () => {
 		expect(el.innerHTML).toBe("<span>V</span>");
 	});
 
-	test("shadow styles take effect (computed style)", () => {
-		class El extends CrankHTMLElement {
-			static shadowDOM = true;
-			static styles = `:host { display: block }`;
-			render() {
-				return <slot />;
-			}
-		}
-
-		const name = tag("x-computed");
-		customElements.define(name, El);
-		const el = document.createElement(name);
-		document.body.appendChild(el);
-
-		// Custom elements are display:inline by default; :host overrides it.
-		expect(getComputedStyle(el).display).toBe("block");
-	});
-
 	test("a property setter reflects to an attribute and re-renders", async () => {
 		class El extends CrankHTMLElement {
 			static observedAttributes = ["color"];
@@ -887,56 +799,6 @@ describe("web-components", () => {
 		customElements.upgrade(el);
 		el.dispatchEvent(new CustomEvent("ping"));
 		expect(received.length).toBe(1);
-	});
-
-	test("shadow stylesheets are not duplicated by a real remove and re-append", async () => {
-		class El extends CrankHTMLElement {
-			static shadowDOM = true;
-			static styles = "span { color: teal; }";
-			render() {
-				return <span>styled</span>;
-			}
-		}
-
-		const name = tag("x-readopt");
-		customElements.define(name, El);
-		const el = document.createElement(name);
-		document.body.appendChild(el);
-		expect(el.shadowRoot!.adoptedStyleSheets.length).toBe(1);
-
-		el.remove();
-		await flush();
-		document.body.appendChild(el);
-		await flush();
-		expect(el.shadowRoot!.adoptedStyleSheets.length).toBe(1);
-	});
-
-	test("a light DOM element inside a shadow root adopts styles into that root", () => {
-		class Inner extends CrankHTMLElement {
-			static styles = "span { color: crimson; }";
-			render() {
-				return <span>inner</span>;
-			}
-		}
-
-		const innerName = tag("x-scoped");
-		customElements.define(innerName, Inner);
-
-		class Outer extends CrankHTMLElement {
-			static shadowDOM = true;
-			render() {
-				return createElement(innerName);
-			}
-		}
-
-		const outerName = tag("x-scope-host");
-		customElements.define(outerName, Outer);
-		const before = document.adoptedStyleSheets.length;
-		const outer = document.createElement(outerName);
-		document.body.appendChild(outer);
-
-		expect(document.adoptedStyleSheets.length).toBe(before);
-		expect(outer.shadowRoot!.adoptedStyleSheets.length).toBe(1);
 	});
 
 	test("a closed declarative shadow root is reused (SSR)", () => {

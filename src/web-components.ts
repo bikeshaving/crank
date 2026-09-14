@@ -13,32 +13,6 @@ import {renderer} from "./dom.js";
  * See https://github.com/bikeshaving/crank/issues/360.
  */
 
-// One CSSStyleSheet (or array) is derived per class, lazily and memoized, so a
-// class with `static styles` parses once and shares by reference.
-const sheetCache = new WeakMap<Function, ReadonlyArray<CSSStyleSheet>>();
-
-function styleSheetsFor(ctor: any): ReadonlyArray<CSSStyleSheet> {
-	let sheets = sheetCache.get(ctor);
-	if (sheets) {
-		return sheets;
-	}
-
-	const styles = ctor.styles;
-	const list: Array<string | CSSStyleSheet> =
-		styles == null ? [] : Array.isArray(styles) ? styles : [styles];
-	sheets = list.map((style) => {
-		if (typeof style === "string") {
-			const sheet = new CSSStyleSheet();
-			sheet.replaceSync(style);
-			return sheet;
-		}
-
-		return style;
-	});
-	sheetCache.set(ctor, sheets);
-	return sheets;
-}
-
 /**
  * Maps an `events` tuple or event map to `on<type>` handler properties. Merge
  * it into a subclass as an interface to type the handlers which its
@@ -143,45 +117,6 @@ function upgradeProperties(el: CrankHTMLElement): void {
 	}
 }
 
-function adoptSheets(
-	scope: Document | ShadowRoot,
-	sheets: ReadonlyArray<CSSStyleSheet>,
-): void {
-	const next = scope.adoptedStyleSheets.slice();
-	let changed = false;
-	for (const sheet of sheets) {
-		if (!next.includes(sheet)) {
-			next.push(sheet);
-			changed = true;
-		}
-	}
-
-	if (changed) {
-		scope.adoptedStyleSheets = next;
-	}
-}
-
-function adoptStyles(el: CrankHTMLElement, state: ElementState): void {
-	if (typeof CSSStyleSheet === "undefined") {
-		return;
-	}
-
-	const sheets = styleSheetsFor(el.constructor);
-	if (!sheets.length) {
-		return;
-	}
-
-	// A light-DOM element adopts into its containing style scope — the nearest
-	// shadow root, or the document — because document sheets do not cascade
-	// into shadow trees. Adoption is deduped per sheet, so reconnects and
-	// multiple instances are idempotent within a scope.
-	const scope =
-		state.root === el
-			? (el.getRootNode() as Document | ShadowRoot)
-			: (state.root as ShadowRoot);
-	adoptSheets(scope, sheets);
-}
-
 function updateElement(el: CrankHTMLElement, state: ElementState): void {
 	let result: unknown;
 	try {
@@ -270,12 +205,6 @@ export class CrankHTMLElement extends HTMLElement {
 	static formAssociated?: boolean;
 	/** `false`/omitted: light DOM. `true`/`ShadowRootInit`: shadow DOM. */
 	static shadowDOM?: boolean | ShadowRootInit;
-	/** CSS, applied once per class via `adoptedStyleSheets`. */
-	static styles?:
-		| string
-		| CSSStyleSheet
-		| ReadonlyArray<string | CSSStyleSheet>;
-
 	declare [_ElementState]: ElementState;
 
 	constructor() {
@@ -342,7 +271,6 @@ export class CrankHTMLElement extends HTMLElement {
 		state.mounted = true;
 		state.dirty = false;
 		upgradeProperties(this);
-		adoptStyles(this, state);
 		if (state.root === this) {
 			// Light DOM: render owns the element's children, so drop any authored
 			// content before the first render claims the subtree.

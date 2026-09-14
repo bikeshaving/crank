@@ -39,7 +39,7 @@ The element works in any page or framework — the consumer never knows Crank is
 
 ## When to use web components
 
-Inside a Crank application, a plain component is simpler: props flow in, no registry, no upgrade timing. A custom element earns its ceremony in two situations:
+Within a Crank application, prefer plain components. Define a custom element when:
 
 1. **Framework-agnostic wrappers.** Publishing a component for consumers outside Crank — React, Vue, plain HTML, a CMS — as a tag that works anywhere.
 2. **Imperative methods.** A component whose consumers need to call methods — `play()`/`pause()`, `show()`, `focus()` — wants to be an element: methods live on the instance like a built-in's, reachable through a ref from any framework.
@@ -54,7 +54,6 @@ Configuration is static fields; behavior is methods and accessors. No constructo
 | `observedAttributes` | `string[]` | Attributes that trigger a re-render. Read by the platform. |
 | `events` | `readonly string[]` | Emitted event types; generates `on<type>` handler properties. |
 | `shadowDOM` | `boolean` or `ShadowRootInit` | Omitted/`false`: light DOM (the default). `true`: an open shadow root. An object: that exact `attachShadow` configuration. |
-| `styles` | `string`, `CSSStyleSheet`, or an array | CSS, adopted once per class via `adoptedStyleSheets`. |
 | `formAssociated` | `boolean` | Opts into form association. Read by the platform. |
 
 Light DOM is the default; opt into shadow DOM for encapsulation or slots.
@@ -129,22 +128,32 @@ class XMarqueeElement extends CrankHTMLElement {
 
 ## Styling
 
-`static styles` takes a string, a constructed `CSSStyleSheet`, or an array mixing the two. Sheets are created once per class and adopted into the element's style scope — the shadow root when there is one, or the containing document or shadow root for light-DOM elements.
+Styles are rendered. A shadow-DOM component includes a `<style>` element in its output, and shadow encapsulation scopes it to the element:
 
 ```jsx
 class XMarqueeElement extends CrankHTMLElement {
   static shadowDOM = true;
-  static styles = `
-    .track {
-      display: inline-block;
-      white-space: nowrap;
-      animation: scroll linear infinite;
-    }
-  `;
+
+  render() {
+    return (
+      <>
+        <style>{`
+          .track {
+            display: inline-block;
+            white-space: nowrap;
+            animation: scroll linear infinite;
+          }
+        `}</style>
+        <div class="track">
+          <slot />
+        </div>
+      </>
+    );
+  }
 }
 ```
 
-Light-DOM styles are not encapsulated, so scope them by leading selectors with the tag name.
+Light-DOM elements have no style encapsulation; use ordinary page CSS, scoped by the tag name.
 
 ## Lifecycle
 
