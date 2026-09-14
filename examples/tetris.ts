@@ -2,6 +2,7 @@ import {jsx, renderer} from "@b9g/crank/standalone";
 
 // tetronimo shapes represented as 2d arrays
 type Tet = number[][];
+// esfold-ignore
 const tets: Record<string, Tet> = {
   I: [
     [0, 0, 0, 0],
@@ -94,7 +95,7 @@ function canFit(piece: Piece, field: Field): boolean {
   return true;
 }
 
-function squaresOf(piece: Piece): [x: number, y: number][] {
+function squaresOf(piece: Piece): Array<[x: number, y: number]> {
   const squares = [];
   for (let r = 0; r < piece.tet.length; r++) {
     const row = piece.tet[r];
@@ -111,11 +112,7 @@ function squaresOf(piece: Piece): [x: number, y: number][] {
 
 function createPiece(): Piece {
   // TODO: piece sequences
-  return {
-    tet: randomTet(),
-    x: 3,
-    y: 0,
-  };
+  return {tet: randomTet(), x: 3, y: 0};
 }
 
 function placePiece(piece: Piece, field: Field) {
@@ -149,36 +146,30 @@ function Piece({piece}) {
   // TODO: colored pieces
   return jsx`
     <g fill="red">
-      ${squaresOf(piece).map(
-        ([c, r]) => jsx`
+      ${squaresOf(piece).map(([c, r]) => jsx`
         <rect
           width=${UNIT}
           height=${UNIT}
           transform="translate(${c * UNIT}, ${r * UNIT})"
         />
-      `,
-      )}
+      `)}
     </g>
   `;
 }
 
 function Board({field}) {
-  return field.map((row, r) =>
-    row.map(
-      (data, c) => jsx`
-      <rect
-        width=${UNIT}
-        height=${UNIT}
-        fill=${data && "blue"}
-        x=${c * UNIT}
-        y=${r * UNIT}
-      />
-    `,
-    ),
-  );
+  return field.map((row, r) => row.map((data, c) => jsx`
+    <rect
+      width=${UNIT}
+      height=${UNIT}
+      fill=${data && "blue"}
+      x=${c * UNIT}
+      y=${r * UNIT}
+    />
+  `));
 }
 
-function* App() {
+function *App() {
   let currentPiece = createPiece();
   const field = Array.from(Array(HEIGHT), () =>
     Array.from(Array(WIDTH), () => false),

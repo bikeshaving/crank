@@ -14,7 +14,7 @@ let loopId = 0;
  * Custom astring generator that handles TypeScript AST nodes.
  * TypeScript-specific nodes are either skipped or have their JS parts extracted.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const tsGenerator: any = {
 	...baseGenerator,
 
@@ -66,36 +66,36 @@ const tsGenerator: any = {
 	TSModuleBlock() {},
 
 	// === Assertions and Casts (output the expression only) ===
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	TSAsExpression(node: any, state: any) {
 		this[node.expression.type](node.expression, state);
 	},
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	TSTypeAssertion(node: any, state: any) {
 		this[node.expression.type](node.expression, state);
 	},
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	TSSatisfiesExpression(node: any, state: any) {
 		this[node.expression.type](node.expression, state);
 	},
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	TSNonNullExpression(node: any, state: any) {
 		this[node.expression.type](node.expression, state);
 	},
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	TSInstantiationExpression(node: any, state: any) {
 		this[node.expression.type](node.expression, state);
 	},
 
 	// === Parameter Properties ===
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	TSParameterProperty(node: any, state: any) {
 		this[node.parameter.type](node.parameter, state);
 	},
 
 	// === Other TS-specific nodes ===
 	TSExternalModuleReference() {},
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	TSQualifiedName(node: any, state: any) {
 		this[node.left.type](node.left, state);
 		state.write(".");
@@ -108,7 +108,7 @@ const tsGenerator: any = {
 	TSIndexSignature() {},
 
 	// === Override nodes with optional type annotations ===
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	Literal(node: any, state: any) {
 		if (typeof node.value === "string") {
 			state.write(JSON.stringify(node.value));
@@ -121,12 +121,10 @@ const tsGenerator: any = {
 		}
 	},
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	Identifier(node: any, state: any) {
 		state.write(node.name);
 	},
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	FunctionDeclaration(node: any, state: any) {
 		if (node.async) state.write("async ");
 		state.write("function");
@@ -138,7 +136,6 @@ const tsGenerator: any = {
 		formatFunction(node, state, this);
 	},
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	FunctionExpression(node: any, state: any) {
 		if (node.async) state.write("async ");
 		state.write("function");
@@ -150,7 +147,6 @@ const tsGenerator: any = {
 		formatFunction(node, state, this);
 	},
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	ArrowFunctionExpression(node: any, state: any) {
 		if (node.async) state.write("async ");
 		const params = node.params;
@@ -179,7 +175,6 @@ const tsGenerator: any = {
 		}
 	},
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	VariableDeclarator(node: any, state: any) {
 		if (node.id.type === "Identifier") {
 			state.write(node.id.name);
@@ -192,7 +187,6 @@ const tsGenerator: any = {
 		}
 	},
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	ClassDeclaration(node: any, state: any) {
 		state.write("class");
 		if (node.id) {
@@ -207,7 +201,6 @@ const tsGenerator: any = {
 		this.ClassBody(node.body, state);
 	},
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	ClassExpression(node: any, state: any) {
 		state.write("class");
 		if (node.id) {
@@ -222,7 +215,6 @@ const tsGenerator: any = {
 		this.ClassBody(node.body, state);
 	},
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	MethodDefinition(node: any, state: any) {
 		if (node.static) state.write("static ");
 		if (node.kind === "get") state.write("get ");
@@ -239,7 +231,6 @@ const tsGenerator: any = {
 		formatFunction(node.value, state, this);
 	},
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	PropertyDefinition(node: any, state: any) {
 		if (node.static) state.write("static ");
 		if (node.computed) {
@@ -256,21 +247,20 @@ const tsGenerator: any = {
 		state.write(";");
 	},
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	ImportDeclaration(node: any, state: any) {
 		if (node.importKind === "type") return;
 		state.write("import ");
 		const specifiers = node.specifiers;
 		const defaultSpecifier = specifiers.find(
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 			(s: any) => s.type === "ImportDefaultSpecifier",
 		);
 		const namespaceSpecifier = specifiers.find(
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 			(s: any) => s.type === "ImportNamespaceSpecifier",
 		);
 		const namedSpecifiers = specifiers.filter(
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 			(s: any) => s.type === "ImportSpecifier" && s.importKind !== "type",
 		);
 
@@ -300,7 +290,6 @@ const tsGenerator: any = {
 		state.write(";");
 	},
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	ExportNamedDeclaration(node: any, state: any) {
 		if (node.exportKind === "type") return;
 		state.write("export ");
@@ -308,9 +297,9 @@ const tsGenerator: any = {
 			this[node.declaration.type](node.declaration, state);
 		} else {
 			state.write("{ ");
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 			const specifiers = node.specifiers.filter(
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 				(s: any) => s.exportKind !== "type",
 			);
 			for (let i = 0; i < specifiers.length; i++) {
@@ -331,7 +320,6 @@ const tsGenerator: any = {
 		}
 	},
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	ExportDefaultDeclaration(node: any, state: any) {
 		state.write("export default ");
 		this[node.declaration.type](node.declaration, state);
@@ -343,7 +331,6 @@ const tsGenerator: any = {
 		}
 	},
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	ExportAllDeclaration(node: any, state: any) {
 		if (node.exportKind === "type") return;
 		state.write("export * ");
@@ -358,8 +345,7 @@ const tsGenerator: any = {
 	},
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function formatParam(param: any, state: any, generator: any) {
+function formatParam(param: any, state: any, generator: any): void {
 	switch (param.type) {
 		case "Identifier":
 			state.write(param.name);
@@ -385,12 +371,11 @@ function formatParam(param: any, state: any, generator: any) {
 	}
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function formatFunction(node: any, state: any, generator: any) {
+function formatFunction(node: any, state: any, generator: any): void {
 	state.write("(");
 	// Filter out TypeScript `this` parameter (e.g., `this: Context`)
 	const params = node.params.filter(
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 		(p: any) => !(p.type === "Identifier" && p.name === "this"),
 	);
 	for (let i = 0; i < params.length; i++) {
@@ -412,10 +397,7 @@ function parseJSXPragma(code: string): {
 } {
 	const importSourceMatch = code.match(/@jsxImportSource\s+(\S+)/);
 	if (importSourceMatch) {
-		return {
-			jsxRuntime: "automatic",
-			jsxImportSource: importSourceMatch[1],
-		};
+		return {jsxRuntime: "automatic", jsxImportSource: importSourceMatch[1]};
 	}
 
 	const jsxMatch = code.match(/@jsx\s+(\S+)/);
@@ -428,10 +410,7 @@ function parseJSXPragma(code: string): {
 		};
 	}
 
-	return {
-		jsxRuntime: "automatic",
-		jsxImportSource: "@b9g/crank",
-	};
+	return {jsxRuntime: "automatic", jsxImportSource: "@b9g/crank"};
 }
 
 /**
@@ -442,10 +421,8 @@ function parseJSXPragma(code: string): {
  */
 const MAX_ITERATIONS = Math.pow(2, 20); // ~1 million iterations
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function injectLoopGuards(ast: any): void {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	function walk(node: any) {
+	function walk(node: any): void {
 		if (!node || typeof node !== "object") return;
 
 		// Only guard while, do-while, and for loops (not for-in/for-of)
@@ -475,10 +452,7 @@ function injectLoopGuards(ast: any): void {
 						type: "NewExpression",
 						callee: {type: "Identifier", name: "RangeError"},
 						arguments: [
-							{
-								type: "Literal",
-								value: "Potential infinite loop detected",
-							},
+							{type: "Literal", value: "Potential infinite loop detected"},
 						],
 					},
 				} as ESTree.ThrowStatement,
@@ -486,10 +460,7 @@ function injectLoopGuards(ast: any): void {
 			};
 
 			if (node.body.type !== "BlockStatement") {
-				node.body = {
-					type: "BlockStatement",
-					body: [node.body],
-				};
+				node.body = {type: "BlockStatement", body: [node.body]};
 			}
 
 			node.body.body.unshift(guardCheck);
@@ -497,8 +468,9 @@ function injectLoopGuards(ast: any): void {
 		}
 
 		for (const key in node) {
-			if (key === "type" || key === "loc" || key === "start" || key === "end")
+			if (key === "type" || key === "loc" || key === "start" || key === "end") {
 				continue;
+			}
 			const child = node[key];
 			if (Array.isArray(child)) {
 				child.forEach((c) => walk(c));
@@ -511,8 +483,8 @@ function injectLoopGuards(ast: any): void {
 	walk(ast);
 
 	// Second pass: insert loop counter declarations
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	function wrapLoops(node: any) {
+
+	function wrapLoops(node: any): void {
 		if (!node || typeof node !== "object") return;
 
 		if (node.__loopGuardId !== undefined) {
@@ -536,8 +508,9 @@ function injectLoopGuards(ast: any): void {
 		}
 
 		for (const key in node) {
-			if (key === "type" || key === "loc" || key === "start" || key === "end")
+			if (key === "type" || key === "loc" || key === "start" || key === "end") {
 				continue;
+			}
 			const child = node[key];
 			if (Array.isArray(child)) {
 				for (let i = child.length - 1; i >= 0; i--) {
@@ -560,19 +533,17 @@ function injectLoopGuards(ast: any): void {
 /**
  * Transform JSX elements to function calls.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 function transformJSX(
 	ast: any,
 	pragma: ReturnType<typeof parseJSXPragma>,
 ): void {
 	function walk(
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		node: any,
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		parent: any = null,
 		parentKey: string | null = null,
 		parentIndex: number | null = null,
-	) {
+	): void {
 		if (!node || typeof node !== "object") return;
 
 		if (node.type === "JSXElement") {
@@ -602,8 +573,9 @@ function transformJSX(
 		}
 
 		for (const key in node) {
-			if (key === "type" || key === "loc" || key === "start" || key === "end")
+			if (key === "type" || key === "loc" || key === "start" || key === "end") {
 				continue;
+			}
 			const child = node[key];
 			if (Array.isArray(child)) {
 				for (let i = 0; i < child.length; i++) {
@@ -619,7 +591,7 @@ function transformJSX(
 }
 
 function transformJSXElement(
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	node: any,
 	pragma: ReturnType<typeof parseJSXPragma>,
 ): ESTree.CallExpression {
@@ -630,8 +602,7 @@ function transformJSXElement(
 	if (tagName.type === "JSXIdentifier") {
 		const name = tagName.name;
 		if (
-			name[0] === name[0].toLowerCase() &&
-			name[0] !== name[0].toUpperCase()
+			name[0] === name[0].toLowerCase() && name[0] !== name[0].toUpperCase()
 		) {
 			tag = {type: "Literal", value: name};
 		} else {
@@ -643,9 +614,8 @@ function transformJSXElement(
 		tag = {type: "Identifier", name: tagName.name};
 	}
 
-	const {props, propsWithKey, keyExpr} = transformJSXAttributes(
-		openingElement.attributes,
-	);
+	const {props, propsWithKey, keyExpr} =
+		transformJSXAttributes(openingElement.attributes);
 	const children = transformJSXChildren(node.children, pragma);
 
 	if (pragma.jsxRuntime === "automatic") {
@@ -656,19 +626,18 @@ function transformJSXElement(
 				...props.properties,
 				...(children.length > 0
 					? [
-							{
-								type: "Property",
-								key: {type: "Identifier", name: "children"},
-								value:
-									children.length === 1
-										? children[0]
-										: {type: "ArrayExpression", elements: children},
-								kind: "init",
-								method: false,
-								shorthand: false,
-								computed: false,
-							} as ESTree.Property,
-						]
+						{
+							type: "Property",
+							key: {type: "Identifier", name: "children"},
+							value: children.length === 1
+								? children[0]
+								: {type: "ArrayExpression", elements: children},
+							kind: "init",
+							method: false,
+							shorthand: false,
+							computed: false,
+						} as ESTree.Property,
+					]
 					: []),
 			],
 		};
@@ -713,7 +682,7 @@ function transformJSXElement(
 }
 
 function transformJSXFragment(
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	node: any,
 	pragma: ReturnType<typeof parseJSXPragma>,
 ): ESTree.CallExpression {
@@ -723,23 +692,21 @@ function transformJSXFragment(
 		const jsxFunc = children.length > 1 ? "jsxs" : "jsx";
 		const propsWithChildren: ESTree.ObjectExpression = {
 			type: "ObjectExpression",
-			properties:
-				children.length > 0
-					? [
-							{
-								type: "Property",
-								key: {type: "Identifier", name: "children"},
-								value:
-									children.length === 1
-										? children[0]
-										: {type: "ArrayExpression", elements: children},
-								kind: "init",
-								method: false,
-								shorthand: false,
-								computed: false,
-							} as ESTree.Property,
-						]
-					: [],
+			properties: children.length > 0
+				? [
+					{
+						type: "Property",
+						key: {type: "Identifier", name: "children"},
+						value: children.length === 1
+							? children[0]
+							: {type: "ArrayExpression", elements: children},
+						kind: "init",
+						method: false,
+						shorthand: false,
+						computed: false,
+					} as ESTree.Property,
+				]
+				: [],
 		};
 
 		return {
@@ -783,7 +750,6 @@ function transformJSXFragment(
 	}
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function transformJSXMemberExpression(node: any): ESTree.MemberExpression {
 	let object: ESTree.Expression;
 	if (node.object.type === "JSXMemberExpression") {
@@ -801,7 +767,6 @@ function transformJSXMemberExpression(node: any): ESTree.MemberExpression {
 	};
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function transformJSXAttributes(attributes: any[]): {
 	props: ESTree.ObjectExpression;
 	propsWithKey: ESTree.ObjectExpression;
@@ -816,13 +781,14 @@ function transformJSXAttributes(attributes: any[]): {
 			const spreadElement = {
 				type: "SpreadElement",
 				argument: attr.argument,
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 			} as any;
 			properties.push(spreadElement);
 			propertiesWithKey.push(spreadElement);
 		} else if (attr.type === "JSXAttribute") {
-			const name =
-				attr.name.type === "JSXIdentifier" ? attr.name.name : attr.name.name;
+			const name = attr.name.type === "JSXIdentifier"
+				? attr.name.name
+				: attr.name.name;
 			let value: ESTree.Expression;
 
 			if (attr.value === null) {
@@ -858,20 +824,14 @@ function transformJSXAttributes(attributes: any[]): {
 	}
 
 	return {
-		props: {
-			type: "ObjectExpression",
-			properties,
-		},
-		propsWithKey: {
-			type: "ObjectExpression",
-			properties: propertiesWithKey,
-		},
+		props: {type: "ObjectExpression", properties},
+		propsWithKey: {type: "ObjectExpression", properties: propertiesWithKey},
 		keyExpr,
 	};
 }
 
 function transformJSXChildren(
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	children: any[],
 	pragma: ReturnType<typeof parseJSXPragma>,
 ): ESTree.Expression[] {
@@ -903,11 +863,13 @@ function transformJSXChildren(
 		} else if (child.type === "JSXFragment") {
 			result.push(transformJSXFragment(child, pragma));
 		} else if (child.type === "JSXSpreadChild") {
-			result.push({
-				type: "SpreadElement",
-				argument: child.expression,
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			} as any);
+			result.push(
+				{
+					type: "SpreadElement",
+					argument: child.expression,
+
+				} as any,
+			);
 		}
 	}
 
@@ -932,9 +894,9 @@ function createMemberExpression(path: string): ESTree.MemberExpression {
 /**
  * Add JSX runtime import for automatic mode.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 function addJSXRuntimeImport(
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	ast: any,
 	pragma: ReturnType<typeof parseJSXPragma>,
 ): void {
@@ -958,7 +920,7 @@ function addJSXRuntimeImport(
  * Rewrite bare module specifiers to use unpkg CDN.
  * Bare specifiers are those that don't start with '.', '/', or 'http'.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 function rewriteBareModuleSpecifiers(ast: any): void {
 	function isBareSpecifier(value: string): boolean {
 		return (
@@ -981,28 +943,26 @@ function rewriteBareModuleSpecifiers(ast: any): void {
 		return "https://cdn.jsdelivr.net/npm/" + value + "/+esm";
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	function walk(node: any) {
+	function walk(node: any): void {
 		if (!node || typeof node !== "object") return;
 
 		if (node.type === "ImportDeclaration" && node.source) {
 			node.source.value = rewrite(node.source.value);
 		} else if (
 			(node.type === "ExportNamedDeclaration" ||
-				node.type === "ExportAllDeclaration") &&
-			node.source
+				node.type === "ExportAllDeclaration") && node.source
 		) {
 			node.source.value = rewrite(node.source.value);
 		} else if (
-			node.type === "ImportExpression" &&
-			node.source?.type === "Literal"
+			node.type === "ImportExpression" && node.source?.type === "Literal"
 		) {
 			node.source.value = rewrite(node.source.value);
 		}
 
 		for (const key in node) {
-			if (key === "type" || key === "loc" || key === "start" || key === "end")
+			if (key === "type" || key === "loc" || key === "start" || key === "end") {
 				continue;
+			}
 			const child = node[key];
 			if (Array.isArray(child)) {
 				child.forEach((c) => walk(c));

@@ -82,10 +82,7 @@ describe("prop-destructuring-consistency", () => {
             }
           `,
 						errors: [
-							{
-								messageId: "extractPropsFromContext",
-								data: {propName: "count"},
-							},
+							{messageId: "extractPropsFromContext", data: {propName: "count"}},
 						],
 					},
 					// Missing multiple props
@@ -105,14 +102,8 @@ describe("prop-destructuring-consistency", () => {
             }
           `,
 						errors: [
-							{
-								messageId: "extractPropsFromContext",
-								data: {propName: "bar"},
-							},
-							{
-								messageId: "extractPropsFromContext",
-								data: {propName: "baz"},
-							},
+							{messageId: "extractPropsFromContext", data: {propName: "bar"}},
+							{messageId: "extractPropsFromContext", data: {propName: "baz"}},
 						],
 					},
 					// Empty destructuring with accessed props
@@ -155,14 +146,8 @@ describe("prop-destructuring-consistency", () => {
             }
           `,
 						errors: [
-							{
-								messageId: "extractPropsFromContext",
-								data: {propName: "title"},
-							},
-							{
-								messageId: "extractPropsFromContext",
-								data: {propName: "count"},
-							},
+							{messageId: "extractPropsFromContext", data: {propName: "title"}},
+							{messageId: "extractPropsFromContext", data: {propName: "count"}},
 						],
 					},
 					// Partial destructuring with context parameter
@@ -182,10 +167,7 @@ describe("prop-destructuring-consistency", () => {
             }
           `,
 						errors: [
-							{
-								messageId: "extractPropsFromContext",
-								data: {propName: "bar"},
-							},
+							{messageId: "extractPropsFromContext", data: {propName: "bar"}},
 						],
 					},
 				],

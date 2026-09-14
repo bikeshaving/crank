@@ -1,9 +1,9 @@
-import {Rule} from "eslint";
+import type {Rule} from "eslint";
 import {
 	createFunctionTracker,
 	createGeneratorTrackingVisitors,
 } from "../utils/function-tracker.js";
-import {ESLintNode} from "../utils/types.js";
+import type {ESLintNode} from "../utils/types.js";
 import {
 	isTimerCall,
 	getClearFunctionForTimer,
@@ -289,7 +289,7 @@ export const requireCleanupForTimers: Rule.RuleModule = {
 			},
 		};
 
-		function checkFunctionForTimerCleanup(node: ESLintNode) {
+		function checkFunctionForTimerCleanup(node: ESLintNode): void {
 			// Only check generator functions
 			if (!node.generator) return;
 
@@ -314,9 +314,7 @@ export const requireCleanupForTimers: Rule.RuleModule = {
 						context.report({
 							node: timer.node,
 							messageId: "missingCleanup",
-							data: {
-								timerType: timer.type,
-							},
+							data: {timerType: timer.type},
 						});
 					}
 				}

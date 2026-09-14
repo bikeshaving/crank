@@ -21,10 +21,7 @@ export function createJSXAttributeMapper(
 		context.report({
 			node: node.name,
 			messageId,
-			data: {
-				[dataKeys.from]: propName,
-				[dataKeys.to]: mappedName,
-			},
+			data: {[dataKeys.from]: propName, [dataKeys.to]: mappedName},
 			fix: (fixer) => fixer.replaceText(node.name, mappedName),
 		});
 	};
@@ -80,10 +77,7 @@ export function createConditionalJSXAttributeMapper(
 		context.report({
 			node: node.name,
 			messageId,
-			data: {
-				[dataKeys.from]: propName,
-				[dataKeys.to]: mappedName,
-			},
+			data: {[dataKeys.from]: propName, [dataKeys.to]: mappedName},
 			fix: (fixer) => fixer.replaceText(node.name, mappedName),
 		});
 	};

@@ -41,7 +41,7 @@ const examples = extractData(
 	document.getElementById("examples") as HTMLScriptElement,
 );
 
-function* Playground(this: Context) {
+function *Playground(this: Context) {
 	// Priority: URL hash > localStorage > default example
 	let code = "";
 	let updateEditor = true;
@@ -49,7 +49,7 @@ function* Playground(this: Context) {
 	if (hash) {
 		try {
 			code = LZString.decompressFromEncodedURIComponent(hash) || "";
-		} catch {
+		} catch (err) {
 			// Invalid hash, ignore
 		}
 	}
@@ -79,7 +79,9 @@ function* Playground(this: Context) {
 	let exampleName = "";
 	const onexamplechange = (ev: Event) => {
 		exampleName = (ev.target as HTMLSelectElement).value;
-		if (!exampleName) return; // "Load an example..." selected
+		if (!exampleName) {
+			return;
+		} // "Load an example..." selected
 		const example = examples.find(
 			(example: any) => example.name === exampleName,
 		);
@@ -99,7 +101,7 @@ function* Playground(this: Context) {
 		try {
 			await navigator.clipboard.writeText(url);
 			status = "Copied!";
-		} catch {
+		} catch (err) {
 			status = "Failed";
 		}
 		this.refresh(() => {
@@ -197,11 +199,9 @@ function* Playground(this: Context) {
 								onchange=${onexamplechange}
 							>
 								<option value="">Load an example...</option>
-								${examples.map(
-									({name, label}: any) => jsx`
+								${examples.map(({name, label}: any) => jsx`
 									<option value=${name} key=${name}>${label}</option>
-								`,
-								)}
+								`)}
 							</select>
 						</div>
 						<button

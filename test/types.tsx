@@ -1,28 +1,25 @@
 import {test} from "@b9g/libuild/test";
 /* eslint @typescript-eslint/no-unused-vars: "off" */
-import {Component, Context, createElement} from "../src/crank.js";
+import type {Component, Context} from "../src/crank.js";
+import {createElement} from "../src/crank.js";
 
 declare global {
 	module JSX {
 		interface IntrinsicElements {
-			myIntrinsic: {
-				message: string;
-			};
+			myIntrinsic: {message: string};
 		}
 	}
 }
 
-type MyProps = {
-	message: string;
-};
+type MyProps = {message: string};
 
 let elem: any;
 test("createElement", () => {
 	const MyFunctionComponent: Component<MyProps> = function (this, props) {
 		const ctx: Context<MyProps> = this;
-		let message: string = props.message;
+		const message: string = props.message;
 		// @ts-expect-error
-		let unexpected = props.unexpected;
+		const unexpected = props.unexpected;
 
 		return <div></div>;
 	};
@@ -91,9 +88,9 @@ test("not components", () => {
 test("Component", () => {
 	const MyFunctionComponent: Component<MyProps> = function (this, props) {
 		const ctx: Context<MyProps> = this;
-		let message: string = props.message;
+		const message: string = props.message;
 		// @ts-expect-error
-		let unexpected = props.unexpected;
+		const unexpected = props.unexpected;
 
 		return <div></div>;
 	};
@@ -106,9 +103,9 @@ test("Component", () => {
 		props,
 	) {
 		const ctx: Context<MyProps> = this;
-		let message: string = props.message;
+		const message: string = props.message;
 		// @ts-expect-error
-		let unexpected = props.unexpected;
+		const unexpected = props.unexpected;
 
 		return <div></div>;
 	};
@@ -116,19 +113,19 @@ test("Component", () => {
 	elem = <MyAsyncFunctionComponent />;
 	elem = <MyAsyncFunctionComponent message={"message"} />;
 
-	const MyGeneratorComponent: Component<MyProps> = function* (
+	const MyGeneratorComponent: Component<MyProps> = function *(
 		this,
 		initialProps,
 	) {
 		const ctx: Context<MyProps> = this;
-		let message: string = initialProps.message;
+		const message: string = initialProps.message;
 		// @ts-expect-error
-		let unexpected = initialProps.unexpected;
+		const unexpected = initialProps.unexpected;
 
 		for (const newProps of this) {
-			let newMessage: string = initialProps.message;
+			const newMessage: string = initialProps.message;
 			// @ts-expect-error
-			let newUnexpected = newProps.unexpected;
+			const newUnexpected = newProps.unexpected;
 			yield <div></div>;
 		}
 
@@ -138,19 +135,19 @@ test("Component", () => {
 	elem = <MyGeneratorComponent />;
 	elem = <MyGeneratorComponent message={"message"} />;
 
-	const MyAsyncGeneratorComponent: Component<MyProps> = async function* (
+	const MyAsyncGeneratorComponent: Component<MyProps> = async function *(
 		this,
 		initialProps,
 	) {
 		const ctx: Context<MyProps> = this;
-		let message: string = initialProps.message;
+		const message: string = initialProps.message;
 		// @ts-expect-error
-		let unexpected = initialProps.unexpected;
+		const unexpected = initialProps.unexpected;
 
 		for await (const newProps of this) {
-			let newMessage: string = initialProps.message;
+			const newMessage: string = initialProps.message;
 			// @ts-expect-error
-			let newUnexpected = newProps.unexpected;
+			const newUnexpected = newProps.unexpected;
 			yield <div></div>;
 		}
 
@@ -164,9 +161,9 @@ test("Component", () => {
 test("FunctionComponent", () => {
 	const MyFunctionComponent: Component<MyProps> = function (this, props) {
 		const ctx: Context<MyProps> = this;
-		let message: string = props.message;
+		const message: string = props.message;
 		// @ts-expect-error
-		let unexpected = props.unexpected;
+		const unexpected = props.unexpected;
 
 		return <div></div>;
 	};
@@ -179,9 +176,9 @@ test("FunctionComponent", () => {
 		props,
 	) {
 		const ctx: Context<MyProps> = this;
-		let message: string = props.message;
+		const message: string = props.message;
 		// @ts-expect-error
-		let unexpected = props.unexpected;
+		const unexpected = props.unexpected;
 
 		return <div></div>;
 	};
@@ -189,7 +186,7 @@ test("FunctionComponent", () => {
 	elem = <MyAsyncFunctionComponent />;
 	elem = <MyAsyncFunctionComponent message={"message"} />;
 
-	const MyAsyncGeneratorComponent: Component<MyProps> = async function* (
+	const MyAsyncGeneratorComponent: Component<MyProps> = async function *(
 		this,
 		props,
 	) {
@@ -198,19 +195,19 @@ test("FunctionComponent", () => {
 });
 
 test("GeneratorComponent", () => {
-	const MyGeneratorComponent: Component<MyProps> = function* (
+	const MyGeneratorComponent: Component<MyProps> = function *(
 		this,
 		initialProps,
 	) {
 		const ctx: Context<MyProps> = this;
-		let message: string = initialProps.message;
+		const message: string = initialProps.message;
 		// @ts-expect-error
-		let unexpected = initialProps.unexpected;
+		const unexpected = initialProps.unexpected;
 
 		for (const newProps of this) {
-			let newMessage: string = initialProps.message;
+			const newMessage: string = initialProps.message;
 			// @ts-expect-error
-			let newUnexpected = newProps.unexpected;
+			const newUnexpected = newProps.unexpected;
 			yield <div></div>;
 		}
 
@@ -220,19 +217,19 @@ test("GeneratorComponent", () => {
 	elem = <MyGeneratorComponent />;
 	elem = <MyGeneratorComponent message={"message"} />;
 
-	const MyAsyncGeneratorComponent: Component<MyProps> = async function* (
+	const MyAsyncGeneratorComponent: Component<MyProps> = async function *(
 		this,
 		initialProps,
 	) {
 		const ctx: Context<MyProps> = this;
-		let message: string = initialProps.message;
+		const message: string = initialProps.message;
 		// @ts-expect-error
-		let unexpected = initialProps.unexpected;
+		const unexpected = initialProps.unexpected;
 
 		for await (const newProps of this) {
-			let newMessage: string = initialProps.message;
+			const newMessage: string = initialProps.message;
 			// @ts-expect-error
-			let newUnexpected = newProps.unexpected;
+			const newUnexpected = newProps.unexpected;
 			yield <div></div>;
 		}
 
@@ -244,29 +241,29 @@ test("GeneratorComponent", () => {
 });
 
 test("Props inference", () => {
-	function* MyComponent(
+	function *MyComponent(
 		this: Context<typeof MyComponent>,
 		props: {message: string},
 	): unknown {
 		for (const props1 of this) {
 			// @ts-expect-error
-			props1.poop;
+			void props1.poop;
 			yield props1.message;
 		}
 	}
 
-	async function* MyAsyncComponent(
+	async function *MyAsyncComponent(
 		this: Context<typeof MyAsyncComponent>,
 		props: {message: string},
 	): unknown {
 		for await (const props1 of this) {
 			// @ts-expect-error
-			props1.poop;
+			void props1.poop;
 			yield props1.message;
 		}
 	}
 
-	function* FunctionWithNoParameters(
+	function *FunctionWithNoParameters(
 		this: Context<typeof FunctionWithNoParameters>,
 	): unknown {
 		for ({} of this) {
@@ -284,9 +281,9 @@ test("Props inference", () => {
 
 test("loose typings", () => {
 	function MyFunctionComponent(props: MyProps) {
-		let message: string = props.message;
+		const message: string = props.message;
 		// @ts-expect-error
-		let unexpected = props.unexpected;
+		const unexpected = props.unexpected;
 
 		return <div></div>;
 	}
@@ -296,9 +293,9 @@ test("loose typings", () => {
 	elem = <MyFunctionComponent message={"message"} />;
 
 	async function MyAsyncFunctionComponent(props: MyProps) {
-		let message: string = props.message;
+		const message: string = props.message;
 		// @ts-expect-error
-		let unexpected = props.unexpected;
+		const unexpected = props.unexpected;
 
 		return <div></div>;
 	}
@@ -307,15 +304,15 @@ test("loose typings", () => {
 	elem = <MyAsyncFunctionComponent />;
 	elem = <MyAsyncFunctionComponent message={"message"} />;
 
-	function* MyGeneratorComponent(this: Context, props: MyProps) {
-		let message: string = props.message;
+	function *MyGeneratorComponent(this: Context, props: MyProps) {
+		const message: string = props.message;
 		// @ts-expect-error
-		let unexpected = props.unexpected;
+		const unexpected = props.unexpected;
 
 		for (props of this) {
-			let newMessage: string = props.message;
+			const newMessage: string = props.message;
 			// @ts-expect-error
-			let newUnexpected = props.unexpected;
+			const newUnexpected = props.unexpected;
 			yield <div></div>;
 		}
 
@@ -326,15 +323,15 @@ test("loose typings", () => {
 	elem = <MyGeneratorComponent />;
 	elem = <MyGeneratorComponent message={"message"} />;
 
-	async function* MyAsyncGeneratorComponent(this: Context, props: MyProps) {
-		let message: string = props.message;
+	async function *MyAsyncGeneratorComponent(this: Context, props: MyProps) {
+		const message: string = props.message;
 		// @ts-expect-error
-		let unexpected = props.unexpected;
+		const unexpected = props.unexpected;
 
 		for await (props of this) {
-			let newMessage: string = props.message;
+			const newMessage: string = props.message;
 			// @ts-expect-error
-			let newUnexpected = props.unexpected;
+			const newUnexpected = props.unexpected;
 			yield <div></div>;
 		}
 

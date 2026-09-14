@@ -1,10 +1,10 @@
-import {Rule} from "eslint";
+import type {Rule} from "eslint";
 import {
 	createFunctionTracker,
 	createGeneratorTrackingVisitors,
 } from "../utils/function-tracker.js";
 import {traverseAST} from "../utils/ast-utils.js";
-import {ESLintNode} from "../utils/types.js";
+import type {ESLintNode} from "../utils/types.js";
 
 export const propDestructuringConsistency: Rule.RuleModule = {
 	meta: {
@@ -74,9 +74,8 @@ export const propDestructuringConsistency: Rule.RuleModule = {
 					}
 				}
 
-				const missingProps = Array.from(usedProps).filter(
-					(prop) => !destructuredProps.has(prop),
-				);
+				const missingProps = Array.from(usedProps)
+					.filter((prop) => !destructuredProps.has(prop));
 
 				if (missingProps.length === 0) {
 					return;

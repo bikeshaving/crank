@@ -2,9 +2,10 @@ import {createElement} from "./crank.js";
 import type {Element} from "./crank.js";
 
 const cache = new Map<string, ParseResult>();
+
 export function jsx(
 	spans: TemplateStringsArray,
-	...expressions: Array<unknown>
+	...expressions: unknown[]
 ): Element {
 	const key = JSON.stringify(spans.raw);
 	let parseResult = cache.get(key);
@@ -34,11 +35,11 @@ export function jsx(
 				throw new SyntaxError(
 					target.spanIndex != null && target.charIndex != null
 						? formatSyntaxError(
-								msg,
-								spans.raw,
-								target.spanIndex,
-								target.charIndex,
-							)
+							msg,
+							spans.raw,
+							target.spanIndex,
+							target.charIndex,
+						)
 						: msg,
 				);
 			}
@@ -184,7 +185,7 @@ function validateName(
 
 export function parse(spans: ArrayLike<string>): ParseResult {
 	let matcher = CHILDREN_RE;
-	const stack: Array<ParseElement> = [];
+	const stack: ParseElement[] = [];
 	let element: ParseElement = {
 		type: "element",
 		open: {type: "tag", slash: "", value: ""},
@@ -352,10 +353,7 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 
 							matcher = CHILDREN_RE;
 						} else if (spread) {
-							const value = {
-								type: "value" as const,
-								value: null,
-							};
+							const value = {type: "value" as const, value: null};
 							element.props.push(value);
 							// SPREAD PROP EXPRESSION
 							expressionTarget = value;
@@ -404,18 +402,13 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 								value = {type: "propString", parts: []};
 								value.parts.push(string);
 								if (end === span.length) {
-									matcher =
-										quote === "'"
-											? CLOSING_SINGLE_QUOTE_RE
-											: CLOSING_DOUBLE_QUOTE_RE;
+									matcher = quote === "'"
+										? CLOSING_SINGLE_QUOTE_RE
+										: CLOSING_DOUBLE_QUOTE_RE;
 								}
 							}
 
-							const prop = {
-								type: "prop" as const,
-								name,
-								value,
-							};
+							const prop = {type: "prop" as const, name, value};
 							element.props.push(prop);
 						}
 					} else {
@@ -423,7 +416,7 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 							if (i === span.length) {
 								throw new SyntaxError(
 									formatSyntaxError(
-										`Expected props but reached end of document`,
+										"Expected props but reached end of document",
 										spans,
 										s,
 										i,
@@ -668,22 +661,20 @@ function build(parsed: ParseElement, spans?: ArrayLike<string>): Element {
 		parsed.close.slash !== "//" &&
 		parsed.open.value !== parsed.close.value
 	) {
-		const msg = `Unmatched closing tag ${formatTagForError(
-			parsed.close.value,
-		)}, expected ${formatTagForError(parsed.open.value)}`;
+		const msg = `Unmatched closing tag ${formatTagForError(parsed.close.value)}, expected ${formatTagForError(parsed.open.value)}`;
 		throw new SyntaxError(
 			spans && parsed.close.spanIndex != null && parsed.close.charIndex != null
 				? formatSyntaxError(
-						msg,
-						spans,
-						parsed.close.spanIndex,
-						parsed.close.charIndex,
-					)
+					msg,
+					spans,
+					parsed.close.spanIndex,
+					parsed.close.charIndex,
+				)
 				: msg,
 		);
 	}
 
-	const children: Array<unknown> = [];
+	const children: unknown[] = [];
 	for (let i = 0; i < parsed.children.length; i++) {
 		const child = parsed.children[i];
 		children.push(child.type === "element" ? build(child, spans) : child.value);
@@ -703,8 +694,9 @@ function build(parsed: ParseElement, spans?: ArrayLike<string>): Element {
 					if (typeof part === "string") {
 						string += part;
 					} else if (typeof part.value !== "boolean" && part.value != null) {
-						string +=
-							typeof part.value === "string" ? part.value : String(part.value);
+						string += typeof part.value === "string"
+							? part.value
+							: String(part.value);
 					}
 				}
 				value = string
@@ -765,9 +757,7 @@ function build(parsed: ParseElement, spans?: ArrayLike<string>): Element {
 function formatTagForError(tag: unknown): string {
 	return typeof tag === "function"
 		? tag.name + "()"
-		: typeof tag === "string"
-			? `"${tag}"`
-			: JSON.stringify(tag);
+		: typeof tag === "string" ? `"${tag}"` : JSON.stringify(tag);
 }
 
 function formatSyntaxError(

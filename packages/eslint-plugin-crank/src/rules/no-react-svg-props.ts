@@ -1,5 +1,5 @@
-import {Rule} from "eslint";
-import {ESLintNode} from "../utils/types.js";
+import type {Rule} from "eslint";
+import type {ESLintNode} from "../utils/types.js";
 import {createConditionalJSXAttributeMapper} from "../utils/jsx-utils.js";
 
 // React SVG camelCase → standard SVG attribute mapping.
@@ -154,7 +154,8 @@ function isSVGElement(node: ESLintNode): boolean {
 	while (current) {
 		if (
 			current.type === "JSXElement" &&
-			current.openingElement?.name?.type === "JSXIdentifier"
+			current.openingElement != null &&
+			current.openingElement.name?.type === "JSXIdentifier"
 		) {
 			if (SVG_ELEMENTS.has(current.openingElement.name.name)) {
 				return true;
@@ -166,7 +167,7 @@ function isSVGElement(node: ESLintNode): boolean {
 	return false;
 }
 
-export const noReactSvgProps: Rule.RuleModule = {
+export const noReactSVGProps: Rule.RuleModule = {
 	meta: {
 		type: "suggestion",
 		docs: {
@@ -178,7 +179,7 @@ export const noReactSvgProps: Rule.RuleModule = {
 		fixable: "code",
 		schema: [],
 		messages: {
-			noReactSvgProp:
+			noReactSVGProp:
 				"Use '{{standard}}' instead of '{{react}}' - Crank uses standard SVG attribute names, not React's camelCase",
 		},
 	},
@@ -186,7 +187,7 @@ export const noReactSvgProps: Rule.RuleModule = {
 	create(context) {
 		const handleSVGMapping = createConditionalJSXAttributeMapper(
 			SVG_ATTRIBUTE_MAPPINGS,
-			"noReactSvgProp",
+			"noReactSVGProp",
 			{from: "react", to: "standard"},
 			isSVGElement,
 		);

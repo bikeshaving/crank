@@ -287,7 +287,8 @@ describe("html", () => {
 
 	test("sync generator components are cleaned up", () => {
 		const mock = Sinon.fake();
-		function* Component() {
+
+		function *Component() {
 			let i = 0;
 			try {
 				while (true) {
@@ -305,7 +306,8 @@ describe("html", () => {
 
 	test("async generator components are cleaned up", async () => {
 		const mock = Sinon.fake();
-		async function* Component(this: Context) {
+
+		async function *Component(this: Context) {
 			let i = 0;
 			// TODO: investigate why using a while loop causes renderer.render to
 			// resolve to <div>1</div>
@@ -326,7 +328,8 @@ describe("html", () => {
 
 	test("stateful", () => {
 		const mock = Sinon.fake();
-		function* Component() {
+
+		function *Component() {
 			let i = 0;
 			try {
 				while (true) {
@@ -359,6 +362,7 @@ describe("html", () => {
 	test("after callback called once", async () => {
 		let i = 0;
 		const fn = Sinon.fake();
+
 		async function Component(this: Context) {
 			this.after(fn);
 			return <span>{i++}</span>;
@@ -384,7 +388,7 @@ describe("html", () => {
 	});
 
 	test("refs work", () => {
-		let mock = Sinon.fake();
+		const mock = Sinon.fake();
 		renderer.render(<div ref={mock}>Hello world</div>);
 
 		expect(mock.callCount).toBe(1);
@@ -392,13 +396,13 @@ describe("html", () => {
 	});
 
 	test("schedule allows for re-render", () => {
-		function* Child(this: Context, {children}: {children: Children}) {
+		function *Child(this: Context, {children}: {children: Children}) {
 			for ({children} of this) {
 				yield children;
 			}
 		}
 
-		function* Component(this: Context) {
+		function *Component(this: Context) {
 			for ({} of this) {
 				this.schedule(() => this.refresh());
 				yield <div>Render 1</div>;
@@ -420,7 +424,7 @@ describe("html", () => {
 			return children;
 		}
 
-		function* Component(this: Context) {
+		function *Component(this: Context) {
 			for ({} of this) {
 				this.schedule(() => this.refresh());
 				yield <div>Render 1</div>;
@@ -474,7 +478,7 @@ describe("html", () => {
 	test("foreignObject resets SVG scope for children but not itself", () => {
 		expect(
 			renderer.render(
-				// eslint-disable-next-line crank/no-react-svg-props
+
 				<svg viewBox="0 0 100 100">
 					{/* eslint-disable crank/no-react-svg-props */}
 					<rect strokeWidth="2" />

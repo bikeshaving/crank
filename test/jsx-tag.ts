@@ -33,13 +33,17 @@ describe("jsx", () => {
 	test("newlines and whitespace", () => {
 		// TODO: Figure out how to test this without fricking editors/linters or
 		// whatever getting in the way
-		expect(jsx`
+		expect(
+			jsx`
 		<p/>
-	`).toEqual(createElement("p"));
-		expect(jsx`
+	`,
+		).toEqual(createElement("p"));
+		expect(
+			jsx`
 		<span>Hello</span> \
 		<span>World</span>
-	`).toEqual(
+	`,
+		).toEqual(
 			createElement(
 				"",
 				null,
@@ -57,21 +61,25 @@ describe("jsx", () => {
 		// JSX, which collapses it to a space, the template has no formatter reflowing
 		// it, so the line break is the author's intent: it renders as a space in
 		// normal flow and as a real line break in a `<pre>`.
-		expect(jsx`<p>alpha
-beta</p>`).toEqual(createElement("p", null, "alpha\n", "beta"));
+		expect(
+			jsx`<p>alpha
+beta</p>`,
+		).toEqual(createElement("p", null, "alpha\n", "beta"));
 		// Everything between two text runs is preserved verbatim: the blank line
 		// stays two newlines, and the indentation before `three` is kept.
-		expect(jsx`<p>one
+		expect(
+			jsx`<p>one
 two
 
-   three</p>`).toEqual(
-			createElement("p", null, "one\n", "two\n\n   ", "three"),
-		);
+   three</p>`,
+		).toEqual(createElement("p", null, "one\n", "two\n\n   ", "three"));
 		// A newline adjacent to an element is still stripped as layout: only the
 		// text-text break is kept.
-		expect(jsx`<p>alpha
+		expect(
+			jsx`<p>alpha
 <b>x</b>
-beta</p>`).toEqual(
+beta</p>`,
+		).toEqual(
 			createElement("p", null, "alpha", createElement("b", null, "x"), "beta"),
 		);
 	});
@@ -81,12 +89,16 @@ beta</p>`).toEqual(
 		expect(jsx`<p>a   b</p>`).toEqual(createElement("p", null, "a   b"));
 		// A newline before an expression is stripped as layout — the expression
 		// boundary is structural, like an element.
-		expect(jsx`<p>a
-${"X"}</p>`).toEqual(createElement("p", null, "a", "X"));
+		expect(
+			jsx`<p>a
+${"X"}</p>`,
+		).toEqual(createElement("p", null, "a", "X"));
 		// Leading whitespace on the first line of a text run is preserved (it is not
 		// indentation following a newline); the break to the next line is kept.
-		expect(jsx`<p>  Hello
-World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
+		expect(
+			jsx`<p>  Hello
+World</p>`,
+		).toEqual(createElement("p", null, "  Hello\n", "World"));
 		// Whitespace-only text between elements is preserved on a single line ...
 		expect(jsx`<p><b>x</b>   <i>y</i></p>`).toEqual(
 			createElement(
@@ -98,8 +110,10 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 			),
 		);
 		// ... and removed entirely when it spans a newline.
-		expect(jsx`<p><b>x</b>
-<i>y</i></p>`).toEqual(
+		expect(
+			jsx`<p><b>x</b>
+<i>y</i></p>`,
+		).toEqual(
 			createElement(
 				"p",
 				null,
@@ -124,7 +138,7 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 			createElement("p", {a: 'a"a"a"a', b: "b'b'b'b"}),
 		);
 		expect(jsx`<p a="\\\"\'\a\b\\\"" />`).toEqual(
-			createElement("p", {a: `\\"'a\b\\"`}),
+			createElement("p", {a: "\\\"'a\b\\\""}),
 		);
 		expect(jsx`<p a="hello\r\nworld" />`).toEqual(
 			createElement("p", {a: "hello\r\nworld"}),
@@ -132,12 +146,14 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 	});
 
 	test("fragment shorthand", () => {
-		expect(jsx`
+		expect(
+			jsx`
 		<p>
 			Hello \
 			<>world</>
 		</p>
-	`).toEqual(
+	`,
+		).toEqual(
 			createElement("p", null, "Hello ", createElement("", null, "world")),
 		);
 	});
@@ -148,30 +164,38 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 		expect(jsx`<${T1}>Hello world</${T1}>`).toEqual(
 			createElement(T1, null, "Hello world"),
 		);
-		expect(jsx`
+		expect(
+			jsx`
 		<${T1}>
 			<${T2}>
 				Hello world
 			</${T2}>
 		</${T1}>
-	`).toEqual(createElement(T1, null, createElement(T2, null, "Hello world")));
+	`,
+		).toEqual(createElement(T1, null, createElement(T2, null, "Hello world")));
 	});
 
 	test("children expressions", () => {
 		const ex1 = "Hello";
 		const ex2 = "world";
-		expect(jsx`
+		expect(
+			jsx`
 		<div>${ex1} ${ex2}</div>
-	`).toEqual(createElement("div", null, "Hello", " ", "world"));
-		expect(jsx`
+	`,
+		).toEqual(createElement("div", null, "Hello", " ", "world"));
+		expect(
+			jsx`
 		<div>${ex1}${ex2}</div>
-	`).toEqual(createElement("div", null, "Hello", "world"));
+	`,
+		).toEqual(createElement("div", null, "Hello", "world"));
 
-		expect(jsx`
+		expect(
+			jsx`
 		<div>
 			<span>${ex1} ${ex2}</span>
 		</div>
-	`).toEqual(
+	`,
+		).toEqual(
 			createElement(
 				"div",
 				null,
@@ -179,9 +203,11 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 			),
 		);
 
-		expect(jsx`
+		expect(
+			jsx`
 		<div><span>${null} ${undefined} ${true} ${false} ${1} ${2}</span></div>
-	`).toEqual(
+	`,
+		).toEqual(
 			createElement(
 				"div",
 				null,
@@ -193,9 +219,11 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 			),
 		);
 
-		expect(jsx`
+		expect(
+			jsx`
 		${"Hello"} <span>world</span>
-	`).toEqual(
+	`,
+		).toEqual(
 			createElement(
 				"",
 				null,
@@ -207,9 +235,11 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 	});
 
 	test("shorthand boolean props", () => {
-		expect(jsx`
+		expect(
+			jsx`
 		<label><input type="checkbox" checked name="attendance" disabled />Present</label>
-	`).toEqual(
+	`,
+		).toEqual(
 			createElement(
 				"label",
 				null,
@@ -225,11 +255,13 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 	});
 
 	test("prop expressions", () => {
-		expect(jsx`
+		expect(
+			jsx`
 		<div class=${"greeting"} style = ${{color: "red"}}>
 			Hello world
 		</div>
-	`).toEqual(
+	`,
+		).toEqual(
 			createElement(
 				"div",
 				{class: "greeting", style: {color: "red"}},
@@ -239,9 +271,7 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 	});
 
 	test("spread prop expressions", () => {
-		const props = {
-			style: "color: red;",
-		};
+		const props = {style: "color: red;"};
 		expect(jsx`<div class="greeting" ...${props}>Hello world</div>`).toEqual(
 			createElement(
 				"div",
@@ -256,8 +286,10 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 				"Hello world",
 			),
 		);
-		expect(jsx`<div class="greeting" ...
-	${props}>Hello world</div>`).toEqual(
+		expect(
+			jsx`<div class="greeting" ...
+	${props}>Hello world</div>`,
+		).toEqual(
 			createElement(
 				"div",
 				{class: "greeting", style: "color: red;"},
@@ -268,24 +300,30 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 
 	test("asymmetric closing tags", () => {
 		const Component = "C";
-		expect(jsx`
+		expect(
+			jsx`
 		<${Component}>Hello world<//>
-	`).toEqual(createElement(Component, null, "Hello world"));
+	`,
+		).toEqual(createElement(Component, null, "Hello world"));
 
-		expect(jsx`
+		expect(
+			jsx`
 		<${Component}>
 			Hello world
 		<//Component>
-	`).toEqual(createElement(Component, null, "Hello world"));
+	`,
+		).toEqual(createElement(Component, null, "Hello world"));
 	});
 
 	test("weird identifiers", () => {
-		expect(jsx`
+		expect(
+			jsx`
 		<$a $b$ _c>
 			<-custom-element -prop="foo" _-_="bar" />
 			<__ key=${1}/>
 		</$a>
-	`).toEqual(
+	`,
+		).toEqual(
 			createElement(
 				"$a",
 				{$b$: true, _c: true},
@@ -298,44 +336,58 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 	});
 
 	test("comments", () => {
-		expect(jsx`
+		expect(
+			jsx`
 		<div>
 			<!--<span>Hello</span>--><span>world</span>
 		</div>
-	`).toEqual(createElement("div", null, createElement("span", null, "world")));
+	`,
+		).toEqual(createElement("div", null, createElement("span", null, "world")));
 
-		expect(jsx`
+		expect(
+			jsx`
 		<div>
 			<!--<span>Hello</span>--> <!--<span>world</span>-->
 		</div>
-	`).toEqual(createElement("div", null, " "));
+	`,
+		).toEqual(createElement("div", null, " "));
 	});
 
 	test("comment expressions", () => {
-		expect(jsx`
+		expect(
+			jsx`
 		<div>
 			<!--
 			<${"C"} value=${true} />
 			-->
 			Hello<!-- world-->
 		</div>
-	`).toEqual(createElement("div", null, "Hello"));
+	`,
+		).toEqual(createElement("div", null, "Hello"));
 	});
 
 	test("prop string expressions", () => {
-		expect(jsx`
+		expect(
+			jsx`
 		<p class="${undefined} ${null} ${"a"}-${{a: "1"}}-" />
-	`).toEqual(createElement("p", {class: "  a-[object Object]-"}));
-		expect(jsx`
+	`,
+		).toEqual(createElement("p", {class: "  a-[object Object]-"}));
+		expect(
+			jsx`
 		<p class="a${1}\${2}\a${3}\"" />
-	`).toEqual(createElement("p", {class: 'a1${2}a3"'}));
+	`,
+		).toEqual(createElement("p", {class: 'a1${2}a3"'}));
 		// Don’t think too hard about escaping.
-		expect(jsx`
+		expect(
+			jsx`
 		<p class="a\\${1}\\${2}\\\a${3}\"" />
-	`).toEqual(createElement("p", {class: 'a\\1\\2\\a3"'}));
-		expect(jsx`
+	`,
+		).toEqual(createElement("p", {class: 'a\\1\\2\\a3"'}));
+		expect(
+			jsx`
 		<p class="a${true}${false}${null}${undefined}b" />
-	`).toEqual(createElement("p", {class: "ab"}));
+	`,
+		).toEqual(createElement("p", {class: "ab"}));
 	});
 
 	test("unbalanced tags", () => {
@@ -422,7 +474,9 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 
 	test("unbalanced tags with expressions", () => {
 		function C() {}
+
 		function D() {}
+
 		expect(() => {
 			jsx`<${C}>`;
 		}).toThrow("Unmatched opening tag C()");
@@ -486,10 +540,8 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 			throw new Error("should have thrown");
 		} catch (e: any) {
 			expect(e).toBeInstanceOf(SyntaxError);
-			expect(e.message.includes("^")).toBeTruthy() /* includes caret pointer */;
-			expect(
-				e.message.includes("|"),
-			).toBeTruthy() /* includes context gutter */;
+			expect(e.message.includes("^")).toBeTruthy();
+			expect(e.message.includes("|")).toBeTruthy();
 		}
 	});
 
@@ -503,13 +555,9 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 			throw new Error("should have thrown");
 		} catch (e: any) {
 			expect(e).toBeInstanceOf(SyntaxError);
-			expect(
-				e.message.includes("Unmatched closing tag"),
-			).toBeTruthy() /* has base message */;
-			expect(e.message.includes("^")).toBeTruthy() /* includes caret pointer */;
-			expect(
-				e.message.includes("|"),
-			).toBeTruthy() /* includes context gutter */;
+			expect(e.message.includes("Unmatched closing tag")).toBeTruthy();
+			expect(e.message.includes("^")).toBeTruthy();
+			expect(e.message.includes("|")).toBeTruthy();
 		}
 	});
 
@@ -524,9 +572,7 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 			createElement("use", {"xlink:href": "#icon"}),
 		);
 		expect(jsx`<svg xmlns:xlink="http://www.w3.org/1999/xlink" />`).toEqual(
-			createElement("svg", {
-				"xmlns:xlink": "http://www.w3.org/1999/xlink",
-			}),
+			createElement("svg", {"xmlns:xlink": "http://www.w3.org/1999/xlink"}),
 		);
 		expect(jsx`<div attr:foo=${"bar"} />`).toEqual(
 			createElement("div", {"attr:foo": "bar"}),
@@ -544,10 +590,7 @@ World</p>`).toEqual(createElement("p", null, "  Hello\n", "World"));
 			createElement("p", null, "ratio 3:1"),
 		);
 		expect(jsx`<div style="color: red" href="https://example.com" />`).toEqual(
-			createElement("div", {
-				style: "color: red",
-				href: "https://example.com",
-			}),
+			createElement("div", {style: "color: red", href: "https://example.com"}),
 		);
 	});
 
@@ -663,7 +706,7 @@ describe("jsx static caching", () => {
 		for (let i = 0; i < 2; i++) {
 			renderer.render(jsx`<ul>${items}</ul>`, document.body);
 			expect(document.body.innerHTML).toEqual(
-				`<ul><li class="s">item</li><li class="s">item</li><li class="s">item</li></ul>`,
+				"<ul><li class=\"s\">item</li><li class=\"s\">item</li><li class=\"s\">item</li></ul>",
 			);
 		}
 	});
@@ -673,7 +716,7 @@ describe("jsx static caching", () => {
 		renderer.render(null, document.body);
 		expect(document.body.innerHTML).toEqual("");
 		renderer.render(jsx`<div class="a">hello</div>`, document.body);
-		expect(document.body.innerHTML).toEqual(`<div class="a">hello</div>`);
+		expect(document.body.innerHTML).toEqual("<div class=\"a\">hello</div>");
 	});
 
 	test("cached elements render into multiple roots", () => {
@@ -684,13 +727,13 @@ describe("jsx static caching", () => {
 		try {
 			renderer.render(jsx`<p class="s">shared</p>`, root1);
 			renderer.render(jsx`<p class="s">shared</p>`, root2);
-			expect(root1.innerHTML).toEqual(`<p class="s">shared</p>`);
-			expect(root2.innerHTML).toEqual(`<p class="s">shared</p>`);
+			expect(root1.innerHTML).toEqual("<p class=\"s\">shared</p>");
+			expect(root2.innerHTML).toEqual("<p class=\"s\">shared</p>");
 			expect(root1.firstChild).not.toBe(root2.firstChild);
 			renderer.render(jsx`<p class="s">shared</p>`, root1);
 			renderer.render(jsx`<p class="s">shared</p>`, root2);
-			expect(root1.innerHTML).toEqual(`<p class="s">shared</p>`);
-			expect(root2.innerHTML).toEqual(`<p class="s">shared</p>`);
+			expect(root1.innerHTML).toEqual("<p class=\"s\">shared</p>");
+			expect(root2.innerHTML).toEqual("<p class=\"s\">shared</p>");
 		} finally {
 			renderer.render(null, root1);
 			renderer.render(null, root2);
