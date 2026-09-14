@@ -36,28 +36,31 @@ class XMarqueeElement extends CrankHTMLElement {
   static observedAttributes = ["scrollamount", "paused"];
   static events = ["bounce", "finish", "start"] as const;
   static shadowDOM = true;
-  static styles = `
-    .track {
-      display: inline-block;
-      white-space: nowrap;
-      animation: scroll linear infinite;
-    }
-    @keyframes scroll {
-      from { transform: translateX(100%) }
-      to   { transform: translateX(-100%) }
-    }`;
 
   render({scrollamount, paused}: Record<string, string | null>) {
     const duration = 100 / Number(scrollamount ?? 6);
+    const css = `
+      .track {
+        display: inline-block;
+        white-space: nowrap;
+        animation: scroll linear infinite;
+      }
+      @keyframes scroll {
+        from { transform: translateX(100%) }
+        to   { transform: translateX(-100%) }
+      }`;
     return (
-      <div
-        class="track"
-        style={`animation-duration: ${duration}s; animation-play-state: ${
-          paused != null ? "paused" : "running"
-        }`}
-      >
-        <slot />
-      </div>
+      <>
+        <style>{css}</style>
+        <div
+          class="track"
+          style={`animation-duration: ${duration}s; animation-play-state: ${
+            paused != null ? "paused" : "running"
+          }`}
+        >
+          <slot />
+        </div>
+      </>
     );
   }
 
