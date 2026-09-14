@@ -212,6 +212,7 @@ Read these two files for complete API coverage and idiomatic patterns:
 - [Password Strength](references/password-strength.js) — Interactive form widget: real-time validation, derived state, visual feedback
 - [Wizard](references/wizard.js) — Multi-step form: stateful navigation, FormData collection, generator lifecycle
 - [Animated Letters](references/animated-letters.js) — Animation: CSS transitions, exit animations, requestAnimationFrame
+- [Web Components](references/web-components.tsx) — Custom elements with `CrankHTMLElement`: shadow DOM, slots, `static events`, form association
 
 ## Additional Guides (for deeper reading on specific topics)
 - [Getting Started](references/01-getting-started.md)
@@ -227,6 +228,7 @@ Read these two files for complete API coverage and idiomatic patterns:
 - [JSX Template Tag](references/11-jsx-template-tag.md)
 - [Reference for React Developers](references/13-reference-for-react-developers.md)
 - [Custom Renderers](references/14-custom-renderers.md)
+- [Web Components](references/15-web-components.md)
 
 ## Blog Posts
 - [Introducing Crank](references/2020-04-15-introducing-crank.md)

@@ -59,6 +59,16 @@
   and as a real line break in a `<pre>`. Whitespace adjacent to an element, an
   expression, or the template edge is still stripped as layout.
 
+### New API
+- **`@b9g/crank/web-components` — write Web Components with Crank**
+  A `CrankHTMLElement` base class: declare configuration as static fields
+  (`observedAttributes`, `events`, `shadowDOM`, `formAssociated`) and
+  write a `render` method, which is a normal Crank component in any of the four
+  forms.
+
+- **The DOM renderer accepts a `ShadowRoot` (or any document fragment) as a
+  render root.**
+
 ### Changed
 - **`window.Crank` (the UMD/CDN browser global) now ships authoring templates and a default renderer.**
   The browser build exposes the `jsx`/`html` tagged templates and `Crank.renderer`
