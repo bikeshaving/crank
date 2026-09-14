@@ -228,6 +228,7 @@ Read these two files for complete API coverage and idiomatic patterns:
 - [JSX Template Tag](references/11-jsx-template-tag.md)
 - [Reference for React Developers](references/13-reference-for-react-developers.md)
 - [Custom Renderers](references/14-custom-renderers.md)
+- [Web Components](references/15-web-components.md)
 
 ## Blog Posts
 - [Introducing Crank](references/2020-04-15-introducing-crank.md)
