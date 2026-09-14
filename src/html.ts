@@ -121,6 +121,7 @@ function printAttrs(props: Record<string, any>, isSVG?: boolean): string {
  */
 interface TextNode {
 	value?: string;
+	raw?: string;
 }
 
 function join(children: Array<TextNode | string>): string {
@@ -131,6 +132,57 @@ function join(children: Array<TextNode | string>): string {
 	}
 
 	return result;
+}
+
+// style and script hold raw text in HTML: the parser never decodes character
+// references inside them, and only the element's own closing tag can end them.
+const rawTextTags = new Set(["style", "script"]);
+
+function isJSONScriptType(type: unknown): boolean {
+	if (typeof type !== "string") {
+		return false;
+	}
+
+	const type1 = type.trim().toLowerCase();
+	return (
+		type1 === "importmap" ||
+		type1 === "speculationrules" ||
+		type1.includes("json")
+	);
+}
+
+function joinRawText(
+	children: Array<TextNode | string>,
+	tag: string,
+	type: unknown,
+): string {
+	let result = "";
+	for (let i = 0; i < children.length; i++) {
+		const child = children[i];
+		result +=
+			typeof child === "string"
+				? child
+				: child.raw != null
+					? child.raw
+					: child.value;
+	}
+
+	// In valid JSON, < can only appear inside a string, where \u003C is a
+	// lossless escape, so JSON scripts can neutralize every parser-significant
+	// sequence at once.
+	if (tag === "script" && isJSONScriptType(type)) {
+		return result
+			.replace(/</g, "\\u003C")
+			.replace(/\u2028/g, "\\u2028")
+			.replace(/\u2029/g, "\\u2029");
+	}
+
+	// <\/style and <\/script are identity escapes in CSS, JavaScript strings,
+	// and JSON, so neutralizing the closing tag preserves the text's meaning.
+	return result.replace(
+		new RegExp(`</${tag}`, "gi"),
+		(match) => "<\\" + match.slice(1),
+	);
 }
 
 export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
@@ -165,7 +217,7 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 		},
 
 		text({value}: {value: string}): TextNode {
-			return {value: escape(value)};
+			return {value: escape(value), raw: value};
 		},
 
 		read(value: ElementValue<TextNode>): string {
@@ -217,7 +269,9 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 						? props["innerHTML"]
 						: "dangerouslySetInnerHTML" in props
 							? (props["dangerouslySetInnerHTML"]?.__html ?? "")
-							: join(children);
+							: rawTextTags.has(tag) && scope !== "svg"
+								? joinRawText(children, tag, props["type"])
+								: join(children);
 				result = `${open}${contents}${close}`;
 			}
 

@@ -1018,4 +1018,13 @@ describe("hydration", () => {
 
 		expect(consoleWarn.callCount).toBe(0);
 	});
+
+	test("server-rendered style hydrates without warnings", () => {
+		const css = 'a > b { font-family: "Atkinson", sans-serif; }';
+		container.innerHTML = `<style>${css}</style>`;
+		renderer.hydrate(<style>{css}</style>, container);
+
+		expect(container.innerHTML).toBe(`<style>${css}</style>`);
+		expect(consoleWarn.callCount).toBe(0);
+	});
 });

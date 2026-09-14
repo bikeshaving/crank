@@ -512,4 +512,91 @@ describe("html", () => {
 		expect(!result.includes("dangerouslySetInnerHTML")).toBeTruthy();
 		expect(result).toBe("<div><em>hi</em></div>");
 	});
+
+	test("style children render raw", () => {
+		expect(
+			renderer.render(
+				<style>{'a > b { font-family: "Atkinson", sans-serif; }'}</style>,
+			),
+		).toBe('<style>a > b { font-family: "Atkinson", sans-serif; }</style>');
+	});
+
+	test("script children render raw", () => {
+		expect(
+			renderer.render(<script>{'if (a < b && c) alert("hi");'}</script>),
+		).toBe('<script>if (a < b && c) alert("hi");</script>');
+	});
+
+	test("closing tag neutralized in style", () => {
+		expect(
+			renderer.render(<style>{'a::before { content: "</StYlE>"; }'}</style>),
+		).toBe('<style>a::before { content: "<\\/StYlE>"; }</style>');
+	});
+
+	test("closing tag neutralized in script", () => {
+		expect(renderer.render(<script>{'const s = "</script>";'}</script>)).toBe(
+			'<script>const s = "<\\/script>";</script>',
+		);
+	});
+
+	test("svg style children stay escaped", () => {
+		expect(
+			renderer.render(
+				<svg>
+					<style>{'a > b { fill: "red"; }'}</style>
+				</svg>,
+			),
+		).toBe("<svg><style>a &gt; b { fill: &quot;red&quot;; }</style></svg>");
+	});
+
+	test("title and textarea children stay escaped", () => {
+		expect(renderer.render(<title>{"a < b & c"}</title>)).toBe(
+			"<title>a &lt; b &amp; c</title>",
+		);
+		expect(renderer.render(<textarea>{"a < b"}</textarea>)).toBe(
+			"<textarea>a &lt; b</textarea>",
+		);
+	});
+
+	test("Raw inside style unchanged", () => {
+		expect(
+			renderer.render(
+				<style>
+					<Raw value={"a > b {}"} />
+				</style>,
+			),
+		).toBe("<style>a > b {}</style>");
+	});
+
+	test("JSON script types escape every angle bracket", () => {
+		const data = {note: ["<!--", "<scr", "ipt>alert(1)<", "/script>"].join("")};
+		const result = renderer.render(
+			<script type="application/ld+json">{JSON.stringify(data)}</script>,
+		) as string;
+		const inner = result.slice(
+			result.indexOf(">") + 1,
+			result.lastIndexOf("<"),
+		);
+		expect(inner.includes("<")).toBe(false);
+		expect(JSON.parse(inner)).toEqual(data);
+	});
+
+	test("classic scripts keep comment syntax", () => {
+		const comment = ["// <!-- fine", "let a;"].join("\n");
+		expect(renderer.render(<script>{comment}</script>)).toBe(
+			["<scr", "ipt>", comment, "<", "/script>"].join(""),
+		);
+	});
+
+	test("JSON-LD script round-trips", () => {
+		const data = {url: "https://example.com/</script>?a=1&b=2"};
+		const result = renderer.render(
+			<script type="application/ld+json">{JSON.stringify(data)}</script>,
+		) as string;
+		const inner = result.slice(
+			result.indexOf(">") + 1,
+			result.lastIndexOf("<"),
+		);
+		expect(JSON.parse(inner)).toEqual(data);
+	});
 });
