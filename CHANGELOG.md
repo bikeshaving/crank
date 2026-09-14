@@ -18,6 +18,15 @@
   out-of-band DOM mutations to them are no longer overwritten on re-render.
 
 ### Bug Fixes
+- **The HTML renderer emits `<style>` and `<script>` contents as raw text**
+  Browsers never decode character references inside these elements, so escaped
+  output like `font-family: &quot;Atkinson&quot;` silently failed. Text
+  children now render verbatim, with `</style` and `</script` escaped as
+  `<\/` so the text cannot end the element early. Scripts whose type declares
+  JSON (JSON-LD, import maps) escape every `<` as `\u003C`, which also
+  defuses the parser's `<!--` state. Style and script inside
+  inline SVG keep escaping, where the parser does decode entities.
+
 - **The DOM renderer no longer relies on the `Node`/`Element` globals** (#381)
   `nodeType` constants are inlined and the Portal root is duck-typed, so the
   renderer works with custom DOM implementations (e.g. termdom) which don’t
