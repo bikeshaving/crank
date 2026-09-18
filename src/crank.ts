@@ -253,6 +253,38 @@ export function createElement<TTag extends Tag>(
 	return new Element(tag, props as TagProps<TTag>);
 }
 
+ /**
+  * Provides dynamic tag functions for creating elements with the specified
+  * props and children.
+  *
+  * This object is usually used as a transpilation target for JSX transpilers,
+  * but it can also be used directly. Each accessed property creates a tag
+  * function that forwards its arguments to `createElement`.
+  */
+export const tags = new Proxy(
+	{} as Record<
+		string,
+		(
+			props?: Record<string, unknown> | null | undefined,
+			...children: Array<unknown>
+		) => Element<string>
+	>,
+	{
+		get(target, tag: string) {
+			if (!(tag in target)) {
+				target[tag] = (
+					props?: Record<string, unknown> | null | undefined,
+					...children: Array<unknown>
+				) => {
+					return createElement(tag, props, ...children);
+				};
+			}
+
+			return target[tag];
+		}
+	}
+);
+
 /** Clones a given element, shallowly copying the props object. */
 export function cloneElement<TTag extends Tag>(
 	el: Element<TTag>,
