@@ -569,7 +569,7 @@ describe("html", () => {
 	});
 
 	test("JSON script types escape every angle bracket", () => {
-		const data = {note: ["<!--", "<scr", "ipt>alert(1)<", "/script>"].join("")};
+		const data = {note: "<!--<script>alert(1)</script>"};
 		const result = renderer.render(
 			<script type="application/ld+json">{JSON.stringify(data)}</script>,
 		) as string;
@@ -582,9 +582,9 @@ describe("html", () => {
 	});
 
 	test("classic scripts keep comment syntax", () => {
-		const comment = ["// <!-- fine", "let a;"].join("\n");
+		const comment = "// <!-- fine\nlet a;";
 		expect(renderer.render(<script>{comment}</script>)).toBe(
-			["<scr", "ipt>", comment, "<", "/script>"].join(""),
+			`<script>${comment}</script>`,
 		);
 	});
 
