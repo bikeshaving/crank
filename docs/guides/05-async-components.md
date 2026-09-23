@@ -501,6 +501,20 @@ async function *NoLoop({children}) {
 
 This is useful when converting a sync generator component to async, since the component can retain the same structure without adding a `for await...of` loop.
 
+If you want a component to keep running after each `yield` without iterating over its props, set `this.continuous = true`. The component then behaves as if it were in a `for await...of` loop: `yield` returns a promise and the component resumes immediately. This is useful for components driven by another async iterator, like a timer or a stream.
+
+```jsx
+async function *Timer() {
+  this.continuous = true;
+  let i = 0;
+  while (true) {
+    yield <span>{i} seconds</span>;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    i++;
+  }
+}
+```
+
 ### Key Differences in Yield Behavior
 The most important distinction is what the `yield` expression evaluates to:
 

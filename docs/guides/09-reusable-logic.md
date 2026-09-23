@@ -201,6 +201,7 @@ async function *createInterval(delay) {
 }
 
 async function *Counter() {
+  this.continuous = true;
   let seconds = 0;
   for await (const _ of createInterval(1000)) {
     yield <div>Seconds: {seconds}</div>;
@@ -208,6 +209,8 @@ async function *Counter() {
   }
 }
 ```
+
+By default, an async generator component which does not iterate over its props pauses at each `yield` until it is rendered again, just like a sync generator component. Setting `this.continuous = true` makes the component resume after each `yield` instead, so it can be driven by another async iterator.
 
 **Pros:**
 - Async iterator utilities are framework-agnostic.

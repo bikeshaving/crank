@@ -9,6 +9,24 @@
   - Removed `Context.flush()` (renamed to `Context.after()` in 0.7) and the
     deprecated `Context.value` getter.
 
+### New Features
+- **`Context.continuous`**
+  Async generator components which do not iterate over their props pause at
+  each `yield`, like sync generator components. Setting `this.continuous =
+  true` makes such a component resume after each `yield` instead, as if it
+  were in a `for await...of` loop. Use it for components driven by another
+  async iterator.
+  ```jsx
+  async function *Counter() {
+    this.continuous = true;
+    let seconds = 0;
+    for await (const _ of createInterval(1000)) {
+      yield <div>Seconds: {seconds}</div>;
+      seconds++;
+    }
+  }
+  ```
+
 ### Performance
 - **The `jsx` template tag caches static subtrees** (#383)
   Parts of a template with no expressions are built once and the same element

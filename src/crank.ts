@@ -333,8 +333,19 @@ const IsSchedulingRefresh = 1 << 17;
  */
 const IsSupersededByRefresh = 1 << 18;
 
+/**
+ * A flag which indicates that an async generator component asked to keep
+ * running after each yield, as if it were in a for await...of loop, by setting
+ * the continuous property on its context.
+ */
+const IsContinuous = 1 << 19;
+
 function getFlag(ret: Retainer<unknown>, flag: number): boolean {
 	return !!(ret.f & flag);
+}
+
+function isPulling(ret: Retainer<unknown>): boolean {
+	return !!(ret.f & (IsInForAwaitOfLoop | IsContinuous));
 }
 
 function setFlag(ret: Retainer<unknown>, flag: number, value = true): void {
@@ -2480,6 +2491,23 @@ export class Context<
 		return getFlag(this[_ContextState].ret, IsUnmounted);
 	}
 
+	/**
+	 * Whether an async generator component keeps running after each yield.
+	 *
+	 * By default, async generator components which are not iterating over their
+	 * props pause at each yield like sync generator components. Set this to true
+	 * to resume immediately after each yield instead, as if the component were
+	 * in a `for await...of` loop. This is useful when the component is driven by
+	 * some other async iterator, like a timer or a stream.
+	 */
+	get continuous(): boolean {
+		return getFlag(this[_ContextState].ret, IsContinuous);
+	}
+
+	set continuous(value: boolean) {
+		setFlag(this[_ContextState].ret, IsContinuous, !!value);
+	}
+
 	*[Symbol.iterator](): Generator<ComponentPropsOrProps<T>, undefined> {
 		const ctx = this[_ContextState];
 		setFlag(ctx.ret, IsInForOfLoop);
@@ -3061,7 +3089,7 @@ function runComponent<TNode, TResult>(
 		const block = isPromiseLike(diff) ? diff.catch(NOOP) : undefined;
 		return [block, diff];
 	} else {
-		if (getFlag(ctx.ret, IsInForAwaitOfLoop)) {
+		if (isPulling(ctx.ret)) {
 			// initializes the async generator loop
 			measureMark(tagName);
 			pullComponent(ctx, iteration);
@@ -3100,7 +3128,7 @@ function runComponent<TNode, TResult>(
 			let childDiff: Promise<undefined> | undefined;
 			const diff = iteration.then(
 				(iteration): Promise<undefined> | undefined => {
-					if (getFlag(ctx.ret, IsInForAwaitOfLoop)) {
+					if (isPulling(ctx.ret)) {
 						// We have entered a for await...of loop, so we start pulling
 						pullComponent(ctx, iteration);
 					} else {
@@ -3392,7 +3420,7 @@ async function pullComponent<TNode, TResult>(
 				}
 
 				break;
-			} else if (!getFlag(ctx.ret, IsInForAwaitOfLoop)) {
+			} else if (!isPulling(ctx.ret)) {
 				// we have exited the for...await of, so updates will be handled by the
 				// regular runComponent/enqueueComponent logic.
 				break;

@@ -161,6 +161,118 @@ describe("async generator", () => {
 		expect(document.body.innerHTML).toBe("<span>2</span>");
 	});
 
+	test("continuous while (true) loop", async () => {
+		let cleaned = false;
+		async function* Timer(this: Context): AsyncGenerator<Element> {
+			this.continuous = true;
+			let i = 0;
+			try {
+				while (true) {
+					yield <span>{i++}</span>;
+					await new Promise((resolve) => setTimeout(resolve, 10));
+				}
+			} finally {
+				cleaned = true;
+			}
+		}
+
+		await renderer.render(<Timer />, document.body);
+		expect(document.body.innerHTML).toBe("<span>0</span>");
+		await new Promise((resolve) => setTimeout(resolve, 35));
+		expect(document.body.innerHTML).not.toBe("<span>0</span>");
+		await renderer.render(null, document.body);
+		expect(document.body.innerHTML).toBe("");
+		await new Promise((resolve) => setTimeout(resolve, 35));
+		expect(cleaned).toBe(true);
+	});
+
+	test("continuous with an external async iterator", async () => {
+		let returned = false;
+		async function* createInterval(delay: number): AsyncGenerator<number> {
+			try {
+				while (true) {
+					await new Promise((resolve) => setTimeout(resolve, delay));
+					yield Date.now();
+				}
+			} finally {
+				returned = true;
+			}
+		}
+
+		async function* Counter(this: Context): AsyncGenerator<Element> {
+			this.continuous = true;
+			let seconds = 0;
+			yield <div>Seconds: {seconds}</div>;
+			for await (const _ of createInterval(10)) {
+				seconds++;
+				yield <div>Seconds: {seconds}</div>;
+			}
+		}
+
+		await renderer.render(<Counter />, document.body);
+		expect(document.body.innerHTML).toBe("<div>Seconds: 0</div>");
+		await new Promise((resolve) => setTimeout(resolve, 15));
+		expect(document.body.innerHTML).toBe("<div>Seconds: 1</div>");
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(document.body.innerHTML).toBe("<div>Seconds: 2</div>");
+		await renderer.render(null, document.body);
+		await new Promise((resolve) => setTimeout(resolve, 15));
+		expect(returned).toBe(true);
+	});
+
+	test("continuous yield returns a promise", async () => {
+		let result: unknown;
+		async function* Component(this: Context): AsyncGenerator<Element> {
+			this.continuous = true;
+			result = yield <div>Hello</div>;
+			await result;
+			yield <div>Goodbye</div>;
+			await new Promise(() => {});
+		}
+
+		await renderer.render(<Component />, document.body);
+		expect(result).toBeInstanceOf(Promise);
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(document.body.innerHTML).toBe("<div>Goodbye</div>");
+	});
+
+	test("continuous survives parent updates", async () => {
+		async function* Timer(this: Context): AsyncGenerator<Element> {
+			this.continuous = true;
+			let i = 0;
+			while (true) {
+				yield <span>{i++}</span>;
+				await new Promise((resolve) => setTimeout(resolve, 10));
+			}
+		}
+
+		await renderer.render(<Timer />, document.body);
+		expect(document.body.innerHTML).toBe("<span>0</span>");
+		await renderer.render(<Timer />, document.body);
+		await renderer.render(<Timer />, document.body);
+		await new Promise((resolve) => setTimeout(resolve, 35));
+		const i = Number(document.body.textContent);
+		expect(i).toBeGreaterThan(1);
+		await new Promise((resolve) => setTimeout(resolve, 15));
+		expect(Number(document.body.textContent)).toBeGreaterThan(i);
+	});
+
+	test("setting continuous to false pauses again", async () => {
+		async function* Component(this: Context): AsyncGenerator<Element> {
+			this.continuous = true;
+			yield <span>0</span>;
+			this.continuous = false;
+			yield <span>1</span>;
+			yield <span>2</span>;
+		}
+
+		await renderer.render(<Component />, document.body);
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(document.body.innerHTML).toBe("<span>1</span>");
+		await renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toBe("<span>2</span>");
+	});
+
 	test("for...of yield resumes with elements", async () => {
 		let node: HTMLElement | undefined;
 		async function* Component(this: Context) {
