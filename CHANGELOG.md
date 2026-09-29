@@ -9,6 +9,17 @@
   - Removed `Context.flush()` (renamed to `Context.after()` in 0.7) and the
     deprecated `Context.value` getter.
 
+### New Features
+- **`tags`: element functions without JSX** (#392 by @zakarialaoui10)
+  Reading any property of the `tags` object returns a function which creates
+  elements for that tag, so every HTML, SVG and custom element name works.
+  ```js
+  import {tags} from "@b9g/crank";
+
+  const {div, h1, p} = tags;
+  const el = div({class: "card"}, h1(null, "Hello"), p(null, "World"));
+  ```
+
 ### Performance
 - **The `jsx` template tag caches static subtrees** (#383)
   Parts of a template with no expressions are built once and the same element

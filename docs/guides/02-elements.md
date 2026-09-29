@@ -86,6 +86,18 @@ The automatic transform has the benefit of not requiring manual imports. Beyond
 this fact, there is no difference between the two transforms, and the provided
 `_jsx()`/`_jsxs()` functions are wrappers around `createElement()`.
 
+### Tag functions
+If you would rather not use JSX or a build step, the `tags` object provides a function for every tag name. Reading a property returns a function which calls `createElement()` with that tag.
+
+```js
+import {tags} from "@b9g/crank";
+
+const {div, h1, p} = tags;
+const el = div({class: "card"}, h1(null, "Hello"), p(null, "World"));
+```
+
+Any name works, including custom elements like `tags["my-element"]`. See also the [JSX template tag](/guides/jsx-template-tag) for a build-free way to write markup with JSX syntax.
+
 ## Renderers
 
 Crank provides two renderer subclasses for the web: one for managing DOM nodes

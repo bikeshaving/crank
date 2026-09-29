@@ -253,36 +253,46 @@ export function createElement<TTag extends Tag>(
 	return new Element(tag, props as TagProps<TTag>);
 }
 
- /**
-  * Provides dynamic tag functions for creating elements with the specified
-  * props and children.
-  *
-  * This object is usually used as a transpilation target for JSX transpilers,
-  * but it can also be used directly. Each accessed property creates a tag
-  * function that forwards its arguments to `createElement`.
-  */
-export const tags = new Proxy(
-	{} as Record<
-		string,
-		(
-			props?: Record<string, unknown> | null | undefined,
-			...children: Array<unknown>
-		) => Element<string>
-	>,
+/**
+ * A function which creates elements for a single tag. Calling it is the same
+ * as calling createElement with that tag.
+ */
+export type TagFunction<TTag extends Tag = string> = (
+	props?: TagProps<TTag> | null | undefined,
+	...children: Array<unknown>
+) => Element<TTag>;
+
+/**
+ * Tag functions for creating elements without JSX, one per tag name.
+ *
+ * Reading any property returns a function which calls createElement with that
+ * name, so every HTML, SVG and custom element name works without a list of
+ * tags being maintained anywhere. Each function is created once and cached.
+ * Symbol tags like Fragment and Portal can be used as keys too. The `then`
+ * property is always undefined so the object is never mistaken for a promise.
+ *
+ * @example
+ * const {div, h1, p} = tags;
+ * const el = div({class: "card"}, h1(null, "Hello"), p(null, "World"));
+ */
+export const tags: Record<string, TagFunction> = new Proxy(
+	Object.create(null) as Record<string | symbol, TagFunction>,
 	{
-		get(target, tag: string) {
-			if (!(tag in target)) {
-				target[tag] = (
-					props?: Record<string, unknown> | null | undefined,
-					...children: Array<unknown>
-				) => {
-					return createElement(tag, props, ...children);
-				};
+		get(target, tag) {
+			if (tag === "then") {
+				return undefined;
 			}
 
-			return target[tag];
-		}
-	}
+			let fn = target[tag];
+			if (fn === undefined) {
+				fn = (props, ...children) =>
+					createElement(tag as string, props, ...children);
+				target[tag] = fn;
+			}
+
+			return fn;
+		},
+	},
 );
 
 /** Clones a given element, shallowly copying the props object. */
