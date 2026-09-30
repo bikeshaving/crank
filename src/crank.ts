@@ -262,7 +262,7 @@ export function createElement<TTag extends Tag>(
   * function that forwards its arguments to `createElement`.
   */
 export const tags = new Proxy(
-	{} as Record<
+	Object.create(null) as Record<
 		string,
 		(
 			props?: Record<string, unknown> | null | undefined,
@@ -270,14 +270,16 @@ export const tags = new Proxy(
 		) => Element<string>
 	>,
 	{
-		get(target, tag: string) {
+		get(target, tag: string | symbol) {
+			if (typeof tag === "symbol" || tag === "then") {
+				return undefined;
+			}
+
 			if (!(tag in target)) {
 				target[tag] = (
 					props?: Record<string, unknown> | null | undefined,
 					...children: Array<unknown>
-				) => {
-					return createElement(tag, props, ...children);
-				};
+				) => createElement(tag, props, ...children);
 			}
 
 			return target[tag];
