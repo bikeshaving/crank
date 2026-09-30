@@ -253,14 +253,15 @@ export function createElement<TTag extends Tag>(
 	return new Element(tag, props as TagProps<TTag>);
 }
 
- /**
-  * Provides dynamic tag functions for creating elements with the specified
-  * props and children.
-  *
-  * This object is usually used as a transpilation target for JSX transpilers,
-  * but it can also be used directly. Each accessed property creates a tag
-  * function that forwards its arguments to `createElement`.
-  */
+/**
+ * Provides dynamic tag functions for creating elements.
+ *
+ * Accessing a property returns a function that calls `createElement`
+ * with the property name as the tag name.
+ *
+ * @example
+ * tags.div({ class: "foo" }, "Hello");
+ */
 export const tags = new Proxy(
 	Object.create(null) as Record<
 		string,
