@@ -92,6 +92,101 @@ A few rules make props work in Python:
 - `Fragment`, `Copy`, `Portal`, `Raw`, and `Text` are importable from
   `crank`.
 
+## Template Syntax
+
+On Python 3.14 and later (and MicroPython v1.28.0 and later), you can write
+elements with [template strings](https://peps.python.org/pep-0750/)
+(t-strings) instead of `h`. The `jsx` tag in `crank.template` is a port of
+Crank’s [JSX template tag](/guides/jsx-template-tag/). Values go in
+`{expression}`, Python’s syntax, instead of `${expression}`. `html` is
+another name for the same tag.
+
+```python
+from crank.template import jsx
+
+jsx(t'<div class="greeting">Hello, {name}!</div>')
+```
+
+### Tags
+
+Write HTML tags as text. Put components and other values in braces:
+
+```python
+jsx(t"<div />")                       # element
+jsx(t"<{Greeting} name='Ada' />")     # component
+```
+
+A component’s closing tag can be written three ways:
+
+```python
+jsx(t"<{Card}>Hi</{Card}>")           # must match the opening tag
+jsx(t"<{Card}>Hi<//Card>")            # the text after // is not checked
+jsx(t"<{Card}>Hi<//>")                # closes the nearest open tag
+```
+
+### Props
+
+```python
+jsx(t"<button disabled>Save</button>")    # boolean prop, set to True
+jsx(t"<div class='box' />")               # string, in single or double quotes
+jsx(t"<button onclick={save}>Save</button>")  # any Python value
+jsx(t'<div class="card {theme}" />')      # values inside a string
+jsx(t"<div ...{props} />")                # spread the items of a dict
+jsx(t"<input prop:value={text} />")       # namespaced props
+```
+
+Prop names are used as written, so `class`, `for`, and `data-id` work
+directly. Unlike `h`, the template tag doesn’t change underscores to
+hyphens.
+
+### Children
+
+Children can be text, `{expressions}`, and other elements. HTML comments are
+removed, along with any expressions inside them. Several elements at the top
+level become a fragment, and so does `<>...</>`.
+
+```python
+jsx(t"""
+    <ul>
+        <!-- one item per todo -->
+        {[jsx(t"<li key={todo['id']}>{todo['title']}</li>") for todo in todos]}
+    </ul>
+    {done and jsx(t"<p>All done!</p>")}
+""")
+```
+
+Use a list comprehension to render a list, and `and` or a conditional
+expression to render something only some of the time. `None` and `False`
+render nothing.
+
+For a fragment with a key, use the `Fragment` component:
+
+```python
+from crank import Fragment
+
+jsx(t"<{Fragment} key={term}><dt>{term}</dt><dd>{definition}</dd><//>")
+```
+
+### Whitespace
+
+Whitespace works as it does in JSX. A line break and the indentation around
+it are removed, so you can indent templates freely. Spaces within a line are
+kept.
+
+### Differences from the JavaScript Tag
+
+- Write a literal brace as `{{` or `}}`.
+- Format specs and conversions work as in f-strings: `{price:.2f}`,
+  `{value!r}`.
+- Python handles backslash escapes like `\n` before the tag sees the
+  string.
+- Namespaced tag names like `<svg:circle>` aren’t supported. Namespaced
+  prop names like `xlink:href` are.
+
+The tag caches what it parses for each template, so calling `jsx` on every
+render is cheap. A mistake in a template raises a `SyntaxError` that shows
+the line and the position of the problem.
+
 ## Components
 
 Decorate a function with `@component` to make it a component. A component
@@ -183,24 +278,6 @@ renderer.render(
 On Pyodide, components can also be async generators, and `async for props in
 ctx` works as it does in Crank.js. MicroPython can’t compile async generators,
 so on MicroPython use a regular generator or an async function instead.
-
-## Template Tag
-
-On Python 3.14 and later, `crank.template` provides a `jsx` tag for
-[template strings](https://peps.python.org/pep-0750/) (t-strings). It uses
-the same syntax as the [JSX template tag](/guides/jsx-template-tag/).
-
-```python
-from crank import component
-from crank.template import jsx
-
-@component
-def Greeting(ctx, props):
-    for props in ctx:
-        yield jsx(t"<p class='greeting'>Hello, {props['name']}!</p>")
-
-jsx(t"<{Greeting} name='Ada' />")
-```
 
 ## Differences from Crank.js
 
