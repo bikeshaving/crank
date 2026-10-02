@@ -253,6 +253,41 @@ export function createElement<TTag extends Tag>(
 	return new Element(tag, props as TagProps<TTag>);
 }
 
+/**
+ * Provides dynamic tag functions for creating elements.
+ *
+ * Accessing a property returns a function that calls `createElement`
+ * with the property name as the tag name.
+ *
+ * @example
+ * tags.div({ class: "foo" }, "Hello");
+ */
+export const tags = new Proxy(
+	Object.create(null) as Record<
+		string,
+		(
+			props?: Record<string, unknown> | null | undefined,
+			...children: Array<unknown>
+		) => Element<string>
+	>,
+	{
+		get(target, tag: string | symbol) {
+			if (typeof tag === "symbol" || tag === "then") {
+				return undefined;
+			}
+
+			if (!(tag in target)) {
+				target[tag] = (
+					props?: Record<string, unknown> | null | undefined,
+					...children: Array<unknown>
+				) => createElement(tag, props, ...children);
+			}
+
+			return target[tag];
+		}
+	}
+);
+
 /** Clones a given element, shallowly copying the props object. */
 export function cloneElement<TTag extends Tag>(
 	el: Element<TTag>,
