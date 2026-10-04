@@ -257,6 +257,7 @@ describe("hydration", () => {
 		const text1 = div.childNodes[0] as Text;
 		const button = div.childNodes[1] as HTMLButtonElement;
 		const text2 = div.childNodes[2] as Text;
+		const onclick = Sinon.fake();
 		const Component = Sinon.fake(function () {
 			return (
 				<Fragment>
@@ -288,6 +289,7 @@ describe("hydration", () => {
 		const div = container.firstChild!;
 		const text = div.childNodes[0] as Text;
 		const button = div.childNodes[1] as HTMLButtonElement;
+		const onclick = Sinon.fake();
 		const Component = Sinon.fake(function () {
 			return (
 				<Fragment>
@@ -478,6 +480,7 @@ describe("hydration", () => {
 
 	test("warns when attribute present but should be missing during hydration", () => {
 		container.innerHTML = `<div foo="bar"></div>`;
+		// @ts-expect-error - arbitrary attribute (Crank passes unknown attrs through at runtime)
 		renderer.hydrate(<div foo={null} />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(
@@ -487,6 +490,7 @@ describe("hydration", () => {
 
 	test("warns when attribute missing but should be present during hydration", () => {
 		container.innerHTML = `<div></div>`;
+		// @ts-expect-error - arbitrary attribute (Crank passes unknown attrs through at runtime)
 		renderer.hydrate(<div foo={true} />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(/Expected "foo" to be ""/);
@@ -494,6 +498,7 @@ describe("hydration", () => {
 
 	test("warns when attribute value mismatches during hydration", () => {
 		container.innerHTML = `<div foo="baz"></div>`;
+		// @ts-expect-error - arbitrary attribute (Crank passes unknown attrs through at runtime)
 		renderer.hydrate(<div foo="bar" />, container);
 		expect(consoleWarn.callCount).toBe(1);
 		expect(consoleWarn.firstCall.args[0]).toMatch(/Expected "foo" to be "bar"/);

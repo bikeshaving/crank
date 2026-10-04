@@ -1,5 +1,5 @@
 {
-  "ignorePatterns": ["packages/jsx-web-types"],
+  "root": true,
   "env": {
     "browser": true,
     "commonjs": true,
@@ -17,8 +17,7 @@
   ],
   "extends": [
     "eslint:recommended",
-    "plugin:prettier/recommended",
-    "plugin:crank/recommended"
+    "plugin:prettier/recommended"
   ],
   "rules": {
     "no-console": [
@@ -50,31 +49,5 @@
       }
     ],
     "linebreak-style": ["error", "unix"]
-  },
-  "overrides": [
-    {
-      "files": ["examples/**/*", "website/examples/**/*", "skills/**/*"],
-      "rules": {
-        "prettier/prettier": [
-          "error",
-          {
-            "trailingComma": "all",
-            "arrowParens": "always",
-            "useTabs": false,
-            "bracketSpacing": false
-          }
-        ]
-      }
-    },
-    {
-      "files": ["test/**/*"],
-      "rules": {
-        "crank/prefer-props-iterator": "off",
-        "crank/prefer-refresh-callback": "off",
-        "crank/require-cleanup-for-timers": "off",
-        "crank/no-react-props": "off",
-        "crank/no-react-event-props": "off"
-      }
-    }
-  ]
+  }
 }
