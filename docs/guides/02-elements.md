@@ -96,7 +96,20 @@ const {div, h1, p} = tags;
 const el = div({class: "card"}, h1(null, "Hello"), p(null, "World"));
 ```
 
-Any name works, including custom elements like `tags["my-element"]`. See also the [JSX template tag](/guides/jsx-template-tag) for a build-free way to write markup with JSX syntax.
+Any name works, including custom elements like `tags["my-element"]`.
+
+The `h` function accepts hyperscript selectors, where the tag is followed by `#id` and `.class` parts. The tag defaults to `div` when left out.
+
+```js
+import {h} from "@b9g/crank";
+
+const el = h("section#intro.card.wide", null,
+  h("h1", null, "Hello"),
+  h(".body", {class: "muted"}, "World"),
+);
+// <section id="intro" class="card wide"><h1>Hello</h1><div class="body muted">World</div></section>
+```
+ See also the [JSX template tag](/guides/jsx-template-tag) for a build-free way to write markup with JSX syntax.
 
 ## Renderers
 

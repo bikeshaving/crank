@@ -288,6 +288,78 @@ export const tags = new Proxy(
 	},
 );
 
+/**
+ * Creates an element from a hyperscript selector like `"div#app.card"`.
+ *
+ * The selector is a tag name followed by any number of `#id` and `.class`
+ * parts. The tag name defaults to `div` when omitted, so `h(".card")` is a
+ * div with the class `card`. Classes from the selector are joined with any
+ * `class` prop. Components and symbol tags are passed straight to
+ * createElement.
+ *
+ * @example
+ * h("div#app.card.wide", {title: "Hello"}, h("p", null, "World"));
+ */
+export function h(
+	selector: Tag,
+	props?: Record<string, unknown> | null | undefined,
+	...children: Array<unknown>
+): Element {
+	if (typeof selector !== "string") {
+		return createElement(selector, props, ...children);
+	}
+
+	let tag = "";
+	let id: string | undefined;
+	const classes: Array<string> = [];
+	let i = 0;
+	while (i < selector.length) {
+		const start = i;
+		const ch = selector[i];
+		if (ch === "#" || ch === ".") {
+			i++;
+		}
+
+		while (i < selector.length && selector[i] !== "#" && selector[i] !== ".") {
+			i++;
+		}
+
+		const part = selector.slice(start + (ch === "#" || ch === "." ? 1 : 0), i);
+		if (ch === "#") {
+			id = part;
+		} else if (ch === ".") {
+			if (part) {
+				classes.push(part);
+			}
+		} else {
+			tag = part;
+		}
+	}
+
+	if (!tag) {
+		tag = "div";
+	}
+
+	if (id === undefined && !classes.length) {
+		return createElement(tag, props, ...children);
+	}
+
+	const props1: Record<string, unknown> = {...props};
+	if (id !== undefined && props1.id === undefined) {
+		props1.id = id;
+	}
+
+	if (classes.length) {
+		const cls = props1.class;
+		props1.class =
+			typeof cls === "string" && cls
+				? classes.join(" ") + " " + cls
+				: classes.join(" ");
+	}
+
+	return createElement(tag, props1, ...children);
+}
+
 /** Clones a given element, shallowly copying the props object. */
 export function cloneElement<TTag extends Tag>(
 	el: Element<TTag>,

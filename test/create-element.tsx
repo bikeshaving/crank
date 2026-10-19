@@ -1,6 +1,58 @@
 import {describe, test, expect} from "@b9g/libuild/test";
-import {createElement, tags} from "../src/crank.js";
+import {createElement, h, tags, Fragment} from "../src/crank.js";
 import {renderer} from "../src/html.js";
+
+describe("h", () => {
+	test("plain tag", () => {
+		expect(h("span", {id: "x"}, "a")).toEqual(
+			createElement("span", {id: "x"}, "a"),
+		);
+	});
+
+	test("id and classes", () => {
+		const el = h("div#app.card.wide");
+		expect(el.tag).toBe("div");
+		expect(el.props).toEqual({id: "app", class: "card wide"});
+	});
+
+	test("defaults to div", () => {
+		expect(h(".card").tag).toBe("div");
+		expect(h("#app").props).toEqual({id: "app"});
+	});
+
+	test("any order", () => {
+		expect(h("p.a#x.b").props).toEqual({id: "x", class: "a b"});
+	});
+
+	test("merges class prop and lets id prop win", () => {
+		const el = h("div#a.x", {id: "b", class: "y"});
+		expect(el.props).toEqual({id: "b", class: "x y"});
+	});
+
+	test("does not mutate props", () => {
+		const props = {class: "y"};
+		h("div.x", props, "child");
+		expect(props).toEqual({class: "y"});
+	});
+
+	test("custom elements", () => {
+		expect(h("my-element.big").tag).toBe("my-element");
+	});
+
+	test("components and symbols pass through", () => {
+		function Component() {
+			return null;
+		}
+		expect(h(Component, {a: 1}).tag).toBe(Component);
+		expect(h(Fragment, null, "a", "b").props.children).toEqual(["a", "b"]);
+	});
+
+	test("renders", () => {
+		expect(renderer.render(h("div#app.card", null, h("p", null, "Hi")))).toBe(
+			'<div id="app" class="card"><p>Hi</p></div>',
+		);
+	});
+});
 
 describe("tags", () => {
 	test("creates elements for any tag name", () => {

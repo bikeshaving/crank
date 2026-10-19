@@ -20,6 +20,11 @@
   const el = div({class: "card"}, h1(null, "Hello"), p(null, "World"));
   ```
 
+- **`h`: hyperscript selectors** (#62)
+  `h("div#app.card", props, ...children)` reads the id and classes from the
+  tag and merges them into the props. The tag defaults to `div`, so
+  `h(".card")` is a div with the class `card`.
+
 ### Performance
 - **The `jsx` template tag caches static subtrees** (#383)
   Parts of a template with no expressions are built once and the same element
