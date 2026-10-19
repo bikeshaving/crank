@@ -284,8 +284,8 @@ export const tags = new Proxy(
 			}
 
 			return target[tag];
-		}
-	}
+		},
+	},
 );
 
 /** Clones a given element, shallowly copying the props object. */
