@@ -1,0 +1,1 @@
+var e=document.getElementById("gears");e&&Promise.all([import("./standalone-5XIJPGJV.js"),import("./dom-BBEXR6LY.js"),import("./gears-LYQ2PPQC.js")]).then(([{jsx:t},{renderer:o},{GearInteractive:r}])=>{o.render(t`<${r} />`,e)});
