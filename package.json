@@ -158,15 +158,15 @@
     "./umd.js": {
       "require": "./dist/umd.js"
     },
-    "./web-components": {
-      "types": "./dist/web-components.d.ts",
-      "import": "./dist/web-components.js",
-      "require": "./dist/web-components.cjs"
+    "./wc": {
+      "types": "./dist/wc.d.ts",
+      "import": "./dist/wc.js",
+      "require": "./dist/wc.cjs"
     },
-    "./web-components.js": {
-      "types": "./dist/web-components.d.ts",
-      "import": "./dist/web-components.js",
-      "require": "./dist/web-components.cjs"
+    "./wc.js": {
+      "types": "./dist/wc.d.ts",
+      "import": "./dist/wc.js",
+      "require": "./dist/wc.cjs"
     },
     "./package.json": "./dist/package.json"
   }

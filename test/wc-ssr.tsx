@@ -5,7 +5,7 @@ import {createElement} from "../src/crank.js";
 import type {Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 import {HTMLRenderer} from "../src/html.js";
-import {CrankHTMLElement} from "../src/web-components.js";
+import {CrankHTMLElement} from "../src/wc.js";
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 

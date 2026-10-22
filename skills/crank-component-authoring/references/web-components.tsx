@@ -1,9 +1,9 @@
 import {renderer} from "@b9g/crank/dom";
-import {CrankHTMLElement} from "@b9g/crank/web-components";
-import type {AttributeProps} from "@b9g/crank/web-components";
+import {CrankHTMLElement} from "@b9g/crank/wc";
+import type {AttributeProps} from "@b9g/crank/wc";
 import type {Context} from "@b9g/crank";
 
-// `@b9g/crank/web-components` lets you write custom elements as Crank
+// `@b9g/crank/wc` lets you write custom elements as Crank
 // components. Subclass `CrankHTMLElement`, declare configuration as static
 // fields, and write a `render` method: `this` is the element, `ctx` is the
 // Crank context (an argument, not `this`), and `props` is the current

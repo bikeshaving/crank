@@ -19,7 +19,7 @@ const TEXT_NODE = 3;
 const DOCUMENT_NODE = 9;
 const DOCUMENT_FRAGMENT_NODE = 11;
 
-// Set by @b9g/crank/web-components on light DOM custom elements, whose children
+// Set by @b9g/crank/wc on light DOM custom elements, whose children
 // are rendered by the element rather than by the tree which contains it.
 const _OwnsChildren = Symbol.for("crank.OwnsChildren");
 

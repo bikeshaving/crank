@@ -4,8 +4,8 @@ import {describe, test, afterEach, expect} from "@b9g/libuild/test";
 import {createElement} from "../src/crank.js";
 import type {Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
-import {CrankHTMLElement} from "../src/web-components.js";
-import type {AttributeProps, EventHandlers} from "../src/web-components.js";
+import {CrankHTMLElement} from "../src/wc.js";
+import type {AttributeProps, EventHandlers} from "../src/wc.js";
 
 describe("web-components", () => {
 	// Compile-only: the type argument types the generated on<type> handlers and

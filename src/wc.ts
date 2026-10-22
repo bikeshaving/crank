@@ -5,7 +5,7 @@ import type {Children, Component, Context} from "./crank.js";
 import {renderer} from "./dom.js";
 
 /**
- * `@b9g/crank/web-components` — write Web Components with Crank.
+ * `@b9g/crank/wc` — write Web Components with Crank.
  *
  * Subclass `CrankHTMLElement`, declare configuration as static fields, and
  * define a `render` method. `render` is a normal Crank component (same forms,

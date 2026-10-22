@@ -2,8 +2,8 @@
 /** @jsx createElement */
 import {describe, test, afterEach, expect} from "@b9g/libuild/test";
 import {createElement} from "../src/crank.js";
-import {CrankHTMLElement} from "../src/web-components.js";
-import type {AttributeProps} from "../src/web-components.js";
+import {CrankHTMLElement} from "../src/wc.js";
+import type {AttributeProps} from "../src/wc.js";
 
 describe("updateComplete", () => {
 	afterEach(() => {

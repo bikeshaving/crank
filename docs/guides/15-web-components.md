@@ -3,10 +3,10 @@ title: Web Components
 description: Publish Crank components as framework-agnostic custom elements with the CrankHTMLElement base class — static configuration, a render method, and the full Crank lifecycle.
 ---
 
-The `@b9g/crank/web-components` module provides `CrankHTMLElement`, a base class for writing Web Components with Crank. Subclass it, declare configuration as static fields, and define a `render` method. `render` is a normal Crank component — same forms, same lifecycle — except `this` is the element and the context arrives as an argument.
+The `@b9g/crank/wc` module provides `CrankHTMLElement`, a base class for writing Web Components with Crank. Subclass it, declare configuration as static fields, and define a `render` method. `render` is a normal Crank component — same forms, same lifecycle — except `this` is the element and the context arrives as an argument.
 
 ```jsx
-import {CrankHTMLElement} from "@b9g/crank/web-components";
+import {CrankHTMLElement} from "@b9g/crank/wc";
 
 class XBlinkElement extends CrankHTMLElement {
   *render(props, ctx) {
@@ -148,8 +148,8 @@ Pass the class itself as `CrankHTMLElement`'s type argument, as with `Context<ty
 
 ```tsx
 import type {Context} from "@b9g/crank";
-import {CrankHTMLElement} from "@b9g/crank/web-components";
-import type {AttributeProps, EventHandlers} from "@b9g/crank/web-components";
+import {CrankHTMLElement} from "@b9g/crank/wc";
+import type {AttributeProps, EventHandlers} from "@b9g/crank/wc";
 
 type Props = AttributeProps<typeof XMarqueeElement>;
 

@@ -76,7 +76,7 @@
   expression, or the template edge is still stripped as layout.
 
 ### New API
-- **`@b9g/crank/web-components` — write Web Components with Crank**
+- **`@b9g/crank/wc` — write Web Components with Crank**
   A `CrankHTMLElement` base class: declare configuration as static fields
   (`observedAttributes`, `events`, `shadow`, `formAssociated`) and
   write a `render` method, which is a normal Crank component in any of the four
