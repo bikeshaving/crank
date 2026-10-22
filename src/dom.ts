@@ -23,23 +23,11 @@ const DOCUMENT_FRAGMENT_NODE = 11;
 // are rendered by the element rather than by the tree which contains it.
 const _OwnsChildren = Symbol.for("crank.OwnsChildren");
 
-// Whether a custom element renders its own children. A defined element says
-// so. An element which is not defined yet (its script may still be loading)
-// is judged by its server rendered markup: a declarative shadow root means its
-// children are light children belonging to the tree around it, and no shadow
-// root means its children are its own rendered contents.
+// Whether a defined light DOM custom element renders its own children. An
+// element which is not defined yet cannot be told apart from one whose
+// children belong to the tree around it, so it is hydrated as usual.
 function ownsChildren(element: Element): boolean {
-	if ((element as any)[_OwnsChildren]) {
-		return true;
-	}
-
-	const name = element.localName;
-	return (
-		name.includes("-") &&
-		!element.shadowRoot &&
-		typeof customElements !== "undefined" &&
-		!customElements.get(name)
-	);
+	return !!(element as any)[_OwnsChildren];
 }
 
 function getRootDocument(root: Node | undefined): Document {

@@ -1,4 +1,4 @@
-/// <reference lib="dom" />
+/// <reference lib="dom" preserve="true" />
 import {createElement} from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import type {Children, Component, Context} from "./crank.js";
@@ -20,8 +20,14 @@ import {renderer} from "./dom.js";
  * an element to type events the subclass adds:
  *
  * ```ts
+ * class XMarquee extends CrankHTMLElement<{events: readonly ["bounce"]}> {
+ *   static events: ReadonlyArray<string> = ["bounce"];
+ * }
+ *
  * interface XFancy extends EventHandlers<{events: readonly ["sparkle"]}> {}
- * class XFancy extends XMarquee {}
+ * class XFancy extends XMarquee {
+ *   static events = [...XMarquee.events, "sparkle"];
+ * }
  * ```
  *
  * A tuple gives names-only typing; an event map gives typed payloads.
@@ -291,7 +297,7 @@ Object.defineProperty(ServerHTMLElement.prototype, "hidden", {
 // fails with a message rather than reading undefined.
 function unavailable(this: ServerHTMLElement, name: string): never {
 	throw new Error(
-		`<${this.localName}>.${name} is unavailable while rendering on the server. Use it in a browser-only callback, such as ctx.after().`,
+		`<${this.localName}>.${name} is unavailable while rendering on the server. Use it in browser-only code, such as an event listener or connectedCallback, or check this.isConnected first.`,
 	);
 }
 
@@ -367,6 +373,9 @@ interface ElementState {
 	inflight: Promise<unknown> | undefined;
 	// Created when updateComplete is read while the element is busy.
 	completion: Completion | undefined;
+	// Light DOM children present at first connect, removed once a render
+	// commits.
+	placeholder: Array<Node> | undefined;
 	handlers: Record<string, ((ev: Event) => unknown) | null>;
 	listeners: Record<string, EventListener | undefined>;
 }
@@ -488,6 +497,7 @@ function run(
 					state.inflight = undefined;
 				}
 
+				removePlaceholder(el, state);
 				settle(state);
 			},
 			(err) => {
@@ -501,7 +511,23 @@ function run(
 		);
 		state.inflight = inflight;
 	} else {
+		removePlaceholder(el, state);
 		settle(state);
+	}
+}
+
+function removePlaceholder(
+	el: CrankHTMLElementImpl,
+	state: ElementState,
+): void {
+	if (state.placeholder) {
+		for (const node of state.placeholder) {
+			if (node.parentNode === el) {
+				el.removeChild(node);
+			}
+		}
+
+		state.placeholder = undefined;
 	}
 }
 
@@ -524,29 +550,13 @@ function mountElement(el: CrankHTMLElementImpl, state: ElementState): void {
 	// Pre-upgrade properties re-applied above may have requested an update,
 	// which this first render covers.
 	state.dirty = false;
-	if (state.root === el && el.firstChild) {
+	if (state.root === el) {
 		// Light DOM children are a placeholder, whether server rendered or
 		// written by hand as fallback content, so the first render builds fresh
-		// content and removes them once it commits. Until an async render
-		// commits, the placeholder stays visible.
-		const placeholder = Array.from(el.childNodes);
-		const removePlaceholder = () => {
-			for (const node of placeholder) {
-				if (node.parentNode === el) {
-					el.removeChild(node);
-				}
-			}
-		};
-		const children = createElement(state.bridge, getProps(el));
-		run(el, state, () => {
-			const result = renderer.render(children, el);
-			return result instanceof Promise
-				? result.then((value) => {
-						removePlaceholder();
-						return value;
-					})
-				: (removePlaceholder(), result);
-		});
+		// content and the placeholder is removed once a render commits. Until an
+		// async render commits, it stays visible.
+		state.placeholder = el.firstChild ? Array.from(el.childNodes) : undefined;
+		updateElement(el, state);
 	} else {
 		// A shadow root with content is a declarative shadow root, which only a
 		// server produces, so the first render adopts it.
@@ -819,6 +829,7 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 			dirty: false,
 			inflight: undefined,
 			completion: undefined,
+			placeholder: undefined,
 			handlers: Object.create(null),
 			listeners: Object.create(null),
 		};
@@ -848,7 +859,10 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 		return undefined;
 	}
 
-	/** Request a microtask-batched re-render. The element's one re-render control. */
+	/**
+	 * Requests a microtask-batched re-render, from the element's own setters and
+	 * methods. Inside `render`, use `ctx.refresh()`.
+	 */
 	requestUpdate(): void {
 		const state = states.get(this)!;
 		if (state.dirty) {
@@ -954,7 +968,7 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 	}
 
 	// Form association: the base's whole contribution is a re-render. Authors
-	// `super` the data-carrying ones to apply the reset/restore.
+	// `super` formResetCallback and formStateRestoreCallback to act on them.
 	formAssociatedCallback(_form: HTMLFormElement | null): void {
 		this.requestUpdate();
 	}
@@ -995,7 +1009,9 @@ Object.defineProperty(CrankHTMLElementImpl, _ServerRender, {
  * class XMarquee extends CrankHTMLElement<typeof XMarquee> {
  *   static events = ["bounce", "finish"] as const;
  *   static observedAttributes = ["scrollamount"] as const;
- *   render({scrollamount}: AttributeProps<typeof XMarquee>) {}
+ *   render({scrollamount}: AttributeProps<typeof XMarquee>) {
+ *     return scrollamount;
+ *   }
  * }
  * ```
  *

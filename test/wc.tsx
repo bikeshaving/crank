@@ -7,7 +7,7 @@ import {renderer} from "../src/dom.js";
 import {CrankHTMLElement} from "../src/wc.js";
 import type {AttributeProps, EventHandlers} from "../src/wc.js";
 
-describe("web-components", () => {
+describe("wc", () => {
 	// Compile-only: the type argument types the generated on<type> handlers and
 	// render's props. Never called (constructing an unregistered element would
 	// throw).
@@ -55,9 +55,18 @@ describe("web-components", () => {
 		// @ts-expect-error - payload is CustomEvent<{count}>, not a plain number
 		m.onbounce = (n: number) => n;
 
-		// Subclassing a subclass to add events merges EventHandlers.
+		// A class meant to be subclassed annotates its events, and a subclass
+		// which adds events merges EventHandlers for them.
+		class Base extends CrankHTMLElement<{events: readonly ["bounce"]}> {
+			static shadow = null;
+			static events: ReadonlyArray<string> = ["bounce"];
+		}
+
 		interface Sub extends EventHandlers<{events: readonly ["extra"]}> {}
-		class Sub extends Tuple {}
+		class Sub extends Base {
+			static events = [...Base.events, "extra"];
+		}
+
 		const sub = new Sub();
 		sub.onbounce = null;
 		sub.onextra = null;
@@ -612,9 +621,11 @@ describe("web-components", () => {
 	});
 
 	test("shadow closed mode renders without exposing the root", () => {
+		let root: Node | undefined;
 		class El extends CrankHTMLElement {
 			static shadow = {mode: "closed"} as const;
-			render() {
+			render(_props: unknown, ctx: Context) {
+				ctx.after((slot: any) => (root = slot.getRootNode()));
 				return <slot />;
 			}
 		}
@@ -629,6 +640,7 @@ describe("web-components", () => {
 		// so the light DOM keeps only the authored child the slot projects.
 		expect(el.shadowRoot).toBe(null);
 		expect(el.innerHTML).toBe("<p>light</p>");
+		expect((root as ShadowRoot).innerHTML).toBe("<slot></slot>");
 	});
 
 	test("a property set before upgrade is re-applied through the accessor", () => {
@@ -872,28 +884,5 @@ describe("web-components", () => {
 		customElements.upgrade(el);
 		el.dispatchEvent(new CustomEvent("ping"));
 		expect(received.length).toBe(1);
-	});
-
-	test("a closed declarative shadow root is reused (SSR)", () => {
-		const name = tag("x-declarative");
-		class El extends CrankHTMLElement {
-			static shadow = {mode: "closed"} as const;
-			render() {
-				return <span>hydrated</span>;
-			}
-		}
-
-		const container = document.createElement("div");
-		(container as any).setHTMLUnsafe(
-			`<${name}><template shadowrootmode="closed"><span>ssr</span></template></${name}>`,
-		);
-		document.body.appendChild(container);
-		customElements.define(name, El);
-		const el = container.firstElementChild!;
-		expect(el.tagName.toLowerCase()).toBe(name);
-		// The closed root is invisible from outside; a successful upgrade and
-		// empty light DOM show the constructor reused it instead of throwing.
-		expect(el instanceof El).toBe(true);
-		expect(el.innerHTML).toBe("");
 	});
 });

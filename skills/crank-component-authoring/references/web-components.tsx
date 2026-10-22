@@ -64,10 +64,12 @@ class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
 
   start() {
     this.removeAttribute("paused");
+    this.dispatchEvent(new Event("start"));
   }
 
   stop() {
     this.setAttribute("paused", "");
+    this.dispatchEvent(new Event("finish"));
   }
 }
 

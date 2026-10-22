@@ -25,6 +25,29 @@
   tag and merges them into the props. The tag defaults to `div`, so
   `h(".card")` is a div with the class `card`.
 
+- **`@b9g/crank/wc` — write Web Components with Crank**
+  A `CrankHTMLElement` base class: declare configuration as static fields
+  (`observedAttributes`, `events`, `shadow`, `formAssociated`) and
+  write a `render` method, which is a normal Crank component in any of the four
+  forms. Elements render into an open shadow root by default; `shadow` takes
+  the options passed to `attachShadow`, or `null` for light DOM.
+  `requestUpdate()` queues a microtask-batched re-render, and
+  `updateComplete` resolves once the element has finished rendering. Errors
+  thrown from `render` dispatch a cancelable `error` event on the element.
+  `class X extends CrankHTMLElement<typeof X>` types the generated `on<type>`
+  handlers from `static events`, and `AttributeProps<typeof X>` types the
+  props `render` receives from `static observedAttributes`.
+
+- **Server rendering for web components**
+  `HTMLRenderer.prototype.define(tagName, ctor)` registers a `CrankHTMLElement`
+  class with the HTML renderer, which then renders the element's contents: as
+  children for light DOM, or as a declarative shadow root for shadow DOM, and
+  `get(tagName)` looks a definition up. In the browser a shadow DOM element
+  hydrates its declarative shadow root, and a light DOM element replaces its
+  server rendered content. The module loads where there is no DOM.
+
+- **The DOM renderer accepts a `ShadowRoot` as a render root.**
+
 ### Performance
 - **The `jsx` template tag caches static subtrees** (#383)
   Parts of a template with no expressions are built once and the same element
@@ -74,29 +97,6 @@
   lines, and the indentation between text): it renders as a space in normal flow
   and as a real line break in a `<pre>`. Whitespace adjacent to an element, an
   expression, or the template edge is still stripped as layout.
-
-### New API
-- **`@b9g/crank/wc` — write Web Components with Crank**
-  A `CrankHTMLElement` base class: declare configuration as static fields
-  (`observedAttributes`, `events`, `shadow`, `formAssociated`) and
-  write a `render` method, which is a normal Crank component in any of the four
-  forms. Elements render into an open shadow root by default; `shadow` takes
-  the options passed to `attachShadow`, or `null` for light DOM.
-  `requestUpdate()` queues a microtask-batched re-render, and
-  `updateComplete` resolves once the element has finished rendering. Errors
-  thrown from `render` dispatch a cancelable `error` event on the element.
-  `class X extends CrankHTMLElement<typeof X>` types the generated `on<type>`
-  handlers from `static events`, and `AttributeProps<typeof X>` types the
-  props `render` receives from `static observedAttributes`.
-
-- **Server rendering for web components**
-  `HTMLRenderer.prototype.define(tagName, ctor)` registers a `CrankHTMLElement`
-  class with the HTML renderer, which then renders the element's contents: as
-  children for light DOM, or as a declarative shadow root for shadow DOM. In the
-  browser the element's first render hydrates that content. The module loads
-  where there is no DOM.
-
-- **The DOM renderer accepts a `ShadowRoot` as a render root.**
 
 ### Changed
 - **`window.Crank` (the UMD/CDN browser global) now ships authoring templates and a default renderer.**

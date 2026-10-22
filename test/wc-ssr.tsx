@@ -9,7 +9,7 @@ import {CrankHTMLElement} from "../src/wc.js";
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-describe("web-components SSR", () => {
+describe("wc SSR", () => {
 	afterEach(() => {
 		renderer.render(null, document.body);
 		document.body.innerHTML = "";
@@ -236,37 +236,24 @@ describe("web-components SSR", () => {
 		expect(el.innerHTML).toBe("<b>ready</b>");
 	});
 
-	test("a page hydrated before an element is defined keeps its content", () => {
-		const name = tag("x-later");
-		class El extends CrankHTMLElement {
-			static shadow = null;
-			render() {
-				return <span>own</span>;
-			}
-		}
-
-		const html = new HTMLRenderer();
-		html.define(name, El);
+	test("an undefined custom element's children hydrate like any element's", () => {
+		const name = tag("x-wrapper");
 		function App() {
-			return <main>{createElement(name, null)}</main>;
+			return <main>{createElement(name, null, <p>hi</p>)}</main>;
 		}
 
 		const container = document.createElement("div");
 		document.body.appendChild(container);
-		// A browser-side element class can render on the server only once
-		// defined, so write the server output by hand.
-		container.innerHTML = `<main><${name}><span>own</span></${name}></main>`;
+		container.innerHTML = `<main><${name}><p>hi</p></${name}></main>`;
+		const p = container.querySelector("p");
 		const warnings = captureWarnings(() =>
 			renderer.hydrate(<App />, container),
 		);
 		expect(container.innerHTML).toBe(
-			`<main><${name}><span>own</span></${name}></main>`,
+			`<main><${name}><p>hi</p></${name}></main>`,
 		);
+		expect(container.querySelector("p")).toBe(p);
 		expect(warnings).toEqual([]);
-		customElements.define(name, El);
-		expect(container.innerHTML).toBe(
-			`<main><${name}><span>own</span></${name}></main>`,
-		);
 		renderer.render(null, container);
 	});
 
@@ -434,7 +421,7 @@ describe("web-components SSR", () => {
 	});
 });
 
-describe("web-components state", () => {
+describe("wc state", () => {
 	afterEach(() => {
 		document.body.innerHTML = "";
 	});
@@ -490,7 +477,7 @@ describe("web-components state", () => {
 	});
 });
 
-describe("web-components SSR parity", () => {
+describe("wc SSR parity", () => {
 	afterEach(() => {
 		document.body.innerHTML = "";
 	});
@@ -620,7 +607,7 @@ describe("web-components SSR parity", () => {
 	});
 });
 
-describe("web-components SSR isolation", () => {
+describe("wc SSR isolation", () => {
 	test("provisions do not cross an element, as in a browser", () => {
 		const name = "x-consumer-ssr-isolation";
 		class El extends CrankHTMLElement {
@@ -647,5 +634,41 @@ describe("web-components SSR isolation", () => {
 				</Provider>,
 			),
 		).toBe(`<main><${name}>undefined</${name}></main>`);
+	});
+});
+
+describe("wc SSR rendering again", () => {
+	let uid = 0;
+	const tag = (name: string) => `${name}-again-${uid++}`;
+
+	test("an element kept across renders expands again", () => {
+		const name = tag("x-kept");
+		class El extends CrankHTMLElement {
+			static shadow = null;
+			render() {
+				return "kept";
+			}
+		}
+
+		customElements.define(name, El);
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		const root = {};
+		const el = createElement(name, null);
+		const expected = `<div><${name}>kept</${name}></div>`;
+		expect(html.render(<div>{el}</div>, root)).toBe(expected);
+		expect(html.render(<div>{el}</div>, root)).toBe(expected);
+		expect(
+			html.render(<div>{createElement(name, {copy: true})}</div>, root),
+		).toBe(expected);
+		html.render(null, root);
+	});
+
+	test("a hyphenated tag inside MathML is not expanded", () => {
+		const name = "annotation-xml";
+		const html = new HTMLRenderer();
+		expect(
+			html.render(<math>{createElement(name, null, <span>x</span>)}</math>),
+		).toBe(`<math><${name}><span>x</span></${name}></math>`);
 	});
 });

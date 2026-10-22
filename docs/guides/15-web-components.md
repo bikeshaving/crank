@@ -49,7 +49,7 @@ Configuration is static fields; behavior is methods and accessors. No constructo
 
 | Static field | Type | Meaning |
 |---|---|---|
-| `observedAttributes` | `string[]` | Attributes that trigger a re-render. Read by the platform. |
+| `observedAttributes` | `readonly string[]` | Attributes that trigger a re-render. Read by the platform. |
 | `events` | `readonly string[]` | Emitted event types; generates `on<type>` handler properties. |
 | `shadow` | `ShadowRootInit` or `null` | The options passed to `attachShadow`; defaults to `{mode: "open"}`. `null`: no shadow root (light DOM). |
 | `formAssociated` | `boolean` | Opts into form association. Read by the platform. |
@@ -199,12 +199,20 @@ class XPickerElement extends CrankHTMLElement<{
 picker.onpick = (ev) => ev.detail.toFixed();
 ```
 
-A subclass of an element which declares more events types them by merging `EventHandlers`:
+A class meant to be subclassed annotates `static events` instead of using `as const`, since a subclass cannot widen a literal tuple, and passes its event names as the type argument. A subclass which adds events merges `EventHandlers` for them:
 
 ```tsx
+class XMarqueeElement extends CrankHTMLElement<{
+  events: readonly ["bounce", "finish"];
+}> {
+  static events: ReadonlyArray<string> = ["bounce", "finish"];
+}
+
 interface XFancyMarqueeElement
   extends EventHandlers<{events: readonly ["sparkle"]}> {}
-class XFancyMarqueeElement extends XMarqueeElement {}
+class XFancyMarqueeElement extends XMarqueeElement {
+  static events = [...XMarqueeElement.events, "sparkle"];
+}
 ```
 
 ## Styling
@@ -236,7 +244,7 @@ Light-DOM elements have no style encapsulation; use ordinary page CSS, scoped by
 
 ## Lifecycle
 
-The base owns the custom-element reactions and maps them onto the component lifecycle. Don't override them, except the two form callbacks which carry data (see below), and call `super` when you do.
+The base owns the custom-element reactions and maps them onto the component lifecycle. Don't override them, except the two form callbacks you need to act on (see below), and call `super` when you do.
 
 | Reaction | What happens |
 |---|---|
@@ -249,7 +257,7 @@ Each element is its own Crank root: provisions and errors do not cross the eleme
 
 ## Errors
 
-An error thrown from `render` has no caller to catch it, so the base dispatches a cancelable `error` event on the element (an `ErrorEvent` carrying the thrown value), matching `<img>` and `window`. Call `preventDefault()` to mark it handled. Otherwise, if something is awaiting `updateComplete`, the promise rejects with the error (after the event fires); if nothing is, the error is reported to the global scope. Each error goes to exactly one of these places, and none is silently swallowed.
+An error thrown from `render` has no caller to catch it, so the base dispatches a cancelable `error` event on the element (an `ErrorEvent` carrying the thrown value), matching `<img>` and `window`. Call `preventDefault()` to mark it handled. Otherwise, if something is awaiting `updateComplete`, the promise rejects with the error (after the event fires); if nothing is, the error is reported to the global scope. Each error goes to exactly one of these places, and none is silently swallowed. An error from a re-render the component starts itself with `ctx.refresh()` is thrown to that call, as in any Crank component. On the server, an error thrown from an element's `render` rejects the whole `HTMLRenderer.render` call.
 
 ```jsx
 el.addEventListener("error", (ev) => {
@@ -272,7 +280,7 @@ Inside the component, ordinary Crank error handling applies — catch at the `yi
 
 ## Form association
 
-Set `static formAssociated = true` and the platform enables form participation; the base's whole contribution is a re-render on each form callback. `ElementInternals` is yours — call `attachInternals()` and use it in `render`, so the form value and validity are outputs of the same state as the rendered DOM. The data-carrying callbacks (`formResetCallback`, `formStateRestoreCallback`) have render-inducing defaults; `super` them and apply the payload:
+Set `static formAssociated = true` and the platform enables form participation; the base's whole contribution is a re-render on each form callback. `ElementInternals` is yours — call `attachInternals()` and use it in `render`, so the form value and validity are outputs of the same state as the rendered DOM. The two callbacks you need to act on, `formResetCallback` (reset your value) and `formStateRestoreCallback` (apply the restored state), re-render by default; `super` them and do the rest:
 
 ```jsx
 formStateRestoreCallback(state, mode) {
@@ -305,7 +313,7 @@ On the server the renderer constructs a real instance of the class, applies prop
 ```html
 <x-card>
   <template shadowrootmode="open"><b><slot></slot></b></template>
-  <x-money amount="4999"><span>$49.99</span></x-money>
+  <x-money amount="4999">$49.99</x-money>
 </x-card>
 ```
 
@@ -313,7 +321,7 @@ The server tag gets the attributes the element ends up with, including any it se
 
 In the browser, a shadow DOM element's first render hydrates its declarative shadow root: the server's nodes are adopted, not replaced, so focus, input and other state from before the upgrade survive. A light DOM element's content is a placeholder instead, since it cannot be told apart from content written by hand: the element shows it until its first render commits, then replaces it.
 
-A Crank app which hydrates the page adopts each custom element but leaves its contents to the element, whether or not the element has been defined yet, and hydrates only the light children it passes to a shadow DOM element.
+A Crank app which hydrates the page adopts each custom element. It leaves a light DOM element's contents to the element and hydrates only the light children it passes to a shadow DOM element. It can tell them apart only once an element is defined, so define your elements before hydrating the page; an undefined element's contents are hydrated as the app's own.
 
 `CrankHTMLElement` loads where there is no DOM. It extends a small stand-in for `HTMLElement` which backs attributes, `attachShadow`, `attachInternals` (whose form methods do nothing), and events, but not a node tree, so construction and `render` must not reach for the node tree or layout: `closest`, `querySelector`, `ownerDocument`, `style`, `focus` and the like throw on the server. `localName`, `id`, `className`, `hidden`, `dataset` and other attribute-backed properties work. Guard browser-only registration:
 

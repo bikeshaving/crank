@@ -313,11 +313,16 @@ interface Placeholder {
 
 interface CustomElementState {
 	registry: Map<string, Definition>;
-	placeholders: Map<string, Placeholder>;
+	// Each placeholder's node, by id. The node holds its placeholder's data,
+	// so a node Crank keeps across renders (copy, a reused element) expands
+	// again, and an entry goes away with its node.
+	nodes: Map<string, WeakRef<TextNode>>;
 	pattern: RegExp;
 }
 
 const states = new WeakMap<HTMLRenderer, CustomElementState>();
+
+const placeholders = new WeakMap<TextNode, Placeholder>();
 
 const reservedNames = new Set([
 	"annotation-xml",
@@ -351,14 +356,14 @@ function expand(
 	html: Promise<string> | string,
 ): Promise<string> | string {
 	return then(html, (html) => {
-		const {placeholders, pattern} = states.get(renderer)!;
+		const {nodes, pattern} = states.get(renderer)!;
 		const parts: Array<Promise<string> | string> = [];
 		let isAsync = false;
 		let last = 0;
 		for (const match of html.matchAll(pattern)) {
 			parts.push(html.slice(last, match.index));
-			const placeholder = placeholders.get(match[1]);
-			placeholders.delete(match[1]);
+			const node = nodes.get(match[1])?.deref();
+			const placeholder = node && placeholders.get(node);
 			const part = placeholder ? expandElement(renderer, placeholder) : "";
 			isAsync = isAsync || part instanceof Promise;
 			parts.push(part);
@@ -413,7 +418,8 @@ function expandElement(
 export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 	constructor() {
 		const registry = new Map<string, Definition>();
-		const placeholders = new Map<string, Placeholder>();
+		const nodes = new Map<string, WeakRef<TextNode>>();
+		const cleanup = new FinalizationRegistry((id: string) => nodes.delete(id));
 		const nonce = Math.random().toString(36).slice(2);
 		const ids = new WeakMap<TextNode, string>();
 		let nextId = 0;
@@ -421,8 +427,10 @@ export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 			...impl,
 			arrange(data) {
 				const {tag, node, props, children, scope} = data;
+				// Inside SVG and MathML, a hyphenated tag is a foreign element, not
+				// a custom element.
 				const definition =
-					typeof tag === "string" && scope !== "svg"
+					typeof tag === "string" && scope === undefined
 						? registry.get(tag)
 						: undefined;
 				if (!definition) {
@@ -440,9 +448,11 @@ export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 				if (id === undefined) {
 					id = String(nextId++);
 					ids.set(node, id);
+					nodes.set(id, new WeakRef(node));
+					cleanup.register(node, id);
 				}
 
-				placeholders.set(id, {
+				placeholders.set(node, {
 					tag: tag as string,
 					definition,
 					props,
@@ -453,7 +463,7 @@ export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 		});
 		states.set(this, {
 			registry,
-			placeholders,
+			nodes,
 			pattern: new RegExp(`<!--crank-element:${nonce}:(\\d+)-->`, "g"),
 		});
 	}
@@ -470,7 +480,8 @@ export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 	 * Registers a custom element class with this renderer, the server's
 	 * equivalent of `customElements.define`. Each registered tag renders its
 	 * contents (a declarative shadow root for shadow DOM elements) in a root of
-	 * its own, as in a browser, so the browser can hydrate them.
+	 * its own, as in a browser. In the browser, shadow DOM elements hydrate the
+	 * declarative shadow root and light DOM elements replace their content.
 	 *
 	 * Defining the same tag with the same class again does nothing.
 	 */

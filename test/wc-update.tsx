@@ -167,3 +167,61 @@ describe("updateComplete", () => {
 		await el.updateComplete;
 	});
 });
+
+describe("recovering from render errors", () => {
+	afterEach(() => {
+		document.body.innerHTML = "";
+	});
+
+	test("an element renders again after an async render rejects", async () => {
+		const name = "x-recover-async";
+		let fail = true;
+		class El extends CrankHTMLElement {
+			async render() {
+				await new Promise((resolve) => setTimeout(resolve, 1));
+				if (fail) {
+					throw new Error("boom");
+				}
+
+				return <span>ok</span>;
+			}
+		}
+
+		customElements.define(name, El);
+		const el = document.createElement(name) as El;
+		el.addEventListener("error", (ev) => ev.preventDefault());
+		document.body.appendChild(el);
+		await el.updateComplete;
+		fail = false;
+		el.requestUpdate();
+		await el.updateComplete;
+		expect(el.shadowRoot!.innerHTML).toBe("<span>ok</span>");
+	});
+
+	test("light DOM fallback content goes once a later render commits", async () => {
+		const name = "x-recover-fallback";
+		let fail = true;
+		class El extends CrankHTMLElement {
+			static shadow = null;
+			render() {
+				if (fail) {
+					throw new Error("boom");
+				}
+
+				return <span>ok</span>;
+			}
+		}
+
+		customElements.define(name, El);
+		const container = document.createElement("div");
+		container.innerHTML = `<${name}><i>fallback</i></${name}>`;
+		const el = container.firstElementChild as El;
+		el.addEventListener("error", (ev) => ev.preventDefault());
+		document.body.appendChild(container);
+		expect(el.innerHTML).toBe("<i>fallback</i>");
+		fail = false;
+		el.requestUpdate();
+		await el.updateComplete;
+		expect(el.innerHTML).toBe("<span>ok</span>");
+	});
+});
