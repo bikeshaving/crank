@@ -1,5 +1,6 @@
 import type {Children, Component, Context} from "./crank.js";
 import {createElement} from "./crank.js";
+import {logError} from "./_utils.js";
 
 /**
  * Creates a lazy-loaded component from an initializer function.
@@ -246,9 +247,7 @@ export function* SuspenseList(
 				return items;
 			}
 
-			console.error(
-				"Component registered outside SuspenseList registration window",
-			);
+			logError("Component registered outside SuspenseList registration window");
 			return [];
 		},
 
