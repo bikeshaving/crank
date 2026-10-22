@@ -255,12 +255,15 @@ export function createElement<TTag extends Tag>(
  * @example
  * tags.div({ class: "foo" }, "Hello");
  */
+// The proxy is the API: any property name is a tag, so there are no fixed
+// methods to write out. The tag functions it makes are cached on the target.
+// eslint-disable-next-line no-restricted-globals
 export const tags = new Proxy(
 	Object.create(null) as Record<
 		string,
 		(
 			props?: Record<string, unknown> | null | undefined,
-			...children: Array<unknown>
+			...children: unknown[]
 		) => Element<string>
 	>,
 	{
@@ -272,7 +275,7 @@ export const tags = new Proxy(
 			if (!(tag in target)) {
 				target[tag] = (
 					props?: Record<string, unknown> | null | undefined,
-					...children: Array<unknown>
+					...children: unknown[]
 				) => createElement(tag, props, ...children);
 			}
 
@@ -296,7 +299,7 @@ export const tags = new Proxy(
 export function h(
 	selector: Tag,
 	props?: Record<string, unknown> | null | undefined,
-	...children: Array<unknown>
+	...children: unknown[]
 ): Element {
 	if (typeof selector !== "string") {
 		return createElement(selector, props, ...children);
@@ -304,7 +307,7 @@ export function h(
 
 	let tag = "";
 	let id: string | undefined;
-	const classes: Array<string> = [];
+	const classes: string[] = [];
 	let i = 0;
 	while (i < selector.length) {
 		const start = i;
