@@ -80,8 +80,7 @@ function attachRoot(
 }
 
 function getProps(el: CrankHTMLElement): Props {
-	const names = (el.constructor as typeof CrankHTMLElement)
-		.observedAttributes;
+	const names = (el.constructor as typeof CrankHTMLElement).observedAttributes;
 	const props: Props = {};
 	if (names) {
 		for (const name of names) {
@@ -322,4 +321,3 @@ export class CrankHTMLElement extends HTMLElement {
 		this.requestUpdate();
 	}
 }
-

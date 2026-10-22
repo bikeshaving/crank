@@ -28,8 +28,9 @@ describe("web-components", () => {
 		el.onnope = () => {};
 
 		// Event-map form: typed payloads flow to each handler argument.
-		interface Mapped
-			extends EventHandlers<{events: {bounce: CustomEvent<{count: number}>}}> {}
+		interface Mapped extends EventHandlers<{
+			events: {bounce: CustomEvent<{count: number}>};
+		}> {}
 		class Mapped extends CrankHTMLElement {
 			render() {
 				return null;

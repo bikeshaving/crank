@@ -30,8 +30,9 @@ customElements.define("x-blink", XBlinkElement);
 
 // x-marquee — shadow DOM, scoped styles, an imperative start()/stop() API, and
 // typed `on<type>` handlers generated from `static events`.
-interface XMarqueeElement
-  extends EventHandlers<{events: typeof XMarqueeElement.events}> {}
+interface XMarqueeElement extends EventHandlers<{
+  events: typeof XMarqueeElement.events;
+}> {}
 class XMarqueeElement extends CrankHTMLElement {
   static observedAttributes = ["scrollamount", "paused"];
   static events = ["bounce", "finish", "start"] as const;
