@@ -19,6 +19,10 @@ const TEXT_NODE = 3;
 const DOCUMENT_NODE = 9;
 const DOCUMENT_FRAGMENT_NODE = 11;
 
+// Set by @b9g/crank/web-components on light DOM custom elements, whose children
+// are rendered by the element rather than by the tree which contains it.
+const _OwnsChildren = Symbol.for("crank.OwnsChildren");
+
 function getRootDocument(root: Node | undefined): Document {
 	if (root && root.ownerDocument) {
 		return root.ownerDocument;
@@ -632,6 +636,12 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 			return;
 		}
 
+		if (tag !== Portal && (node as any)[_OwnsChildren]) {
+			// A light DOM custom element renders its own children, so the outer tree
+			// adopts the element but leaves its contents alone.
+			return [];
+		}
+
 		return Array.from(node.childNodes);
 	},
 
@@ -719,6 +729,16 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 			throw new TypeError(
 				`<Portal> root is not a node. Received: ${String(node)}`,
 			);
+		}
+
+		if (tag !== Portal && (node as any)[_OwnsChildren]) {
+			if (children.length) {
+				console.error(
+					`<${(node as Element).localName}> renders its own children, so children passed to it are ignored.`,
+				);
+			}
+
+			return;
 		}
 
 		if (!("innerHTML" in props) && !("dangerouslySetInnerHTML" in props)) {
@@ -899,7 +919,10 @@ function validateRoot(root: unknown): asserts root is Element | ShadowRoot {
 		throw new TypeError(`Render root is not a node. Received: ${String(root)}`);
 	} else if (
 		(root as Node).nodeType !== ELEMENT_NODE &&
-		(root as Node).nodeType !== DOCUMENT_FRAGMENT_NODE
+		!(
+			(root as Node).nodeType === DOCUMENT_FRAGMENT_NODE &&
+			(root as ShadowRoot).host != null
+		)
 	) {
 		throw new TypeError(
 			`Render root must be an element or shadow root. Received: ${String(root)}`,

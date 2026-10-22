@@ -40,43 +40,194 @@ type Props = Record<string, string | null>;
 /** What `render` may return: any of Crank's four component forms. */
 type RenderResult = ReturnType<Component<Props>>;
 
-const _ElementState = Symbol.for("crank.ElementState");
+// Read by the HTML renderer's define(), which only needs the component.
+const _ServerComponent = Symbol.for("crank.ServerComponent");
 
+// Read by the DOM renderer, which leaves a light DOM element's children to the
+// element when the tree containing it hydrates or re-renders.
+const _OwnsChildren = Symbol.for("crank.OwnsChildren");
+
+/*** SERVER SHIM ***/
+interface ServerElementState {
+	attributes: Map<string, string>;
+	shadowRoot: {mode: ShadowRootMode; host: object} | null;
+	hasInternals: boolean;
+}
+
+const serverStates = new WeakMap<object, ServerElementState>();
+
+function getServerState(el: object): ServerElementState {
+	let state = serverStates.get(el);
+	if (!state) {
+		state = {attributes: new Map(), shadowRoot: null, hasInternals: false};
+		serverStates.set(el, state);
+	}
+
+	return state;
+}
+
+/**
+ * Stands in for HTMLElement where there is no DOM, so element classes load and
+ * construct on the server. It backs attributes, shadow root and
+ * ElementInternals bookkeeping, and events, but not a node tree: on the server
+ * render emits HTML through the HTML renderer.
+ */
+class ServerHTMLElement extends EventTarget {
+	get isConnected(): boolean {
+		return false;
+	}
+
+	get shadowRoot(): object | null {
+		const root = getServerState(this).shadowRoot;
+		return root && root.mode === "open" ? root : null;
+	}
+
+	getAttribute(name: string): string | null {
+		return getServerState(this).attributes.get(name.toLowerCase()) ?? null;
+	}
+
+	getAttributeNames(): Array<string> {
+		return Array.from(getServerState(this).attributes.keys());
+	}
+
+	hasAttribute(name: string): boolean {
+		return getServerState(this).attributes.has(name.toLowerCase());
+	}
+
+	setAttribute(name: string, value: unknown): void {
+		name = name.toLowerCase();
+		const oldValue = this.getAttribute(name);
+		const newValue = String(value);
+		getServerState(this).attributes.set(name, newValue);
+		attributeChanged(this, name, oldValue, newValue);
+	}
+
+	removeAttribute(name: string): void {
+		name = name.toLowerCase();
+		const oldValue = this.getAttribute(name);
+		if (oldValue !== null) {
+			getServerState(this).attributes.delete(name);
+			attributeChanged(this, name, oldValue, null);
+		}
+	}
+
+	toggleAttribute(name: string, force?: boolean): boolean {
+		const on = force ?? !this.hasAttribute(name);
+		if (on) {
+			if (!this.hasAttribute(name)) {
+				this.setAttribute(name, "");
+			}
+		} else {
+			this.removeAttribute(name);
+		}
+
+		return on;
+	}
+
+	attachShadow(init: ShadowRootInit): object {
+		const state = getServerState(this);
+		if (state.shadowRoot) {
+			throw new Error("Element already hosts a shadow root");
+		}
+
+		state.shadowRoot = {mode: init.mode, host: this};
+		return state.shadowRoot;
+	}
+
+	attachInternals(): object {
+		const state = getServerState(this);
+		if (state.hasInternals) {
+			throw new Error("ElementInternals already attached");
+		}
+
+		state.hasInternals = true;
+		// Form values and validity only mean something in a browser form.
+		return {
+			form: null,
+			labels: [],
+			shadowRoot: null,
+			states: new Set<string>(),
+			validity: {valid: true},
+			validationMessage: "",
+			willValidate: false,
+			setFormValue() {},
+			setValidity() {},
+			checkValidity: () => true,
+			reportValidity: () => true,
+		};
+	}
+
+	matches(): boolean {
+		return false;
+	}
+}
+
+function attributeChanged(
+	el: object,
+	name: string,
+	oldValue: string | null,
+	newValue: string | null,
+): void {
+	const observed = (el.constructor as typeof CrankHTMLElement)
+		.observedAttributes;
+	if (observed && observed.includes(name)) {
+		(el as CrankHTMLElement).attributeChangedCallback(name, oldValue, newValue);
+	}
+}
+
+const Base: typeof HTMLElement =
+	typeof HTMLElement === "undefined"
+		? (ServerHTMLElement as unknown as typeof HTMLElement)
+		: HTMLElement;
+
+/*** ELEMENT STATE ***/
 interface ElementState {
 	root: Element | ShadowRoot;
 	bridge: Component;
 	mounted: boolean;
+	waiting: boolean;
 	dirty: boolean;
 	handlers: Record<string, ((ev: Event) => unknown) | null>;
 	listeners: Record<string, EventListener | undefined>;
 }
 
+const states = new WeakMap<CrankHTMLElement, ElementState>();
+
+function getShadowInit(shadow: true | ShadowRootInit): ShadowRootInit {
+	return shadow === true ? {mode: "open"} : shadow;
+}
+
 function attachRoot(
 	el: CrankHTMLElement,
-	shadow: boolean | ShadowRootInit,
+	shadow: boolean | ShadowRootInit | undefined,
 ): Element | ShadowRoot {
 	if (!shadow) {
 		return el;
 	}
 
-	const init: ShadowRootInit = shadow === true ? {mode: "open"} : shadow;
-	// Reuse a declarative shadow root if one is already attached (SSR),
-	// otherwise attach one now. A closed declarative shadow root is hidden from
-	// the shadowRoot property and makes attachShadow throw; ElementInternals is
-	// the one API which exposes it.
-	let root = el.shadowRoot;
-	if (root === null) {
-		try {
-			root = el.attachShadow(init);
-		} catch (err) {
-			root = el.attachInternals().shadowRoot;
-			if (root === null) {
-				throw err;
-			}
+	const init = getShadowInit(shadow);
+	// An open declarative shadow root (from server rendered HTML) is already
+	// attached, and the first render hydrates it. A closed one is hidden, and
+	// attachShadow with the same mode empties and returns it, so the first
+	// render starts fresh.
+	if (el.shadowRoot) {
+		if (el.shadowRoot.mode !== init.mode) {
+			console.error(
+				`<${el.localName}> found an ${el.shadowRoot.mode} declarative shadow root but is configured as ${init.mode}`,
+			);
 		}
+
+		return el.shadowRoot;
 	}
 
-	return root;
+	try {
+		return el.attachShadow(init);
+	} catch (err) {
+		throw new Error(
+			`<${el.localName}> could not attach a shadow root. A declarative shadow root with a different mode may already be attached.`,
+			{cause: err},
+		);
+	}
 }
 
 function getProps(el: CrankHTMLElement): Props {
@@ -102,7 +253,7 @@ function upgradeProperties(el: CrankHTMLElement): void {
 		}
 
 		let proto = Object.getPrototypeOf(el);
-		while (proto && proto !== HTMLElement.prototype) {
+		while (proto && proto !== Base.prototype) {
 			const desc = Object.getOwnPropertyDescriptor(proto, key);
 			if (desc && (desc.get || desc.set)) {
 				const value = (el as any)[key];
@@ -116,13 +267,10 @@ function upgradeProperties(el: CrankHTMLElement): void {
 	}
 }
 
-function updateElement(el: CrankHTMLElement, state: ElementState): void {
+function catchErrors(el: CrankHTMLElement, fn: () => unknown): void {
 	let result: unknown;
 	try {
-		result = renderer.render(
-			createElement(state.bridge, getProps(el)),
-			state.root,
-		);
+		result = fn();
 	} catch (err) {
 		handleError(el, err);
 		return;
@@ -132,7 +280,117 @@ function updateElement(el: CrankHTMLElement, state: ElementState): void {
 		result != null &&
 		typeof (result as PromiseLike<unknown>).then === "function"
 	) {
-		(result as Promise<unknown>).catch((err) => handleError(el, err));
+		(result as Promise<unknown>).then(undefined, (err) => handleError(el, err));
+	}
+}
+
+function updateElement(
+	el: CrankHTMLElement,
+	state: ElementState,
+	hydrate = false,
+): void {
+	const children = createElement(state.bridge, getProps(el));
+	catchErrors(el, () =>
+		hydrate
+			? renderer.hydrate(children, state.root)
+			: renderer.render(children, state.root),
+	);
+}
+
+function mountElement(el: CrankHTMLElement, state: ElementState): void {
+	state.mounted = true;
+	upgradeProperties(el);
+	// Pre-upgrade properties re-applied above may have requested an update,
+	// which this first render covers.
+	state.dirty = false;
+	// Existing content is server rendered: the first render adopts it, and
+	// mismatched or leftover nodes are replaced.
+	updateElement(el, state, state.root.firstChild !== null);
+}
+
+/** Lazily builds the component which renders an element class on the server. */
+const serverComponents = new WeakMap<Function, Component>();
+
+function getServerComponent(ctor: typeof CrankHTMLElement): Component {
+	let comp = serverComponents.get(ctor);
+	if (!comp) {
+		comp = function* (this: Context, props: Record<string, any>) {
+			const el = new ctor();
+			const bridge = states.get(el)!.bridge;
+			for (props of this) {
+				applyProps(el, props);
+				const content = createElement(bridge, getProps(el));
+				if (ctor.shadowDOM) {
+					const init = getShadowInit(ctor.shadowDOM);
+					// Light children follow the template, where slots project them.
+					yield [
+						createElement(
+							"template",
+							{
+								shadowrootmode: init.mode,
+								shadowrootdelegatesfocus: init.delegatesFocus,
+								shadowrootclonable: init.clonable,
+								shadowrootserializable: init.serializable,
+							},
+							content,
+						),
+						props.children,
+					];
+				} else {
+					yield content;
+				}
+			}
+		};
+
+		serverComponents.set(ctor, comp);
+	}
+
+	return comp;
+}
+
+const skippedProps = new Set([
+	"children",
+	"key",
+	"ref",
+	"copy",
+	"hydrate",
+	"innerHTML",
+	"dangerouslySetInnerHTML",
+]);
+
+// Mirrors how the DOM renderer applies props to an element: properties the
+// element defines are assigned, everything else becomes an attribute.
+function applyProps(el: CrankHTMLElement, props: Record<string, any>): void {
+	for (const name in props) {
+		const value = props[name];
+		if (skippedProps.has(name) || typeof value === "function") {
+			continue;
+		} else if (name.startsWith("prop:")) {
+			(el as any)[name.slice("prop:".length)] = value;
+		} else if (name.startsWith("attr:")) {
+			setAttribute(el, name.slice("attr:".length), value);
+		} else if (
+			name in el &&
+			!(typeof value === "string" && typeof (el as any)[name] === "boolean")
+		) {
+			(el as any)[name] = value;
+		} else {
+			setAttribute(el, name, value);
+		}
+	}
+}
+
+function setAttribute(
+	el: CrankHTMLElement,
+	name: string,
+	value: unknown,
+): void {
+	if (value == null || value === false) {
+		el.removeAttribute(name);
+	} else if (value === true) {
+		el.setAttribute(name, "");
+	} else if (typeof value === "string" || typeof value === "number") {
+		el.setAttribute(name, String(value));
 	}
 }
 
@@ -195,7 +453,7 @@ function defineEventHandler(
 	}
 }
 
-export class CrankHTMLElement extends HTMLElement {
+export class CrankHTMLElement extends Base {
 	/** Attributes that trigger a re-render. Read by the platform. */
 	static observedAttributes?: ReadonlyArray<string>;
 	/** Emitted event types; generates the `on<type>` handler properties. */
@@ -204,22 +462,31 @@ export class CrankHTMLElement extends HTMLElement {
 	static formAssociated?: boolean;
 	/** `false`/omitted: light DOM. `true`/`ShadowRootInit`: shadow DOM. */
 	static shadowDOM?: boolean | ShadowRootInit;
-	declare [_ElementState]: ElementState;
+
+	/** @internal Renders this class with the HTML renderer. */
+	static get [_ServerComponent](): Component {
+		return getServerComponent(this);
+	}
 
 	constructor() {
 		super();
 		const ctor = this.constructor as typeof CrankHTMLElement;
+		if (!ctor.shadowDOM) {
+			Object.defineProperty(this, _OwnsChildren, {value: true});
+		}
+
 		const state: ElementState = {
-			root: attachRoot(this, ctor.shadowDOM || false),
+			root: attachRoot(this, ctor.shadowDOM),
 			// A stable per-instance component. The arrow keeps `this` as the
 			// element, and `ctx` is passed straight through to `render`.
 			bridge: (props: Props, ctx: Context) => this.render(props, ctx),
 			mounted: false,
+			waiting: false,
 			dirty: false,
 			handlers: Object.create(null),
 			listeners: Object.create(null),
 		};
-		this[_ElementState] = state;
+		states.set(this, state);
 
 		const events = ctor.events;
 		if (events) {
@@ -240,7 +507,7 @@ export class CrankHTMLElement extends HTMLElement {
 
 	/** Request a microtask-batched re-render. The element's one re-render control. */
 	requestUpdate(): void {
-		const state = this[_ElementState];
+		const state = states.get(this)!;
 		if (state.dirty) {
 			return;
 		}
@@ -261,32 +528,40 @@ export class CrankHTMLElement extends HTMLElement {
 	}
 
 	connectedCallback(): void {
-		const state = this[_ElementState];
-		if (state.mounted) {
+		const state = states.get(this)!;
+		if (state.mounted || state.waiting) {
 			// A reconnect after a move: the tree is intact, nothing to do.
 			return;
 		}
 
-		state.mounted = true;
-		state.dirty = false;
-		upgradeProperties(this);
-		if (state.root === this) {
-			// Light DOM: render owns the element's children, so drop any authored
-			// content before the first render claims the subtree.
-			this.replaceChildren();
+		const doc = this.ownerDocument;
+		if (doc.readyState === "loading") {
+			// The parser may still be adding this element's server rendered
+			// content, so wait for the whole document before adopting it.
+			state.waiting = true;
+			doc.addEventListener(
+				"DOMContentLoaded",
+				() => {
+					state.waiting = false;
+					if (this.isConnected) {
+						mountElement(this, state);
+					}
+				},
+				{once: true},
+			);
+		} else {
+			mountElement(this, state);
 		}
-
-		updateElement(this, state);
 	}
 
 	disconnectedCallback(): void {
 		// Distinguish a move (immediately reconnected) from a real removal by
 		// deferring: only a still-disconnected element unmounts.
 		queueMicrotask(() => {
-			const state = this[_ElementState];
+			const state = states.get(this)!;
 			if (!this.isConnected && state.mounted) {
 				state.mounted = false;
-				renderer.render(null, state.root);
+				catchErrors(this, () => renderer.render(null, state.root));
 			}
 		});
 	}

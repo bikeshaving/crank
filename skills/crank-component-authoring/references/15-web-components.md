@@ -56,7 +56,7 @@ Configuration is static fields; behavior is methods and accessors. No constructo
 | `shadowDOM` | `boolean` or `ShadowRootInit` | Omitted/`false`: light DOM (the default). `true`: an open shadow root. An object: that exact `attachShadow` configuration. |
 | `formAssociated` | `boolean` | Opts into form association. Read by the platform. |
 
-Light DOM is the default; opt into shadow DOM for encapsulation or slots.
+Light DOM is the default; opt into shadow DOM for encapsulation or slots. A light-DOM element generates all of its content from state, so it takes no children: content passed to it is discarded, and children passed to it from a Crank tree are reported as an error. Wrap content with a shadow-DOM element and `<slot>`.
 
 ## The render method
 
@@ -71,7 +71,7 @@ async *render(props, ctx) { /* ... */ }                     // async generator
 
 Use a generator when you need state across renders. The full Crank lifecycle applies through the context: `refresh`, `schedule`, `after`, and `cleanup`.
 
-A sync render produces content immediately on connect. The async forms show nothing until they resolve, so prefer a sync render with a loading state.
+A sync render produces content immediately on connect. The async forms show nothing until they resolve, so prefer a sync render with a loading state, or render the element on the server.
 
 ## Attributes, properties, and updates
 
@@ -157,12 +157,12 @@ Light-DOM elements have no style encapsulation; use ordinary page CSS, scoped by
 
 ## Lifecycle
 
-The base owns the custom-element reactions and maps them onto the component lifecycle; you never override the callbacks.
+The base owns the custom-element reactions and maps them onto the component lifecycle. Don't override them, except the two form callbacks which carry data (see below), and call `super` when you do.
 
 | Reaction | What happens |
 |---|---|
-| construction (upgrade) | The shadow root is attached (a declarative shadow root from server-rendered HTML is reused). No render. |
-| first `connectedCallback` | Pre-set properties are upgraded, styles adopted, and the first render happens synchronously. |
+| construction (upgrade) | The shadow root is attached, or an open declarative shadow root from server-rendered HTML is reused. No render. |
+| first `connectedCallback` | Pre-set properties are upgraded and the first render happens synchronously. Existing content is hydrated. While the page is still parsing, the first render waits for `DOMContentLoaded`. |
 | `attributeChangedCallback` | Re-renders with new props, unless the value is unchanged. |
 | `disconnectedCallback` | A microtask distinguishes a move from a removal: a reconnected element stays mounted; a removed one unmounts and runs `cleanup`. |
 
@@ -194,4 +194,37 @@ formStateRestoreCallback(state, mode) {
 
 ## Server rendering
 
-Server-side rendering and hydration of custom elements are not yet supported. An element upgraded on a page with a server-declared shadow root (`<template shadowrootmode>`) reuses that root rather than failing, and then client-renders into it.
+The HTML renderer renders custom elements too. Register each class with it, the server's equivalent of `customElements.define`:
+
+```jsx
+import {renderer} from "@b9g/crank/html";
+import {XMoneyElement, XCardElement} from "./elements.js";
+
+renderer.define("x-money", XMoneyElement);
+renderer.define("x-card", XCardElement);
+
+const html = await renderer.render(
+  <x-card>
+    <x-money amount="4999" />
+  </x-card>
+);
+```
+
+On the server the renderer constructs a real instance of the class, applies props the way the DOM renderer would (properties the element defines are assigned, everything else becomes an attribute), and runs `render` as a component, so the async forms and nested elements work. A light-DOM element renders its content as children; a shadow-DOM element renders a declarative shadow root, followed by its light children for its slots to project:
+
+```html
+<x-card>
+  <template shadowrootmode="open"><b><slot></slot></b></template>
+  <x-money amount="4999"><span>$49.99</span></x-money>
+</x-card>
+```
+
+In the browser, an element's first render hydrates this content: the server's nodes are adopted, not replaced. A Crank app which hydrates the page adopts each light-DOM element but leaves its content to the element. Define your elements before hydrating, or the app's hydration will treat their content as its own.
+
+`CrankHTMLElement` loads where there is no DOM. It extends a small stand-in for `HTMLElement` which backs attributes, `attachShadow`, `attachInternals` (whose form methods do nothing), and events, but not a node tree, so construction and `render` must not reach for other DOM APIs. Guard browser-only registration:
+
+```js
+globalThis.customElements?.define("x-money", XMoneyElement);
+```
+
+A closed shadow root cannot be hydrated, because only `ElementInternals` exposes it and that belongs to the author: the browser empties it on upgrade and the element renders fresh.

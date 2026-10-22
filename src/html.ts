@@ -1,5 +1,5 @@
 import {Portal, Renderer} from "./crank.js";
-import type {ElementValue, RenderAdapter} from "./crank.js";
+import type {Component, ElementValue, RenderAdapter} from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import {REACT_SVG_PROPS} from "./_svg.js";
 
@@ -279,9 +279,40 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 		},
 	};
 
+// Classes which can render on the server (CrankHTMLElement) expose a component
+// under this key. The HTML renderer only needs the component, so it never
+// imports the web components module.
+const _ServerComponent = Symbol.for("crank.ServerComponent");
+
 export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
+	declare registry: Map<string, Component>;
 	constructor() {
-		super(impl);
+		const registry = new Map<string, Component>();
+		super({
+			...impl,
+			resolve: ({tag}) =>
+				typeof tag === "string" ? registry.get(tag) : undefined,
+		});
+		this.registry = registry;
+	}
+
+	/**
+	 * Registers a custom element class with this renderer, the server's
+	 * equivalent of `customElements.define`. Registered tags render their
+	 * contents (a declarative shadow root for shadow DOM elements) so the
+	 * browser can hydrate them.
+	 */
+	define(tagName: string, ctor: Function): void {
+		const comp = (ctor as any)[_ServerComponent];
+		if (typeof comp !== "function") {
+			throw new TypeError(
+				`Cannot define <${tagName}>: ${ctor.name || "class"} is not a CrankHTMLElement`,
+			);
+		} else if (this.registry.has(tagName)) {
+			throw new Error(`<${tagName}> has already been defined`);
+		}
+
+		this.registry.set(tagName, comp);
 	}
 }
 

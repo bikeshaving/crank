@@ -9,8 +9,11 @@ import type {Context} from "@b9g/crank";
 // Crank context (an argument, not `this`), and `props` is the current
 // `observedAttributes`.
 
-// x-blink — a generator render holding a timer across renders (light DOM).
+// x-blink — a generator render holding a timer across renders, slotting its
+// content through shadow DOM.
 class XBlinkElement extends CrankHTMLElement {
+  static shadowDOM = true;
+
   *render(_props: Record<string, string | null>, ctx: Context) {
     let on = true;
     // eslint-disable-next-line crank/require-cleanup-for-timers -- cleared in the ctx.cleanup below; the rule only recognizes this.cleanup, but here the context is the `ctx` argument

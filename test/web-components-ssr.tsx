@@ -1,0 +1,392 @@
+/// <reference lib="dom" />
+/** @jsx createElement */
+import {describe, test, afterEach, expect} from "@b9g/libuild/test";
+import {createElement} from "../src/crank.js";
+import type {Context} from "../src/crank.js";
+import {renderer} from "../src/dom.js";
+import {HTMLRenderer} from "../src/html.js";
+import {CrankHTMLElement} from "../src/web-components.js";
+
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+describe("web-components SSR", () => {
+	afterEach(() => {
+		renderer.render(null, document.body);
+		document.body.innerHTML = "";
+	});
+
+	let uid = 0;
+	const tag = (name: string) => `${name}-ssr-${uid++}`;
+
+	function serve(html: string): HTMLElement {
+		const container = document.createElement("div");
+		(container as any).setHTMLUnsafe(html);
+		document.body.appendChild(container);
+		return container;
+	}
+
+	test("renders a light DOM element's contents", () => {
+		const name = tag("x-money");
+		class El extends CrankHTMLElement {
+			static observedAttributes = ["amount"];
+			render({amount}: Record<string, string | null>) {
+				return <span>${(Number(amount) / 100).toFixed(2)}</span>;
+			}
+		}
+
+		customElements.define(name, El);
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		expect(html.render(createElement(name, {amount: "4999"}))).toBe(
+			`<${name} amount="4999"><span>$49.99</span></${name}>`,
+		);
+	});
+
+	test("renders a shadow DOM element as a declarative shadow root", () => {
+		const name = tag("x-card");
+		class El extends CrankHTMLElement {
+			static shadowDOM = true;
+			render() {
+				return (
+					<b>
+						<slot />
+					</b>
+				);
+			}
+		}
+
+		customElements.define(name, El);
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		expect(html.render(createElement(name, null, <p>light</p>))).toBe(
+			`<${name}><template shadowrootmode="open"><b><slot></slot></b></template><p>light</p></${name}>`,
+		);
+	});
+
+	test("emits shadow root options as template attributes", () => {
+		const name = tag("x-closed");
+		class El extends CrankHTMLElement {
+			static shadowDOM = {mode: "closed", delegatesFocus: true} as const;
+			render() {
+				return <i />;
+			}
+		}
+
+		customElements.define(name, El);
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		expect(html.render(createElement(name, null))).toBe(
+			`<${name}><template shadowrootmode="closed" shadowrootdelegatesfocus><i></i></template></${name}>`,
+		);
+	});
+
+	test("expands nested elements", () => {
+		const inner = tag("x-inner");
+		const outer = tag("x-outer");
+		class Inner extends CrankHTMLElement {
+			render() {
+				return "inner";
+			}
+		}
+
+		class Outer extends CrankHTMLElement {
+			render() {
+				return createElement(inner, null);
+			}
+		}
+
+		customElements.define(inner, Inner);
+		customElements.define(outer, Outer);
+		const html = new HTMLRenderer();
+		html.define(inner, Inner);
+		html.define(outer, Outer);
+		expect(html.render(createElement(outer, null))).toBe(
+			`<${outer}><${inner}>inner</${inner}></${outer}>`,
+		);
+	});
+
+	test("assigns properties the element defines", () => {
+		const name = tag("x-list");
+		class El extends CrankHTMLElement {
+			_items: Array<string> = [];
+			get items() {
+				return this._items;
+			}
+
+			set items(value) {
+				this._items = value;
+				this.requestUpdate();
+			}
+
+			render() {
+				return this.items.map((item) => <li>{item}</li>);
+			}
+		}
+
+		customElements.define(name, El);
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		expect(html.render(createElement(name, {items: ["a", "b"]}))).toBe(
+			`<${name}><li>a</li><li>b</li></${name}>`,
+		);
+	});
+
+	test("async render", async () => {
+		const name = tag("x-async");
+		class El extends CrankHTMLElement {
+			async render() {
+				await new Promise((resolve) => setTimeout(resolve));
+				return <span>loaded</span>;
+			}
+		}
+
+		customElements.define(name, El);
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		expect(await html.render(createElement(name, null))).toBe(
+			`<${name}><span>loaded</span></${name}>`,
+		);
+	});
+
+	test("define rejects classes which are not CrankHTMLElements", () => {
+		const html = new HTMLRenderer();
+		expect(() => html.define("x-nope", class {})).toThrow(
+			"is not a CrankHTMLElement",
+		);
+	});
+
+	test("a light DOM element hydrates server rendered content", () => {
+		const name = tag("x-light");
+		let renders = 0;
+		class El extends CrankHTMLElement {
+			render() {
+				renders++;
+				return <span>hello</span>;
+			}
+		}
+
+		const container = serve(`<${name}><span>hello</span></${name}>`);
+		const span = container.querySelector("span")!;
+		customElements.define(name, El);
+		expect(container.innerHTML).toBe(`<${name}><span>hello</span></${name}>`);
+		expect(container.querySelector("span")).toBe(span);
+		expect(renders).toBe(1);
+	});
+
+	test("an element defined after the markup is parsed adopts its nodes", () => {
+		const name = tag("x-late");
+		class El extends CrankHTMLElement {
+			static shadowDOM = true;
+			render() {
+				return <span>hello</span>;
+			}
+		}
+
+		const container = serve(
+			`<${name}><template shadowrootmode="open"><span>hello</span></template></${name}>`,
+		);
+		const el = container.firstElementChild!;
+		const span = el.shadowRoot!.firstChild;
+		customElements.define(name, El);
+		expect(el.shadowRoot!.innerHTML).toBe("<span>hello</span>");
+		expect(el.shadowRoot!.firstChild).toBe(span);
+	});
+
+	test("an open declarative shadow root is hydrated, not appended to", () => {
+		const name = tag("x-open");
+		class El extends CrankHTMLElement {
+			static shadowDOM = true;
+			render() {
+				return <span>client</span>;
+			}
+		}
+
+		const container = serve(
+			`<${name}><template shadowrootmode="open"><span>ssr</span></template></${name}>`,
+		);
+		customElements.define(name, El);
+		const el = container.firstElementChild!;
+		expect(el.shadowRoot!.innerHTML).toBe("<span>client</span>");
+	});
+
+	test("a closed declarative shadow root is rendered fresh", () => {
+		const name = tag("x-closed");
+		let root: ShadowRoot | null = null;
+		class El extends CrankHTMLElement {
+			static shadowDOM = {mode: "closed"} as const;
+			render(_props: unknown, ctx: Context) {
+				ctx.after((value: any) => {
+					root = value.getRootNode();
+				});
+				return <span>client</span>;
+			}
+		}
+
+		serve(
+			`<${name}><template shadowrootmode="closed"><span>ssr</span></template></${name}>`,
+		);
+		customElements.define(name, El);
+		expect(root!.innerHTML).toBe("<span>client</span>");
+	});
+
+	test("the author's attachInternals call still works with a declarative shadow root", () => {
+		const name = tag("x-internals");
+		let internals: ElementInternals | undefined;
+		class El extends CrankHTMLElement {
+			static shadowDOM = true;
+			static formAssociated = true;
+			constructor() {
+				super();
+				internals = this.attachInternals();
+			}
+
+			render() {
+				return <span />;
+			}
+		}
+
+		serve(
+			`<${name}><template shadowrootmode="open"><span></span></template></${name}>`,
+		);
+		customElements.define(name, El);
+		expect(internals).toBeDefined();
+	});
+
+	test("a page hydrated by Crank keeps a light DOM element's own content", async () => {
+		const name = tag("x-own");
+		class El extends CrankHTMLElement {
+			static observedAttributes = ["n"];
+			render({n}: Record<string, string | null>) {
+				return <span>{n}</span>;
+			}
+		}
+
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		customElements.define(name, El);
+		function App({n}: {n: string}) {
+			return <main>{createElement(name, {n})}</main>;
+		}
+
+		document.body.innerHTML = html.render(<App n="1" />) as string;
+		const span = document.body.querySelector("span");
+		renderer.hydrate(<App n="1" />, document.body);
+		expect(document.body.innerHTML).toBe(
+			`<main><${name} n="1"><span>1</span></${name}></main>`,
+		);
+		expect(document.body.querySelector("span")).toBe(span);
+
+		renderer.render(<App n="2" />, document.body);
+		await flush();
+		expect(document.body.innerHTML).toBe(
+			`<main><${name} n="2"><span>2</span></${name}></main>`,
+		);
+	});
+
+	test("a shadow DOM element hydrates with its light children", () => {
+		const name = tag("x-wrap");
+		class El extends CrankHTMLElement {
+			static shadowDOM = true;
+			render() {
+				return (
+					<b>
+						<slot />
+					</b>
+				);
+			}
+		}
+
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		customElements.define(name, El);
+		function App() {
+			return createElement(name, null, <p>light</p>);
+		}
+
+		const container = document.createElement("div");
+		(container as any).setHTMLUnsafe(html.render(<App />));
+		document.body.appendChild(container);
+		const p = container.querySelector("p");
+		renderer.hydrate(<App />, container);
+		const el = container.firstElementChild!;
+		expect(el.innerHTML).toBe("<p>light</p>");
+		expect(el.shadowRoot!.innerHTML).toBe("<b><slot></slot></b>");
+		expect(container.querySelector("p")).toBe(p);
+	});
+
+	test("children passed to a light DOM element are reported", () => {
+		const name = tag("x-kids");
+		class El extends CrankHTMLElement {
+			render() {
+				return <span>own</span>;
+			}
+		}
+
+		customElements.define(name, El);
+		const errors: Array<unknown> = [];
+		const error = console.error;
+		console.error = (...args: Array<unknown>) => errors.push(args[0]);
+		try {
+			renderer.render(createElement(name, null, <b>child</b>), document.body);
+		} finally {
+			console.error = error;
+		}
+
+		expect(document.body.innerHTML).toBe(`<${name}><span>own</span></${name}>`);
+		expect(errors.length).toBe(1);
+	});
+});
+
+describe("web-components state", () => {
+	afterEach(() => {
+		document.body.innerHTML = "";
+	});
+
+	let uid = 0;
+	const tag = (name: string) => `${name}-state-${uid++}`;
+
+	test("a closed shadow root is not reachable through a global symbol", () => {
+		const name = tag("x-private");
+		class El extends CrankHTMLElement {
+			static shadowDOM = {mode: "closed"} as const;
+			render() {
+				return <span />;
+			}
+		}
+
+		customElements.define(name, El);
+		const el = document.createElement(name);
+		for (const sym of Object.getOwnPropertySymbols(el)) {
+			expect(String((el as any)[sym]?.root)).not.toContain("ShadowRoot");
+		}
+	});
+
+	test("a property set before upgrade renders once", async () => {
+		const name = tag("x-preset");
+		let renders = 0;
+		const el = document.createElement(name) as any;
+		el.label = "preset";
+		document.body.appendChild(el);
+		class El extends CrankHTMLElement {
+			_label = "";
+			get label() {
+				return this._label;
+			}
+
+			set label(value) {
+				this._label = value;
+				this.requestUpdate();
+			}
+
+			render() {
+				renders++;
+				return <span>{this.label}</span>;
+			}
+		}
+
+		customElements.define(name, El);
+		await flush();
+		expect(el.innerHTML).toBe("<span>preset</span>");
+		expect(renders).toBe(1);
+	});
+});

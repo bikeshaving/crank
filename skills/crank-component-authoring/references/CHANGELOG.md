@@ -80,10 +80,22 @@
   A `CrankHTMLElement` base class: declare configuration as static fields
   (`observedAttributes`, `events`, `shadowDOM`, `formAssociated`) and
   write a `render` method, which is a normal Crank component in any of the four
-  forms.
+  forms. `requestUpdate()` queues a microtask-batched re-render, and errors
+  thrown from `render` dispatch a cancelable `error` event on the element.
 
-- **The DOM renderer accepts a `ShadowRoot` (or any document fragment) as a
-  render root.**
+- **Server rendering for web components**
+  `HTMLRenderer.prototype.define(tagName, ctor)` registers a `CrankHTMLElement`
+  class with the HTML renderer, which then renders the element's contents: as
+  children for light DOM, or as a declarative shadow root for shadow DOM. In the
+  browser the element's first render hydrates that content. The module loads
+  where there is no DOM.
+
+- **`RenderAdapter.resolve`** (optional)
+  Lets a renderer supply a component which renders a host element's contents,
+  in place of its authored children. The HTML renderer implements it for
+  registered custom elements.
+
+- **The DOM renderer accepts a `ShadowRoot` as a render root.**
 
 ### Changed
 - **`window.Crank` (the UMD/CDN browser global) now ships authoring templates and a default renderer.**
