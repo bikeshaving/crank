@@ -63,7 +63,7 @@ static shadow = {mode: "open", delegatesFocus: true};
 
 In TypeScript, write `satisfies ShadowRootInit` after the object so `mode` keeps its literal type (and a misspelled mode is caught), or annotate the field as `ShadowRootInit` in a class meant to be subclassed.
 
-Set `shadow` to `null` to render into the element itself (light DOM). Page CSS then reaches the content and ID references like `<label for>` resolve, but there are no slots: a light-DOM element generates all of its content from state, so it takes no children. Content authored inside it is replaced, and children passed to it from a Crank tree are reported as an error. Use light DOM for leaf elements, like a formatted price or a relative time:
+Set `shadow` to `null` to render into the element itself (light DOM). Page CSS then reaches the content and ID references like `<label for>` resolve, but there are no slots: a light-DOM element generates all of its content from state, so it takes no children. Content written inside it, such as fallback text for when JavaScript is off, is shown until the element upgrades and then replaced. Children passed to it from a Crank tree are reported as an error. Use light DOM for leaf elements, like a formatted price or a relative time:
 
 ```jsx
 class XMoneyElement extends CrankHTMLElement {
@@ -215,7 +215,7 @@ The base owns the custom-element reactions and maps them onto the component life
 | Reaction | What happens |
 |---|---|
 | construction (upgrade) | The shadow root is attached, or an open declarative shadow root from server-rendered HTML is reused. No render. |
-| first `connectedCallback` | Pre-set properties are upgraded and the first render happens synchronously. Existing content is hydrated. While the page is still parsing, the first render waits for `DOMContentLoaded`. |
+| first `connectedCallback` | Pre-set properties are upgraded and the first render happens synchronously. A declarative shadow root from the server is hydrated; light DOM content is replaced once the first render commits. While the page is still parsing, the first render waits for `DOMContentLoaded`. |
 | `attributeChangedCallback` | Re-renders with new props, unless the value is unchanged. |
 | `disconnectedCallback` | A microtask distinguishes a move from a removal: a reconnected element stays mounted; a removed one unmounts and runs `cleanup`. |
 
@@ -283,9 +283,11 @@ On the server the renderer constructs a real instance of the class, applies prop
 </x-card>
 ```
 
-The server tag gets the attributes the element ends up with, including any it sets on itself while rendering. Props which become properties are not printed, so state the element should hydrate with must come from attributes.
+The server tag gets the attributes the element ends up with, including any it sets on itself while rendering. Props which become properties are not printed, so state an element needs to render its server content in the browser must come from attributes. A parent element which passes a child its state as a property should be defined before the child, so the child does not render without it.
 
-In the browser, an element's first render hydrates this content: the server's nodes are adopted, not replaced. A Crank app which hydrates the page adopts each light-DOM element but leaves its content to the element. Define your elements before hydrating, or the app's hydration will treat their content as its own.
+In the browser, a shadow DOM element's first render hydrates its declarative shadow root: the server's nodes are adopted, not replaced, so focus, input and other state from before the upgrade survive. A light DOM element's content is a placeholder instead, since it cannot be told apart from content written by hand: the element shows it until its first render commits, then replaces it.
+
+A Crank app which hydrates the page adopts each custom element but leaves its contents to the element, whether or not the element has been defined yet, and hydrates only the light children it passes to a shadow DOM element.
 
 `CrankHTMLElement` loads where there is no DOM. It extends a small stand-in for `HTMLElement` which backs attributes, `attachShadow`, `attachInternals` (whose form methods do nothing), and events, but not a node tree, so construction and `render` must not reach for the node tree or layout: `closest`, `querySelector`, `ownerDocument`, `style`, `focus` and the like throw on the server. `localName`, `id`, `className`, `hidden`, `dataset` and other attribute-backed properties work. Guard browser-only registration:
 

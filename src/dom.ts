@@ -23,6 +23,25 @@ const DOCUMENT_FRAGMENT_NODE = 11;
 // are rendered by the element rather than by the tree which contains it.
 const _OwnsChildren = Symbol.for("crank.OwnsChildren");
 
+// Whether a custom element renders its own children. A defined element says
+// so. An element which is not defined yet (its script may still be loading)
+// is judged by its server rendered markup: a declarative shadow root means its
+// children are light children belonging to the tree around it, and no shadow
+// root means its children are its own rendered contents.
+function ownsChildren(element: Element): boolean {
+	if ((element as any)[_OwnsChildren]) {
+		return true;
+	}
+
+	const name = element.localName;
+	return (
+		name.includes("-") &&
+		!element.shadowRoot &&
+		typeof customElements !== "undefined" &&
+		!customElements.get(name)
+	);
+}
+
 function getRootDocument(root: Node | undefined): Document {
 	if (root && root.ownerDocument) {
 		return root.ownerDocument;
@@ -636,9 +655,9 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 			return;
 		}
 
-		if (tag !== Portal && (node as any)[_OwnsChildren]) {
-			// A light DOM custom element renders its own children, so the outer tree
-			// adopts the element but leaves its contents alone.
+		if (tag !== Portal && ownsChildren(node as Element)) {
+			// The element renders its own contents, so the tree adopts the element
+			// but leaves its contents alone.
 			return [];
 		}
 

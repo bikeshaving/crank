@@ -524,9 +524,34 @@ function mountElement(el: CrankHTMLElementImpl, state: ElementState): void {
 	// Pre-upgrade properties re-applied above may have requested an update,
 	// which this first render covers.
 	state.dirty = false;
-	// Existing content is server rendered: the first render adopts it, and
-	// mismatched or leftover nodes are replaced.
-	updateElement(el, state, state.root.firstChild !== null);
+	if (state.root === el && el.firstChild) {
+		// Light DOM children are a placeholder, whether server rendered or
+		// written by hand as fallback content, so the first render builds fresh
+		// content and removes them once it commits. Until an async render
+		// commits, the placeholder stays visible.
+		const placeholder = Array.from(el.childNodes);
+		const removePlaceholder = () => {
+			for (const node of placeholder) {
+				if (node.parentNode === el) {
+					el.removeChild(node);
+				}
+			}
+		};
+		const children = createElement(state.bridge, getProps(el));
+		run(el, state, () => {
+			const result = renderer.render(children, el);
+			return result instanceof Promise
+				? result.then((value) => {
+						removePlaceholder();
+						return value;
+					})
+				: (removePlaceholder(), result);
+		});
+	} else {
+		// A shadow root with content is a declarative shadow root, which only a
+		// server produces, so the first render adopts it.
+		updateElement(el, state, state.root.firstChild !== null);
+	}
 }
 
 function constructForServer(

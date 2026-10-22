@@ -164,12 +164,27 @@ describe("web-components SSR", () => {
 		);
 	});
 
-	test("a light DOM element hydrates server rendered content", () => {
+	function captureWarnings(fn: () => void): Array<unknown> {
+		const warnings: Array<unknown> = [];
+		const warn = console.warn;
+		const error = console.error;
+		console.warn = console.error = (...args: Array<unknown>) =>
+			warnings.push(args[0]);
+		try {
+			fn();
+		} finally {
+			console.warn = warn;
+			console.error = error;
+		}
+
+		return warnings;
+	}
+
+	test("a light DOM element replaces server rendered content", () => {
 		const name = tag("x-light");
 		let renders = 0;
 		class El extends CrankHTMLElement {
 			static shadow = null;
-
 			render() {
 				renders++;
 				return <span>hello</span>;
@@ -178,10 +193,81 @@ describe("web-components SSR", () => {
 
 		const container = serve(`<${name}><span>hello</span></${name}>`);
 		const span = container.querySelector("span")!;
-		customElements.define(name, El);
+		const warnings = captureWarnings(() => customElements.define(name, El));
 		expect(container.innerHTML).toBe(`<${name}><span>hello</span></${name}>`);
-		expect(container.querySelector("span")).toBe(span);
+		expect(container.querySelector("span")).not.toBe(span);
 		expect(renders).toBe(1);
+		expect(warnings).toEqual([]);
+	});
+
+	test("a light DOM element replaces hand-written fallback content", () => {
+		const name = tag("x-time");
+		class El extends CrankHTMLElement {
+			static shadow = null;
+			static observedAttributes = ["datetime"];
+			render({datetime}: Record<string, string | null>) {
+				return <time>{datetime}</time>;
+			}
+		}
+
+		const container = serve(`<${name} datetime="2026-10-22">Oct 22</${name}>`);
+		const warnings = captureWarnings(() => customElements.define(name, El));
+		expect(container.innerHTML).toBe(
+			`<${name} datetime="2026-10-22"><time>2026-10-22</time></${name}>`,
+		);
+		expect(warnings).toEqual([]);
+	});
+
+	test("an async light DOM render keeps the placeholder until it commits", async () => {
+		const name = tag("x-slow");
+		class El extends CrankHTMLElement {
+			static shadow = null;
+			async render() {
+				await new Promise((resolve) => setTimeout(resolve, 5));
+				return <b>ready</b>;
+			}
+		}
+
+		const container = serve(`<${name}>loading</${name}>`);
+		customElements.define(name, El);
+		const el = container.firstElementChild as El;
+		expect(el.innerHTML).toBe("loading");
+		await el.updateComplete;
+		expect(el.innerHTML).toBe("<b>ready</b>");
+	});
+
+	test("a page hydrated before an element is defined keeps its content", () => {
+		const name = tag("x-later");
+		class El extends CrankHTMLElement {
+			static shadow = null;
+			render() {
+				return <span>own</span>;
+			}
+		}
+
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		function App() {
+			return <main>{createElement(name, null)}</main>;
+		}
+
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		// A browser-side element class can render on the server only once
+		// defined, so write the server output by hand.
+		container.innerHTML = `<main><${name}><span>own</span></${name}></main>`;
+		const warnings = captureWarnings(() =>
+			renderer.hydrate(<App />, container),
+		);
+		expect(container.innerHTML).toBe(
+			`<main><${name}><span>own</span></${name}></main>`,
+		);
+		expect(warnings).toEqual([]);
+		customElements.define(name, El);
+		expect(container.innerHTML).toBe(
+			`<main><${name}><span>own</span></${name}></main>`,
+		);
+		renderer.render(null, container);
 	});
 
 	test("an element defined after the markup is parsed adopts its nodes", () => {
