@@ -78,9 +78,10 @@
 ### New API
 - **`@b9g/crank/web-components` — write Web Components with Crank**
   A `CrankHTMLElement` base class: declare configuration as static fields
-  (`observedAttributes`, `events`, `shadowDOM`, `formAssociated`) and
+  (`observedAttributes`, `events`, `shadow`, `formAssociated`) and
   write a `render` method, which is a normal Crank component in any of the four
-  forms. `requestUpdate()` queues a microtask-batched re-render, and errors
+  forms. Elements render into an open shadow root by default; `shadow` takes
+  the options passed to `attachShadow`, or `null` for light DOM. `requestUpdate()` queues a microtask-batched re-render, and errors
   thrown from `render` dispatch a cancelable `error` event on the element.
 
 - **Server rendering for web components**

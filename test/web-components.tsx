@@ -14,6 +14,8 @@ describe("web-components", () => {
 		// Tuple form: names only, each handler typed `(ev: Event) => unknown`.
 		interface Tuple extends EventHandlers<{events: typeof Tuple.events}> {}
 		class Tuple extends CrankHTMLElement {
+			static shadow = null;
+
 			static events = ["bounce", "finish"] as const;
 			render() {
 				return null;
@@ -32,6 +34,8 @@ describe("web-components", () => {
 			events: {bounce: CustomEvent<{count: number}>};
 		}> {}
 		class Mapped extends CrankHTMLElement {
+			static shadow = null;
+
 			render() {
 				return null;
 			}
@@ -57,6 +61,8 @@ describe("web-components", () => {
 
 	test("sync render produces content synchronously on connect (light DOM)", () => {
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			static observedAttributes = ["label"];
 			render({label}: Record<string, string | null>) {
 				return <span>{label ?? "default"}</span>;
@@ -74,6 +80,8 @@ describe("web-components", () => {
 
 	test("attribute change re-renders with new props", async () => {
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			static observedAttributes = ["label"];
 			render({label}: Record<string, string | null>) {
 				return <span>{label}</span>;
@@ -94,6 +102,8 @@ describe("web-components", () => {
 
 	test("requestUpdate re-renders for non-attribute state", async () => {
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			#value = "a";
 			set value(v: string) {
 				this.#value = v;
@@ -117,6 +127,8 @@ describe("web-components", () => {
 
 	test("generator render keeps state across renders", async () => {
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			bump() {
 				this.requestUpdate();
 			}
@@ -145,7 +157,6 @@ describe("web-components", () => {
 
 	test("shadow DOM renders into the shadow root with native slots", () => {
 		class El extends CrankHTMLElement {
-			static shadowDOM = true;
 			render() {
 				return (
 					<article>
@@ -174,6 +185,8 @@ describe("web-components", () => {
 
 	test("static events generates on<type> that fires on dispatch", () => {
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			static events = ["bounce"] as const;
 			render() {
 				return <span />;
@@ -200,6 +213,8 @@ describe("web-components", () => {
 
 	test("on<type> preserves listener order like the platform", () => {
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			static events = ["ping"] as const;
 			render() {
 				return <span />;
@@ -234,6 +249,8 @@ describe("web-components", () => {
 
 	test("form association: base re-renders on form callbacks", async () => {
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			static formAssociated = true;
 			#internals = this.attachInternals();
 			#value: string | null = "5";
@@ -270,6 +287,8 @@ describe("web-components", () => {
 	test("render error dispatches a cancelable error event", () => {
 		const boom = new Error("boom");
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			render(): never {
 				throw boom;
 			}
@@ -294,6 +313,8 @@ describe("web-components", () => {
 	test("a move does not unmount; a real removal cleans up", async () => {
 		const cleaned: string[] = [];
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			*render(_props: Record<string, string | null>, ctx: Context) {
 				ctx.cleanup(() => cleaned.push("bye"));
 				for (_props of ctx) {
@@ -325,6 +346,8 @@ describe("web-components", () => {
 
 	test("async function render shows nothing until it resolves", async () => {
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			async render() {
 				return <span>async</span>;
 			}
@@ -342,6 +365,8 @@ describe("web-components", () => {
 
 	test("async generator render", async () => {
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			async *render() {
 				yield <span>ag</span>;
 			}
@@ -359,6 +384,8 @@ describe("web-components", () => {
 	test("requestUpdate coalesces multiple calls into one render", async () => {
 		let renders = 0;
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			poke() {
 				this.requestUpdate();
 			}
@@ -386,6 +413,8 @@ describe("web-components", () => {
 	test("attributeChangedCallback bails when the value is unchanged", async () => {
 		let renders = 0;
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			static observedAttributes = ["x"];
 			*render(_props: Record<string, string | null>, ctx: Context) {
 				for (_props of ctx) {
@@ -413,6 +442,8 @@ describe("web-components", () => {
 
 	test("in-component try/catch yields a fallback and no error event", () => {
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			static observedAttributes = ["bad"];
 			*render(props: Record<string, string | null>, ctx: Context) {
 				for (props of ctx) {
@@ -444,6 +475,8 @@ describe("web-components", () => {
 	test("async render rejection dispatches an error event", async () => {
 		const boom = new Error("async boom");
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			async render(): Promise<never> {
 				throw boom;
 			}
@@ -477,6 +510,8 @@ describe("web-components", () => {
 		window.addEventListener("error", onWindowError);
 		try {
 			class El extends CrankHTMLElement {
+				static shadow = null;
+
 				render(): never {
 					throw boom;
 				}
@@ -495,6 +530,8 @@ describe("web-components", () => {
 
 	test("form value is submitted via setFormValue", () => {
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			static formAssociated = true;
 			#internals = this.attachInternals();
 			render() {
@@ -516,6 +553,8 @@ describe("web-components", () => {
 
 	test("formDisabledCallback re-renders with :disabled", async () => {
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			static formAssociated = true;
 			render() {
 				return <span>{this.matches(":disabled") ? "off" : "on"}</span>;
@@ -535,9 +574,9 @@ describe("web-components", () => {
 		expect(el.innerHTML).toBe("<span>off</span>");
 	});
 
-	test("shadowDOM accepts a ShadowRootInit", () => {
+	test("shadow accepts a ShadowRootInit", () => {
 		class El extends CrankHTMLElement {
-			static shadowDOM = {mode: "open", delegatesFocus: true} as const;
+			static shadow = {mode: "open", delegatesFocus: true} as const;
 			render() {
 				return <slot />;
 			}
@@ -552,9 +591,9 @@ describe("web-components", () => {
 		expect(el.shadowRoot!.delegatesFocus).toBe(true);
 	});
 
-	test("shadowDOM closed mode renders without exposing the root", () => {
+	test("shadow closed mode renders without exposing the root", () => {
 		class El extends CrankHTMLElement {
-			static shadowDOM = {mode: "closed"} as const;
+			static shadow = {mode: "closed"} as const;
 			render() {
 				return <slot />;
 			}
@@ -581,6 +620,8 @@ describe("web-components", () => {
 		document.body.appendChild(el);
 
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			#value: string | null = null;
 			get value() {
 				return this.#value;
@@ -602,6 +643,8 @@ describe("web-components", () => {
 
 	test("light DOM render replaces authored children", () => {
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			render() {
 				return <span>owned</span>;
 			}
@@ -620,7 +663,6 @@ describe("web-components", () => {
 
 	test("Crank's DOM renderer upgrades and renders a custom element", async () => {
 		class El extends CrankHTMLElement {
-			static shadowDOM = true;
 			render() {
 				return <b>x</b>;
 			}
@@ -640,7 +682,6 @@ describe("web-components", () => {
 
 	test("nested custom elements each render their own root", async () => {
 		class Inner extends CrankHTMLElement {
-			static shadowDOM = true;
 			render() {
 				return <i>in</i>;
 			}
@@ -649,7 +690,6 @@ describe("web-components", () => {
 		customElements.define(innerName, Inner);
 
 		class Outer extends CrankHTMLElement {
-			static shadowDOM = true;
 			render() {
 				return createElement(innerName);
 			}
@@ -669,6 +709,8 @@ describe("web-components", () => {
 	test("ctx.refresh() inside render re-renders with the same props", async () => {
 		let n = 0;
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			tick?: () => unknown;
 			*render(_props: Record<string, string | null>, ctx: Context) {
 				this.tick = () => ctx.refresh();
@@ -693,6 +735,8 @@ describe("web-components", () => {
 	test("ctx.schedule and ctx.after both fire", async () => {
 		const order: string[] = [];
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			render(_props: Record<string, string | null>, ctx: Context) {
 				ctx.schedule(() => order.push("schedule"));
 				ctx.after(() => order.push("after"));
@@ -714,6 +758,8 @@ describe("web-components", () => {
 		}
 
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			*render(_props: Record<string, string | null>, ctx: Context) {
 				ctx.provide("token", "V");
 				for (_props of ctx) {
@@ -732,6 +778,8 @@ describe("web-components", () => {
 
 	test("a property setter reflects to an attribute and re-renders", async () => {
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			static observedAttributes = ["color"];
 			get color() {
 				return this.getAttribute("color");
@@ -763,6 +811,8 @@ describe("web-components", () => {
 	test("on<type> handlers written as regular functions see the element as this", () => {
 		interface El extends EventHandlers<{events: typeof El.events}> {}
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			static events = ["ping"] as const;
 			render() {
 				return null;
@@ -790,6 +840,8 @@ describe("web-components", () => {
 		el.onping = (ev: Event) => received.push(ev);
 
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			static events = ["ping"] as const;
 			render() {
 				return null;
@@ -805,7 +857,7 @@ describe("web-components", () => {
 	test("a closed declarative shadow root is reused (SSR)", () => {
 		const name = tag("x-declarative");
 		class El extends CrankHTMLElement {
-			static shadowDOM = {mode: "closed"} as const;
+			static shadow = {mode: "closed"} as const;
 			render() {
 				return <span>hydrated</span>;
 			}

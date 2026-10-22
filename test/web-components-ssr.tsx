@@ -28,6 +28,8 @@ describe("web-components SSR", () => {
 	test("renders a light DOM element's contents", () => {
 		const name = tag("x-money");
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			static observedAttributes = ["amount"];
 			render({amount}: Record<string, string | null>) {
 				return <span>${(Number(amount) / 100).toFixed(2)}</span>;
@@ -45,7 +47,6 @@ describe("web-components SSR", () => {
 	test("renders a shadow DOM element as a declarative shadow root", () => {
 		const name = tag("x-card");
 		class El extends CrankHTMLElement {
-			static shadowDOM = true;
 			render() {
 				return (
 					<b>
@@ -66,7 +67,7 @@ describe("web-components SSR", () => {
 	test("emits shadow root options as template attributes", () => {
 		const name = tag("x-closed");
 		class El extends CrankHTMLElement {
-			static shadowDOM = {mode: "closed", delegatesFocus: true} as const;
+			static shadow = {mode: "closed", delegatesFocus: true} as const;
 			render() {
 				return <i />;
 			}
@@ -84,12 +85,16 @@ describe("web-components SSR", () => {
 		const inner = tag("x-inner");
 		const outer = tag("x-outer");
 		class Inner extends CrankHTMLElement {
+			static shadow = null;
+
 			render() {
 				return "inner";
 			}
 		}
 
 		class Outer extends CrankHTMLElement {
+			static shadow = null;
+
 			render() {
 				return createElement(inner, null);
 			}
@@ -108,6 +113,8 @@ describe("web-components SSR", () => {
 	test("assigns properties the element defines", () => {
 		const name = tag("x-list");
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			_items: Array<string> = [];
 			get items() {
 				return this._items;
@@ -134,6 +141,8 @@ describe("web-components SSR", () => {
 	test("async render", async () => {
 		const name = tag("x-async");
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			async render() {
 				await new Promise((resolve) => setTimeout(resolve));
 				return <span>loaded</span>;
@@ -159,6 +168,8 @@ describe("web-components SSR", () => {
 		const name = tag("x-light");
 		let renders = 0;
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			render() {
 				renders++;
 				return <span>hello</span>;
@@ -176,7 +187,6 @@ describe("web-components SSR", () => {
 	test("an element defined after the markup is parsed adopts its nodes", () => {
 		const name = tag("x-late");
 		class El extends CrankHTMLElement {
-			static shadowDOM = true;
 			render() {
 				return <span>hello</span>;
 			}
@@ -195,7 +205,6 @@ describe("web-components SSR", () => {
 	test("an open declarative shadow root is hydrated, not appended to", () => {
 		const name = tag("x-open");
 		class El extends CrankHTMLElement {
-			static shadowDOM = true;
 			render() {
 				return <span>client</span>;
 			}
@@ -213,7 +222,7 @@ describe("web-components SSR", () => {
 		const name = tag("x-closed");
 		let root: ShadowRoot | null = null;
 		class El extends CrankHTMLElement {
-			static shadowDOM = {mode: "closed"} as const;
+			static shadow = {mode: "closed"} as const;
 			render(_props: unknown, ctx: Context) {
 				ctx.after((value: any) => {
 					root = value.getRootNode();
@@ -233,7 +242,6 @@ describe("web-components SSR", () => {
 		const name = tag("x-internals");
 		let internals: ElementInternals | undefined;
 		class El extends CrankHTMLElement {
-			static shadowDOM = true;
 			static formAssociated = true;
 			constructor() {
 				super();
@@ -255,6 +263,8 @@ describe("web-components SSR", () => {
 	test("a page hydrated by Crank keeps a light DOM element's own content", async () => {
 		const name = tag("x-own");
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			static observedAttributes = ["n"];
 			render({n}: Record<string, string | null>) {
 				return <span>{n}</span>;
@@ -286,7 +296,6 @@ describe("web-components SSR", () => {
 	test("a shadow DOM element hydrates with its light children", () => {
 		const name = tag("x-wrap");
 		class El extends CrankHTMLElement {
-			static shadowDOM = true;
 			render() {
 				return (
 					<b>
@@ -317,6 +326,8 @@ describe("web-components SSR", () => {
 	test("children passed to a light DOM element are reported", () => {
 		const name = tag("x-kids");
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			render() {
 				return <span>own</span>;
 			}
@@ -348,7 +359,7 @@ describe("web-components state", () => {
 	test("a closed shadow root is not reachable through a global symbol", () => {
 		const name = tag("x-private");
 		class El extends CrankHTMLElement {
-			static shadowDOM = {mode: "closed"} as const;
+			static shadow = {mode: "closed"} as const;
 			render() {
 				return <span />;
 			}
@@ -368,6 +379,8 @@ describe("web-components state", () => {
 		el.label = "preset";
 		document.body.appendChild(el);
 		class El extends CrankHTMLElement {
+			static shadow = null;
+
 			_label = "";
 			get label() {
 				return this._label;

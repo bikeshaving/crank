@@ -193,19 +193,14 @@ interface ElementState {
 
 const states = new WeakMap<CrankHTMLElement, ElementState>();
 
-function getShadowInit(shadow: true | ShadowRootInit): ShadowRootInit {
-	return shadow === true ? {mode: "open"} : shadow;
-}
-
 function attachRoot(
 	el: CrankHTMLElement,
-	shadow: boolean | ShadowRootInit | undefined,
+	init: ShadowRootInit | null,
 ): Element | ShadowRoot {
-	if (!shadow) {
+	if (init == null) {
 		return el;
 	}
 
-	const init = getShadowInit(shadow);
 	// An open declarative shadow root (from server rendered HTML) is already
 	// attached, and the first render hydrates it. A closed one is hidden, and
 	// attachShadow with the same mode empties and returns it, so the first
@@ -320,20 +315,10 @@ function getServerComponent(ctor: typeof CrankHTMLElement): Component {
 			for (props of this) {
 				applyProps(el, props);
 				const content = createElement(bridge, getProps(el));
-				if (ctor.shadowDOM) {
-					const init = getShadowInit(ctor.shadowDOM);
+				if (ctor.shadow != null) {
 					// Light children follow the template, where slots project them.
 					yield [
-						createElement(
-							"template",
-							{
-								shadowrootmode: init.mode,
-								shadowrootdelegatesfocus: init.delegatesFocus,
-								shadowrootclonable: init.clonable,
-								shadowrootserializable: init.serializable,
-							},
-							content,
-						),
+						createElement("template", getTemplateProps(ctor.shadow), content),
 						props.children,
 					];
 				} else {
@@ -346,6 +331,21 @@ function getServerComponent(ctor: typeof CrankHTMLElement): Component {
 	}
 
 	return comp;
+}
+
+// Declarative shadow DOM spells each ShadowRootInit option as a template
+// attribute: mode as shadowrootmode, delegatesFocus as
+// shadowrootdelegatesfocus, and so on. Options without a string or boolean
+// value have no attribute form.
+function getTemplateProps(init: ShadowRootInit): Record<string, unknown> {
+	const props: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(init)) {
+		if (typeof value === "string" || typeof value === "boolean") {
+			props["shadowroot" + key.toLowerCase()] = value;
+		}
+	}
+
+	return props;
 }
 
 const skippedProps = new Set([
@@ -460,8 +460,12 @@ export class CrankHTMLElement extends Base {
 	static events?: ReadonlyArray<string>;
 	/** `true` opts the element into form association. Read by the platform. */
 	static formAssociated?: boolean;
-	/** `false`/omitted: light DOM. `true`/`ShadowRootInit`: shadow DOM. */
-	static shadowDOM?: boolean | ShadowRootInit;
+	/**
+	 * Options for the element's shadow root, passed to `attachShadow`. Defaults
+	 * to an open shadow root. `null` renders into the element itself (light
+	 * DOM) instead.
+	 */
+	static shadow: ShadowRootInit | null = {mode: "open"};
 
 	/** @internal Renders this class with the HTML renderer. */
 	static get [_ServerComponent](): Component {
@@ -471,12 +475,12 @@ export class CrankHTMLElement extends Base {
 	constructor() {
 		super();
 		const ctor = this.constructor as typeof CrankHTMLElement;
-		if (!ctor.shadowDOM) {
+		if (ctor.shadow == null) {
 			Object.defineProperty(this, _OwnsChildren, {value: true});
 		}
 
 		const state: ElementState = {
-			root: attachRoot(this, ctor.shadowDOM),
+			root: attachRoot(this, ctor.shadow),
 			// A stable per-instance component. The arrow keeps `this` as the
 			// element, and `ctx` is passed straight through to `render`.
 			bridge: (props: Props, ctx: Context) => this.render(props, ctx),

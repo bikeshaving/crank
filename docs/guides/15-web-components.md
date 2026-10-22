@@ -9,8 +9,6 @@ The `@b9g/crank/web-components` module provides `CrankHTMLElement`, a base class
 import {CrankHTMLElement} from "@b9g/crank/web-components";
 
 class XBlinkElement extends CrankHTMLElement {
-  static shadowDOM = true;
-
   *render(props, ctx) {
     let on = true;
     const id = setInterval(() => {
@@ -53,10 +51,30 @@ Configuration is static fields; behavior is methods and accessors. No constructo
 |---|---|---|
 | `observedAttributes` | `string[]` | Attributes that trigger a re-render. Read by the platform. |
 | `events` | `readonly string[]` | Emitted event types; generates `on<type>` handler properties. |
-| `shadowDOM` | `boolean` or `ShadowRootInit` | Omitted/`false`: light DOM (the default). `true`: an open shadow root. An object: that exact `attachShadow` configuration. |
+| `shadow` | `ShadowRootInit` or `null` | The options passed to `attachShadow`; defaults to `{mode: "open"}`. `null`: no shadow root (light DOM). |
 | `formAssociated` | `boolean` | Opts into form association. Read by the platform. |
 
-Light DOM is the default; opt into shadow DOM for encapsulation or slots. A light-DOM element generates all of its content from state, so it takes no children: content passed to it is discarded, and children passed to it from a Crank tree are reported as an error. Wrap content with a shadow-DOM element and `<slot>`.
+Each element renders into an open shadow root by default, so `<slot>` projects the element's children and its styles stay scoped. Set `shadow` to change the root's options; it is passed to `attachShadow` as is, so it needs a `mode`:
+
+```jsx
+static shadow = {mode: "closed"};
+static shadow = {mode: "open", delegatesFocus: true};
+```
+
+In TypeScript, write `as const` after the object so `mode` keeps its literal type.
+
+Set `shadow` to `null` to render into the element itself (light DOM). Page CSS then reaches the content and ID references like `<label for>` resolve, but there are no slots: a light-DOM element generates all of its content from state, so it takes no children. Content authored inside it is replaced, and children passed to it from a Crank tree are reported as an error. Use light DOM for leaf elements, like a formatted price or a relative time:
+
+```jsx
+class XMoneyElement extends CrankHTMLElement {
+  static shadow = null;
+  static observedAttributes = ["amount"];
+
+  render({amount}) {
+    return `$${(Number(amount) / 100).toFixed(2)}`;
+  }
+}
+```
 
 ## The render method
 
@@ -128,12 +146,10 @@ class XMarqueeElement extends CrankHTMLElement {
 
 ## Styling
 
-Styles are rendered. A shadow-DOM component includes a `<style>` element in its output, and shadow encapsulation scopes it to the element:
+Styles are rendered. A component includes a `<style>` element in its output, and the shadow root scopes it to the element:
 
 ```jsx
 class XMarqueeElement extends CrankHTMLElement {
-  static shadowDOM = true;
-
   render() {
     return (
       <>
