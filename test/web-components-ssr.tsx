@@ -533,3 +533,33 @@ describe("web-components SSR parity", () => {
 		expect(fired).toBe(1);
 	});
 });
+
+describe("web-components SSR isolation", () => {
+	test("provisions do not cross an element, as in a browser", () => {
+		const name = "x-consumer-ssr-isolation";
+		class El extends CrankHTMLElement {
+			static shadow = null;
+			render(_props: unknown, ctx: Context) {
+				return String(ctx.consume("theme"));
+			}
+		}
+
+		customElements.define(name, El);
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		function* Provider(this: Context, {children}: {children: unknown}) {
+			this.provide("theme", "dark");
+			for ({children} of this) {
+				yield children as any;
+			}
+		}
+
+		expect(
+			html.render(
+				<Provider>
+					<main>{createElement(name, null)}</main>
+				</Provider>,
+			),
+		).toBe(`<main><${name}>undefined</${name}></main>`);
+	});
+});

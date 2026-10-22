@@ -808,32 +808,6 @@ export interface RenderAdapter<
 	}): TScope | undefined;
 
 	/**
-	 * Supplies a component which renders a host element's contents.
-	 *
-	 * Optional. Called when a host element is diffed. Returning a component
-	 * replaces the element's children with that component, which receives the
-	 * host's props (authored children included as `props.children`). Returning
-	 * undefined diffs the authored children as usual. The HTML renderer uses
-	 * this to expand registered custom elements on the server.
-	 *
-	 * The same component must be returned for a tag across renders, or its
-	 * state is lost.
-	 *
-	 * @param data.tag - The element tag
-	 * @param data.tagName - String representation of the tag
-	 * @param data.props - The element's props
-	 * @param data.scope - Current scope context
-	 * @returns A component, or undefined to render the authored children
-	 */
-	resolve?(data: {
-		tag: string | symbol;
-		tagName: string;
-		props: Record<string, any>;
-		scope: TScope | undefined;
-		root: TRoot | undefined;
-	}): Component | undefined;
-
-	/**
 	 * Handles raw values (strings or nodes) that bypass normal element processing.
 	 *
 	 * Called when rendering Raw elements or other direct node insertions.
@@ -1711,26 +1685,15 @@ function diffHost<TNode, TScope, TRoot extends TNode | undefined>(
 		});
 	}
 
-	let children = el.props.children;
-	if (adapter.resolve && tag !== Portal) {
-		const comp = adapter.resolve({
-			tag,
-			tagName: getTagName(tag),
-			props: el.props,
-			scope,
-			root,
-		});
-		if (comp) {
-			// The component receives the host's props, but not its meta props,
-			// which belong to the host.
-			children = createElement(comp, {
-				...stripSpecialProps(el.props),
-				children: el.props.children,
-			});
-		}
-	}
-
-	return diffChildren(adapter, root, ret, ctx, scope, ret, children);
+	return diffChildren(
+		adapter,
+		root,
+		ret,
+		ctx,
+		scope,
+		ret,
+		ret.el.props.children,
+	);
 }
 
 function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(

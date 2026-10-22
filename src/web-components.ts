@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
-import {createElement, Raw} from "./crank.js";
+import {createElement} from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
-import type {Component, Context} from "./crank.js";
+import type {Children, Component, Context} from "./crank.js";
 import {renderer} from "./dom.js";
 
 /**
@@ -70,13 +70,19 @@ export type AttributeProps<O = {}> = O extends {
 /** What `render` may return: any of Crank's four component forms. */
 type RenderResult = ReturnType<Component<Props>>;
 
-// Read by the HTML renderer's define(): a function from a tag name to the
-// component which renders the class on the server.
-const _ServerComponent = Symbol.for("crank.ServerComponent");
+// Read by the HTML renderer's define(). Given a tag name, returns a function
+// which prepares an element for rendering on the server from its props. The
+// HTML renderer only needs what that returns, so it never imports this module.
+const _ServerRender = Symbol.for("crank.ServerRender");
 
-// Read by the HTML renderer to print a server rendered element's attributes
-// from the element itself rather than from its props.
-const _HostAttributes = Symbol.for("crank.HostAttributes");
+interface ServerRender {
+	/** The element's contents, rendered by the HTML renderer in its own root. */
+	children: Children;
+	/** Attributes for a declarative shadow root's template, or null for light DOM. */
+	template: Record<string, unknown> | null;
+	/** The element's attributes, read once its contents have rendered. */
+	attributes(): Array<[string, string]>;
+}
 
 // Read by the DOM renderer, which leaves a light DOM element's children to the
 // element when the tree containing it hydrates or re-renders.
@@ -556,34 +562,18 @@ function getAttributeEntries(
 		: Array.from(el.attributes, (attr) => [attr.name, attr.value]);
 }
 
-/** Builds the component which renders an element class on the server. */
-function getServerComponent(
+/** Prepares an instance of an element class for rendering on the server. */
+function renderForServer(
 	ctor: typeof CrankHTMLElementImpl,
 	tagName: string,
-): Component {
-	return function* (this: Context, props: Record<string, any>) {
-		const el = constructForServer(ctor, tagName);
-		const bridge = states.get(el)!.bridge;
-		// The renderer prints the host's attributes from this marker, so they
-		// match the element's attributes after its props are applied and it has
-		// rendered, as they would in a browser.
-		const marker = createElement(Raw, {
-			value: {value: "", [_HostAttributes]: () => getAttributeEntries(el)},
-		});
-		for (props of this) {
-			applyProps(el, props);
-			const content = createElement(bridge, getProps(el));
-			if (ctor.shadow != null) {
-				// Light children follow the template, where slots project them.
-				yield [
-					marker,
-					createElement("template", getTemplateProps(ctor.shadow), content),
-					props.children,
-				];
-			} else {
-				yield [marker, content];
-			}
-		}
+	props: Record<string, any>,
+): ServerRender {
+	const el = constructForServer(ctor, tagName);
+	applyProps(el, props);
+	return {
+		children: createElement(states.get(el)!.bridge, getProps(el)),
+		template: ctor.shadow == null ? null : getTemplateProps(ctor.shadow),
+		attributes: () => getAttributeEntries(el),
 	};
 }
 
@@ -962,9 +952,12 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 
 // Defined outside the class so it stays out of the published types. Subclasses
 // inherit it, with `this` as the subclass.
-Object.defineProperty(CrankHTMLElementImpl, _ServerComponent, {
-	value(this: typeof CrankHTMLElementImpl, tagName: string): Component {
-		return getServerComponent(this, tagName);
+Object.defineProperty(CrankHTMLElementImpl, _ServerRender, {
+	value(
+		this: typeof CrankHTMLElementImpl,
+		tagName: string,
+	): (props: Record<string, any>) => ServerRender {
+		return (props) => renderForServer(this, tagName, props);
 	},
 });
 

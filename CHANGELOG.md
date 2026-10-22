@@ -96,11 +96,6 @@
   browser the element's first render hydrates that content. The module loads
   where there is no DOM.
 
-- **`RenderAdapter.resolve`** (optional)
-  Lets a renderer supply a component which renders a host element's contents,
-  in place of its authored children. The HTML renderer implements it for
-  registered custom elements.
-
 - **The DOM renderer accepts a `ShadowRoot` as a render root.**
 
 ### Changed
