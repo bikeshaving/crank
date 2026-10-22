@@ -8,13 +8,13 @@ describe("jsx-no-undef", () => {
 	it("should allow defined components", () => {
 		ruleTester.run("jsx-no-undef", jsxNoUndef, {
 			valid: [
-				{code: `var App = () => {}; <App />`},
-				{code: `function Foo() {} <Foo />`},
-				{code: `var Foo = 1; <Foo.Bar />`},
+				{code: "var App = () => {}; <App />"},
+				{code: "function Foo() {} <Foo />"},
+				{code: "var Foo = 1; <Foo.Bar />"},
 				// Native elements are always fine
-				{code: `<div />`},
-				{code: `<span>text</span>`},
-				{code: `<input type="text" />`},
+				{code: "<div />"},
+				{code: "<span>text</span>"},
+				{code: "<input type=\"text\" />"},
 			],
 			invalid: [],
 		});
@@ -25,22 +25,12 @@ describe("jsx-no-undef", () => {
 			valid: [],
 			invalid: [
 				{
-					code: `<App />`,
-					errors: [
-						{
-							messageId: "undefined",
-							data: {identifier: "App"},
-						},
-					],
+					code: "<App />",
+					errors: [{messageId: "undefined", data: {identifier: "App"}}],
 				},
 				{
-					code: `<Foo.Bar />`,
-					errors: [
-						{
-							messageId: "undefined",
-							data: {identifier: "Foo"},
-						},
-					],
+					code: "<Foo.Bar />",
+					errors: [{messageId: "undefined", data: {identifier: "Foo"}}],
 				},
 			],
 		});

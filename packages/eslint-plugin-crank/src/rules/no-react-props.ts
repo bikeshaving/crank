@@ -1,5 +1,5 @@
-import {Rule} from "eslint";
-import {ESLintNode} from "../utils/types.js";
+import type {Rule} from "eslint";
+import type {ESLintNode} from "../utils/types.js";
 import {
 	createConditionalJSXAttributeMapper,
 	isNativeElement,

@@ -19,7 +19,7 @@ import {createElement} from "./crank.js";
 export function lazy<T extends Component>(
 	initializer: () => Promise<T | {default: T}>,
 ): T {
-	return async function* LazyComponent(
+	return async function *LazyComponent(
 		this: Context,
 		props: any,
 	): AsyncGenerator<Children> {
@@ -47,11 +47,7 @@ async function SuspenseEmpty() {
 
 async function SuspenseFallback(
 	this: Context,
-	{
-		children,
-		timeout,
-		schedule,
-	}: {
+	{children, timeout, schedule}: {
 		children: Children;
 		timeout: number;
 		schedule: () => Promise<unknown>;
@@ -64,13 +60,7 @@ async function SuspenseFallback(
 
 function SuspenseChildren(
 	this: Context,
-	{
-		children,
-		schedule,
-	}: {
-		children: Children;
-		schedule: () => Promise<unknown>;
-	},
+	{children, schedule}: {children: Children; schedule: () => Promise<unknown>},
 ) {
 	this.schedule(schedule);
 	return children;
@@ -94,13 +84,13 @@ function SuspenseChildren(
  * </Suspense>
  * ```
  */
-export async function* Suspense(
+export async function *Suspense(
 	this: Context,
-	{
-		children,
-		fallback,
-		timeout,
-	}: {children: Children; fallback: Children; timeout?: number},
+	{children, fallback, timeout}: {
+		children: Children;
+		fallback: Children;
+		timeout?: number;
+	},
 ): AsyncGenerator<Children> {
 	const controller = this.consume(SuspenseListController);
 	this.provide(SuspenseListController, undefined);
@@ -157,10 +147,10 @@ interface SuspenseListController {
 	timeout?: number;
 	revealOrder?: "forwards" | "backwards" | "together";
 	tail?: "collapsed" | "hidden";
-	register(ctx: Context): Promise<Array<SuspenseListItem>>;
-	isHead(ctx: Context, items: Array<SuspenseListItem>): boolean;
-	scheduleFallback(ctx: Context, items: Array<SuspenseListItem>): Promise<void>;
-	scheduleChildren(ctx: Context, items: Array<SuspenseListItem>): Promise<void>;
+	register(ctx: Context): Promise<SuspenseListItem[]>;
+	isHead(ctx: Context, items: SuspenseListItem[]): boolean;
+	scheduleFallback(ctx: Context, items: SuspenseListItem[]): Promise<void>;
+	scheduleChildren(ctx: Context, items: SuspenseListItem[]): Promise<void>;
 }
 
 declare global {
@@ -207,14 +197,9 @@ declare global {
  * </SuspenseList>
  * ```
  */
-export function* SuspenseList(
+export function *SuspenseList(
 	this: Context,
-	{
-		revealOrder = "forwards",
-		tail = "collapsed",
-		timeout,
-		children,
-	}: {
+	{revealOrder = "forwards", tail = "collapsed", timeout, children}: {
 		revealOrder?: "forwards" | "backwards" | "together";
 		tail?: "collapsed" | "hidden";
 		timeout?: number;
@@ -223,7 +208,7 @@ export function* SuspenseList(
 ): Generator<Children> {
 	let finishRegistration: () => void;
 	let registering: Promise<void> | null = null;
-	let items: Array<SuspenseListItem> = [];
+	let items: SuspenseListItem[] = [];
 	const controller: SuspenseListController = {
 		timeout,
 		revealOrder,
@@ -235,11 +220,7 @@ export function* SuspenseList(
 					(r) => (childrenResolver = r),
 				);
 
-				items.push({
-					ctx,
-					resolve: childrenResolver!,
-					promise: childrenPromise,
-				});
+				items.push({ctx, resolve: childrenResolver!, promise: childrenPromise});
 
 				// Wait for registration to complete
 				await registering;
@@ -252,7 +233,7 @@ export function* SuspenseList(
 			return [];
 		},
 
-		isHead(ctx: Context, suspenseItems: Array<SuspenseListItem>): boolean {
+		isHead(ctx: Context, suspenseItems: SuspenseListItem[]): boolean {
 			const index = suspenseItems.findIndex((item) => item.ctx === ctx);
 			if (index === -1) {
 				return false;
@@ -266,10 +247,7 @@ export function* SuspenseList(
 			return false;
 		},
 
-		async scheduleFallback(
-			ctx: Context,
-			suspenseItems: Array<SuspenseListItem>,
-		) {
+		async scheduleFallback(ctx: Context, suspenseItems: SuspenseListItem[]) {
 			const index = suspenseItems.findIndex((item) => item.ctx === ctx);
 			if (index === -1) {
 				return;
@@ -284,10 +262,7 @@ export function* SuspenseList(
 			}
 		},
 
-		async scheduleChildren(
-			ctx: Context,
-			suspenseItems: Array<SuspenseListItem>,
-		) {
+		async scheduleChildren(ctx: Context, suspenseItems: SuspenseListItem[]) {
 			const index = suspenseItems.findIndex((item) => item.ctx === ctx);
 			if (index === -1) {
 				return;

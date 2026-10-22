@@ -1,4 +1,4 @@
-import {Rule} from "eslint";
+import type {Rule} from "eslint";
 import {isRefreshCall, findRefreshCalls} from "../utils/refresh-utils.js";
 import {
 	isFinalAction,
@@ -16,7 +16,7 @@ import {
 	findRefreshStatementParent,
 	getNodeIndentation,
 } from "../utils/callback-formatters.js";
-import {ESLintNode} from "../utils/types.js";
+import type {ESLintNode} from "../utils/types.js";
 
 export const preferRefreshCallback: Rule.RuleModule = {
 	meta: {
@@ -165,10 +165,10 @@ export const preferRefreshCallback: Rule.RuleModule = {
 
 				// If there's a semicolon, include it in the replacement range to avoid double semicolons
 				if (hasSemicolon) {
-					return fixer.replaceTextRange(
-						[callbackNode.range![0], callbackEnd + 1],
-						newCallbackText,
-					);
+					return fixer.replaceTextRange([
+						callbackNode.range![0],
+						callbackEnd + 1,
+					], newCallbackText);
 				}
 
 				return fixer.replaceText(callbackNode as any, newCallbackText);

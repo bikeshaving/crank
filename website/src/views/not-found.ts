@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
 import {Root} from "../components/root.js";
@@ -8,7 +9,7 @@ interface ViewProps {
 	params: Record<string, string>;
 }
 
-export default function NotFound({url}: ViewProps) {
+export default function NotFound({url}: ViewProps): Element {
 	return jsx`
 		<${Root}
 			title="404 - Page Not Found | Crank.js"

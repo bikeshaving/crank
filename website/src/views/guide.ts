@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
 import {NotFound} from "@b9g/http-errors";
@@ -14,7 +15,7 @@ interface ViewProps {
 
 import {collectDocuments} from "../models/document.js";
 
-export default async function Guide({url}: ViewProps) {
+export default async function Guide({url}: ViewProps): Promise<Element> {
 	const docsDir = await self.directories.open("docs");
 	const guidesDir = await docsDir.getDirectoryHandle("guides");
 	const docs = await collectDocuments(guidesDir, "guides");
@@ -26,11 +27,7 @@ export default async function Guide({url}: ViewProps) {
 		throw new NotFound(`Guide not found: ${url}`);
 	}
 
-	const {
-		attributes: {title, description},
-		body,
-		filename,
-	} = post;
+	const {attributes: {title, description}, body, filename} = post;
 	return jsx`
 		<${Root} title="Crank.js | ${title}" url=${url} description=${description}>
 			<${Sidebar} docs=${docs} url=${url} title="Guides" />

@@ -10,8 +10,9 @@ if (!args.includes("--framework")) {
 
 // Run create-shovel with the args. --yes skips the second install prompt
 // (the user already confirmed installing create-crank).
-spawn("npx", ["--yes", "create-shovel", ...args], {
-	stdio: "inherit",
-}).on("exit", (code) => {
-	process.exit(code ?? 0);
-});
+spawn("npx", ["--yes", "create-shovel", ...args], {stdio: "inherit"}).on(
+	"exit",
+	(code) => {
+		process.exit(code ?? 0);
+	},
+);

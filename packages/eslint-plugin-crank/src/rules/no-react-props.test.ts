@@ -8,59 +8,57 @@ describe("no-react-props", () => {
 	it("should allow standard HTML attributes", () => {
 		ruleTester.run("no-react-props", noReactProps, {
 			valid: [
-				{code: `<div class="container">Content</div>`},
-				{code: `<label for="input-id">Label</label>`},
-				{code: `<div innerHTML={htmlContent} />`},
-				{code: `<div id="test" />`},
-				{code: `<input type="text" value={val} />`},
-				{code: `<div style={{ color: "red" }} />`},
-				{code: `<a href="/path">Link</a>`},
+				{code: "<div class=\"container\">Content</div>"},
+				{code: "<label for=\"input-id\">Label</label>"},
+				{code: "<div innerHTML={htmlContent} />"},
+				{code: "<div id=\"test\" />"},
+				{code: "<input type=\"text\" value={val} />"},
+				{code: "<div style={{ color: \"red\" }} />"},
+				{code: "<a href=\"/path\">Link</a>"},
 			],
 			invalid: [],
 		});
 	});
 
 	describe("className transformation", () => {
-		for (const {name, code, output} of [
+		it.each([
 			{
 				name: "should detect and fix className -> class",
-				code: `<div className="container">Content</div>`,
-				output: `<div class="container">Content</div>`,
+				code: "<div className=\"container\">Content</div>",
+				output: "<div class=\"container\">Content</div>",
 			},
 			{
 				name: "should fix className with string value",
-				code: `<button className="btn btn-primary">Click</button>`,
-				output: `<button class="btn btn-primary">Click</button>`,
+				code: "<button className=\"btn btn-primary\">Click</button>",
+				output: "<button class=\"btn btn-primary\">Click</button>",
 			},
 			{
 				name: "should fix className with expression value",
-				code: `<div className={styles.container}>Content</div>`,
-				output: `<div class={styles.container}>Content</div>`,
+				code: "<div className={styles.container}>Content</div>",
+				output: "<div class={styles.container}>Content</div>",
 			},
 			{
 				name: "should fix className with template literal",
-				code: `<div className={\`container \${active ? 'active' : ''}\`}>Content</div>`,
-				output: `<div class={\`container \${active ? 'active' : ''}\`}>Content</div>`,
+				code: "<div className={`container ${active ? 'active' : ''}`}>Content</div>",
+				output: "<div class={`container ${active ? 'active' : ''}`}>Content</div>",
 			},
-		]) {
-			it(`${name}`, () => {
-				ruleTester.run("no-react-props", noReactProps, {
-					valid: [],
-					invalid: [
-						{
-							code,
-							output,
-							errors: [
-								{
-									messageId: "useStandardAttribute",
-									data: {react: "className", standard: "class"},
-								},
-							],
-						},
-					],
-				});
+		])("$name", ({code, output}) => {
+			ruleTester.run("no-react-props", noReactProps, {
+				valid: [],
+				invalid: [
+					{
+						code,
+						output,
+						errors: [
+							{
+								messageId: "useStandardAttribute",
+								data: {react: "className", standard: "class"},
+							},
+						],
+					},
+				],
 			});
-		}
+		});
 	});
 
 	describe("htmlFor transformation", () => {
@@ -69,8 +67,8 @@ describe("no-react-props", () => {
 				valid: [],
 				invalid: [
 					{
-						code: `<label htmlFor="input-id">Label</label>`,
-						output: `<label for="input-id">Label</label>`,
+						code: "<label htmlFor=\"input-id\">Label</label>",
+						output: "<label for=\"input-id\">Label</label>",
 						errors: [
 							{
 								messageId: "useStandardAttribute",
@@ -87,8 +85,8 @@ describe("no-react-props", () => {
 				valid: [],
 				invalid: [
 					{
-						code: `<label htmlFor={inputId}>Label</label>`,
-						output: `<label for={inputId}>Label</label>`,
+						code: "<label htmlFor={inputId}>Label</label>",
+						output: "<label for={inputId}>Label</label>",
 						errors: [
 							{
 								messageId: "useStandardAttribute",
@@ -107,13 +105,9 @@ describe("no-react-props", () => {
 				valid: [],
 				invalid: [
 					{
-						code: `<div dangerouslySetInnerHTML={{ __html: htmlContent }} />`,
-						output: `<div innerHTML={htmlContent} />`,
-						errors: [
-							{
-								messageId: "useinnerHTML",
-							},
-						],
+						code: "<div dangerouslySetInnerHTML={{ __html: htmlContent }} />",
+						output: "<div innerHTML={htmlContent} />",
+						errors: [{messageId: "useinnerHTML"}],
 					},
 				],
 			});
@@ -124,13 +118,9 @@ describe("no-react-props", () => {
 				valid: [],
 				invalid: [
 					{
-						code: `<div dangerouslySetInnerHTML={{ __html: "<p>Test</p>" }} />`,
-						output: `<div innerHTML={"<p>Test</p>"} />`,
-						errors: [
-							{
-								messageId: "useinnerHTML",
-							},
-						],
+						code: "<div dangerouslySetInnerHTML={{ __html: \"<p>Test</p>\" }} />",
+						output: "<div innerHTML={\"<p>Test</p>\"} />",
+						errors: [{messageId: "useinnerHTML"}],
 					},
 				],
 			});
@@ -141,13 +131,9 @@ describe("no-react-props", () => {
 				valid: [],
 				invalid: [
 					{
-						code: `<div dangerouslySetInnerHTML={{ __html: markup }} />`,
-						output: `<div innerHTML={markup} />`,
-						errors: [
-							{
-								messageId: "useinnerHTML",
-							},
-						],
+						code: "<div dangerouslySetInnerHTML={{ __html: markup }} />",
+						output: "<div innerHTML={markup} />",
+						errors: [{messageId: "useinnerHTML"}],
 					},
 				],
 			});
@@ -158,13 +144,9 @@ describe("no-react-props", () => {
 				valid: [],
 				invalid: [
 					{
-						code: `<div dangerouslySetInnerHTML={{ __html: getMarkup() }} />`,
-						output: `<div innerHTML={getMarkup()} />`,
-						errors: [
-							{
-								messageId: "useinnerHTML",
-							},
-						],
+						code: "<div dangerouslySetInnerHTML={{ __html: getMarkup() }} />",
+						output: "<div innerHTML={getMarkup()} />",
+						errors: [{messageId: "useinnerHTML"}],
 					},
 				],
 			});
@@ -175,13 +157,9 @@ describe("no-react-props", () => {
 				valid: [],
 				invalid: [
 					{
-						code: `<div dangerouslySetInnerHTML={{ __html: \`<p>\${text}</p>\` }} />`,
-						output: `<div innerHTML={\`<p>\${text}</p>\`} />`,
-						errors: [
-							{
-								messageId: "useinnerHTML",
-							},
-						],
+						code: "<div dangerouslySetInnerHTML={{ __html: `<p>${text}</p>` }} />",
+						output: "<div innerHTML={`<p>${text}</p>`} />",
+						errors: [{messageId: "useinnerHTML"}],
 					},
 				],
 			});
@@ -194,8 +172,8 @@ describe("no-react-props", () => {
 				valid: [],
 				invalid: [
 					{
-						code: `<div className="container" htmlFor="test">Content</div>`,
-						output: `<div class="container" for="test">Content</div>`,
+						code: "<div className=\"container\" htmlFor=\"test\">Content</div>",
+						output: "<div class=\"container\" for=\"test\">Content</div>",
 						errors: [
 							{
 								messageId: "useStandardAttribute",

@@ -118,14 +118,7 @@ function shuffle(arr) {
 
 function neighborsOf(cell, cells) {
   const {q, r} = axialCoordsFor(cell);
-  const vectors = [
-    [1, 0],
-    [0, 1],
-    [-1, 1],
-    [-1, 0],
-    [0, -1],
-    [1, -1],
-  ];
+  const vectors = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
   const axialSet = new Set(vectors.map(([q1, r1]) => `${q + q1},${r + r1}`));
   return cells.filter((cell1) => {
     const {q, r} = axialCoordsFor(cell1);
@@ -133,7 +126,7 @@ function neighborsOf(cell, cells) {
   });
 }
 
-function* Minesweeper() {
+function *Minesweeper() {
   const rows = 10;
   const cols = 15;
   const bombCount = 25;
@@ -213,9 +206,8 @@ function* Minesweeper() {
     }
 
     // Check win condition
-    const unrevealedNonBombs = cells.filter(
-      (c) => !c.bomb && !c.revealed,
-    ).length;
+    const unrevealedNonBombs =
+      cells.filter((c) => !c.bomb && !c.revealed).length;
     if (unrevealedNonBombs === 0) {
       gameState = "won";
     }
@@ -260,21 +252,13 @@ function* Minesweeper() {
   const remainingBombs = bombCount - flagCount();
 
   for ({} of this) {
-    const statusEmoji =
-      gameState === "won"
-        ? "😎"
-        : gameState === "lost"
-          ? "😵"
-          : mouseDown
-            ? "😳"
-            : "🙂";
+    const statusEmoji = gameState === "won"
+      ? "😎"
+      : gameState === "lost" ? "😵" : mouseDown ? "😳" : "🙂";
 
-    const statusText =
-      gameState === "won"
-        ? "You Won!"
-        : gameState === "lost"
-          ? "Game Over!"
-          : `${remainingBombs} mines`;
+    const statusText = gameState === "won"
+      ? "You Won!"
+      : gameState === "lost" ? "Game Over!" : `${remainingBombs} mines`;
 
     // Calculate grid bounds for centering
     const radius = 18;

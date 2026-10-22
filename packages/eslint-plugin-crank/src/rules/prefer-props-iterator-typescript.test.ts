@@ -66,11 +66,7 @@ describe("prefer-props-iterator (TypeScript)", () => {
               }
             }
           `,
-					errors: [
-						{
-							messageId: "preferPropsIterator",
-						},
-					],
+					errors: [{messageId: "preferPropsIterator"}],
 				},
 				// while(true) with this context parameter and type annotation
 				{
@@ -98,11 +94,7 @@ describe("prefer-props-iterator (TypeScript)", () => {
               }
             }
           `,
-					errors: [
-						{
-							messageId: "preferPropsIterator",
-						},
-					],
+					errors: [{messageId: "preferPropsIterator"}],
 				},
 			],
 		});

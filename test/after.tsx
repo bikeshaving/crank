@@ -1,6 +1,7 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
-import {createElement, Context, Element} from "../src/crank.js";
+import type {Context, Element} from "../src/crank.js";
+import {createElement} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("after", () => {
@@ -17,6 +18,7 @@ describe("after", () => {
 	test("callback called after insertion into the DOM", () => {
 		const fn = Sinon.fake();
 		const callback = (el: HTMLElement) => fn(document.body.contains(el));
+
 		function Component(this: Context): Element {
 			this.after(callback);
 			return <span>Hello</span>;
@@ -31,6 +33,7 @@ describe("after", () => {
 	test("callback called once in a function", () => {
 		let i = 0;
 		const fn = Sinon.fake();
+
 		function Component(this: Context): Element {
 			if (i === 0) {
 				this.after(fn);
@@ -64,6 +67,7 @@ describe("after", () => {
 	test("callback called every time in a function", () => {
 		let i = 0;
 		const fn = Sinon.fake();
+
 		function Component(this: Context): Element {
 			this.after(fn);
 			return <span>{i++}</span>;
@@ -94,7 +98,8 @@ describe("after", () => {
 
 	test("called called once in a generator", () => {
 		const fn = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			let i = 0;
 			this.after(fn);
 			for (const _ of this) {
@@ -127,7 +132,8 @@ describe("after", () => {
 
 	test("callback called every time in a generator", () => {
 		const fn = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			let i = 0;
 			for (const _ of this) {
 				this.after(fn);
@@ -161,6 +167,7 @@ describe("after", () => {
 	test("callback called once in an async function", async () => {
 		let i = 0;
 		const fn = Sinon.fake();
+
 		async function Component(this: Context) {
 			if (i === 0) {
 				this.after(fn);
@@ -194,6 +201,7 @@ describe("after", () => {
 	test("callback called every time in an async function", async () => {
 		let i = 0;
 		const fn = Sinon.fake();
+
 		async function Component(this: Context) {
 			this.after(fn);
 			return <span>{i++}</span>;
@@ -224,7 +232,8 @@ describe("after", () => {
 
 	test("callback called once in an async generator", async () => {
 		const fn = Sinon.fake();
-		async function* Component(this: Context) {
+
+		async function *Component(this: Context) {
 			let i = 0;
 			this.after(fn);
 			for await (const _ of this) {
@@ -257,7 +266,8 @@ describe("after", () => {
 
 	test("callback called every time in an async generator", async () => {
 		const fn = Sinon.fake();
-		async function* Component(this: Context) {
+
+		async function *Component(this: Context) {
 			let i = 0;
 			for await (const _ of this) {
 				this.after(fn);
@@ -293,7 +303,8 @@ describe("after", () => {
 		const fn2 = Sinon.fake();
 		let ctx1!: Context;
 		let ctx2!: Context;
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			ctx1 = this;
 			let i = 0;
 			for (const _ of this) {
@@ -302,7 +313,7 @@ describe("after", () => {
 			}
 		}
 
-		function* Sibling(this: Context) {
+		function *Sibling(this: Context) {
 			let i = 0;
 			ctx2 = this;
 			for (const _ of this) {
@@ -339,7 +350,7 @@ describe("after", () => {
 	test("callback called after insertion with schedule refresh edge case", () => {
 		const fn = Sinon.fake();
 
-		function* Component(this: Context) {
+		function *Component(this: Context) {
 			this.after((el) => {
 				fn(document.contains(el));
 			});
@@ -368,7 +379,8 @@ describe("after", () => {
 
 	test("callback called after insertion with async schedule refresh edge case", async () => {
 		const fn = Sinon.fake();
-		async function* Component(this: Context) {
+
+		async function *Component(this: Context) {
 			this.after((el) => {
 				fn(document.contains(el));
 			});

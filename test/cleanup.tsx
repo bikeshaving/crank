@@ -1,13 +1,8 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
 
-import {
-	createElement,
-	Context,
-	Element,
-	Fragment,
-	Portal,
-} from "../src/crank.js";
+import type {Context, Element} from "../src/crank.js";
+import {createElement, Fragment, Portal} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("cleanup", () => {
@@ -23,6 +18,7 @@ describe("cleanup", () => {
 
 	test("function", () => {
 		const fn = Sinon.fake();
+
 		function Component(this: Context): Element {
 			this.cleanup(fn);
 			return <span>Hello</span>;
@@ -46,7 +42,8 @@ describe("cleanup", () => {
 
 	test("generator", () => {
 		const fn = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			this.cleanup(fn);
 			while (true) {
 				yield <span>Hello</span>;
@@ -71,6 +68,7 @@ describe("cleanup", () => {
 
 	test("async function", async () => {
 		const fn = Sinon.fake();
+
 		async function Component(this: Context): Promise<Element> {
 			this.cleanup(fn);
 			await new Promise((resolve) => setTimeout(resolve, 1));
@@ -96,7 +94,8 @@ describe("cleanup", () => {
 
 	test("async generator", async () => {
 		const fn = Sinon.fake();
-		async function* Component(this: Context): AsyncGenerator<Element> {
+
+		async function *Component(this: Context): AsyncGenerator<Element> {
 			this.cleanup(fn);
 			for await (const _ of this) {
 				await new Promise((resolve) => setTimeout(resolve, 1));
@@ -125,7 +124,8 @@ describe("cleanup", () => {
 
 	test("multiple calls, same fn", () => {
 		const fn = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			this.cleanup(fn);
 			while (true) {
 				yield <span>Hello</span>;
@@ -152,7 +152,8 @@ describe("cleanup", () => {
 	test("multiple calls, different fns", () => {
 		const fn1 = Sinon.fake();
 		const fn2 = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			this.cleanup(fn1);
 			this.cleanup(fn2);
 			while (true) {
@@ -183,7 +184,8 @@ describe("cleanup", () => {
 	test("multiple calls across updates", () => {
 		const fn1 = Sinon.fake();
 		const fn2 = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			let i = 0;
 			while (true) {
 				this.cleanup(fn1);
@@ -249,7 +251,8 @@ describe("cleanup", () => {
 		}
 
 		const fn = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			this.cleanup(fn);
 			while (true) {
 				yield <Child />;
@@ -279,7 +282,8 @@ describe("cleanup", () => {
 		}
 
 		const fn = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			this.cleanup(fn);
 			while (true) {
 				yield <Child />;
@@ -304,7 +308,8 @@ describe("cleanup", () => {
 
 	test("fragment child", () => {
 		const fn = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			this.cleanup(fn);
 			while (true) {
 				yield (
@@ -336,12 +341,13 @@ describe("cleanup", () => {
 
 	test("hanging child", async () => {
 		const fn = Sinon.fake();
+
 		async function Hanging(): Promise<never> {
 			await new Promise(() => {});
 			throw new Error("This should never be reached");
 		}
 
-		function* Component(this: Context): Generator<Element> {
+		function *Component(this: Context): Generator<Element> {
 			this.cleanup(fn);
 			while (true) {
 				yield <Hanging />;
@@ -369,7 +375,8 @@ describe("cleanup", () => {
 
 	test("cleanup is called even if component is prematurely unmounted", async () => {
 		const fn = Sinon.fake();
-		async function* Component(this: Context) {
+
+		async function *Component(this: Context) {
 			fn();
 			await new Promise((r) => setTimeout(r, 100));
 			this.cleanup(() => {
@@ -389,9 +396,10 @@ describe("cleanup", () => {
 	});
 
 	test("components can linger", async () => {
-		let fn = Sinon.fake();
-		let resolve: Function;
-		function* Component(this: Context) {
+		const fn = Sinon.fake();
+		let resolve: (value?: any) => void;
+
+		function *Component(this: Context) {
 			this.cleanup(() => {
 				fn();
 				return new Promise((resolve1) => (resolve = resolve1));
@@ -421,25 +429,29 @@ describe("cleanup", () => {
 	});
 
 	test("multiple components linger and unmount independently", async () => {
-		let mock1 = Sinon.fake();
-		let mock2 = Sinon.fake();
-		let resolve1!: Function;
-		let resolve2!: Function;
+		const mock1 = Sinon.fake();
+		const mock2 = Sinon.fake();
+		let resolve1!: (value?: any) => void;
+		let resolve2!: (value?: any) => void;
 
-		function* Child1(this: Context) {
+		function *Child1(this: Context) {
 			this.cleanup(() => {
 				mock1();
 				return new Promise((r) => (resolve1 = r));
 			});
-			for ({} of this) yield <span>One</span>;
+			for ({} of this) {
+				yield <span>One</span>;
+			}
 		}
 
-		function* Child3(this: Context) {
+		function *Child3(this: Context) {
 			this.cleanup(() => {
 				mock2();
 				return new Promise((r) => (resolve2 = r));
 			});
-			for ({} of this) yield <span>Three</span>;
+			for ({} of this) {
+				yield <span>Three</span>;
+			}
 		}
 
 		renderer.render(
@@ -482,20 +494,22 @@ describe("cleanup", () => {
 	});
 
 	test("nested components linger correctly", async () => {
-		let parentCleanup = Sinon.fake();
-		let childCleanup = Sinon.fake();
-		let resolveParent!: Function;
-		let resolveChild!: Function;
+		const parentCleanup = Sinon.fake();
+		const childCleanup = Sinon.fake();
+		let resolveParent!: (value?: any) => void;
+		let resolveChild!: (value?: any) => void;
 
-		function* Parent(this: Context) {
+		function *Parent(this: Context) {
 			this.cleanup(() => {
 				parentCleanup();
 				return new Promise((r) => (resolveParent = r));
 			});
-			for ({} of this) yield <Child />;
+			for ({} of this) {
+				yield <Child />;
+			}
 		}
 
-		function* Child(this: Context) {
+		function *Child(this: Context) {
 			this.cleanup(() => {
 				childCleanup();
 				return new Promise((r) => (resolveChild = r));
@@ -544,12 +558,12 @@ describe("cleanup", () => {
 	});
 
 	test("fragments handle lingering components correctly", async () => {
-		let cleanupA = Sinon.fake();
-		let cleanupB = Sinon.fake();
-		let resolveA!: Function;
-		let resolveB!: Function;
+		const cleanupA = Sinon.fake();
+		const cleanupB = Sinon.fake();
+		let resolveA!: (value?: any) => void;
+		let resolveB!: (value?: any) => void;
 
-		function* ComponentA(this: Context) {
+		function *ComponentA(this: Context) {
 			this.cleanup(() => {
 				cleanupA();
 				return new Promise((r) => (resolveA = r));
@@ -557,7 +571,7 @@ describe("cleanup", () => {
 			yield <span>A</span>;
 		}
 
-		function* ComponentB(this: Context) {
+		function *ComponentB(this: Context) {
 			this.cleanup(() => {
 				cleanupB();
 				return new Promise((r) => (resolveB = r));
@@ -605,10 +619,10 @@ describe("cleanup", () => {
 	});
 
 	test("component without children does not linger", async () => {
-		let cleanup = Sinon.fake();
-		let resolve!: Function;
+		const cleanup = Sinon.fake();
+		let resolve!: (value?: any) => void;
 
-		function* Component(this: Context, {condition}: {condition: boolean}) {
+		function *Component(this: Context, {condition}: {condition: boolean}) {
 			this.cleanup(() => {
 				cleanup();
 				return new Promise((r) => (resolve = r));
@@ -637,14 +651,16 @@ describe("cleanup", () => {
 	});
 
 	test("lingering component cleared when parent unmounted", async () => {
-		let cleanup = Sinon.fake();
+		const cleanup = Sinon.fake();
 
-		function* Child(this: Context) {
+		function *Child(this: Context) {
 			this.cleanup(() => {
 				cleanup();
 				return new Promise(() => {});
 			});
-			for ({} of this) yield <span>Child</span>;
+			for ({} of this) {
+				yield <span>Child</span>;
+			}
 		}
 
 		renderer.render(
@@ -666,10 +682,10 @@ describe("cleanup", () => {
 	test("component wrapping lingering component (no host boundary)", async () => {
 		// AlertModal wraps Modal directly (no intermediate <div>).
 		// Does Modal linger when AlertModal is removed?
-		let cleanup = Sinon.fake();
-		let resolve!: Function;
+		const cleanup = Sinon.fake();
+		let resolve!: (value?: any) => void;
 
-		function* Modal(this: Context) {
+		function *Modal(this: Context) {
 			this.cleanup(() => {
 				cleanup();
 				return new Promise((r) => (resolve = r));
@@ -702,26 +718,24 @@ describe("cleanup", () => {
 			document.body,
 		);
 
-		expect(cleanup.callCount).toBe(1) /* cleanup should be called */;
+		expect(cleanup.callCount).toBe(1);
 		// Modal lingers because isNested stays false through components
 		expect(document.body.innerHTML).toBe(
 			"<div><span>Modal</span><span>Sibling</span></div>",
-		) /* Modal should still be visible (lingering) */;
+		);
 
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve));
-		expect(document.body.innerHTML).toBe(
-			"<div><span>Sibling</span></div>",
-		) /* Modal should be removed after cleanup resolves */;
+		expect(document.body.innerHTML).toBe("<div><span>Sibling</span></div>");
 	});
 
 	test("component wrapping lingering component with host boundary", async () => {
 		// AlertModal wraps Modal inside a <div class="wrapper">.
 		// Does Modal linger when AlertModal is removed?
-		let cleanup = Sinon.fake();
-		let _resolve!: Function;
+		const cleanup = Sinon.fake();
+		let _resolve!: (value?: any) => void;
 
-		function* Modal(this: Context) {
+		function *Modal(this: Context) {
 			this.cleanup(() => {
 				cleanup();
 				return new Promise((r) => (_resolve = r));
@@ -758,20 +772,18 @@ describe("cleanup", () => {
 			document.body,
 		);
 
-		expect(cleanup.callCount).toBe(1) /* cleanup should be called */;
+		expect(cleanup.callCount).toBe(1);
 		// Modal cannot linger because <div class="wrapper"> forces isNested=true
 		// So everything is removed immediately
-		expect(document.body.innerHTML).toBe(
-			"<div><span>Sibling</span></div>",
-		) /* wrapper and Modal should be removed immediately (isNested=true) */;
+		expect(document.body.innerHTML).toBe("<div><span>Sibling</span></div>");
 	});
 
 	test("lingering component can refresh during cleanup", async () => {
 		// Modal calls this.refresh() in cleanup to trigger exit animation class.
 		// Does the refresh actually re-render?
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
-		function* Modal(this: Context) {
+		function *Modal(this: Context) {
 			let visible = true;
 			this.cleanup(() => {
 				this.refresh(() => (visible = false));
@@ -798,7 +810,7 @@ describe("cleanup", () => {
 		// refresh during cleanup triggers re-render with visible=false
 		expect(document.body.innerHTML).toBe(
 			'<div><div class="hidden">Modal</div></div>',
-		) /* Modal should re-render with hidden class during linger */;
+		);
 
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve));
@@ -808,10 +820,10 @@ describe("cleanup", () => {
 	test("deeply nested component wrapping (no host boundaries)", async () => {
 		// Three levels of component wrapping: Outer -> Middle -> Modal
 		// No host elements between them. Does Modal linger?
-		let cleanup = Sinon.fake();
-		let resolve!: Function;
+		const cleanup = Sinon.fake();
+		let resolve!: (value?: any) => void;
 
-		function* Modal(this: Context) {
+		function *Modal(this: Context) {
 			this.cleanup(() => {
 				cleanup();
 				return new Promise((r) => (resolve = r));
@@ -848,10 +860,10 @@ describe("cleanup", () => {
 			document.body,
 		);
 
-		expect(cleanup.callCount).toBe(1) /* cleanup should be called */;
+		expect(cleanup.callCount).toBe(1);
 		expect(document.body.innerHTML).toBe(
 			"<div><span>Modal</span><span>Sibling</span></div>",
-		) /* Modal should linger through component wrappers */;
+		);
 
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve));
@@ -861,13 +873,13 @@ describe("cleanup", () => {
 	test("component rendering Portal can linger", async () => {
 		// Modal renders its content via a Portal. Portal content should
 		// stay visible during async cleanup (lingering).
-		let cleanup = Sinon.fake();
-		let resolve!: Function;
+		const cleanup = Sinon.fake();
+		let resolve!: (value?: any) => void;
 
 		const portalRoot = document.createElement("div");
 		document.body.appendChild(portalRoot);
 
-		function* Modal(this: Context) {
+		function *Modal(this: Context) {
 			this.cleanup(() => {
 				cleanup();
 				return new Promise((r) => (resolve = r));
@@ -899,18 +911,14 @@ describe("cleanup", () => {
 			document.body,
 		);
 
-		expect(cleanup.callCount).toBe(1) /* cleanup should be called */;
+		expect(cleanup.callCount).toBe(1);
 		// Portal content should linger during async cleanup
-		expect(portalRoot.innerHTML).toBe(
-			'<div class="modal">Modal Content</div>',
-		) /* Portal content should stay visible during linger */;
+		expect(portalRoot.innerHTML).toBe('<div class="modal">Modal Content</div>');
 
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve));
 
-		expect(portalRoot.innerHTML).toBe(
-			"",
-		) /* Portal content should be removed after cleanup resolves */;
+		expect(portalRoot.innerHTML).toBe("");
 
 		document.body.removeChild(portalRoot);
 	});
@@ -918,12 +926,12 @@ describe("cleanup", () => {
 	test("Portal-rendering component can refresh during linger", async () => {
 		// Modal renders via Portal, calls this.refresh() in cleanup to trigger
 		// CSS transition class, then defers with a Promise.
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
 		const portalRoot = document.createElement("div");
 		document.body.appendChild(portalRoot);
 
-		function* Modal(this: Context) {
+		function *Modal(this: Context) {
 			let visible = true;
 			this.cleanup(() => {
 				this.refresh(() => (visible = false));
@@ -950,16 +958,12 @@ describe("cleanup", () => {
 		renderer.render(<div />, document.body);
 
 		// Modal should re-render with hidden class during linger
-		expect(portalRoot.innerHTML).toBe(
-			'<div class="hidden">Modal</div>',
-		) /* Modal should refresh with hidden class during linger */;
+		expect(portalRoot.innerHTML).toBe('<div class="hidden">Modal</div>');
 
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve));
 
-		expect(portalRoot.innerHTML).toBe(
-			"",
-		) /* Portal content should be removed after cleanup resolves */;
+		expect(portalRoot.innerHTML).toBe("");
 
 		document.body.removeChild(portalRoot);
 	});
@@ -967,9 +971,9 @@ describe("cleanup", () => {
 	test("lingering component can refresh multiple times", async () => {
 		// Component plays a multi-step exit animation via repeated refreshes
 		let step = 0;
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
-		function* Animated(this: Context) {
+		function *Animated(this: Context) {
 			this.cleanup(() => {
 				this.refresh(() => (step = 1));
 				return new Promise((r) => (resolve = r));
@@ -1002,9 +1006,9 @@ describe("cleanup", () => {
 
 	test("lingering component responds to events during linger", async () => {
 		let clickCount = 0;
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 
-		function* Counter(this: Context) {
+		function *Counter(this: Context) {
 			this.cleanup(() => {
 				return new Promise((r) => (resolve = r));
 			});
@@ -1031,18 +1035,18 @@ describe("cleanup", () => {
 		renderer.render(<div />, document.body);
 		expect(document.body.innerHTML).toBe(
 			"<div><button>Clicked 0 times</button></div>",
-		) /* Counter should linger */;
+		);
 
 		// Click the button while lingering
 		document.querySelector("button")!.click();
 		expect(document.body.innerHTML).toBe(
 			"<div><button>Clicked 1 times</button></div>",
-		) /* Counter should respond to clicks during linger */;
+		);
 
 		document.querySelector("button")!.click();
 		expect(document.body.innerHTML).toBe(
 			"<div><button>Clicked 2 times</button></div>",
-		) /* Counter should respond to multiple clicks during linger */;
+		);
 
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve));
@@ -1050,14 +1054,14 @@ describe("cleanup", () => {
 	});
 
 	test("lingering component children update on refresh", async () => {
-		let resolve!: Function;
+		let resolve!: (value?: any) => void;
 		let phase = "active";
 
 		function Badge({label}: {label: string}) {
 			return <span class="badge">{label}</span>;
 		}
 
-		function* Panel(this: Context) {
+		function *Panel(this: Context) {
 			this.cleanup(() => {
 				this.refresh(() => (phase = "exiting"));
 				return new Promise((r) => (resolve = r));
@@ -1086,7 +1090,7 @@ describe("cleanup", () => {
 
 		expect(document.body.innerHTML).toBe(
 			'<div><div><span class="badge">exiting</span></div></div>',
-		) /* Child component should re-render with updated props during linger */;
+		);
 
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve));
@@ -1097,9 +1101,9 @@ describe("cleanup", () => {
 		// Simulates a real exit animation: cleanup triggers state change,
 		// then a timer fires and resolves the cleanup promise
 		let visible = true;
-		let cleanupResolve!: Function;
+		let cleanupResolve!: (value?: any) => void;
 
-		function* Toast(this: Context) {
+		function *Toast(this: Context) {
 			this.cleanup(() => {
 				this.refresh(() => (visible = false));
 				return new Promise((r) => (cleanupResolve = r));
@@ -1125,7 +1129,7 @@ describe("cleanup", () => {
 		// Immediately after unmount: class should flip
 		expect(document.body.innerHTML).toBe(
 			'<div><div class="toast hide">Message</div></div>',
-		) /* Toast should show exit state during linger */;
+		);
 
 		// Resolve after a tick (simulating setTimeout in real code)
 		await new Promise((resolve) => setTimeout(resolve, 50));
@@ -1133,7 +1137,7 @@ describe("cleanup", () => {
 		// Still lingering — hasn't resolved yet
 		expect(document.body.innerHTML).toBe(
 			'<div><div class="toast hide">Message</div></div>',
-		) /* Toast should still be visible while waiting */;
+		);
 
 		cleanupResolve();
 		await new Promise((resolve) => setTimeout(resolve));

@@ -25,11 +25,11 @@ export function measureMark(label: string): void {
 	}
 }
 
-export function wrap<T>(value: Array<T> | T | undefined): Array<T> {
+export function wrap<T>(value: T[] | T | undefined): T[] {
 	return value === undefined ? [] : Array.isArray(value) ? value : [value];
 }
 
-export function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
+export function unwrap<T>(arr: T[]): T[] | T | undefined {
 	return arr.length === 0 ? undefined : arr.length === 1 ? arr[0] : arr;
 }
 
@@ -44,15 +44,15 @@ export type NonStringIterable<T> = Iterable<T> & object;
  */
 export function arrayify<T>(
 	value: NonStringIterable<T> | T | null | undefined,
-): Array<T> {
+): T[] {
 	return value == null
 		? []
 		: Array.isArray(value)
-			? value
-			: typeof value === "string" ||
-				  typeof (value as any)[Symbol.iterator] !== "function"
-				? [value as T]
-				: [...(value as NonStringIterable<T>)];
+		? value
+		: typeof value === "string" ||
+			typeof (value as any)[Symbol.iterator] !== "function"
+		? [value as T]
+		: [...(value as NonStringIterable<T>)];
 }
 
 export function isIteratorLike(
@@ -70,34 +70,28 @@ type Deferred<T = unknown> = {
 	reject: (reason?: unknown) => void;
 };
 
-type RaceRecord = {
-	deferreds: Set<Deferred>;
-	settled: boolean;
-};
+type RaceRecord = {deferreds: Set<Deferred>; settled: boolean};
 
 function createRaceRecord(contender: PromiseLike<unknown>): RaceRecord {
 	const deferreds = new Set<Deferred>();
 	const record = {deferreds, settled: false};
 
 	// This call to `then` happens once for the lifetime of the value.
-	Promise.resolve(contender).then(
-		(value) => {
-			for (const {resolve} of deferreds) {
-				resolve(value);
-			}
+	Promise.resolve(contender).then((value) => {
+		for (const {resolve} of deferreds) {
+			resolve(value);
+		}
 
-			deferreds.clear();
-			record.settled = true;
-		},
-		(err) => {
-			for (const {reject} of deferreds) {
-				reject(err);
-			}
+		deferreds.clear();
+		record.settled = true;
+	}, (err) => {
+		for (const {reject} of deferreds) {
+			reject(err);
+		}
 
-			deferreds.clear();
-			record.settled = true;
-		},
-	);
+		deferreds.clear();
+		record.settled = true;
+	});
 	return record;
 }
 
@@ -107,6 +101,7 @@ function createRaceRecord(contender: PromiseLike<unknown>): RaceRecord {
 // Values are a record of data containing a set of deferreds and whether the
 // value has settled.
 const wm = new WeakMap<object, RaceRecord>();
+
 export function safeRace<T>(
 	contenders: Iterable<T | PromiseLike<T>>,
 ): Promise<Awaited<T>> {

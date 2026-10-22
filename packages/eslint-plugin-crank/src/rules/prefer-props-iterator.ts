@@ -1,10 +1,10 @@
-import {Rule} from "eslint";
+import type {Rule} from "eslint";
 import {
 	createFunctionTracker,
 	createGeneratorTrackingVisitors,
 } from "../utils/function-tracker.js";
 import {traverseAST} from "../utils/ast-utils.js";
-import {ESLintNode} from "../utils/types.js";
+import type {ESLintNode} from "../utils/types.js";
 
 export const preferPropsIterator: Rule.RuleModule = {
 	meta: {
@@ -55,10 +55,9 @@ export const preferPropsIterator: Rule.RuleModule = {
 					const usedProps = new Set<string>();
 					findPropAccess(node.body, usedProps, currentFunction.params);
 
-					const destructuringPattern =
-						usedProps.size > 0
-							? `{ ${Array.from(usedProps).join(", ")} }`
-							: "{}";
+					const destructuringPattern = usedProps.size > 0
+						? `{ ${Array.from(usedProps).join(", ")} }`
+						: "{}";
 
 					context.report({
 						node,

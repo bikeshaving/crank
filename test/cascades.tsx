@@ -1,6 +1,7 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
-import {createElement, Context} from "../src/crank.js";
+import type {Context} from "../src/crank.js";
+import {createElement} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("cascades", () => {
@@ -40,7 +41,7 @@ describe("cascades", () => {
 	});
 
 	test("sync generator calls refresh directly", () => {
-		function* Component(this: Context) {
+		function *Component(this: Context) {
 			while (true) {
 				this.refresh();
 				yield <div>Hello</div>;
@@ -53,7 +54,7 @@ describe("cascades", () => {
 	});
 
 	test("async generator calls refresh directly", async () => {
-		async function* Component(this: Context) {
+		async function *Component(this: Context) {
 			this.refresh();
 			yield <span>Hello</span>;
 			for await (const _ of this) {
@@ -97,7 +98,7 @@ describe("cascades", () => {
 			return <span>child</span>;
 		}
 
-		function* Parent(this: Context) {
+		function *Parent(this: Context) {
 			this.addEventListener("test", () => {
 				this.refresh();
 			});
@@ -117,14 +118,14 @@ describe("cascades", () => {
 	});
 
 	test("sync generator parent and sync generator child", async () => {
-		function* Child(this: Context) {
+		function *Child(this: Context) {
 			this.dispatchEvent(new Event("test", {bubbles: true}));
 			while (true) {
 				yield <span>child</span>;
 			}
 		}
 
-		function* Parent(this: Context) {
+		function *Parent(this: Context) {
 			this.addEventListener("test", () => {
 				this.refresh();
 			});
@@ -144,7 +145,7 @@ describe("cascades", () => {
 	});
 
 	test("dispatchEvent in initial schedule callback", () => {
-		function* Child(this: Context) {
+		function *Child(this: Context) {
 			this.schedule(() => {
 				this.dispatchEvent(new Event("test", {bubbles: true}));
 			});
@@ -173,7 +174,7 @@ describe("cascades", () => {
 
 	// https://github.com/bikeshaving/crank/issues/336
 	test("async generator refresh during await with for...of this", async () => {
-		async function* Component(this: Context) {
+		async function *Component(this: Context) {
 			await Promise.resolve();
 			this.refresh();
 			for (const {} of this) {
@@ -188,7 +189,7 @@ describe("cascades", () => {
 
 	// https://github.com/bikeshaving/crank/issues/336
 	test("async generator refresh during await with direct yield", async () => {
-		async function* Component(this: Context) {
+		async function *Component(this: Context) {
 			await Promise.resolve();
 			this.refresh();
 			yield <span>Hello</span>;

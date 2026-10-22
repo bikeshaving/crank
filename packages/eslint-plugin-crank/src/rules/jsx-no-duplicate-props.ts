@@ -2,8 +2,8 @@
 // Original: Copyright (c) 2014 Yannick Croissant, MIT License
 // https://github.com/jsx-eslint/eslint-plugin-react
 
-import {Rule} from "eslint";
-import {ESLintNode} from "../utils/types.js";
+import type {Rule} from "eslint";
+import type {ESLintNode} from "../utils/types.js";
 
 export const jsxNoDuplicateProps: Rule.RuleModule = {
 	meta: {
@@ -16,15 +16,11 @@ export const jsxNoDuplicateProps: Rule.RuleModule = {
 		schema: [
 			{
 				type: "object",
-				properties: {
-					ignoreCase: {type: "boolean"},
-				},
+				properties: {ignoreCase: {type: "boolean"}},
 				additionalProperties: false,
 			},
 		],
-		messages: {
-			noDuplicateProps: "No duplicate props allowed.",
-		},
+		messages: {noDuplicateProps: "No duplicate props allowed."},
 	},
 
 	create(context) {
