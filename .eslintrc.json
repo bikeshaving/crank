@@ -1,4 +1,5 @@
 {
+  "ignorePatterns": ["packages/jsx-web-types"],
   "env": {
     "browser": true,
     "commonjs": true,
