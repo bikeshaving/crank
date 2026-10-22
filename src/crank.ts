@@ -1721,7 +1721,12 @@ function diffHost<TNode, TScope, TRoot extends TNode | undefined>(
 			root,
 		});
 		if (comp) {
-			children = createElement(comp, el.props);
+			// The component receives the host's props, but not its meta props,
+			// which belong to the host.
+			children = createElement(comp, {
+				...stripSpecialProps(el.props),
+				children: el.props.children,
+			});
 		}
 	}
 

@@ -112,6 +112,18 @@ function printAttrs(props: Record<string, any>, isSVG?: boolean): string {
 	return attrs.join(" ");
 }
 
+function printAttributeEntries(entries: Array<[string, string]>): string {
+	return entries
+		.map(([name, value]) =>
+			value === "" ? escape(name) : `${escape(name)}="${escape(value)}"`,
+		)
+		.join(" ");
+}
+
+// Set by @b9g/crank/web-components on a marker child of a server rendered
+// custom element, which supplies the element's attributes.
+const _HostAttributes = Symbol.for("crank.HostAttributes");
+
 /**
  * The equivalent of DOM Node for the HTML Renderer. Not to be confused with
  * the DOM's Text node. It's just an object with value string so that
@@ -254,10 +266,19 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 				throw new Error(`Unknown tag: ${tagName}`);
 			}
 
-			const attrs = printAttrs(
-				props,
-				scope === "svg" || tag === "foreignObject",
-			);
+			let attrs: string;
+			const first = children[0];
+			if (
+				typeof first === "object" &&
+				first !== null &&
+				_HostAttributes in first
+			) {
+				// A defined custom element: print the attributes it ended up with.
+				attrs = printAttributeEntries((first as any)[_HostAttributes]());
+				children = children.slice(1);
+			} else {
+				attrs = printAttrs(props, scope === "svg" || tag === "foreignObject");
+			}
 			const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
 			let result: string;
 			if (voidTags.has(tag)) {
@@ -279,21 +300,56 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 		},
 	};
 
-// Classes which can render on the server (CrankHTMLElement) expose a component
-// under this key. The HTML renderer only needs the component, so it never
-// imports the web components module.
+// Classes which can render on the server (CrankHTMLElement) expose a function
+// under this key which takes a tag name and returns a component. The HTML
+// renderer only needs the component, so it never imports the web components
+// module.
 const _ServerComponent = Symbol.for("crank.ServerComponent");
 
+interface Definition {
+	ctor: Function;
+	comp: Component;
+}
+
+const registries = new WeakMap<HTMLRenderer, Map<string, Definition>>();
+
+const reservedNames = new Set([
+	"annotation-xml",
+	"color-profile",
+	"font-face",
+	"font-face-src",
+	"font-face-uri",
+	"font-face-format",
+	"font-face-name",
+	"missing-glyph",
+]);
+
+// A simplified version of the HTML spec's valid custom element name.
+function isValidElementName(name: string): boolean {
+	return (
+		/^[a-z][^\sA-Z/>=]*-[^\sA-Z/>=]*$/.test(name) && !reservedNames.has(name)
+	);
+}
+
 export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
-	declare registry: Map<string, Component>;
 	constructor() {
-		const registry = new Map<string, Component>();
+		const registry = new Map<string, Definition>();
 		super({
 			...impl,
-			resolve: ({tag}) =>
-				typeof tag === "string" ? registry.get(tag) : undefined,
+			resolve({tag, props}) {
+				const definition = typeof tag === "string" && registry.get(tag);
+				if (!definition) {
+					return undefined;
+				} else if ("innerHTML" in props || "dangerouslySetInnerHTML" in props) {
+					console.error(
+						`<${tag as string}> is a defined custom element, so its innerHTML is ignored.`,
+					);
+				}
+
+				return definition.comp;
+			},
 		});
-		this.registry = registry;
+		registries.set(this, registry);
 	}
 
 	/**
@@ -301,18 +357,43 @@ export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 	 * equivalent of `customElements.define`. Registered tags render their
 	 * contents (a declarative shadow root for shadow DOM elements) so the
 	 * browser can hydrate them.
+	 *
+	 * Defining the same tag with the same class again does nothing.
 	 */
-	define(tagName: string, ctor: Function): void {
-		const comp = (ctor as any)[_ServerComponent];
-		if (typeof comp !== "function") {
+	define(tagName: string, ctor: CustomElementConstructor): void {
+		const registry = registries.get(this)!;
+		const existing = registry.get(tagName);
+		if (existing && existing.ctor === ctor) {
+			return;
+		} else if (existing) {
+			throw new Error(`<${tagName}> has already been defined`);
+		} else if (!isValidElementName(tagName)) {
+			throw new SyntaxError(`"${tagName}" is not a valid custom element name`);
+		} else if (typeof (ctor as any)[_ServerComponent] !== "function") {
 			throw new TypeError(
 				`Cannot define <${tagName}>: ${ctor.name || "class"} is not a CrankHTMLElement`,
 			);
-		} else if (this.registry.has(tagName)) {
-			throw new Error(`<${tagName}> has already been defined`);
 		}
 
-		this.registry.set(tagName, comp);
+		for (const [name, definition] of registry) {
+			if (definition.ctor === ctor) {
+				throw new Error(
+					`${ctor.name || "class"} has already been defined as <${name}>`,
+				);
+			}
+		}
+
+		registry.set(tagName, {
+			ctor,
+			comp: (ctor as any)[_ServerComponent](tagName),
+		});
+	}
+
+	/** Returns the class defined for a tag, if any. */
+	get(tagName: string): CustomElementConstructor | undefined {
+		return registries.get(this)!.get(tagName)?.ctor as
+			| CustomElementConstructor
+			| undefined;
 	}
 }
 

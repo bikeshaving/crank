@@ -159,7 +159,7 @@ describe("web-components SSR", () => {
 
 	test("define rejects classes which are not CrankHTMLElements", () => {
 		const html = new HTMLRenderer();
-		expect(() => html.define("x-nope", class {})).toThrow(
+		expect(() => html.define("x-nope", class {} as any)).toThrow(
 			"is not a CrankHTMLElement",
 		);
 	});
@@ -401,5 +401,135 @@ describe("web-components state", () => {
 		await flush();
 		expect(el.innerHTML).toBe("<span>preset</span>");
 		expect(renders).toBe(1);
+	});
+});
+
+describe("web-components SSR parity", () => {
+	afterEach(() => {
+		document.body.innerHTML = "";
+	});
+
+	let uid = 0;
+	const tag = (name: string) => `${name}-parity-${uid++}`;
+
+	test("the server tag prints the element's own attributes", () => {
+		const name = tag("x-attrs");
+		class El extends CrankHTMLElement {
+			static shadow = null;
+			label = "";
+			render() {
+				this.setAttribute("role", "button");
+				return this.label;
+			}
+		}
+
+		customElements.define(name, El);
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		expect(
+			html.render(
+				createElement(name, {
+					label: "hi",
+					class: {a: true, b: false},
+					open: true,
+				}),
+			),
+		).toBe(`<${name} class="a" open role="button">hi</${name}>`);
+	});
+
+	test("a getter-only property becomes an attribute", () => {
+		const name = tag("x-getter");
+		class El extends CrankHTMLElement {
+			static shadow = null;
+			get value() {
+				return "fixed";
+			}
+
+			render() {
+				return this.value;
+			}
+		}
+
+		customElements.define(name, El);
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		expect(html.render(createElement(name, {value: "x"}))).toBe(
+			`<${name} value="x">fixed</${name}>`,
+		);
+	});
+
+	test("meta props stay on the host", () => {
+		const name = tag("x-meta");
+		class El extends CrankHTMLElement {
+			static shadow = null;
+			render() {
+				return "ok";
+			}
+		}
+
+		customElements.define(name, El);
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		const errors: Array<unknown> = [];
+		const error = console.error;
+		console.error = (...args: Array<unknown>) => errors.push(args[0]);
+		try {
+			expect(
+				html.render(createElement(name, {key: "k", copy: "!a", hydrate: "!a"})),
+			).toBe(`<${name}>ok</${name}>`);
+		} finally {
+			console.error = error;
+		}
+
+		expect(errors).toEqual([]);
+	});
+
+	test("define validates names and classes", () => {
+		const a = tag("x-def");
+		const b = tag("x-def");
+		class El extends CrankHTMLElement {}
+		class Other extends CrankHTMLElement {}
+		const html = new HTMLRenderer();
+		expect(() => html.define("div", El)).toThrow(
+			"not a valid custom element name",
+		);
+		expect(() => html.define("font-face", El)).toThrow(
+			"not a valid custom element name",
+		);
+		html.define(a, El);
+		// Defining the same tag with the same class again is a no-op.
+		html.define(a, El);
+		expect(html.get(a)).toBe(El);
+		expect(() => html.define(a, Other)).toThrow("already been defined");
+		expect(() => html.define(b, El)).toThrow("already been defined");
+	});
+
+	test("an undefined class reports how to fix it", () => {
+		const name = tag("x-undefined");
+		class El extends CrankHTMLElement {}
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		expect(() => html.render(createElement(name, null))).toThrow(
+			"customElements.define",
+		);
+	});
+
+	test("events named like built-in handlers keep the platform's handler", () => {
+		const name = tag("x-change");
+		class El extends CrankHTMLElement {
+			static events = ["change", "bounce"] as const;
+			render() {
+				return null;
+			}
+		}
+
+		customElements.define(name, El);
+		const el = document.createElement(name) as El & {onbounce: unknown};
+		expect(Object.getOwnPropertyDescriptor(el, "onchange")).toBe(undefined);
+		expect(Object.getOwnPropertyDescriptor(el, "onbounce")).toBeDefined();
+		let fired = 0;
+		el.onchange = () => fired++;
+		el.dispatchEvent(new Event("change"));
+		expect(fired).toBe(1);
 	});
 });

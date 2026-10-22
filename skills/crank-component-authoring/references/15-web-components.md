@@ -61,7 +61,7 @@ static shadow = {mode: "closed"};
 static shadow = {mode: "open", delegatesFocus: true};
 ```
 
-In TypeScript, write `as const` after the object so `mode` keeps its literal type.
+In TypeScript, write `satisfies ShadowRootInit` after the object so `mode` keeps its literal type (and a misspelled mode is caught), or annotate the field as `ShadowRootInit` in a class meant to be subclassed.
 
 Set `shadow` to `null` to render into the element itself (light DOM). Page CSS then reaches the content and ID references like `<label for>` resolve, but there are no slots: a light-DOM element generates all of its content from state, so it takes no children. Content authored inside it is replaced, and children passed to it from a Crank tree are reported as an error. Use light DOM for leaf elements, like a formatted price or a relative time:
 
@@ -93,7 +93,7 @@ A sync render produces content immediately on connect. The async forms show noth
 
 ## Attributes, properties, and updates
 
-Attributes arrive as props, raw and uncoerced. Properties are the element's own accessors, exactly as on a built-in element — coercion, defaults, and reflection are whatever the getter and setter do:
+Attributes arrive as props, raw and uncoerced, keyed by attribute name (`props["scroll-amount"]`). A boolean attribute is present when its prop is not null: test `props.paused != null`, since a present attribute's value is often `""`. Properties are the element's own accessors, exactly as on a built-in element — coercion, defaults, and reflection are whatever the getter and setter do:
 
 ```jsx
 get color() {
@@ -130,6 +130,8 @@ class XMarqueeElement extends CrankHTMLElement {
 el.onbounce = (ev) => console.log("bounced");
 el.onbounce = null;
 ```
+
+Use lowercase event names: React and Svelte map an `onfoo` prop on a custom element to a `foo` listener. A type which already has a built-in handler property, like `change` or `input`, needs no generated one, so the element keeps the platform's.
 
 In TypeScript, type the generated handlers by merging `EventHandlers` into the subclass — the tuple form types names, and an event map types each handler's payload:
 
@@ -213,9 +215,10 @@ formStateRestoreCallback(state, mode) {
 The HTML renderer renders custom elements too. Register each class with it, the server's equivalent of `customElements.define`:
 
 ```jsx
-import {renderer} from "@b9g/crank/html";
+import {HTMLRenderer} from "@b9g/crank/html";
 import {XMoneyElement, XCardElement} from "./elements.js";
 
+const renderer = new HTMLRenderer();
 renderer.define("x-money", XMoneyElement);
 renderer.define("x-card", XCardElement);
 
@@ -235,9 +238,11 @@ On the server the renderer constructs a real instance of the class, applies prop
 </x-card>
 ```
 
+The server tag gets the attributes the element ends up with, including any it sets on itself while rendering. Props which become properties are not printed, so state the element should hydrate with must come from attributes.
+
 In the browser, an element's first render hydrates this content: the server's nodes are adopted, not replaced. A Crank app which hydrates the page adopts each light-DOM element but leaves its content to the element. Define your elements before hydrating, or the app's hydration will treat their content as its own.
 
-`CrankHTMLElement` loads where there is no DOM. It extends a small stand-in for `HTMLElement` which backs attributes, `attachShadow`, `attachInternals` (whose form methods do nothing), and events, but not a node tree, so construction and `render` must not reach for other DOM APIs. Guard browser-only registration:
+`CrankHTMLElement` loads where there is no DOM. It extends a small stand-in for `HTMLElement` which backs attributes, `attachShadow`, `attachInternals` (whose form methods do nothing), and events, but not a node tree, so construction and `render` must not reach for the node tree or layout: `closest`, `querySelector`, `ownerDocument`, `style`, `focus` and the like throw on the server. `localName`, `id`, `className`, `hidden`, `dataset` and other attribute-backed properties work. Guard browser-only registration:
 
 ```js
 globalThis.customElements?.define("x-money", XMoneyElement);

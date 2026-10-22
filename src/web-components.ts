@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
-import {createElement} from "./crank.js";
+import {createElement, Raw} from "./crank.js";
+import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import type {Component, Context} from "./crank.js";
 import {renderer} from "./dom.js";
 
@@ -29,19 +30,34 @@ import {renderer} from "./dom.js";
  */
 export type EventHandlers<O> = O extends {events: infer E}
 	? E extends ReadonlyArray<infer N extends string>
-		? {[K in N as `on${K}`]: ((ev: Event) => unknown) | null}
+		? {[K in N as HandlerName<K>]: ((ev: Event) => unknown) | null}
 		: E extends Record<string, any>
-			? {[K in keyof E as `on${string & K}`]: ((ev: E[K]) => unknown) | null}
+			? {
+					[K in keyof E as HandlerName<string & K>]:
+						| ((ev: E[K]) => unknown)
+						| null;
+				}
 			: {}
 	: {};
+
+// Event types with a built-in handler property (onchange, oninput, ...) keep
+// the platform's, which already fires for dispatched events of that type.
+type HandlerName<K extends string> = `on${K}` extends keyof HTMLElement
+	? never
+	: `on${K}`;
 
 type Props = Record<string, string | null>;
 
 /** What `render` may return: any of Crank's four component forms. */
 type RenderResult = ReturnType<Component<Props>>;
 
-// Read by the HTML renderer's define(), which only needs the component.
+// Read by the HTML renderer's define(): a function from a tag name to the
+// component which renders the class on the server.
 const _ServerComponent = Symbol.for("crank.ServerComponent");
+
+// Read by the HTML renderer to print a server rendered element's attributes
+// from the element itself rather than from its props.
+const _HostAttributes = Symbol.for("crank.HostAttributes");
 
 // Read by the DOM renderer, which leaves a light DOM element's children to the
 // element when the tree containing it hydrates or re-renders.
@@ -49,6 +65,7 @@ const _OwnsChildren = Symbol.for("crank.OwnsChildren");
 
 /*** SERVER SHIM ***/
 interface ServerElementState {
+	localName: string;
 	attributes: Map<string, string>;
 	shadowRoot: {mode: ShadowRootMode; host: object} | null;
 	hasInternals: boolean;
@@ -56,10 +73,19 @@ interface ServerElementState {
 
 const serverStates = new WeakMap<object, ServerElementState>();
 
+// The tag of the element being constructed by a server component, read by the
+// shim so localName works in the constructor.
+let constructingTagName = "";
+
 function getServerState(el: object): ServerElementState {
 	let state = serverStates.get(el);
 	if (!state) {
-		state = {attributes: new Map(), shadowRoot: null, hasInternals: false};
+		state = {
+			localName: constructingTagName,
+			attributes: new Map(),
+			shadowRoot: null,
+			hasInternals: false,
+		};
 		serverStates.set(el, state);
 	}
 
@@ -73,8 +99,48 @@ function getServerState(el: object): ServerElementState {
  * render emits HTML through the HTML renderer.
  */
 class ServerHTMLElement extends EventTarget {
+	constructor() {
+		super();
+		getServerState(this);
+	}
+
+	get localName(): string {
+		return getServerState(this).localName;
+	}
+
+	get tagName(): string {
+		return this.localName.toUpperCase();
+	}
+
+	get nodeName(): string {
+		return this.tagName;
+	}
+
 	get isConnected(): boolean {
 		return false;
+	}
+
+	get dataset(): Record<string, string | undefined> {
+		return new Proxy({} as Record<string, string | undefined>, {
+			get: (_, key) =>
+				typeof key === "string"
+					? (this.getAttribute(toDataAttribute(key)) ?? undefined)
+					: undefined,
+			set: (_, key, value) => {
+				if (typeof key === "string") {
+					this.setAttribute(toDataAttribute(key), value);
+				}
+
+				return true;
+			},
+			deleteProperty: (_, key) => {
+				if (typeof key === "string") {
+					this.removeAttribute(toDataAttribute(key));
+				}
+
+				return true;
+			},
+		});
 	}
 
 	get shadowRoot(): object | null {
@@ -160,6 +226,87 @@ class ServerHTMLElement extends EventTarget {
 	matches(): boolean {
 		return false;
 	}
+}
+
+function toDataAttribute(key: string): string {
+	return "data-" + key.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
+}
+
+// String properties which reflect an attribute.
+for (const [prop, attr] of [
+	["id", "id"],
+	["className", "class"],
+	["title", "title"],
+	["lang", "lang"],
+	["dir", "dir"],
+	["slot", "slot"],
+]) {
+	Object.defineProperty(ServerHTMLElement.prototype, prop, {
+		configurable: true,
+		get(this: ServerHTMLElement) {
+			return this.getAttribute(attr) ?? "";
+		},
+		set(this: ServerHTMLElement, value: unknown) {
+			this.setAttribute(attr, value);
+		},
+	});
+}
+
+Object.defineProperty(ServerHTMLElement.prototype, "hidden", {
+	configurable: true,
+	get(this: ServerHTMLElement) {
+		return this.hasAttribute("hidden");
+	},
+	set(this: ServerHTMLElement, value: unknown) {
+		this.toggleAttribute("hidden", !!value);
+	},
+});
+
+// The shim has no node tree, layout, or document, so code which needs one
+// fails with a message rather than reading undefined.
+function unavailable(this: ServerHTMLElement, name: string): never {
+	throw new Error(
+		`<${this.localName}>.${name} is unavailable while rendering on the server. Use it in a browser-only callback, such as ctx.after().`,
+	);
+}
+
+for (const name of [
+	"ownerDocument",
+	"parentNode",
+	"parentElement",
+	"children",
+	"childNodes",
+	"firstChild",
+	"style",
+	"classList",
+]) {
+	Object.defineProperty(ServerHTMLElement.prototype, name, {
+		configurable: true,
+		get(this: ServerHTMLElement) {
+			return unavailable.call(this, name);
+		},
+	});
+}
+
+for (const name of [
+	"closest",
+	"querySelector",
+	"querySelectorAll",
+	"getRootNode",
+	"focus",
+	"blur",
+	"getBoundingClientRect",
+	"append",
+	"appendChild",
+	"replaceChildren",
+]) {
+	Object.defineProperty(ServerHTMLElement.prototype, name, {
+		configurable: true,
+		writable: true,
+		value(this: ServerHTMLElement) {
+			return unavailable.call(this, name + "()");
+		},
+	});
 }
 
 function attributeChanged(
@@ -303,34 +450,66 @@ function mountElement(el: CrankHTMLElement, state: ElementState): void {
 	updateElement(el, state, state.root.firstChild !== null);
 }
 
-/** Lazily builds the component which renders an element class on the server. */
-const serverComponents = new WeakMap<Function, Component>();
+function constructForServer(
+	ctor: typeof CrankHTMLElement,
+	tagName: string,
+): CrankHTMLElement {
+	const previous = constructingTagName;
+	constructingTagName = tagName;
+	try {
+		return new ctor();
+	} catch (err) {
+		if (typeof HTMLElement !== "undefined") {
+			// A real HTMLElement subclass can only be constructed once defined.
+			throw new Error(
+				`<${tagName}> could not be constructed. Where there is a DOM, register the class with customElements.define before rendering it with the HTML renderer.`,
+				{cause: err},
+			);
+		}
 
-function getServerComponent(ctor: typeof CrankHTMLElement): Component {
-	let comp = serverComponents.get(ctor);
-	if (!comp) {
-		comp = function* (this: Context, props: Record<string, any>) {
-			const el = new ctor();
-			const bridge = states.get(el)!.bridge;
-			for (props of this) {
-				applyProps(el, props);
-				const content = createElement(bridge, getProps(el));
-				if (ctor.shadow != null) {
-					// Light children follow the template, where slots project them.
-					yield [
-						createElement("template", getTemplateProps(ctor.shadow), content),
-						props.children,
-					];
-				} else {
-					yield content;
-				}
-			}
-		};
-
-		serverComponents.set(ctor, comp);
+		throw err;
+	} finally {
+		constructingTagName = previous;
 	}
+}
 
-	return comp;
+// The element's attributes, from the shim on the server or the DOM in a browser.
+function getAttributeEntries(el: CrankHTMLElement): Array<[string, string]> {
+	const state = serverStates.get(el);
+	return state
+		? Array.from(state.attributes)
+		: Array.from(el.attributes, (attr) => [attr.name, attr.value]);
+}
+
+/** Builds the component which renders an element class on the server. */
+function getServerComponent(
+	ctor: typeof CrankHTMLElement,
+	tagName: string,
+): Component {
+	return function* (this: Context, props: Record<string, any>) {
+		const el = constructForServer(ctor, tagName);
+		const bridge = states.get(el)!.bridge;
+		// The renderer prints the host's attributes from this marker, so they
+		// match the element's attributes after its props are applied and it has
+		// rendered, as they would in a browser.
+		const marker = createElement(Raw, {
+			value: {value: "", [_HostAttributes]: () => getAttributeEntries(el)},
+		});
+		for (props of this) {
+			applyProps(el, props);
+			const content = createElement(bridge, getProps(el));
+			if (ctor.shadow != null) {
+				// Light children follow the template, where slots project them.
+				yield [
+					marker,
+					createElement("template", getTemplateProps(ctor.shadow), content),
+					props.children,
+				];
+			} else {
+				yield [marker, content];
+			}
+		}
+	};
 }
 
 // Declarative shadow DOM spells each ShadowRootInit option as a template
@@ -358,6 +537,33 @@ const skippedProps = new Set([
 	"dangerouslySetInnerHTML",
 ]);
 
+function isWritable(el: object, name: string): boolean {
+	for (
+		let proto: object | null = el;
+		proto && proto !== Object.prototype;
+		proto = Object.getPrototypeOf(proto)
+	) {
+		const desc = Object.getOwnPropertyDescriptor(proto, name);
+		if (desc) {
+			return !!(desc.writable || desc.set);
+		}
+	}
+
+	return false;
+}
+
+function printStyle(style: Record<string, any>): string {
+	let result = "";
+	for (const [name, value] of Object.entries(style)) {
+		if (value != null) {
+			const cssName = camelToKebabCase(name);
+			result += `${cssName}:${formatStyleValue(cssName, value)};`;
+		}
+	}
+
+	return result;
+}
+
 // Mirrors how the DOM renderer applies props to an element: properties the
 // element defines are assigned, everything else becomes an attribute.
 function applyProps(el: CrankHTMLElement, props: Record<string, any>): void {
@@ -369,8 +575,28 @@ function applyProps(el: CrankHTMLElement, props: Record<string, any>): void {
 			(el as any)[name.slice("prop:".length)] = value;
 		} else if (name.startsWith("attr:")) {
 			setAttribute(el, name.slice("attr:".length), value);
+		} else if (name === "class" || name === "className") {
+			if (typeof value === "object" && value !== null) {
+				// class={{"foo bar": true, baz: false}} syntax
+				setAttribute(
+					el,
+					"class",
+					Object.keys(value)
+						.filter((k) => value[k])
+						.join(" ") || null,
+				);
+			} else {
+				setAttribute(el, "class", value);
+			}
+		} else if (name === "style") {
+			setAttribute(
+				el,
+				"style",
+				typeof value === "object" && value !== null ? printStyle(value) : value,
+			);
 		} else if (
 			name in el &&
+			isWritable(el, name) &&
 			!(typeof value === "string" && typeof (el as any)[name] === "boolean")
 		) {
 			(el as any)[name] = value;
@@ -467,11 +693,6 @@ export class CrankHTMLElement extends Base {
 	 */
 	static shadow: ShadowRootInit | null = {mode: "open"};
 
-	/** @internal Renders this class with the HTML renderer. */
-	static get [_ServerComponent](): Component {
-		return getServerComponent(this);
-	}
-
 	constructor() {
 		super();
 		const ctor = this.constructor as typeof CrankHTMLElement;
@@ -495,7 +716,11 @@ export class CrankHTMLElement extends Base {
 		const events = ctor.events;
 		if (events) {
 			for (const type of events) {
-				defineEventHandler(this, state, type);
+				// A built-in handler property (onchange, oninput, ...) already fires
+				// for dispatched events of its type.
+				if (!("on" + type in Base.prototype)) {
+					defineEventHandler(this, state, type);
+				}
 			}
 		}
 	}
@@ -596,7 +821,18 @@ export class CrankHTMLElement extends Base {
 		this.requestUpdate();
 	}
 
-	formStateRestoreCallback(_state: unknown, _mode: string): void {
+	formStateRestoreCallback(
+		_state: File | string | FormData | null,
+		_mode: "restore" | "autocomplete",
+	): void {
 		this.requestUpdate();
 	}
 }
+
+// Defined outside the class so it stays out of the published types. Subclasses
+// inherit it, with `this` as the subclass.
+Object.defineProperty(CrankHTMLElement, _ServerComponent, {
+	value(this: typeof CrankHTMLElement, tagName: string): Component {
+		return getServerComponent(this, tagName);
+	},
+});
