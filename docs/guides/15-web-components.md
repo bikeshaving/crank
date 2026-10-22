@@ -116,6 +116,13 @@ set items(v) {
 
 Properties assigned before the element upgrades are re-applied through their accessors on first connect, so pre-upgrade code works.
 
+To wait for a render, await `updateComplete`. It resolves when no update is pending and the latest render has settled, async renders included, and it waits through updates requested in the meantime. Read it after the change you are waiting on, since a later update replaces it:
+
+```jsx
+el.setAttribute("count", "5");
+await el.updateComplete;
+```
+
 ## Events
 
 The element is an `EventTarget`; components emit events with `this.dispatchEvent`. `static events` additionally generates an `on<type>` accessor per declared type — a faithful event-handler IDL attribute like `onclick`: assigning a function registers a listener, `null` removes it, and listener order interleaves with `addEventListener` by registration order.
@@ -216,7 +223,7 @@ Each element is its own Crank root: provisions and errors do not cross the eleme
 
 ## Errors
 
-An error thrown from `render` has no caller to catch it, so the base dispatches a cancelable `error` event on the element (an `ErrorEvent` carrying the thrown value), matching `<img>` and `window`. Call `preventDefault()` to mark it handled; otherwise the error is reported to the global scope — nothing is silently swallowed.
+An error thrown from `render` has no caller to catch it, so the base dispatches a cancelable `error` event on the element (an `ErrorEvent` carrying the thrown value), matching `<img>` and `window`. Call `preventDefault()` to mark it handled. Otherwise, if something is awaiting `updateComplete`, the promise rejects with the error (after the event fires); if nothing is, the error is reported to the global scope. Each error goes to exactly one of these places, and none is silently swallowed.
 
 ```jsx
 el.addEventListener("error", (ev) => {

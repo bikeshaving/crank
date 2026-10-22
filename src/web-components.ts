@@ -357,8 +357,31 @@ interface ElementState {
 	mounted: boolean;
 	waiting: boolean;
 	dirty: boolean;
+	// The pending async render, if any.
+	inflight: Promise<unknown> | undefined;
+	// Created when updateComplete is read while the element is busy.
+	completion: Completion | undefined;
 	handlers: Record<string, ((ev: Event) => unknown) | null>;
 	listeners: Record<string, EventListener | undefined>;
+}
+
+interface Completion {
+	promise: Promise<void>;
+	resolve: () => void;
+	reject: (err: unknown) => void;
+}
+
+function isBusy(state: ElementState): boolean {
+	return state.dirty || state.waiting || state.inflight !== undefined;
+}
+
+// Resolves updateComplete once nothing is pending.
+function settle(state: ElementState): void {
+	if (state.completion && !isBusy(state)) {
+		const completion = state.completion;
+		state.completion = undefined;
+		completion.resolve();
+	}
 }
 
 const states = new WeakMap<CrankHTMLElementImpl, ElementState>();
@@ -433,12 +456,19 @@ function upgradeProperties(el: CrankHTMLElementImpl): void {
 	}
 }
 
-function catchErrors(el: CrankHTMLElementImpl, fn: () => unknown): void {
+// Runs a render, routing its errors through handleError and tracking it as
+// in flight until it settles.
+function run(
+	el: CrankHTMLElementImpl,
+	state: ElementState,
+	fn: () => unknown,
+): void {
 	let result: unknown;
 	try {
 		result = fn();
 	} catch (err) {
-		handleError(el, err);
+		handleError(el, state, err);
+		settle(state);
 		return;
 	}
 
@@ -446,7 +476,26 @@ function catchErrors(el: CrankHTMLElementImpl, fn: () => unknown): void {
 		result != null &&
 		typeof (result as PromiseLike<unknown>).then === "function"
 	) {
-		(result as Promise<unknown>).then(undefined, (err) => handleError(el, err));
+		const inflight: Promise<unknown> = (result as Promise<unknown>).then(
+			() => {
+				if (state.inflight === inflight) {
+					state.inflight = undefined;
+				}
+
+				settle(state);
+			},
+			(err) => {
+				if (state.inflight === inflight) {
+					state.inflight = undefined;
+				}
+
+				handleError(el, state, err);
+				settle(state);
+			},
+		);
+		state.inflight = inflight;
+	} else {
+		settle(state);
 	}
 }
 
@@ -456,7 +505,7 @@ function updateElement(
 	hydrate = false,
 ): void {
 	const children = createElement(state.bridge, getProps(el));
-	catchErrors(el, () =>
+	run(el, state, () =>
 		hydrate
 			? renderer.hydrate(children, state.root)
 			: renderer.render(children, state.root),
@@ -649,7 +698,14 @@ function setAttribute(
 	}
 }
 
-function handleError(el: CrankHTMLElementImpl, err: unknown): void {
+// A render error goes to exactly one place: an error event handler which
+// calls preventDefault(), else whoever awaits updateComplete, else the global
+// scope. The event fires before the promise rejects.
+function handleError(
+	el: CrankHTMLElementImpl,
+	state: ElementState,
+	err: unknown,
+): void {
 	const event = new ErrorEvent("error", {
 		error: err,
 		message: err instanceof Error ? err.message : String(err),
@@ -657,7 +713,15 @@ function handleError(el: CrankHTMLElementImpl, err: unknown): void {
 	});
 	// dispatchEvent returns false when a handler calls preventDefault().
 	const handled = !el.dispatchEvent(event);
-	if (!handled) {
+	const completion = state.completion;
+	state.completion = undefined;
+	if (completion) {
+		if (handled) {
+			completion.resolve();
+		} else {
+			completion.reject(err);
+		}
+	} else if (!handled) {
 		reportError(err);
 	}
 }
@@ -738,6 +802,8 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 			mounted: false,
 			waiting: false,
 			dirty: false,
+			inflight: undefined,
+			completion: undefined,
 			handlers: Object.create(null),
 			listeners: Object.create(null),
 		};
@@ -785,8 +851,38 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 			state.dirty = false;
 			if (state.mounted) {
 				updateElement(this, state);
+			} else {
+				settle(state);
 			}
 		});
+	}
+
+	/**
+	 * A promise which resolves when the element has no update pending and its
+	 * latest render has settled, including an async render. It rejects with a
+	 * render error not handled by an `error` event listener. An element which is
+	 * not connected has nothing pending, so the promise resolves.
+	 *
+	 * Read it after the change you are waiting on: a later update replaces it
+	 * with a new promise.
+	 */
+	get updateComplete(): Promise<void> {
+		const state = states.get(this)!;
+		if (!isBusy(state)) {
+			return Promise.resolve();
+		}
+
+		if (!state.completion) {
+			let resolve!: () => void;
+			let reject!: (err: unknown) => void;
+			const promise = new Promise<void>((resolve1, reject1) => {
+				resolve = resolve1;
+				reject = reject1;
+			});
+			state.completion = {promise, resolve, reject};
+		}
+
+		return state.completion.promise;
 	}
 
 	connectedCallback(): void {
@@ -807,6 +903,8 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 					state.waiting = false;
 					if (this.isConnected) {
 						mountElement(this, state);
+					} else {
+						settle(state);
 					}
 				},
 				{once: true},
@@ -823,7 +921,7 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 			const state = states.get(this)!;
 			if (!this.isConnected && state.mounted) {
 				state.mounted = false;
-				catchErrors(this, () => renderer.render(null, state.root));
+				run(this, state, () => renderer.render(null, state.root));
 			}
 		});
 	}
