@@ -29,6 +29,20 @@ describe("h", () => {
 		expect(el.props).toEqual({id: "b", class: "x y"});
 	});
 
+	test("merges class objects", () => {
+		const el = h("div.x.y", {class: {active: true, hidden: false}});
+		expect(el.props).toEqual({
+			class: {"x y": true, active: true, hidden: false},
+		});
+		expect(renderer.render(el)).toBe('<div class="x y active"></div>');
+	});
+
+	test("merges className", () => {
+		const el = h("div.x", {className: "y"});
+		expect(el.props).toEqual({class: "x y"});
+		expect(renderer.render(el)).toBe('<div class="x y"></div>');
+	});
+
 	test("does not mutate props", () => {
 		const props = {class: "y"};
 		h("div.x", props, "child");

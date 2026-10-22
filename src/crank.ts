@@ -350,11 +350,21 @@ export function h(
 	}
 
 	if (classes.length) {
-		const cls = props1.class;
-		props1.class =
-			typeof cls === "string" && cls
-				? classes.join(" ") + " " + cls
-				: classes.join(" ");
+		// className is an alias for class, so merge it rather than leave both
+		// props set, which renderers resolve by ignoring className.
+		let cls = props1.class;
+		if (cls == null && props1.className != null) {
+			cls = props1.className;
+			delete props1.className;
+		}
+
+		const selectorClass = classes.join(" ");
+		if (typeof cls === "object" && cls !== null) {
+			// class={{active: true}} syntax
+			props1.class = {[selectorClass]: true, ...cls};
+		} else {
+			props1.class = cls ? selectorClass + " " + cls : selectorClass;
+		}
 	}
 
 	return createElement(tag, props1, ...children);
