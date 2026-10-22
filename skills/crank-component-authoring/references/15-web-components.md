@@ -232,6 +232,16 @@ el.addEventListener("error", (ev) => {
 });
 ```
 
+The event follows the platform's model for uncaught exceptions, which `reportError` dispatches to `window` the same way, and the built-in `onerror` handler property and attribute receive it. An element which fires its own `error` events, like a media element reporting a failed load, can tell them apart: a render error is always an `ErrorEvent` carrying the thrown value as `ev.error`, while load errors are plain `Event`s.
+
+```jsx
+el.addEventListener("error", (ev) => {
+  if (ev instanceof ErrorEvent) {
+    // a render error
+  }
+});
+```
+
 Inside the component, ordinary Crank error handling applies — catch at the `yield` and render a fallback.
 
 ## Form association
