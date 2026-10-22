@@ -1,6 +1,6 @@
 import {renderer} from "@b9g/crank/dom";
 import {CrankHTMLElement} from "@b9g/crank/web-components";
-import type {EventHandlers} from "@b9g/crank/web-components";
+import type {AttributeProps} from "@b9g/crank/web-components";
 import type {Context} from "@b9g/crank";
 
 // `@b9g/crank/web-components` lets you write custom elements as Crank
@@ -31,14 +31,11 @@ customElements.define("x-blink", XBlinkElement);
 
 // x-marquee — shadow DOM, scoped styles, an imperative start()/stop() API, and
 // typed `on<type>` handlers generated from `static events`.
-interface XMarqueeElement extends EventHandlers<{
-  events: typeof XMarqueeElement.events;
-}> {}
-class XMarqueeElement extends CrankHTMLElement {
-  static observedAttributes = ["scrollamount", "paused"];
+class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
+  static observedAttributes = ["scrollamount", "paused"] as const;
   static events = ["bounce", "finish", "start"] as const;
 
-  render({scrollamount, paused}: Record<string, string | null>) {
+  render({scrollamount, paused}: AttributeProps<typeof XMarqueeElement>) {
     const duration = 100 / Number(scrollamount ?? 6);
     const css = `
       .track {
@@ -111,10 +108,10 @@ function StarRow({
   return <span role="radiogroup">{stars}</span>;
 }
 
-class XRating extends CrankHTMLElement {
+class XRating extends CrankHTMLElement<typeof XRating> {
   static shadow = null;
   static formAssociated = true;
-  static observedAttributes = ["max"];
+  static observedAttributes = ["max"] as const;
 
   #internals = this.attachInternals();
   #value: number | null = null;
@@ -130,12 +127,18 @@ class XRating extends CrankHTMLElement {
     super.formResetCallback(); // the render
     this.#value = null; // the work the render cannot infer
   }
-  formStateRestoreCallback(state: unknown, mode: string) {
+  formStateRestoreCallback(
+    state: File | string | FormData | null,
+    mode: "restore" | "autocomplete",
+  ) {
     super.formStateRestoreCallback(state, mode);
     this.#value = state == null ? null : Number(state); // the payload, off the args
   }
 
-  *render({max}: Record<string, string | null>, ctx: Context) {
+  *render(
+    {max}: AttributeProps<typeof XRating>,
+    ctx: Context<AttributeProps<typeof XRating>>,
+  ) {
     for ({max} of ctx) {
       this.#internals.setFormValue(
         this.#value == null ? null : String(this.#value),

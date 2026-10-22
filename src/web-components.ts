@@ -15,15 +15,13 @@ import {renderer} from "./dom.js";
  */
 
 /**
- * Maps an `events` tuple or event map to `on<type>` handler properties. Merge
- * it into a subclass as an interface to type the handlers which its
- * `static events` generates:
+ * Maps an `events` tuple or event map to `on<type>` handler properties.
+ * `CrankHTMLElement<typeof X>` applies it for you. Merge it into a subclass of
+ * an element to type events the subclass adds:
  *
  * ```ts
- * interface XMarquee extends EventHandlers<{events: typeof XMarquee.events}> {}
- * class XMarquee extends CrankHTMLElement {
- *   static events = ["bounce", "finish"] as const;
- * }
+ * interface XFancy extends EventHandlers<{events: readonly ["sparkle"]}> {}
+ * class XFancy extends XMarquee {}
  * ```
  *
  * A tuple gives names-only typing; an event map gives typed payloads.
@@ -47,6 +45,27 @@ type HandlerName<K extends string> = `on${K}` extends keyof HTMLElement
 	: `on${K}`;
 
 type Props = Record<string, string | null>;
+
+/**
+ * What `CrankHTMLElement` reads its types from: usually the class itself
+ * (`typeof X`), whose static fields have these shapes.
+ */
+export interface ElementOptions {
+	events?: ReadonlyArray<string> | Record<string, Event>;
+	observedAttributes?: ReadonlyArray<string>;
+}
+
+/**
+ * The props `render` receives: one per observed attribute, as a raw string or
+ * null. Without literal attribute names (`as const`), any string key.
+ */
+export type AttributeProps<O = {}> = O extends {
+	observedAttributes: ReadonlyArray<infer N extends string>;
+}
+	? string extends N
+		? Props
+		: {[K in N]: string | null}
+	: Props;
 
 /** What `render` may return: any of Crank's four component forms. */
 type RenderResult = ReturnType<Component<Props>>;
@@ -315,10 +334,14 @@ function attributeChanged(
 	oldValue: string | null,
 	newValue: string | null,
 ): void {
-	const observed = (el.constructor as typeof CrankHTMLElement)
+	const observed = (el.constructor as typeof CrankHTMLElementImpl)
 		.observedAttributes;
 	if (observed && observed.includes(name)) {
-		(el as CrankHTMLElement).attributeChangedCallback(name, oldValue, newValue);
+		(el as CrankHTMLElementImpl).attributeChangedCallback(
+			name,
+			oldValue,
+			newValue,
+		);
 	}
 }
 
@@ -338,10 +361,10 @@ interface ElementState {
 	listeners: Record<string, EventListener | undefined>;
 }
 
-const states = new WeakMap<CrankHTMLElement, ElementState>();
+const states = new WeakMap<CrankHTMLElementImpl, ElementState>();
 
 function attachRoot(
-	el: CrankHTMLElement,
+	el: CrankHTMLElementImpl,
 	init: ShadowRootInit | null,
 ): Element | ShadowRoot {
 	if (init == null) {
@@ -372,8 +395,9 @@ function attachRoot(
 	}
 }
 
-function getProps(el: CrankHTMLElement): Props {
-	const names = (el.constructor as typeof CrankHTMLElement).observedAttributes;
+function getProps(el: CrankHTMLElementImpl): Props {
+	const names = (el.constructor as typeof CrankHTMLElementImpl)
+		.observedAttributes;
 	const props: Props = {};
 	if (names) {
 		for (const name of names) {
@@ -387,7 +411,7 @@ function getProps(el: CrankHTMLElement): Props {
 // Properties assigned before the element was upgraded sit as own data
 // properties shadowing the class accessors. Re-apply each through its accessor
 // so getters/setters (and their re-render) take effect.
-function upgradeProperties(el: CrankHTMLElement): void {
+function upgradeProperties(el: CrankHTMLElementImpl): void {
 	for (const key of Object.keys(el)) {
 		const own = Object.getOwnPropertyDescriptor(el, key);
 		if (!own || !("value" in own)) {
@@ -409,7 +433,7 @@ function upgradeProperties(el: CrankHTMLElement): void {
 	}
 }
 
-function catchErrors(el: CrankHTMLElement, fn: () => unknown): void {
+function catchErrors(el: CrankHTMLElementImpl, fn: () => unknown): void {
 	let result: unknown;
 	try {
 		result = fn();
@@ -427,7 +451,7 @@ function catchErrors(el: CrankHTMLElement, fn: () => unknown): void {
 }
 
 function updateElement(
-	el: CrankHTMLElement,
+	el: CrankHTMLElementImpl,
 	state: ElementState,
 	hydrate = false,
 ): void {
@@ -439,7 +463,7 @@ function updateElement(
 	);
 }
 
-function mountElement(el: CrankHTMLElement, state: ElementState): void {
+function mountElement(el: CrankHTMLElementImpl, state: ElementState): void {
 	state.mounted = true;
 	upgradeProperties(el);
 	// Pre-upgrade properties re-applied above may have requested an update,
@@ -451,9 +475,9 @@ function mountElement(el: CrankHTMLElement, state: ElementState): void {
 }
 
 function constructForServer(
-	ctor: typeof CrankHTMLElement,
+	ctor: typeof CrankHTMLElementImpl,
 	tagName: string,
-): CrankHTMLElement {
+): CrankHTMLElementImpl {
 	const previous = constructingTagName;
 	constructingTagName = tagName;
 	try {
@@ -474,7 +498,9 @@ function constructForServer(
 }
 
 // The element's attributes, from the shim on the server or the DOM in a browser.
-function getAttributeEntries(el: CrankHTMLElement): Array<[string, string]> {
+function getAttributeEntries(
+	el: CrankHTMLElementImpl,
+): Array<[string, string]> {
 	const state = serverStates.get(el);
 	return state
 		? Array.from(state.attributes)
@@ -483,7 +509,7 @@ function getAttributeEntries(el: CrankHTMLElement): Array<[string, string]> {
 
 /** Builds the component which renders an element class on the server. */
 function getServerComponent(
-	ctor: typeof CrankHTMLElement,
+	ctor: typeof CrankHTMLElementImpl,
 	tagName: string,
 ): Component {
 	return function* (this: Context, props: Record<string, any>) {
@@ -566,7 +592,10 @@ function printStyle(style: Record<string, any>): string {
 
 // Mirrors how the DOM renderer applies props to an element: properties the
 // element defines are assigned, everything else becomes an attribute.
-function applyProps(el: CrankHTMLElement, props: Record<string, any>): void {
+function applyProps(
+	el: CrankHTMLElementImpl,
+	props: Record<string, any>,
+): void {
 	for (const name in props) {
 		const value = props[name];
 		if (skippedProps.has(name) || typeof value === "function") {
@@ -607,7 +636,7 @@ function applyProps(el: CrankHTMLElement, props: Record<string, any>): void {
 }
 
 function setAttribute(
-	el: CrankHTMLElement,
+	el: CrankHTMLElementImpl,
 	name: string,
 	value: unknown,
 ): void {
@@ -620,7 +649,7 @@ function setAttribute(
 	}
 }
 
-function handleError(el: CrankHTMLElement, err: unknown): void {
+function handleError(el: CrankHTMLElementImpl, err: unknown): void {
 	const event = new ErrorEvent("error", {
 		error: err,
 		message: err instanceof Error ? err.message : String(err),
@@ -639,7 +668,7 @@ function handleError(el: CrankHTMLElement, err: unknown): void {
 // the platform, the handler is called with `this` set to the element. A value
 // assigned before upgrade is re-applied through the accessor.
 function defineEventHandler(
-	el: CrankHTMLElement,
+	el: CrankHTMLElementImpl,
 	state: ElementState,
 	type: string,
 ): void {
@@ -679,7 +708,7 @@ function defineEventHandler(
 	}
 }
 
-export class CrankHTMLElement extends Base {
+class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 	/** Attributes that trigger a re-render. Read by the platform. */
 	static observedAttributes?: ReadonlyArray<string>;
 	/** Emitted event types; generates the `on<type>` handler properties. */
@@ -695,7 +724,7 @@ export class CrankHTMLElement extends Base {
 
 	constructor() {
 		super();
-		const ctor = this.constructor as typeof CrankHTMLElement;
+		const ctor = this.constructor as typeof CrankHTMLElementImpl;
 		if (ctor.shadow == null) {
 			Object.defineProperty(this, _OwnsChildren, {value: true});
 		}
@@ -704,7 +733,8 @@ export class CrankHTMLElement extends Base {
 			root: attachRoot(this, ctor.shadow),
 			// A stable per-instance component. The arrow keeps `this` as the
 			// element, and `ctx` is passed straight through to `render`.
-			bridge: (props: Props, ctx: Context) => this.render(props, ctx),
+			bridge: (props: Props, ctx: Context) =>
+				this.render(props as AttributeProps<O>, ctx),
 			mounted: false,
 			waiting: false,
 			dirty: false,
@@ -730,7 +760,10 @@ export class CrankHTMLElement extends Base {
 	 * is the current `observedAttributes` (raw strings or null). May be any of
 	 * Crank's four component forms.
 	 */
-	render(_props: Props, _ctx: Context): RenderResult {
+	render(
+		_props: AttributeProps<O>,
+		_ctx: Context<AttributeProps<O>>,
+	): RenderResult {
 		return undefined;
 	}
 
@@ -831,8 +864,39 @@ export class CrankHTMLElement extends Base {
 
 // Defined outside the class so it stays out of the published types. Subclasses
 // inherit it, with `this` as the subclass.
-Object.defineProperty(CrankHTMLElement, _ServerComponent, {
-	value(this: typeof CrankHTMLElement, tagName: string): Component {
+Object.defineProperty(CrankHTMLElementImpl, _ServerComponent, {
+	value(this: typeof CrankHTMLElementImpl, tagName: string): Component {
 		return getServerComponent(this, tagName);
 	},
+});
+
+/**
+ * The base class for custom elements rendered by Crank. Pass the class itself
+ * as the type argument to type its generated `on<type>` handlers and the props
+ * `render` receives from its `static events` and `static observedAttributes`:
+ *
+ * ```ts
+ * class XMarquee extends CrankHTMLElement<typeof XMarquee> {
+ *   static events = ["bounce", "finish"] as const;
+ *   static observedAttributes = ["scrollamount"] as const;
+ *   render({scrollamount}: AttributeProps<typeof XMarquee>) {}
+ * }
+ * ```
+ *
+ * For typed event payloads, pass an event map instead:
+ * `CrankHTMLElement<{events: {pick: CustomEvent<number>}}>`.
+ */
+export type CrankHTMLElement<O extends ElementOptions = {}> =
+	CrankHTMLElementImpl<O> & EventHandlers<O>;
+
+export const CrankHTMLElement: Omit<
+	typeof CrankHTMLElementImpl,
+	"prototype"
+> & {
+	new <O extends ElementOptions = {}>(): CrankHTMLElement<O>;
+	prototype: CrankHTMLElementImpl<any>;
+} = CrankHTMLElementImpl as any;
+
+Object.defineProperty(CrankHTMLElementImpl, "name", {
+	value: "CrankHTMLElement",
 });

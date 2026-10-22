@@ -133,17 +133,45 @@ el.onbounce = null;
 
 Use lowercase event names: React and Svelte map an `onfoo` prop on a custom element to a `foo` listener. A type which already has a built-in handler property, like `change` or `input`, needs no generated one, so the element keeps the platform's.
 
-In TypeScript, type the generated handlers by merging `EventHandlers` into the subclass — the tuple form types names, and an event map types each handler's payload:
+## TypeScript
+
+Pass the class itself as `CrankHTMLElement`'s type argument, as with `Context<typeof Component>`. It types the generated handlers from `static events` and, through `AttributeProps`, the props `render` receives from `static observedAttributes`. Declare both with `as const` so their names are literal types:
 
 ```tsx
 import {CrankHTMLElement} from "@b9g/crank/web-components";
-import type {EventHandlers} from "@b9g/crank/web-components";
+import type {AttributeProps, EventHandlers} from "@b9g/crank/web-components";
 
-interface XMarqueeElement
-  extends EventHandlers<{events: typeof XMarqueeElement.events}> {}
-class XMarqueeElement extends CrankHTMLElement {
+class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
   static events = ["bounce", "finish"] as const;
+  static observedAttributes = ["scrollamount"] as const;
+
+  render({scrollamount}: AttributeProps<typeof XMarqueeElement>) {
+    // ...
+  }
 }
+
+el.onbounce = (ev) => {}; // typed
+el.onnope = () => {}; // error
+```
+
+For typed event payloads, pass an event map in place of the class:
+
+```tsx
+class XPickerElement extends CrankHTMLElement<{
+  events: {pick: CustomEvent<number>};
+}> {
+  static events = ["pick"];
+}
+
+picker.onpick = (ev) => ev.detail.toFixed();
+```
+
+A subclass of an element which declares more events types them by merging `EventHandlers`:
+
+```tsx
+interface XFancyMarqueeElement
+  extends EventHandlers<{events: readonly ["sparkle"]}> {}
+class XFancyMarqueeElement extends XMarqueeElement {}
 ```
 
 ## Styling

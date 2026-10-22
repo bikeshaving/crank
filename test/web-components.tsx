@@ -5,47 +5,67 @@ import {createElement} from "../src/crank.js";
 import type {Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 import {CrankHTMLElement} from "../src/web-components.js";
-import type {EventHandlers} from "../src/web-components.js";
+import type {AttributeProps, EventHandlers} from "../src/web-components.js";
 
 describe("web-components", () => {
-	// Compile-only: the {events} type parameter types the generated on<type>
-	// handlers. Never called (constructing an unregistered element would throw).
+	// Compile-only: the type argument types the generated on<type> handlers and
+	// render's props. Never called (constructing an unregistered element would
+	// throw).
 	function _eventTyping() {
-		// Tuple form: names only, each handler typed `(ev: Event) => unknown`.
-		interface Tuple extends EventHandlers<{events: typeof Tuple.events}> {}
-		class Tuple extends CrankHTMLElement {
+		// The class itself: names only, each handler typed `(ev: Event) => unknown`.
+		class Tuple extends CrankHTMLElement<typeof Tuple> {
 			static shadow = null;
-
-			static events = ["bounce", "finish"] as const;
-			render() {
-				return null;
+			static events = ["bounce", "finish", "change"] as const;
+			static observedAttributes = ["size"] as const;
+			render({size}: AttributeProps<typeof Tuple>) {
+				return size;
 			}
 		}
 
 		const el = new Tuple();
 		el.onbounce = (_e: Event) => {};
 		el.onfinish = null;
+		// A built-in handler keeps the platform's type.
+		el.onchange = (_e: Event) => {};
 		el.requestUpdate();
 		// @ts-expect-error - undeclared handler
 		el.onnope = () => {};
+		const _instance: CrankHTMLElement = el;
+		const _element: HTMLElement = el;
+		void [_instance, _element];
 
-		// Event-map form: typed payloads flow to each handler argument.
-		interface Mapped extends EventHandlers<{
+		// @ts-expect-error - not an observed attribute
+		const _props: AttributeProps<typeof Tuple> = {size: null, color: null};
+		void _props;
+
+		// An event map: typed payloads flow to each handler argument.
+		class Mapped extends CrankHTMLElement<{
 			events: {bounce: CustomEvent<{count: number}>};
-		}> {}
-		class Mapped extends CrankHTMLElement {
+		}> {
 			static shadow = null;
-
+			static events = ["bounce"];
 			render() {
 				return null;
 			}
 		}
 
 		const m = new Mapped();
-		m.onbounce = (e: CustomEvent<{count: number}>) => e.detail.count;
+		m.onbounce = (e) => e.detail.count;
 		m.onbounce = null;
 		// @ts-expect-error - payload is CustomEvent<{count}>, not a plain number
 		m.onbounce = (n: number) => n;
+
+		// Subclassing a subclass to add events merges EventHandlers.
+		interface Sub extends EventHandlers<{events: readonly ["extra"]}> {}
+		class Sub extends Tuple {}
+		const sub = new Sub();
+		sub.onbounce = null;
+		sub.onextra = null;
+
+		const unknown: unknown = sub;
+		if (unknown instanceof CrankHTMLElement) {
+			unknown.requestUpdate();
+		}
 	}
 	void _eventTyping;
 

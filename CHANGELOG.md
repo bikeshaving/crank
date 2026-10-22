@@ -83,6 +83,9 @@
   forms. Elements render into an open shadow root by default; `shadow` takes
   the options passed to `attachShadow`, or `null` for light DOM. `requestUpdate()` queues a microtask-batched re-render, and errors
   thrown from `render` dispatch a cancelable `error` event on the element.
+  `class X extends CrankHTMLElement<typeof X>` types the generated `on<type>`
+  handlers from `static events`, and `AttributeProps<typeof X>` types the
+  props `render` receives from `static observedAttributes`.
 
 - **Server rendering for web components**
   `HTMLRenderer.prototype.define(tagName, ctor)` registers a `CrankHTMLElement`
