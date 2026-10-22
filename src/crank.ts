@@ -6,6 +6,7 @@ import {
 } from "./event-target.js";
 import {
 	arrayify,
+	djb2Hash,
 	isIteratorLike,
 	isPromiseLike,
 	markStart,
@@ -2426,14 +2427,6 @@ const afterMapByRoot = new WeakMap<
 	object,
 	Map<ContextState, Set<ValueCallback>>
 >();
-
-function djb2Hash(str: string): string {
-	let hash = 5381;
-	for (let i = 0; i < str.length; i++) {
-		hash = ((hash << 5) + hash + str.charCodeAt(i)) | 0;
-	}
-	return (hash >>> 0).toString(36);
-}
 
 interface ComponentIdState {
 	ids: WeakMap<Function, string>;
