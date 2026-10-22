@@ -114,6 +114,8 @@ set items(v) {
 }
 ```
 
+From the element's own setters and methods, call `this.requestUpdate()`: setting several properties in a row renders once, and it works before the element is connected. Inside `render`, for timers and listeners the component sets up, use `ctx.refresh()` as in any Crank component.
+
 Properties assigned before the element upgrades are re-applied through their accessors on first connect, so pre-upgrade code works.
 
 To wait for a render, await `updateComplete`. It resolves when no update is pending and the latest render has settled, async renders included, and it waits through updates requested in the meantime. Read it after the change you are waiting on, since a later update replaces it:
@@ -142,21 +144,45 @@ Use lowercase event names: React and Svelte map an `onfoo` prop on a custom elem
 
 ## TypeScript
 
-Pass the class itself as `CrankHTMLElement`'s type argument, as with `Context<typeof Component>`. It types the generated handlers from `static events` and, through `AttributeProps`, the props `render` receives from `static observedAttributes`. Declare both with `as const` so their names are literal types:
+Pass the class itself as `CrankHTMLElement`'s type argument, as with `Context<typeof Component>`. It types the generated handlers from `static events` and, through `AttributeProps`, the props `render` receives from `static observedAttributes`. A complete element:
 
 ```tsx
+import type {Context} from "@b9g/crank";
 import {CrankHTMLElement} from "@b9g/crank/web-components";
 import type {AttributeProps, EventHandlers} from "@b9g/crank/web-components";
 
+type Props = AttributeProps<typeof XMarqueeElement>;
+
 class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
+  // `as const` keeps the names literal, so handlers and props are typed.
   static events = ["bounce", "finish"] as const;
   static observedAttributes = ["scrollamount"] as const;
+  // `satisfies` keeps `mode` a literal and catches a misspelled one.
+  static shadow = {mode: "open", delegatesFocus: true} satisfies ShadowRootInit;
 
-  render({scrollamount}: AttributeProps<typeof XMarqueeElement>) {
-    // ...
+  #items: Array<string> = [];
+  get items() {
+    return this.#items;
+  }
+
+  set items(value) {
+    this.#items = value;
+    this.requestUpdate();
+  }
+
+  // TypeScript does not infer an override's parameters, so annotate them.
+  *render({scrollamount}: Props, ctx: Context<Props>) {
+    for ({scrollamount} of ctx) {
+      yield (
+        <div class="track" data-speed={scrollamount}>
+          {this.items.map((item) => <span>{item}</span>)}
+        </div>
+      );
+    }
   }
 }
 
+const el = new XMarqueeElement();
 el.onbounce = (ev) => {}; // typed
 el.onnope = () => {}; // error
 ```
