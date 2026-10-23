@@ -34,11 +34,12 @@
   out-of-band DOM mutations to them are no longer overwritten on re-render.
 
 ### Bug Fixes
-- **Errors Crank logs include a stack trace in Node, Bun and Deno**
-  Server runtimes print `console.error` without a trace, unlike browser
-  devtools, so messages like "String copy prop ignored" gave no way to find the
-  element. They now end with the trace back to the code which rendered it. The
-  message is still the first argument.
+- **Errors Crank logs include a stack trace everywhere**
+  Crank logged errors as strings, which Node, Bun and Deno print without a
+  trace, so a message like "String copy prop ignored" gave no way to find the
+  element. It now logs an `Error`, which every runtime prints with a trace back
+  to the code which rendered it. Code which inspects the logged arguments reads
+  the text from the first argument's `message`.
 
 - **The HTML renderer emits `<style>` and `<script>` contents as raw text**
   Browsers never decode character references inside these elements, so escaped

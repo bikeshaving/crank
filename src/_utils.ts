@@ -152,32 +152,21 @@ export function safeRace<T>(
 	}) as Promise<Awaited<T>>;
 }
 
-// Server runtimes (Node, Bun, Deno) print console.error without a stack
-// trace, unlike browser devtools, so the caller's trace is appended there.
-const isServer =
-	typeof process === "object" &&
-	process !== null &&
-	typeof (process as any).versions === "object";
-
 /**
- * Logs an error message, with the caller's stack trace on server runtimes.
- * The message stays the first argument.
+ * Logs an error message as an Error, so every runtime prints it with a stack
+ * trace: browsers in devtools, and Node, Bun and Deno on stderr.
  */
 export function logError(message: string, ...args: Array<unknown>): void {
-	if (isServer) {
-		// Crank's own frames can fill V8's default limit of ten, so raise it to
-		// reach the code which called into Crank.
-		const limit = (Error as any).stackTraceLimit;
-		(Error as any).stackTraceLimit = 50;
-		const stack = new Error().stack;
-		(Error as any).stackTraceLimit = limit;
-		if (stack) {
-			// Drop the "Error" line and this function's own frame.
-			const frames = stack.split("\n").slice(2).join("\n");
-			console.error(message, ...args, "\n" + frames);
-			return;
-		}
+	// Crank's own frames can fill V8's default limit of ten, so raise it to
+	// reach the code which called into Crank.
+	const limit = (Error as any).stackTraceLimit;
+	(Error as any).stackTraceLimit = 50;
+	const err = new Error(message);
+	if (typeof (Error as any).captureStackTrace === "function") {
+		// Start the trace at the caller, leaving out this function.
+		(Error as any).captureStackTrace(err, logError);
 	}
 
-	console.error(message, ...args);
+	(Error as any).stackTraceLimit = limit;
+	console.error(err, ...args);
 }
