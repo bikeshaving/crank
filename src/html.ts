@@ -309,20 +309,24 @@ interface Placeholder {
 	definition: Definition;
 	props: Record<string, any>;
 	children: string;
+	// Arranged since an expansion last read it.
+	pending: boolean;
+	// Its node has been removed. A render without a root removes its nodes
+	// before it resolves, so a pending placeholder outlives its node until the
+	// expansion reads it.
+	removed: boolean;
 }
 
 interface CustomElementState {
 	registry: Map<string, Definition>;
-	// Each placeholder's node, by id. The node holds its placeholder's data,
-	// so a node Crank keeps across renders (copy, a reused element) expands
-	// again, and an entry goes away with its node.
-	nodes: Map<string, WeakRef<TextNode>>;
+	// By id. An entry lives as long as its node: a node Crank keeps across
+	// renders (copy, a reused element) expands again, and removing the node
+	// deletes the entry, or marks it for the expansion to delete.
+	placeholders: Map<string, Placeholder>;
 	pattern: RegExp;
 }
 
 const states = new WeakMap<HTMLRenderer, CustomElementState>();
-
-const placeholders = new WeakMap<TextNode, Placeholder>();
 
 const reservedNames = new Set([
 	"annotation-xml",
@@ -356,22 +360,32 @@ function expand(
 	html: Promise<string> | string,
 ): Promise<string> | string {
 	return then(html, (html) => {
-		const {nodes, pattern} = states.get(renderer)!;
+		const {registry, placeholders, pattern} = states.get(renderer)!;
+		if (!registry.size) {
+			return html;
+		}
+
+		const matches = Array.from(html.matchAll(pattern));
+		if (!matches.length) {
+			return html;
+		}
+
 		const parts: Array<Promise<string> | string> = [];
 		let isAsync = false;
 		let last = 0;
-		for (const match of html.matchAll(pattern)) {
-			parts.push(html.slice(last, match.index));
-			const node = nodes.get(match[1])?.deref();
-			const placeholder = node && placeholders.get(node);
-			const part = placeholder ? expandElement(renderer, placeholder) : "";
-			isAsync = isAsync || part instanceof Promise;
-			parts.push(part);
-			last = match.index + match[0].length;
-		}
-
-		if (!parts.length) {
-			return html;
+		try {
+			for (const match of matches) {
+				parts.push(html.slice(last, match.index));
+				const placeholder = placeholders.get(match[1]);
+				const part = placeholder ? expandElement(renderer, placeholder) : "";
+				isAsync = isAsync || part instanceof Promise;
+				parts.push(part);
+				last = match.index + match[0].length;
+			}
+		} finally {
+			// Even if an element throws, every placeholder in this HTML has been
+			// read, so release the ones whose nodes are gone.
+			release(placeholders, matches);
 		}
 
 		parts.push(html.slice(last));
@@ -379,6 +393,27 @@ function expand(
 			? Promise.all(parts).then((parts) => parts.join(""))
 			: parts.join("");
 	});
+}
+
+function release(
+	placeholders: Map<string, Placeholder>,
+	matches: Array<RegExpMatchArray>,
+): void {
+	for (const match of matches) {
+		const placeholder = placeholders.get(match[1]);
+		if (placeholder) {
+			placeholder.pending = false;
+			if (placeholder.removed) {
+				placeholders.delete(match[1]);
+			}
+		}
+	}
+}
+
+// Releases the placeholders in HTML which is dropped rather than expanded.
+function discard(renderer: HTMLRenderer, html: string): void {
+	const {placeholders, pattern} = states.get(renderer)!;
+	release(placeholders, Array.from(html.matchAll(pattern)));
 }
 
 function expandElement(
@@ -393,6 +428,7 @@ function expandElement(
 				console.error(
 					`<${tag}> renders its own children, so children passed to it are ignored.`,
 				);
+				discard(renderer, children);
 			}
 
 			return print(contents);
@@ -418,8 +454,7 @@ function expandElement(
 export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 	constructor() {
 		const registry = new Map<string, Definition>();
-		const nodes = new Map<string, WeakRef<TextNode>>();
-		const cleanup = new FinalizationRegistry((id: string) => nodes.delete(id));
+		const placeholders = new Map<string, Placeholder>();
 		const nonce = Math.random().toString(36).slice(2);
 		const ids = new WeakMap<TextNode, string>();
 		let nextId = 0;
@@ -448,22 +483,35 @@ export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 				if (id === undefined) {
 					id = String(nextId++);
 					ids.set(node, id);
-					nodes.set(id, new WeakRef(node));
-					cleanup.register(node, id);
 				}
 
-				placeholders.set(node, {
+				placeholders.set(id, {
 					tag: tag as string,
 					definition,
 					props,
 					children: join(children),
+					pending: true,
+					removed: false,
 				});
 				node.value = `<!--crank-element:${nonce}:${id}-->`;
+			},
+			remove(data) {
+				const id = ids.get(data.node);
+				const placeholder = id !== undefined && placeholders.get(id);
+				if (placeholder) {
+					if (placeholder.pending) {
+						placeholder.removed = true;
+					} else {
+						placeholders.delete(id as string);
+					}
+				}
+
+				impl.remove?.(data);
 			},
 		});
 		states.set(this, {
 			registry,
-			nodes,
+			placeholders,
 			pattern: new RegExp(`<!--crank-element:${nonce}:(\\d+)-->`, "g"),
 		});
 	}

@@ -257,7 +257,7 @@ Each element is its own Crank root: provisions and errors do not cross the eleme
 
 ## Errors
 
-An error thrown from `render` has no caller to catch it, so the base dispatches a cancelable `error` event on the element (an `ErrorEvent` carrying the thrown value), matching `<img>` and `window`. Call `preventDefault()` to mark it handled. Otherwise, if something is awaiting `updateComplete`, the promise rejects with the error (after the event fires); if nothing is, the error is reported to the global scope. Each error goes to exactly one of these places, and none is silently swallowed. An error from a re-render the component starts itself with `ctx.refresh()` is thrown to that call, as in any Crank component. On the server, an error thrown from an element's `render` rejects the whole `HTMLRenderer.render` call.
+An error thrown from `render` has no caller to catch it, so the base dispatches a cancelable `error` event on the element (an `ErrorEvent` carrying the thrown value), matching `<img>` and `window`. Call `preventDefault()` to mark it handled. Otherwise, if something is awaiting `updateComplete`, the promise rejects with the error (after the event fires); if nothing is, the error is reported to the global scope. Each error goes to exactly one of these places, and none is silently swallowed. An error from a re-render the component starts itself with `ctx.refresh()` is thrown to that call, as in any Crank component. On the server, an error thrown from an element's `render` makes the whole `HTMLRenderer.render` call throw, or reject when the render is async.
 
 ```jsx
 el.addEventListener("error", (ev) => {
@@ -280,7 +280,7 @@ Inside the component, ordinary Crank error handling applies — catch at the `yi
 
 ## Form association
 
-Set `static formAssociated = true` and the platform enables form participation; the base's whole contribution is a re-render on each form callback. `ElementInternals` is yours — call `attachInternals()` and use it in `render`, so the form value and validity are outputs of the same state as the rendered DOM. The two callbacks you need to act on, `formResetCallback` (reset your value) and `formStateRestoreCallback` (apply the restored state), re-render by default; `super` them and do the rest:
+Set `static formAssociated = true` and the platform enables form participation; the base's whole contribution is a re-render on each form callback. `ElementInternals` is yours — call `attachInternals()` and use it in `render`, so the form value and validity are outputs of the same state as the rendered DOM. The two callbacks you need to act on, `formResetCallback` (reset your value) and `formStateRestoreCallback` (apply the restored state), re-render by default; `super` them and do the rest. The re-render is batched to a microtask, so state you set after calling `super` is what it renders:
 
 ```jsx
 formStateRestoreCallback(state, mode) {
@@ -318,6 +318,8 @@ On the server the renderer constructs a real instance of the class, applies prop
 ```
 
 The server tag gets the attributes the element ends up with, including any it sets on itself while rendering. Props which become properties are not printed, so state an element needs to render its server content in the browser must come from attributes. A parent element which passes a child its state as a property should be defined before the child, so the child does not render without it.
+
+Define elements in a module script (`<script type="module">`), which runs after the page is parsed. An element defined by a classic script before the parser reaches it still hydrates, but while the page is parsing, its first render waits for `DOMContentLoaded`.
 
 In the browser, the rule is to hydrate only content which unambiguously came from a server:
 

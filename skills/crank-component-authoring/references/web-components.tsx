@@ -126,8 +126,8 @@ class XRating extends CrankHTMLElement<typeof XRating> {
   }
 
   formResetCallback() {
-    super.formResetCallback(); // the render
-    this.#value = null; // the work the render cannot infer
+    super.formResetCallback(); // queues a re-render, batched to a microtask
+    this.#value = null; // so the re-render sees this
   }
   formStateRestoreCallback(
     state: File | string | FormData | null,

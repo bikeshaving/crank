@@ -672,3 +672,52 @@ describe("wc SSR rendering again", () => {
 		).toBe(`<math><${name}><span>x</span></${name}></math>`);
 	});
 });
+
+describe("wc SSR early definition", () => {
+	afterEach(() => {
+		document.body.innerHTML = "";
+	});
+
+	test("an element defined before parsing adopts its declarative template", () => {
+		const name = "x-early-ssr";
+		class El extends CrankHTMLElement {
+			render() {
+				return <span>ssr</span>;
+			}
+		}
+
+		customElements.define(name, El);
+		// Defined before the parser reaches it, the element attaches its shadow
+		// root first, and the parser leaves the declarative shadow root as an
+		// ordinary template child.
+		const el = document.createElement(name);
+		el.innerHTML = `<template shadowrootmode="open"><span>ssr</span></template>light`;
+		const span = (el.firstElementChild as HTMLTemplateElement).content
+			.firstChild;
+		document.body.appendChild(el);
+		expect(el.shadowRoot!.innerHTML).toBe("<span>ssr</span>");
+		expect(el.shadowRoot!.firstChild).toBe(span);
+		expect(el.innerHTML).toBe("light");
+	});
+
+	test("only standard shadow root options become template attributes", () => {
+		const name = "x-slots-ssr";
+		class El extends CrankHTMLElement {
+			static shadow = {
+				mode: "open",
+				slotAssignment: "manual",
+				clonable: true,
+			} satisfies ShadowRootInit;
+			render() {
+				return null;
+			}
+		}
+
+		customElements.define(name, El);
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		expect(html.render(createElement(name, null))).toBe(
+			`<${name}><template shadowrootmode="open" shadowrootclonable></template></${name}>`,
+		);
+	});
+});

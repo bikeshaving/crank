@@ -558,9 +558,23 @@ function mountElement(el: CrankHTMLElementImpl, state: ElementState): void {
 		state.placeholder = el.firstChild ? Array.from(el.childNodes) : undefined;
 		updateElement(el, state);
 	} else {
+		const root = state.root as ShadowRoot;
+		const template = el.firstElementChild;
+		if (
+			!root.firstChild &&
+			template instanceof HTMLTemplateElement &&
+			template.hasAttribute("shadowrootmode")
+		) {
+			// Defined before the parser reached it, the element attached its
+			// shadow root first, so the parser left the declarative shadow root as
+			// an ordinary template. Move its content into the shadow root.
+			root.append(template.content);
+			template.remove();
+		}
+
 		// A shadow root with content is a declarative shadow root, which only a
 		// server produces, so the first render adopts it.
-		updateElement(el, state, state.root.firstChild !== null);
+		updateElement(el, state, root.firstChild !== null);
 	}
 }
 
@@ -612,19 +626,15 @@ function renderForServer(
 	};
 }
 
-// Declarative shadow DOM spells each ShadowRootInit option as a template
-// attribute: mode as shadowrootmode, delegatesFocus as
-// shadowrootdelegatesfocus, and so on. Options without a string or boolean
-// value have no attribute form.
+// The template attributes declarative shadow DOM defines for ShadowRootInit
+// options. Other options have no attribute form. Unset ones print nothing.
 function getTemplateProps(init: ShadowRootInit): Record<string, unknown> {
-	const props: Record<string, unknown> = {};
-	for (const [key, value] of Object.entries(init)) {
-		if (typeof value === "string" || typeof value === "boolean") {
-			props["shadowroot" + key.toLowerCase()] = value;
-		}
-	}
-
-	return props;
+	return {
+		shadowrootmode: init.mode,
+		shadowrootdelegatesfocus: init.delegatesFocus,
+		shadowrootclonable: init.clonable,
+		shadowrootserializable: init.serializable,
+	};
 }
 
 const skippedProps = new Set([
@@ -747,7 +757,15 @@ function handleError(
 			completion.reject(err);
 		}
 	} else if (!handled) {
-		reportError(err);
+		if (typeof reportError === "function") {
+			reportError(err);
+		} else {
+			// Some test environments lack reportError; rethrow outside this
+			// call, as reportError would report it.
+			queueMicrotask(() => {
+				throw err;
+			});
+		}
 	}
 }
 
