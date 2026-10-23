@@ -158,6 +158,16 @@
     "./umd.js": {
       "require": "./dist/umd.js"
     },
+    "./wc": {
+      "types": "./dist/wc.d.ts",
+      "import": "./dist/wc.js",
+      "require": "./dist/wc.cjs"
+    },
+    "./wc.js": {
+      "types": "./dist/wc.d.ts",
+      "import": "./dist/wc.js",
+      "require": "./dist/wc.cjs"
+    },
     "./package.json": "./dist/package.json"
   }
 }

@@ -22,9 +22,9 @@ export const requireCleanupForTimers: Rule.RuleModule = {
 		schema: [],
 		messages: {
 			missingCleanup:
-				"{{timerType}} used without a corresponding this.cleanup() call. This can cause memory leaks. Store the timer ID and clear it in a cleanup callback.",
+				"{{timerType}} used without a corresponding cleanup() call on the context. This can cause memory leaks. Store the timer ID and clear it in a cleanup callback.",
 			missingClearInCleanup:
-				"Timer ID '{{timerVar}}' is not cleared in this.cleanup(). Call {{clearFunction}}({{timerVar}}) to prevent memory leaks.",
+				"Timer ID '{{timerVar}}' is not cleared in a cleanup() callback. Call {{clearFunction}}({{timerVar}}) to prevent memory leaks.",
 		},
 	},
 
@@ -41,15 +41,31 @@ export const requireCleanupForTimers: Rule.RuleModule = {
 		const cleanupCallsByFunction = new Map<ESLintNode, Set<ESLintNode>>();
 
 		/**
-		 * Check if a call expression is this.cleanup()
+		 * Check if a call expression is a cleanup() call on the component's
+		 * context: this.cleanup(), or ctx.cleanup() where ctx is the second
+		 * parameter, which Crank passes the context as.
 		 */
-		function isCleanupCall(node: ESLintNode): boolean {
+		function isCleanupCall(node: ESLintNode, funcNode: ESLintNode): boolean {
+			if (
+				node.type !== "CallExpression" ||
+				node.callee.type !== "MemberExpression" ||
+				node.callee.property.type !== "Identifier" ||
+				node.callee.property.name !== "cleanup"
+			) {
+				return false;
+			}
+
+			const object = node.callee.object;
+			if (object.type === "ThisExpression") {
+				return true;
+			}
+
+			const contextParam = funcNode.params && funcNode.params[1];
 			return (
-				node.type === "CallExpression" &&
-				node.callee.type === "MemberExpression" &&
-				node.callee.object.type === "ThisExpression" &&
-				node.callee.property.type === "Identifier" &&
-				node.callee.property.name === "cleanup"
+				object.type === "Identifier" &&
+				contextParam != null &&
+				contextParam.type === "Identifier" &&
+				contextParam.name === object.name
 			);
 		}
 
@@ -268,7 +284,7 @@ export const requireCleanupForTimers: Rule.RuleModule = {
 				}
 
 				// Track cleanup calls in generator functions
-				if (isCleanupCall(node) && currentFunction) {
+				if (currentFunction && isCleanupCall(node, currentFunction.node)) {
 					if (!cleanupCallsByFunction.has(currentFunction.node)) {
 						cleanupCallsByFunction.set(currentFunction.node, new Set());
 					}
