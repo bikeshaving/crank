@@ -151,3 +151,22 @@ export function safeRace<T>(
 		}
 	}) as Promise<Awaited<T>>;
 }
+
+/**
+ * Logs an error message as an Error, so every runtime prints it with a stack
+ * trace: browsers in devtools, and Node, Bun and Deno on stderr.
+ */
+export function logError(message: string, ...args: Array<unknown>): void {
+	// Crank's own frames can fill V8's default limit of ten, so raise it to
+	// reach the code which called into Crank.
+	const limit = (Error as any).stackTraceLimit;
+	(Error as any).stackTraceLimit = 50;
+	const err = new Error(message);
+	if (typeof (Error as any).captureStackTrace === "function") {
+		// Start the trace at the caller, leaving out this function.
+		(Error as any).captureStackTrace(err, logError);
+	}
+
+	(Error as any).stackTraceLimit = limit;
+	console.error(err, ...args);
+}
