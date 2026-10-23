@@ -319,7 +319,12 @@ On the server the renderer constructs a real instance of the class, applies prop
 
 The server tag gets the attributes the element ends up with, including any it sets on itself while rendering. Props which become properties are not printed, so state an element needs to render its server content in the browser must come from attributes. A parent element which passes a child its state as a property should be defined before the child, so the child does not render without it.
 
-In the browser, a shadow DOM element's first render hydrates its declarative shadow root: the server's nodes are adopted, not replaced, so focus, input and other state from before the upgrade survive. A light DOM element's content is a placeholder instead, since it cannot be told apart from content written by hand: the element shows it until its first render commits, then replaces it.
+In the browser, the rule is to hydrate only content which unambiguously came from a server:
+
+- **Shadow DOM elements hydrate.** A declarative shadow root (`<template shadowrootmode>`) is only ever produced by server rendering, so its presence says to adopt it. The server's nodes are kept, not replaced, so focus, input and other state from before the upgrade survive.
+- **Light DOM elements do not.** Their existing children could be server output, fallback content written by hand, or another framework's content, and current web component conventions offer no way to tell. So the element treats them as a placeholder: it shows them until its first render commits, then replaces them.
+
+If a clear signal for light DOM hydration emerges, adopting it will not change pages which lack it.
 
 A Crank app which hydrates the page adopts each custom element. It leaves a light DOM element's contents to the element and hydrates only the light children it passes to a shadow DOM element. It can tell them apart only once an element is defined, so define your elements before hydrating the page; an undefined element's contents are hydrated as the app's own.
 
