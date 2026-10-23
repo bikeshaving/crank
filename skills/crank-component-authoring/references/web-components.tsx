@@ -14,7 +14,6 @@ import type {Context} from "@b9g/crank";
 class XBlinkElement extends CrankHTMLElement {
   *render(_props: Record<string, string | null>, ctx: Context) {
     let on = true;
-    // eslint-disable-next-line crank/require-cleanup-for-timers -- cleared in the ctx.cleanup below; the rule only recognizes this.cleanup, but here the context is the `ctx` argument
     const id = setInterval(() => ctx.refresh(() => (on = !on)), 750);
     ctx.cleanup(() => clearInterval(id));
     for ({} of ctx) {
