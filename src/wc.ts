@@ -94,12 +94,32 @@ interface ServerRender {
 // element when the tree containing it hydrates or re-renders.
 const _OwnsChildren = Symbol.for("crank.OwnsChildren");
 
+/*** FLAGS ***/
+// Element state flags, as in Crank's retainers.
+const IsMounted = 1 << 0;
+const IsWaiting = 1 << 1;
+const IsDirty = 1 << 2;
+// Server shim flags.
+const HasInternals = 1 << 0;
+
+function getFlag(state: {f: number}, flag: number): boolean {
+	return !!(state.f & flag);
+}
+
+function setFlag(state: {f: number}, flag: number, value = true): void {
+	if (value) {
+		state.f |= flag;
+	} else {
+		state.f &= ~flag;
+	}
+}
+
 /*** SERVER SHIM ***/
 interface ServerElementState {
 	localName: string;
 	attributes: Map<string, string>;
 	shadowRoot: {mode: ShadowRootMode; host: object} | null;
-	hasInternals: boolean;
+	f: number;
 }
 
 const serverStates = new WeakMap<object, ServerElementState>();
@@ -115,7 +135,7 @@ function getServerState(el: object): ServerElementState {
 			localName: constructingTagName,
 			attributes: new Map(),
 			shadowRoot: null,
-			hasInternals: false,
+			f: 0,
 		};
 		serverStates.set(el, state);
 	}
@@ -233,11 +253,11 @@ class ServerHTMLElement extends EventTarget {
 
 	attachInternals(): object {
 		const state = getServerState(this);
-		if (state.hasInternals) {
+		if (getFlag(state, HasInternals)) {
 			throw new Error("ElementInternals already attached");
 		}
 
-		state.hasInternals = true;
+		setFlag(state, HasInternals);
 		// Form values and validity only mean something in a browser form.
 		return {
 			form: null,
@@ -366,9 +386,7 @@ const Base: typeof HTMLElement =
 interface ElementState {
 	root: Element | ShadowRoot;
 	bridge: Component;
-	mounted: boolean;
-	waiting: boolean;
-	dirty: boolean;
+	f: number;
 	// The pending async render, if any.
 	inflight: Promise<unknown> | undefined;
 	// Created when updateComplete is read while the element is busy.
@@ -387,7 +405,7 @@ interface Completion {
 }
 
 function isBusy(state: ElementState): boolean {
-	return state.dirty || state.waiting || state.inflight !== undefined;
+	return getFlag(state, IsDirty | IsWaiting) || state.inflight !== undefined;
 }
 
 // Resolves updateComplete once nothing is pending.
@@ -545,11 +563,11 @@ function updateElement(
 }
 
 function mountElement(el: CrankHTMLElementImpl, state: ElementState): void {
-	state.mounted = true;
+	setFlag(state, IsMounted);
 	upgradeProperties(el);
 	// Pre-upgrade properties re-applied above may have requested an update,
 	// which this first render covers.
-	state.dirty = false;
+	setFlag(state, IsDirty, false);
 	if (state.root === el) {
 		// Light DOM children are a placeholder, whether server rendered or
 		// written by hand as fallback content, so the first render builds fresh
@@ -842,9 +860,7 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 			// element, and `ctx` is passed straight through to `render`.
 			bridge: (props: Props, ctx: Context) =>
 				this.render(props as AttributeProps<O>, ctx),
-			mounted: false,
-			waiting: false,
-			dirty: false,
+			f: 0,
 			inflight: undefined,
 			completion: undefined,
 			placeholder: undefined,
@@ -883,20 +899,20 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 	 */
 	requestUpdate(): void {
 		const state = states.get(this)!;
-		if (state.dirty) {
+		if (getFlag(state, IsDirty)) {
 			return;
 		}
 
-		state.dirty = true;
+		setFlag(state, IsDirty);
 		queueMicrotask(() => {
 			// Already handled — e.g. coalesced into the synchronous first render,
 			// which clears the flag.
-			if (!state.dirty) {
+			if (!getFlag(state, IsDirty)) {
 				return;
 			}
 
-			state.dirty = false;
-			if (state.mounted) {
+			setFlag(state, IsDirty, false);
+			if (getFlag(state, IsMounted)) {
 				updateElement(this, state);
 			} else {
 				settle(state);
@@ -934,7 +950,7 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 
 	connectedCallback(): void {
 		const state = states.get(this)!;
-		if (state.mounted || state.waiting) {
+		if (getFlag(state, IsMounted | IsWaiting)) {
 			// A reconnect after a move: the tree is intact, nothing to do.
 			return;
 		}
@@ -943,11 +959,11 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 		if (doc.readyState === "loading") {
 			// The parser may still be adding this element's server rendered
 			// content, so wait for the whole document before adopting it.
-			state.waiting = true;
+			setFlag(state, IsWaiting);
 			doc.addEventListener(
 				"DOMContentLoaded",
 				() => {
-					state.waiting = false;
+					setFlag(state, IsWaiting, false);
 					if (this.isConnected) {
 						mountElement(this, state);
 					} else {
@@ -966,8 +982,8 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 		// deferring: only a still-disconnected element unmounts.
 		queueMicrotask(() => {
 			const state = states.get(this)!;
-			if (!this.isConnected && state.mounted) {
-				state.mounted = false;
+			if (!this.isConnected && getFlag(state, IsMounted)) {
+				setFlag(state, IsMounted, false);
 				run(this, state, () => renderer.render(null, state.root));
 			}
 		});
