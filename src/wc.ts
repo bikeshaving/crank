@@ -580,68 +580,24 @@ function getTemplateProps(init: ShadowRootInit): Record<string, unknown> {
 	};
 }
 
-const skippedProps = new Set([
-	"children",
-	"key",
-	"ref",
-	"copy",
-	"hydrate",
-	"innerHTML",
-	"dangerouslySetInnerHTML",
-]);
-
-function isWritable(el: object, name: string): boolean {
-	for (
-		let proto: object | null = el;
-		proto && proto !== Object.prototype;
-		proto = Object.getPrototypeOf(proto)
-	) {
-		const desc = Object.getOwnPropertyDescriptor(proto, name);
-		if (desc) {
-			return !!(desc.writable || desc.set);
-		}
-	}
-
-	return false;
-}
-
-// Mirrors how the DOM renderer applies props to an element: properties the
-// element defines are assigned, everything else becomes an attribute.
+// Gives the element its props, so render can read them. Props become
+// attributes, except objects (an items array, say), which have no attribute
+// form and are assigned as properties.
 function applyProps(
 	el: CrankHTMLElementImpl,
 	props: Record<string, any>,
 ): void {
 	for (const name in props) {
 		const value = props[name];
-		if (skippedProps.has(name) || typeof value === "function") {
+		if (name === "children" || typeof value === "function") {
 			continue;
-		} else if (name.startsWith("prop:")) {
-			(el as any)[name.slice("prop:".length)] = value;
-		} else if (name.startsWith("attr:")) {
-			setAttribute(el, name.slice("attr:".length), value);
-		} else if (
-			name in el &&
-			isWritable(el, name) &&
-			!(typeof value === "string" && typeof (el as any)[name] === "boolean")
-		) {
+		} else if (typeof value === "object" && value !== null) {
 			(el as any)[name] = value;
-		} else {
-			setAttribute(el, name, value);
+		} else if (value === true) {
+			el.setAttribute(name, "");
+		} else if (value != null && value !== false) {
+			el.setAttribute(name, String(value));
 		}
-	}
-}
-
-function setAttribute(
-	el: CrankHTMLElementImpl,
-	name: string,
-	value: unknown,
-): void {
-	if (value == null || value === false) {
-		el.removeAttribute(name);
-	} else if (value === true) {
-		el.setAttribute(name, "");
-	} else if (typeof value === "string" || typeof value === "number") {
-		el.setAttribute(name, String(value));
 	}
 }
 

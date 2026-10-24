@@ -307,7 +307,7 @@ const html = await renderer.render(
 );
 ```
 
-On the server the renderer constructs a real instance of the class, applies props the way the DOM renderer would (properties the element defines are assigned, everything else becomes an attribute), and renders `render` in a root of its own, as in a browser: the async forms and nested elements work, and provisions and errors do not cross the element boundary. A light-DOM element renders its content as children; a shadow-DOM element renders a declarative shadow root, followed by its light children for its slots to project:
+On the server the renderer constructs a real instance of the class, gives it its props (objects and arrays are assigned as properties; strings, numbers and booleans become attributes), and renders `render` in a root of its own, as in a browser: the async forms and nested elements work, and provisions and errors do not cross the element boundary. A light-DOM element renders its content as children; a shadow-DOM element renders a declarative shadow root, followed by its light children for its slots to project:
 
 ```html
 <x-card>
