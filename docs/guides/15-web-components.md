@@ -61,7 +61,7 @@ static shadow = {mode: "closed"};
 static shadow = {mode: "open", delegatesFocus: true};
 ```
 
-In TypeScript, write `satisfies ShadowRootInit` after the object so `mode` keeps its literal type (and a misspelled mode is caught), or annotate the field as `ShadowRootInit` in a class meant to be subclassed.
+In TypeScript, annotate the field: `static shadow: ShadowRootInit = {mode: "closed"};`.
 
 Set `shadow` to `null` to render into the element itself (light DOM). Page CSS then reaches the content and ID references like `<label for>` resolve, but there are no slots: a light-DOM element generates all of its content from state, so it takes no children. Content written inside it, such as fallback text for when JavaScript is off, is shown until the element upgrades and then replaced. Children passed to it from a Crank tree are reported as an error. Use light DOM for leaf elements, like a formatted price or a relative time:
 
@@ -157,8 +157,7 @@ class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
   // `as const` keeps the names literal, so handlers and props are typed.
   static events = ["bounce", "finish"] as const;
   static observedAttributes = ["scrollamount"] as const;
-  // `satisfies` keeps `mode` a literal and catches a misspelled one.
-  static shadow = {mode: "open", delegatesFocus: true} satisfies ShadowRootInit;
+  static shadow: ShadowRootInit = {mode: "open", delegatesFocus: true};
 
   #items: Array<string> = [];
   get items() {
