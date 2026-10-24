@@ -2,6 +2,7 @@
 /** @jsx createElement */
 import {describe, test, afterEach, expect} from "@b9g/libuild/test";
 import {createElement} from "../src/crank.js";
+import type {Context} from "../src/crank.js";
 import {CrankHTMLElement} from "../src/wc.js";
 import type {AttributeProps} from "../src/wc.js";
 

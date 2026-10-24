@@ -94,28 +94,11 @@ interface ServerRender {
 // element when the tree containing it hydrates or re-renders.
 const _OwnsChildren = Symbol.for("crank.OwnsChildren");
 
-/*** FLAGS ***/
-// Server shim flags, as in Crank's retainers.
-const HasInternals = 1 << 0;
-
-function getFlag(state: {f: number}, flag: number): boolean {
-	return !!(state.f & flag);
-}
-
-function setFlag(state: {f: number}, flag: number, value = true): void {
-	if (value) {
-		state.f |= flag;
-	} else {
-		state.f &= ~flag;
-	}
-}
-
 /*** SERVER SHIM ***/
 interface ServerElementState {
 	localName: string;
 	attributes: Map<string, string>;
 	shadowRoot: {mode: ShadowRootMode; host: object} | null;
-	f: number;
 }
 
 const serverStates = new WeakMap<object, ServerElementState>();
@@ -131,7 +114,6 @@ function getServerState(el: object): ServerElementState {
 			localName: constructingTagName,
 			attributes: new Map(),
 			shadowRoot: null,
-			f: 0,
 		};
 		serverStates.set(el, state);
 	}
@@ -248,12 +230,6 @@ class ServerHTMLElement extends EventTarget {
 	}
 
 	attachInternals(): object {
-		const state = getServerState(this);
-		if (getFlag(state, HasInternals)) {
-			throw new Error("ElementInternals already attached");
-		}
-
-		setFlag(state, HasInternals);
 		// Form values and validity only mean something in a browser form.
 		return {
 			form: null,
