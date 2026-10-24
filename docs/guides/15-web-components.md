@@ -118,7 +118,7 @@ From the element's own setters and methods, call `this.requestUpdate()`: setting
 
 Properties assigned before the element upgrades are re-applied through their accessors on first connect, so pre-upgrade code works.
 
-To wait for a render, await `updateComplete`. It resolves when no update is pending and the latest render has settled, async renders included, and it waits through updates requested in the meantime. Read it after the change you are waiting on, since a later update replaces it:
+To wait for a render, await `updateComplete`. It resolves when no update is pending and the latest render has settled, async renders included, and it waits through updates requested in the meantime. Render errors go to the `error` event (below), not to this promise:
 
 ```jsx
 el.setAttribute("count", "5");
@@ -256,7 +256,7 @@ Each element is its own Crank root: provisions and errors do not cross the eleme
 
 ## Errors
 
-An error thrown from `render` has no caller to catch it, so the base dispatches a cancelable `error` event on the element (an `ErrorEvent` carrying the thrown value), matching `<img>` and `window`. Call `preventDefault()` to mark it handled. Otherwise, if something is awaiting `updateComplete`, the promise rejects with the error (after the event fires); if nothing is, the error is reported to the global scope. Each error goes to exactly one of these places, and none is silently swallowed. An error from a re-render the component starts itself with `ctx.refresh()` is thrown to that call, as in any Crank component. On the server, an error thrown from an element's `render` makes the whole `HTMLRenderer.render` call throw, or reject when the render is async.
+An error thrown from `render` has no caller to catch it, so the base dispatches a cancelable `error` event on the element (an `ErrorEvent` carrying the thrown value), matching `<img>` and `window`. Call `preventDefault()` to mark it handled; otherwise the error is reported to the global scope, so none is silently swallowed. A failed render is unmounted, and the next update renders afresh. An error from a re-render the component starts itself with `ctx.refresh()` is thrown to that call, as in any Crank component. On the server, an error thrown from an element's `render` makes the whole `HTMLRenderer.render` call throw, or reject when the render is async.
 
 ```jsx
 el.addEventListener("error", (ev) => {

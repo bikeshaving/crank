@@ -95,11 +95,7 @@ interface ServerRender {
 const _OwnsChildren = Symbol.for("crank.OwnsChildren");
 
 /*** FLAGS ***/
-// Element state flags, as in Crank's retainers.
-const IsMounted = 1 << 0;
-const IsWaiting = 1 << 1;
-const IsDirty = 1 << 2;
-// Server shim flags.
+// Server shim flags, as in Crank's retainers.
 const HasInternals = 1 << 0;
 
 function getFlag(state: {f: number}, flag: number): boolean {
@@ -383,41 +379,19 @@ const Base: typeof HTMLElement =
 		: HTMLElement;
 
 /*** ELEMENT STATE ***/
-interface ElementState {
-	root: Element | ShadowRoot;
-	bridge: Component;
-	f: number;
-	// The pending async render, if any.
-	inflight: Promise<unknown> | undefined;
-	// Created when updateComplete is read while the element is busy.
-	completion: Completion | undefined;
-	// Light DOM children present at first connect, removed once a render
-	// commits.
-	placeholder: Array<Node> | undefined;
-	handlers: Record<string, ((ev: Event) => unknown) | null>;
-	listeners: Record<string, EventListener | undefined>;
-}
+// Each element's render root: the element itself for light DOM, or its shadow
+// root, which is unreachable from outside when closed.
+const roots = new WeakMap<CrankHTMLElementImpl, Element | ShadowRoot>();
 
-interface Completion {
-	promise: Promise<void>;
-	resolve: () => void;
-	reject: (err: unknown) => void;
-}
+// Elements with a batched update waiting for its microtask.
+const dirty = new Set<CrankHTMLElementImpl>();
 
-function isBusy(state: ElementState): boolean {
-	return getFlag(state, IsDirty | IsWaiting) || state.inflight !== undefined;
-}
+// Each element's latest render while it is async, for updateComplete.
+const renders = new WeakMap<CrankHTMLElementImpl, Promise<unknown>>();
 
-// Resolves updateComplete once nothing is pending.
-function settle(state: ElementState): void {
-	if (state.completion && !isBusy(state)) {
-		const completion = state.completion;
-		state.completion = undefined;
-		completion.resolve();
-	}
-}
-
-const states = new WeakMap<CrankHTMLElementImpl, ElementState>();
+// Each element's render method, bound to the element, as the component
+// rendered into its root. Its identity is stable, so updates reuse its state.
+const components = new WeakMap<CrankHTMLElementImpl, Component>();
 
 function attachRoot(
 	el: CrankHTMLElementImpl,
@@ -489,111 +463,100 @@ function upgradeProperties(el: CrankHTMLElementImpl): void {
 	}
 }
 
-// Runs a render, routing its errors through handleError and tracking it as
-// in flight until it settles.
-function run(
-	el: CrankHTMLElementImpl,
-	state: ElementState,
-	fn: () => unknown,
-): void {
-	let result: unknown;
-	try {
-		result = fn();
-	} catch (err) {
-		handleError(el, state, err);
-		settle(state);
+function update(el: CrankHTMLElementImpl): void {
+	if (el.ownerDocument.readyState === "loading") {
+		// The element renders once the document is parsed (connectedCallback).
 		return;
 	}
 
-	if (
-		result != null &&
-		typeof (result as PromiseLike<unknown>).then === "function"
-	) {
-		const inflight: Promise<unknown> = (result as Promise<unknown>).then(
-			() => {
-				if (state.inflight === inflight) {
-					state.inflight = undefined;
+	const root = roots.get(el)!;
+	const children = createElement(components.get(el)!, getProps(el));
+	let result: unknown;
+	try {
+		// A shadow root with content holds a declarative shadow root, which only
+		// a server produces, so it is hydrated. Hydrating a root which has
+		// already rendered just updates it.
+		result =
+			root !== el && root.firstChild
+				? renderer.hydrate(children, root)
+				: renderer.render(children, root);
+	} catch (err) {
+		fail(el, root, err);
+		return;
+	}
+
+	if (result instanceof Promise) {
+		const settled: Promise<void> = result.then(
+			(value) => {
+				if (renders.get(el) === settled) {
+					renders.delete(el);
 				}
 
-				removePlaceholder(el, state);
-				settle(state);
+				replaceChildren(el, root, value);
 			},
 			(err) => {
-				if (state.inflight === inflight) {
-					state.inflight = undefined;
+				if (renders.get(el) === settled) {
+					renders.delete(el);
 				}
 
-				handleError(el, state, err);
-				settle(state);
+				fail(el, root, err);
 			},
 		);
-		state.inflight = inflight;
+		renders.set(el, settled);
 	} else {
-		removePlaceholder(el, state);
-		settle(state);
+		replaceChildren(el, root, result);
 	}
 }
 
-function removePlaceholder(
+// A light DOM element renders all of its children, so once a render commits,
+// children it did not render (server output or fallback content written by
+// hand, present before the first render) are removed.
+function replaceChildren(
 	el: CrankHTMLElementImpl,
-	state: ElementState,
+	root: Element | ShadowRoot,
+	value: unknown,
 ): void {
-	if (state.placeholder) {
-		for (const node of state.placeholder) {
-			if (node.parentNode === el) {
+	if (root === el) {
+		const rendered = new Set(Array.isArray(value) ? value : [value]);
+		for (const node of Array.from(el.childNodes)) {
+			if (!rendered.has(node)) {
 				el.removeChild(node);
 			}
 		}
-
-		state.placeholder = undefined;
 	}
 }
 
-function updateElement(
+// Reports a render error, and unmounts the failed render so the next update
+// renders afresh: a generator which threw cannot continue.
+function fail(
 	el: CrankHTMLElementImpl,
-	state: ElementState,
-	hydrate = false,
+	root: Element | ShadowRoot,
+	err: unknown,
 ): void {
-	const children = createElement(state.bridge, getProps(el));
-	run(el, state, () =>
-		hydrate
-			? renderer.hydrate(children, state.root)
-			: renderer.render(children, state.root),
-	);
+	handleError(el, err);
+	renderer.render(null, root);
 }
 
-function mountElement(el: CrankHTMLElementImpl, state: ElementState): void {
-	setFlag(state, IsMounted);
+function connect(el: CrankHTMLElementImpl): void {
 	upgradeProperties(el);
-	// Pre-upgrade properties re-applied above may have requested an update,
-	// which this first render covers.
-	setFlag(state, IsDirty, false);
-	if (state.root === el) {
-		// Light DOM children are a placeholder, whether server rendered or
-		// written by hand as fallback content, so the first render builds fresh
-		// content and the placeholder is removed once a render commits. Until an
-		// async render commits, it stays visible.
-		state.placeholder = el.firstChild ? Array.from(el.childNodes) : undefined;
-		updateElement(el, state);
-	} else {
-		const root = state.root as ShadowRoot;
-		const template = el.firstElementChild;
-		if (
-			!root.firstChild &&
-			template instanceof HTMLTemplateElement &&
-			template.hasAttribute("shadowrootmode")
-		) {
-			// Defined before the parser reached it, the element attached its
-			// shadow root first, so the parser left the declarative shadow root as
-			// an ordinary template. Move its content into the shadow root.
-			root.append(template.content);
-			template.remove();
-		}
-
-		// A shadow root with content is a declarative shadow root, which only a
-		// server produces, so the first render adopts it.
-		updateElement(el, state, root.firstChild !== null);
+	// The render below covers updates requested before it.
+	dirty.delete(el);
+	const root = roots.get(el)!;
+	const template = el.firstElementChild;
+	if (
+		root !== el &&
+		!root.firstChild &&
+		template instanceof HTMLTemplateElement &&
+		template.hasAttribute("shadowrootmode")
+	) {
+		// Defined before the parser reached it, the element attached its shadow
+		// root first, so the parser left the declarative shadow root as an
+		// ordinary template. Move its content into the shadow root.
+		root.append(template.content);
+		template.remove();
 	}
+
+	update(el);
 }
 
 function constructForServer(
@@ -638,7 +601,7 @@ function renderForServer(
 	const el = constructForServer(ctor, tagName);
 	applyProps(el, props);
 	return {
-		children: createElement(states.get(el)!.bridge, getProps(el)),
+		children: createElement(components.get(el)!, getProps(el)),
 		template: ctor.shadow == null ? null : getTemplateProps(ctor.shadow),
 		attributes: () => getAttributeEntries(el),
 	};
@@ -751,39 +714,25 @@ function setAttribute(
 	}
 }
 
-// A render error goes to exactly one place: an error event handler which
-// calls preventDefault(), else whoever awaits updateComplete, else the global
-// scope. The event fires before the promise rejects.
-function handleError(
-	el: CrankHTMLElementImpl,
-	state: ElementState,
-	err: unknown,
-): void {
+// A render error dispatches a cancelable error event on the element, and is
+// reported to the global scope unless a listener calls preventDefault().
+function handleError(el: CrankHTMLElementImpl, err: unknown): void {
 	const event = new ErrorEvent("error", {
 		error: err,
 		message: err instanceof Error ? err.message : String(err),
 		cancelable: true,
 	});
-	// dispatchEvent returns false when a handler calls preventDefault().
-	const handled = !el.dispatchEvent(event);
-	const completion = state.completion;
-	state.completion = undefined;
-	if (completion) {
-		if (handled) {
-			completion.resolve();
-		} else {
-			completion.reject(err);
-		}
-	} else if (!handled) {
-		if (typeof reportError === "function") {
-			reportError(err);
-		} else {
-			// Some test environments lack reportError; rethrow outside this
-			// call, as reportError would report it.
-			queueMicrotask(() => {
-				throw err;
-			});
-		}
+	// dispatchEvent returns false when a listener calls preventDefault().
+	if (!el.dispatchEvent(event)) {
+		return;
+	} else if (typeof reportError === "function") {
+		reportError(err);
+	} else {
+		// Some test environments lack reportError; rethrow outside this call,
+		// as reportError would report it.
+		queueMicrotask(() => {
+			throw err;
+		});
 	}
 }
 
@@ -792,38 +741,28 @@ function handleError(
 // the listener; null removes it; setting again re-registers at the end. Like
 // the platform, the handler is called with `this` set to the element. A value
 // assigned before upgrade is re-applied through the accessor.
-function defineEventHandler(
-	el: CrankHTMLElementImpl,
-	state: ElementState,
-	type: string,
-): void {
+function defineEventHandler(el: CrankHTMLElementImpl, type: string): void {
+	let handler: ((ev: Event) => unknown) | null = null;
+	let listener: EventListener | null = null;
 	const existing = Object.getOwnPropertyDescriptor(el, "on" + type);
 	Object.defineProperty(el, "on" + type, {
 		configurable: true,
 		enumerable: true,
 		get() {
-			return state.handlers[type] ?? null;
+			return handler;
 		},
 		set(value: unknown) {
-			const fn =
-				typeof value === "function" ? (value as (ev: Event) => unknown) : null;
-			if (fn) {
-				if (!state.listeners[type]) {
-					const listener: EventListener = (ev) => {
-						const handler = state.handlers[type];
-						if (handler) {
-							handler.call(el, ev);
-						}
-					};
-					state.listeners[type] = listener;
+			if (typeof value === "function") {
+				if (!listener) {
+					listener = (ev) => handler && handler.call(el, ev);
 					el.addEventListener(type, listener);
 				}
 
-				state.handlers[type] = fn;
-			} else if (state.listeners[type]) {
-				el.removeEventListener(type, state.listeners[type]!);
-				state.listeners[type] = undefined;
-				state.handlers[type] = null;
+				handler = value as (ev: Event) => unknown;
+			} else if (listener) {
+				el.removeEventListener(type, listener);
+				listener = null;
+				handler = null;
 			}
 		},
 	});
@@ -854,28 +793,17 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 			Object.defineProperty(this, _OwnsChildren, {value: true});
 		}
 
-		const state: ElementState = {
-			root: attachRoot(this, ctor.shadow),
-			// A stable per-instance component. The arrow keeps `this` as the
-			// element, and `ctx` is passed straight through to `render`.
-			bridge: (props: Props, ctx: Context) =>
-				this.render(props as AttributeProps<O>, ctx),
-			f: 0,
-			inflight: undefined,
-			completion: undefined,
-			placeholder: undefined,
-			handlers: Object.create(null),
-			listeners: Object.create(null),
-		};
-		states.set(this, state);
-
+		roots.set(this, attachRoot(this, ctor.shadow));
+		components.set(this, (props: Props, ctx: Context) =>
+			this.render(props as AttributeProps<O>, ctx),
+		);
 		const events = ctor.events;
 		if (events) {
 			for (const type of events) {
 				// A built-in handler property (onchange, oninput, ...) already fires
 				// for dispatched events of its type.
 				if (!("on" + type in Base.prototype)) {
-					defineEventHandler(this, state, type);
+					defineEventHandler(this, type);
 				}
 			}
 		}
@@ -898,93 +826,55 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 	 * methods. Inside `render`, use `ctx.refresh()`.
 	 */
 	requestUpdate(): void {
-		const state = states.get(this)!;
-		if (getFlag(state, IsDirty)) {
-			return;
+		if (!dirty.has(this)) {
+			dirty.add(this);
+			queueMicrotask(() => {
+				// Already covered if the element connected in the meantime.
+				if (dirty.delete(this) && this.isConnected) {
+					update(this);
+				}
+			});
 		}
-
-		setFlag(state, IsDirty);
-		queueMicrotask(() => {
-			// Already handled — e.g. coalesced into the synchronous first render,
-			// which clears the flag.
-			if (!getFlag(state, IsDirty)) {
-				return;
-			}
-
-			setFlag(state, IsDirty, false);
-			if (getFlag(state, IsMounted)) {
-				updateElement(this, state);
-			} else {
-				settle(state);
-			}
-		});
 	}
 
 	/**
 	 * A promise which resolves when the element has no update pending and its
-	 * latest render has settled, including an async render. It rejects with a
-	 * render error not handled by an `error` event listener. An element which is
-	 * not connected has nothing pending, so the promise resolves.
-	 *
-	 * Read it after the change you are waiting on: a later update replaces it
-	 * with a new promise.
+	 * latest render has settled, including an async render. Render errors go to
+	 * the error event, not to this promise.
 	 */
 	get updateComplete(): Promise<void> {
-		const state = states.get(this)!;
-		if (!isBusy(state)) {
-			return Promise.resolve();
-		}
-
-		if (!state.completion) {
-			let resolve!: () => void;
-			let reject!: (err: unknown) => void;
-			const promise = new Promise<void>((resolve1, reject1) => {
-				resolve = resolve1;
-				reject = reject1;
-			});
-			state.completion = {promise, resolve, reject};
-		}
-
-		return state.completion.promise;
+		return (async () => {
+			// A batched update runs in a microtask queued before this one, and
+			// may start a render which requests another.
+			do {
+				await renders.get(this);
+			} while (dirty.has(this) || renders.has(this));
+		})();
 	}
 
 	connectedCallback(): void {
-		const state = states.get(this)!;
-		if (getFlag(state, IsMounted | IsWaiting)) {
-			// A reconnect after a move: the tree is intact, nothing to do.
-			return;
-		}
-
 		const doc = this.ownerDocument;
 		if (doc.readyState === "loading") {
 			// The parser may still be adding this element's server rendered
-			// content, so wait for the whole document before adopting it.
-			setFlag(state, IsWaiting);
+			// content, so wait for the whole document before rendering.
 			doc.addEventListener(
 				"DOMContentLoaded",
-				() => {
-					setFlag(state, IsWaiting, false);
-					if (this.isConnected) {
-						mountElement(this, state);
-					} else {
-						settle(state);
-					}
-				},
+				() => this.isConnected && connect(this),
 				{once: true},
 			);
 		} else {
-			mountElement(this, state);
+			// After a move, this re-renders an element which is already mounted,
+			// which updates it in place.
+			connect(this);
 		}
 	}
 
 	disconnectedCallback(): void {
-		// Distinguish a move (immediately reconnected) from a real removal by
-		// deferring: only a still-disconnected element unmounts.
+		// A move disconnects and reconnects the element in one task, so only an
+		// element still disconnected in a microtask unmounts.
 		queueMicrotask(() => {
-			const state = states.get(this)!;
-			if (!this.isConnected && getFlag(state, IsMounted)) {
-				setFlag(state, IsMounted, false);
-				run(this, state, () => renderer.render(null, state.root));
+			if (!this.isConnected) {
+				renderer.render(null, roots.get(this)!);
 			}
 		});
 	}

@@ -79,11 +79,13 @@ describe("updateComplete", () => {
 		expect(n).toBeGreaterThanOrEqual(3);
 	});
 
-	test("coalesced updates share a promise", () => {
+	test("coalesced updates render once", async () => {
 		const name = tag("x-same");
+		let renders = 0;
 		class El extends CrankHTMLElement {
 			static shadow = null;
 			render() {
+				renders++;
 				return null;
 			}
 		}
@@ -92,9 +94,9 @@ describe("updateComplete", () => {
 		const el = document.createElement(name) as El;
 		document.body.appendChild(el);
 		el.requestUpdate();
-		const a = el.updateComplete;
 		el.requestUpdate();
-		expect(el.updateComplete).toBe(a);
+		await el.updateComplete;
+		expect(renders).toBe(2);
 	});
 
 	test("resolves when nothing is pending", async () => {
@@ -114,9 +116,9 @@ describe("updateComplete", () => {
 		await el.updateComplete;
 	});
 
-	test("rejects with an unhandled render error, after the error event", async () => {
+	test("render errors go to the error event, and updateComplete resolves", async () => {
 		const name = tag("x-throw");
-		const order: Array<string> = [];
+		const errors: Array<unknown> = [];
 		class El extends CrankHTMLElement {
 			static shadow = null;
 			fail = false;
@@ -132,16 +134,14 @@ describe("updateComplete", () => {
 		customElements.define(name, El);
 		const el = document.createElement(name) as El;
 		document.body.appendChild(el);
-		el.addEventListener("error", () => order.push("event"));
+		el.addEventListener("error", (ev) => {
+			ev.preventDefault();
+			errors.push((ev as ErrorEvent).error);
+		});
 		el.fail = true;
 		el.requestUpdate();
-		let error: unknown;
-		await el.updateComplete.catch((err) => {
-			order.push("rejection");
-			error = err;
-		});
-		expect((error as Error).message).toBe("boom");
-		expect(order).toEqual(["event", "rejection"]);
+		await el.updateComplete;
+		expect((errors[0] as Error).message).toBe("boom");
 	});
 
 	test("resolves when an error event listener handles the error", async () => {
@@ -192,6 +192,32 @@ describe("recovering from render errors", () => {
 		el.addEventListener("error", (ev) => ev.preventDefault());
 		document.body.appendChild(el);
 		await el.updateComplete;
+		fail = false;
+		el.requestUpdate();
+		await el.updateComplete;
+		expect(el.shadowRoot!.innerHTML).toBe("<span>ok</span>");
+	});
+
+	test("a generator render renders again after it throws", async () => {
+		const name = "x-recover-generator";
+		let fail = true;
+		class El extends CrankHTMLElement {
+			*render(_props: unknown, ctx: Context) {
+				for ({} of ctx) {
+					if (fail) {
+						throw new Error("boom");
+					}
+
+					yield <span>ok</span>;
+				}
+			}
+		}
+
+		customElements.define(name, El);
+		const el = document.createElement(name) as El;
+		el.addEventListener("error", (ev) => ev.preventDefault());
+		document.body.appendChild(el);
+		expect(el.shadowRoot!.innerHTML).toBe("");
 		fail = false;
 		el.requestUpdate();
 		await el.updateComplete;
