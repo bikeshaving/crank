@@ -112,14 +112,6 @@ function printAttrs(props: Record<string, any>, isSVG?: boolean): string {
 	return attrs.join(" ");
 }
 
-function printAttributeEntries(entries: Array<[string, string]>): string {
-	return entries
-		.map(([name, value]) =>
-			value === "" ? escape(name) : `${escape(name)}="${escape(value)}"`,
-		)
-		.join(" ");
-}
-
 /**
  * The equivalent of DOM Node for the HTML Renderer. Not to be confused with
  * the DOM's Text node. It's just an object with value string so that
@@ -296,7 +288,6 @@ const _ServerRender = Symbol.for("crank.ServerRender");
 interface ServerRender {
 	children: Children;
 	template: Record<string, unknown> | null;
-	attributes(): Array<[string, string]>;
 }
 
 interface Definition {
@@ -443,10 +434,8 @@ function expandElement(
 	});
 
 	function print(inner: string): string {
-		// The element's attributes once it has rendered, as in a browser: props
-		// which became properties are not printed, and attributes the element
-		// set on itself are.
-		const attrs = printAttributeEntries(prepared.attributes());
+		// The tag's attributes come from its props, as for any element.
+		const attrs = printAttrs(props);
 		return `<${tag}${attrs.length ? " " : ""}${attrs}>${inner}</${tag}>`;
 	}
 }

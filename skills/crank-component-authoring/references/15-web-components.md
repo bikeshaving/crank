@@ -316,7 +316,7 @@ On the server the renderer constructs a real instance of the class, applies prop
 </x-card>
 ```
 
-The server tag gets the attributes the element ends up with, including any it sets on itself while rendering. Props which become properties are not printed, so state an element needs to render its server content in the browser must come from attributes. A parent element which passes a child its state as a property should be defined before the child, so the child does not render without it.
+The server tag prints the element's props as attributes, as for any element, so attributes an element sets on itself while rendering are not included. State an element needs to render its server content in the browser must come from attributes, since properties are not in the HTML. A parent element which passes a child its state as a property should be defined before the child, so the child does not render without it.
 
 Define elements in a module script (`<script type="module">`), which runs after the page is parsed. An element defined by a classic script before the parser reaches it still hydrates, but while the page is parsing, its first render waits for `DOMContentLoaded`.
 

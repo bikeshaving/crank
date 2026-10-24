@@ -1,6 +1,5 @@
 /// <reference lib="dom" preserve="true" />
 import {createElement} from "./crank.js";
-import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import type {Children, Component, Context} from "./crank.js";
 import {renderer} from "./dom.js";
 
@@ -86,8 +85,6 @@ interface ServerRender {
 	children: Children;
 	/** Attributes for a declarative shadow root's template, or null for light DOM. */
 	template: Record<string, unknown> | null;
-	/** The element's attributes, read once its contents have rendered. */
-	attributes(): Array<[string, string]>;
 }
 
 // Read by the DOM renderer, which leaves a light DOM element's children to the
@@ -558,16 +555,6 @@ function constructForServer(
 	}
 }
 
-// The element's attributes, from the shim on the server or the DOM in a browser.
-function getAttributeEntries(
-	el: CrankHTMLElementImpl,
-): Array<[string, string]> {
-	const state = serverStates.get(el);
-	return state
-		? Array.from(state.attributes)
-		: Array.from(el.attributes, (attr) => [attr.name, attr.value]);
-}
-
 /** Prepares an instance of an element class for rendering on the server. */
 function renderForServer(
 	ctor: typeof CrankHTMLElementImpl,
@@ -579,7 +566,6 @@ function renderForServer(
 	return {
 		children: createElement(components.get(el)!, getProps(el)),
 		template: ctor.shadow == null ? null : getTemplateProps(ctor.shadow),
-		attributes: () => getAttributeEntries(el),
 	};
 }
 
@@ -619,18 +605,6 @@ function isWritable(el: object, name: string): boolean {
 	return false;
 }
 
-function printStyle(style: Record<string, any>): string {
-	let result = "";
-	for (const [name, value] of Object.entries(style)) {
-		if (value != null) {
-			const cssName = camelToKebabCase(name);
-			result += `${cssName}:${formatStyleValue(cssName, value)};`;
-		}
-	}
-
-	return result;
-}
-
 // Mirrors how the DOM renderer applies props to an element: properties the
 // element defines are assigned, everything else becomes an attribute.
 function applyProps(
@@ -645,25 +619,6 @@ function applyProps(
 			(el as any)[name.slice("prop:".length)] = value;
 		} else if (name.startsWith("attr:")) {
 			setAttribute(el, name.slice("attr:".length), value);
-		} else if (name === "class" || name === "className") {
-			if (typeof value === "object" && value !== null) {
-				// class={{"foo bar": true, baz: false}} syntax
-				setAttribute(
-					el,
-					"class",
-					Object.keys(value)
-						.filter((k) => value[k])
-						.join(" ") || null,
-				);
-			} else {
-				setAttribute(el, "class", value);
-			}
-		} else if (name === "style") {
-			setAttribute(
-				el,
-				"style",
-				typeof value === "object" && value !== null ? printStyle(value) : value,
-			);
 		} else if (
 			name in el &&
 			isWritable(el, name) &&

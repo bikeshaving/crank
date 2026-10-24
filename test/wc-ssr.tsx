@@ -485,14 +485,13 @@ describe("wc SSR parity", () => {
 	let uid = 0;
 	const tag = (name: string) => `${name}-parity-${uid++}`;
 
-	test("the server tag prints the element's own attributes", () => {
+	test("the server tag prints its props, as for any element", () => {
 		const name = tag("x-attrs");
 		class El extends CrankHTMLElement {
 			static shadow = null;
-			label = "";
-			render() {
-				this.setAttribute("role", "button");
-				return this.label;
+			static observedAttributes = ["label"];
+			render({label}: Record<string, string | null>) {
+				return label;
 			}
 		}
 
@@ -507,7 +506,7 @@ describe("wc SSR parity", () => {
 					open: true,
 				}),
 			),
-		).toBe(`<${name} class="a" open role="button">hi</${name}>`);
+		).toBe(`<${name} label="hi" class="a" open>hi</${name}>`);
 	});
 
 	test("a getter-only property becomes an attribute", () => {
