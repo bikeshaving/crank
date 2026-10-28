@@ -6,6 +6,7 @@ import type {Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 import {HTMLRenderer} from "../src/html.js";
 import {CrankHTMLElement} from "../src/wc.js";
+import type {ElementProps} from "../src/wc.js";
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -30,9 +31,9 @@ describe("wc SSR", () => {
 		class El extends CrankHTMLElement {
 			static shadow = null;
 
-			static observedAttributes = ["amount"];
-			render({amount}: Record<string, string | null>) {
-				return <span>${(Number(amount) / 100).toFixed(2)}</span>;
+			static props = {amount: Number};
+			render({amount}: {amount: number | null}) {
+				return <span>${((amount ?? 0) / 100).toFixed(2)}</span>;
 			}
 		}
 
@@ -204,8 +205,8 @@ describe("wc SSR", () => {
 		const name = tag("x-time");
 		class El extends CrankHTMLElement {
 			static shadow = null;
-			static observedAttributes = ["datetime"];
-			render({datetime}: Record<string, string | null>) {
+			static props = {datetime: String};
+			render({datetime}: {datetime: string | null}) {
 				return <time>{datetime}</time>;
 			}
 		}
@@ -338,8 +339,8 @@ describe("wc SSR", () => {
 		class El extends CrankHTMLElement {
 			static shadow = null;
 
-			static observedAttributes = ["n"];
-			render({n}: Record<string, string | null>) {
+			static props = {n: String};
+			render({n}: {n: string | null}) {
 				return <span>{n}</span>;
 			}
 		}
@@ -445,6 +446,42 @@ describe("wc state", () => {
 		}
 	});
 
+	test("declared props reflect on the server", () => {
+		const name = tag("x-declared");
+		class El extends CrankHTMLElement<typeof El> {
+			static shadow = null;
+			static props = {
+				value: Number,
+				open: Boolean,
+				size: ["medium", "small"] as const,
+				items: Object,
+			};
+			render({value, open, size, items}: ElementProps<typeof El>) {
+				return (
+					<span>
+						{value}:{String(open)}:{size}:{(items as Array<string>).join("")}
+					</span>
+				);
+			}
+		}
+
+		customElements.define(name, El);
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		expect(
+			html.render(
+				createElement(name, {
+					value: 5,
+					open: true,
+					size: "Small",
+					items: ["a", "b"],
+				}),
+			),
+		).toBe(
+			`<${name} value="5" open size="Small"><span>5:true:small:ab</span></${name}>`,
+		);
+	});
+
 	test("a property set before upgrade renders once", async () => {
 		const name = tag("x-preset");
 		let renders = 0;
@@ -489,8 +526,8 @@ describe("wc SSR parity", () => {
 		const name = tag("x-attrs");
 		class El extends CrankHTMLElement {
 			static shadow = null;
-			static observedAttributes = ["label"];
-			render({label}: Record<string, string | null>) {
+			static props = {label: String};
+			render({label}: {label: string | null}) {
 				return label;
 			}
 		}

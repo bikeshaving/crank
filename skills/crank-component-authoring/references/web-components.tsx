@@ -1,18 +1,18 @@
 import {renderer} from "@b9g/crank/dom";
 import {CrankHTMLElement} from "@b9g/crank/wc";
-import type {AttributeProps} from "@b9g/crank/wc";
+import type {ElementProps} from "@b9g/crank/wc";
 import type {Context} from "@b9g/crank";
 
 // `@b9g/crank/wc` lets you write custom elements as Crank
 // components. Subclass `CrankHTMLElement`, declare configuration as static
 // fields, and write a `render` method: `this` is the element, `ctx` is the
-// Crank context (an argument, not `this`), and `props` is the current
-// `observedAttributes`.
+// Crank context (an argument, not `this`), and `props` holds the current value
+// of each prop declared in `static props`.
 
 // x-blink — a generator render holding a timer across renders, slotting its
 // content through shadow DOM.
 class XBlinkElement extends CrankHTMLElement {
-  *render(_props: Record<string, string | null>, ctx: Context) {
+  *render(_props: unknown, ctx: Context) {
     let on = true;
     const id = setInterval(() => ctx.refresh(() => (on = !on)), 750);
     ctx.cleanup(() => clearInterval(id));
@@ -31,11 +31,11 @@ customElements.define("x-blink", XBlinkElement);
 // x-marquee — shadow DOM, scoped styles, an imperative start()/stop() API, and
 // typed `on<type>` handlers generated from `static events`.
 class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
-  static observedAttributes = ["scrollamount", "paused"] as const;
+  static props = {scrollamount: Number, paused: Boolean};
   static events = ["bounce", "finish", "start"] as const;
 
-  render({scrollamount, paused}: AttributeProps<typeof XMarqueeElement>) {
-    const duration = 100 / Number(scrollamount ?? 6);
+  render({scrollamount, paused}: ElementProps<typeof XMarqueeElement>) {
+    const duration = 100 / (scrollamount ?? 6);
     const css = `
       .track {
         display: inline-block;
@@ -52,7 +52,7 @@ class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
         <div
           class="track"
           style={`animation-duration: ${duration}s; animation-play-state: ${
-            paused != null ? "paused" : "running"
+            paused ? "paused" : "running"
           }`}
         >
           <slot />
@@ -62,12 +62,12 @@ class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
   }
 
   start() {
-    this.removeAttribute("paused");
+    this.paused = false;
     this.dispatchEvent(new Event("start"));
   }
 
   stop() {
-    this.setAttribute("paused", "");
+    this.paused = true;
     this.dispatchEvent(new Event("finish"));
   }
 }
@@ -112,7 +112,7 @@ function StarRow({
 class XRating extends CrankHTMLElement<typeof XRating> {
   static shadow = null;
   static formAssociated = true;
-  static observedAttributes = ["max"] as const;
+  static props = {max: Number};
 
   #internals = this.attachInternals();
   #value: number | null = null;
@@ -137,8 +137,8 @@ class XRating extends CrankHTMLElement<typeof XRating> {
   }
 
   *render(
-    {max}: AttributeProps<typeof XRating>,
-    ctx: Context<AttributeProps<typeof XRating>>,
+    {max}: ElementProps<typeof XRating>,
+    ctx: Context<ElementProps<typeof XRating>>,
   ) {
     for ({max} of ctx) {
       this.#internals.setFormValue(
@@ -150,7 +150,7 @@ class XRating extends CrankHTMLElement<typeof XRating> {
       );
       yield (
         <StarRow
-          max={Number(max ?? 5)}
+          max={max ?? 5}
           value={this.#value}
           disabled={this.matches(":disabled")}
           onpick={(v: number) => (this.value = v)}

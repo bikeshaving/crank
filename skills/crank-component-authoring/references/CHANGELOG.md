@@ -27,16 +27,21 @@
 
 - **`@b9g/crank/wc` — write Web Components with Crank**
   A `CrankHTMLElement` base class: declare configuration as static fields
-  (`observedAttributes`, `events`, `shadow`, `formAssociated`) and
-  write a `render` method, which is a normal Crank component in any of the four
-  forms. Elements render into an open shadow root by default; `shadow` takes
-  the options passed to `attachShadow`, or `null` for light DOM.
+  (`props`, `events`, `shadow`, `formAssociated`) and write a `render`
+  method, which is a normal Crank component in any of the four forms.
+  `static props = {label: String, count: Number, open: Boolean, size:
+  ["medium", "small"], items: Object}` declares the element's properties.
+  `String`, `Number`, `Boolean` and keyword props reflect to the attribute of
+  the same name, both ways, and `Object` props are properties only. Each
+  becomes an accessor on the element and a prop `render` receives. Elements
+  render into an open shadow root by default; `shadow` takes the options
+  passed to `attachShadow`, or `null` for light DOM.
   `requestUpdate()` queues a microtask-batched re-render, and
   `updateComplete` resolves once the element has finished rendering. Errors
   thrown from `render` dispatch a cancelable `error` event on the element.
   `class X extends CrankHTMLElement<typeof X>` types the generated `on<type>`
-  handlers from `static events`, and `AttributeProps<typeof X>` types the
-  props `render` receives from `static observedAttributes`.
+  handlers from `static events`, and `ElementProps<typeof X>` types the
+  props `render` receives from `static props`.
 
 - **Server rendering for web components**
   `HTMLRenderer.prototype.define(tagName, ctor)` registers a `CrankHTMLElement`

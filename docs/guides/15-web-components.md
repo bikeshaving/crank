@@ -49,7 +49,7 @@ Configuration is static fields; behavior is methods and accessors. No constructo
 
 | Static field | Type | Meaning |
 |---|---|---|
-| `observedAttributes` | `readonly string[]` | Attributes that trigger a re-render. Read by the platform. |
+| `props` | `Record<string, PropType>` | The element's properties and their types. See below. |
 | `events` | `readonly string[]` | Emitted event types; generates `on<type>` handler properties. |
 | `shadow` | `ShadowRootInit` or `null` | The options passed to `attachShadow`; defaults to `{mode: "open"}`. `null`: no shadow root (light DOM). |
 | `formAssociated` | `boolean` | Opts into form association. Read by the platform. |
@@ -68,17 +68,17 @@ Set `shadow` to `null` to render into the element itself (light DOM). Page CSS t
 ```jsx
 class XMoneyElement extends CrankHTMLElement {
   static shadow = null;
-  static observedAttributes = ["amount"];
+  static props = {amount: Number};
 
   render({amount}) {
-    return `$${(Number(amount) / 100).toFixed(2)}`;
+    return `$${((amount ?? 0) / 100).toFixed(2)}`;
   }
 }
 ```
 
 ## The render method
 
-`render` receives `props` — the current `observedAttributes` values, as raw strings or null — and the Crank context, and may take any of Crank's four component forms:
+`render` receives `props`, the current value of each prop declared in `static props`, and the Crank context, and may take any of Crank's four component forms:
 
 ```jsx
 render(props, ctx) { return <span>{props.label}</span>; }   // sync function
@@ -91,37 +91,48 @@ Use a generator when you need state across renders. The full Crank lifecycle app
 
 A sync render produces content immediately on connect. The async forms show nothing until they resolve, so prefer a sync render with a loading state, or render the element on the server.
 
-## Attributes, properties, and updates
+## Props
 
-Attributes arrive as props, raw and uncoerced, keyed by attribute name (`props["scroll-amount"]`). A boolean attribute is present when its prop is not null: test `props.paused != null`, since a present attribute's value is often `""`. Properties are the element's own accessors, exactly as on a built-in element — coercion, defaults, and reflection are whatever the getter and setter do:
+Declare the element's properties in `static props`, with a type for each:
 
 ```jsx
-get color() {
-  return this.getAttribute("color") ?? "black";
-}
+class XMarqueeElement extends CrankHTMLElement {
+  static props = {
+    label: String,
+    speed: Number,
+    paused: Boolean,
+    size: ["medium", "small", "large"],
+    items: Object,
+  };
 
-set color(v) {
-  this.setAttribute("color", v);
+  render({label, speed, paused, size, items}) {
+    // ...
+  }
 }
 ```
 
-For state beyond attributes, the base adds one instance method, `requestUpdate()`: a microtask-batched re-render request. A reactive property is an accessor whose setter calls it:
+Each declared prop becomes an accessor on the element and a prop `render` receives. `String`, `Number`, `Boolean` and keyword props reflect to the attribute of the same name, lowercased, as built-in elements do. The attribute is the storage: the getter reads and converts it, the setter writes it, and the attribute change re-renders the element. `el.speed = 5` and `el.setAttribute("speed", "5")` are the same operation.
 
-```jsx
-set items(v) {
-  this.#items = v;
-  this.requestUpdate();
-}
-```
+| Type | Reading | Writing |
+|---|---|---|
+| `String` | The attribute, or `null` when missing. | Stringified. |
+| `Number` | The parsed number, or `null` when missing or not a number. | Stringified. `NaN` and `Infinity` throw. |
+| `Boolean` | Whether the attribute is present. | Adds or removes the attribute. |
+| `["a", "b"]` | The matching keyword, case-insensitively, or the first when missing or unknown. | The matching keyword's declared spelling. |
+| `Object` | The value set on the element. | Stored on the element and re-renders it. Never an attribute. |
 
-From the element's own setters and methods, call `this.requestUpdate()`: setting several properties in a row renders once, and it works before the element is connected. Inside `render`, for timers and listeners the component sets up, use `ctx.refresh()` as in any Crank component.
+Setting a reflected prop to `null` or `undefined` removes the attribute. Missing numbers and strings read as `null` rather than the platform's `0` and `""`, so `speed ?? 6` gives a default. Nothing is written for defaults: an element with no `speed` attribute has none.
 
-Properties assigned before the element upgrades are re-applied through their accessors on first connect, so pre-upgrade code works.
+`Object` props hold arrays, objects and anything else without an attribute form. Setting one calls `requestUpdate()`. On the server they reach `render` but not the markup, and there is no JSON parsing of attributes.
+
+A Crank parent sets declared props as properties, so `<x-marquee speed={5} items={list} />` goes through the accessors. Properties assigned before the element upgrades are applied through them on first connect, so pre-upgrade code works. The base never overwrites an accessor you define yourself, so for custom conversion declare the prop as `Object` and write a getter and setter that call `requestUpdate()`.
+
+For state beyond props, the base adds one instance method, `requestUpdate()`: a microtask-batched re-render request. From the element's own setters and methods, call `this.requestUpdate()`: setting several properties in a row renders once, and it works before the element is connected. Inside `render`, for timers and listeners the component sets up, use `ctx.refresh()` as in any Crank component.
 
 To wait for a render, await `updateComplete`. It resolves when no update is pending and the latest render has settled, async renders included, and it waits through updates requested in the meantime. Render errors go to the `error` event (below), not to this promise:
 
 ```jsx
-el.setAttribute("count", "5");
+el.speed = 5;
 await el.updateComplete;
 ```
 
@@ -144,37 +155,31 @@ Use lowercase event names: React and Svelte map an `onfoo` prop on a custom elem
 
 ## TypeScript
 
-Pass the class itself as `CrankHTMLElement`'s type argument, as with `Context<typeof Component>`. It types the generated handlers from `static events` and, through `AttributeProps`, the props `render` receives from `static observedAttributes`. A complete element:
+Pass the class itself as `CrankHTMLElement`'s type argument, as with `Context<typeof Component>`. It types the generated handlers from `static events` and, through `ElementProps`, the element's properties and the props `render` receives from `static props`. A complete element:
 
 ```tsx
 import type {Context} from "@b9g/crank";
 import {CrankHTMLElement} from "@b9g/crank/wc";
-import type {AttributeProps, EventHandlers} from "@b9g/crank/wc";
+import type {ElementProps, EventHandlers} from "@b9g/crank/wc";
 
-type Props = AttributeProps<typeof XMarqueeElement>;
+type Props = ElementProps<typeof XMarqueeElement>;
 
 class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
-  // `as const` keeps the names literal, so handlers and props are typed.
+  // `as const` keeps the names literal, so handlers and keywords are typed.
   static events = ["bounce", "finish"] as const;
-  static observedAttributes = ["scrollamount"] as const;
+  static props = {
+    speed: Number,
+    size: ["medium", "small", "large"] as const,
+    items: Object,
+  };
   static shadow: ShadowRootInit = {mode: "open", delegatesFocus: true};
 
-  #items: Array<string> = [];
-  get items() {
-    return this.#items;
-  }
-
-  set items(value) {
-    this.#items = value;
-    this.requestUpdate();
-  }
-
   // TypeScript does not infer an override's parameters, so annotate them.
-  *render({scrollamount}: Props, ctx: Context<Props>) {
-    for ({scrollamount} of ctx) {
+  *render({speed, size, items}: Props, ctx: Context<Props>) {
+    for ({speed, size, items} of ctx) {
       yield (
-        <div class="track" data-speed={scrollamount}>
-          {this.items.map((item) => <span>{item}</span>)}
+        <div class={`track ${size}`} data-speed={speed ?? 6}>
+          {(items as Array<string>).map((item) => <span>{item}</span>)}
         </div>
       );
     }
@@ -182,9 +187,13 @@ class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
 }
 
 const el = new XMarqueeElement();
+el.speed = 5; // number | null
+el.size = "small"; // the keyword union
 el.onbounce = (ev) => {}; // typed
 el.onnope = () => {}; // error
 ```
+
+`ElementProps` gives `string | null`, `number | null`, `boolean`, the keyword union, or `unknown` for `Object`. Narrow `Object` props in `render` or write your own typed accessor.
 
 For typed event payloads, pass an event map in place of the class:
 

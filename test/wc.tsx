@@ -5,7 +5,7 @@ import {createElement} from "../src/crank.js";
 import type {Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 import {CrankHTMLElement} from "../src/wc.js";
-import type {AttributeProps, EventHandlers} from "../src/wc.js";
+import type {ElementProps, EventHandlers} from "../src/wc.js";
 
 describe("wc", () => {
 	// Compile-only: the type argument types the generated on<type> handlers and
@@ -16,9 +16,21 @@ describe("wc", () => {
 		class Tuple extends CrankHTMLElement<typeof Tuple> {
 			static shadow = null;
 			static events = ["bounce", "finish", "change"] as const;
-			static observedAttributes = ["size"] as const;
-			render({size}: AttributeProps<typeof Tuple>) {
-				return size;
+			static props = {
+				label: String,
+				count: Number,
+				open: Boolean,
+				size: ["medium", "small", "large"] as const,
+				items: Object,
+			};
+			render({label, count, open, size, items}: ElementProps<typeof Tuple>) {
+				const _label: string | null = label;
+				const _count: number | null = count;
+				const _open: boolean = open;
+				const _size: "medium" | "small" | "large" = size;
+				const _items: unknown = items;
+				void [_label, _count, _open, _size, _items];
+				return null;
 			}
 		}
 
@@ -30,12 +42,16 @@ describe("wc", () => {
 		el.requestUpdate();
 		// @ts-expect-error - undeclared handler
 		el.onnope = () => {};
+		el.count = 5;
+		el.size = "small";
+		// @ts-expect-error - not a declared keyword
+		el.size = "huge";
 		const _instance: CrankHTMLElement = el;
 		const _element: HTMLElement = el;
 		void [_instance, _element];
 
-		// @ts-expect-error - not an observed attribute
-		const _props: AttributeProps<typeof Tuple> = {size: null, color: null};
+		// @ts-expect-error - not a declared prop
+		const _props: ElementProps<typeof Tuple> = {label: null, color: null};
 		void _props;
 
 		// An event map: typed payloads flow to each handler argument.
@@ -88,12 +104,251 @@ describe("wc", () => {
 	let uid = 0;
 	const tag = (name: string) => `${name}-${uid++}`;
 
+	test("String props reflect both ways", async () => {
+		class El extends CrankHTMLElement<typeof El> {
+			static shadow = null;
+			static props = {label: String};
+			render({label}: ElementProps<typeof El>) {
+				return <span>{label ?? "none"}</span>;
+			}
+		}
+
+		const name = tag("x-string");
+		customElements.define(name, El);
+		const el = document.createElement(name) as El;
+		document.body.appendChild(el);
+		expect(el.label).toBe(null);
+		expect(el.innerHTML).toBe("<span>none</span>");
+
+		el.label = "hi";
+		expect(el.getAttribute("label")).toBe("hi");
+		await flush();
+		expect(el.innerHTML).toBe("<span>hi</span>");
+
+		el.setAttribute("label", "there");
+		expect(el.label).toBe("there");
+		await flush();
+		expect(el.innerHTML).toBe("<span>there</span>");
+
+		el.label = null;
+		expect(el.hasAttribute("label")).toBe(false);
+		(el as any).label = undefined;
+		expect(el.hasAttribute("label")).toBe(false);
+		await flush();
+		expect(el.innerHTML).toBe("<span>none</span>");
+	});
+
+	test("Number props parse and stringify", () => {
+		class El extends CrankHTMLElement<typeof El> {
+			static shadow = null;
+			static props = {value: Number};
+		}
+
+		const name = tag("x-number");
+		customElements.define(name, El);
+		const el = document.createElement(name) as El;
+		expect(el.value).toBe(null);
+		el.value = 5;
+		expect(el.getAttribute("value")).toBe("5");
+		expect(el.value).toBe(5);
+		el.setAttribute("value", "2.5");
+		expect(el.value).toBe(2.5);
+		el.setAttribute("value", "abc");
+		expect(el.value).toBe(null);
+		el.setAttribute("value", "");
+		expect(el.value).toBe(null);
+		(el as any).value = "7";
+		expect(el.value).toBe(7);
+		el.value = null;
+		expect(el.hasAttribute("value")).toBe(false);
+		expect(() => (el.value = NaN)).toThrow(TypeError);
+		expect(() => (el.value = Infinity)).toThrow(TypeError);
+	});
+
+	test("Boolean props reflect as presence", async () => {
+		class El extends CrankHTMLElement<typeof El> {
+			static shadow = null;
+			static props = {disabled: Boolean};
+			render({disabled}: ElementProps<typeof El>) {
+				return <span>{disabled ? "off" : "on"}</span>;
+			}
+		}
+
+		const name = tag("x-boolean");
+		customElements.define(name, El);
+		const el = document.createElement(name) as El;
+		document.body.appendChild(el);
+		expect(el.disabled).toBe(false);
+		expect(el.innerHTML).toBe("<span>on</span>");
+		el.disabled = true;
+		expect(el.getAttribute("disabled")).toBe("");
+		await flush();
+		expect(el.innerHTML).toBe("<span>off</span>");
+		el.setAttribute("disabled", "false");
+		expect(el.disabled).toBe(true);
+		el.disabled = false;
+		expect(el.hasAttribute("disabled")).toBe(false);
+		(el as any).disabled = undefined;
+		expect(el.hasAttribute("disabled")).toBe(false);
+	});
+
+	test("keyword props default to the first keyword and normalize case", () => {
+		class El extends CrankHTMLElement<typeof El> {
+			static shadow = null;
+			static props = {size: ["medium", "small", "large"] as const};
+		}
+
+		const name = tag("x-keyword");
+		customElements.define(name, El);
+		const el = document.createElement(name) as El;
+		expect(el.size).toBe("medium");
+		el.setAttribute("size", "SMALL");
+		expect(el.size).toBe("small");
+		el.setAttribute("size", "huge");
+		expect(el.size).toBe("medium");
+		el.size = "large";
+		expect(el.getAttribute("size")).toBe("large");
+		(el as any).size = "Small";
+		expect(el.getAttribute("size")).toBe("small");
+		(el as any).size = "huge";
+		expect(el.getAttribute("size")).toBe("huge");
+		expect(el.size).toBe("medium");
+		el.size = null as any;
+		expect(el.hasAttribute("size")).toBe(false);
+	});
+
+	test("Object props are properties only and re-render", async () => {
+		class El extends CrankHTMLElement<typeof El> {
+			static shadow = null;
+			static props = {items: Object};
+			render({items}: ElementProps<typeof El>) {
+				return <span>{(items as Array<string> | undefined)?.join(",")}</span>;
+			}
+		}
+
+		const name = tag("x-object");
+		customElements.define(name, El);
+		const el = document.createElement(name) as El;
+		document.body.appendChild(el);
+		expect(el.items).toBe(undefined);
+		expect(el.innerHTML).toBe("<span></span>");
+		el.items = ["a", "b"];
+		expect(el.getAttributeNames()).toEqual([]);
+		await flush();
+		expect(el.innerHTML).toBe("<span>a,b</span>");
+	});
+
+	test("observedAttributes is derived from props, lowercased", () => {
+		class El extends CrankHTMLElement<typeof El> {
+			static shadow = null;
+			static props = {maxValue: Number, open: Boolean, items: Object};
+			render({maxValue}: ElementProps<typeof El>) {
+				return <span>{maxValue}</span>;
+			}
+		}
+
+		expect(El.observedAttributes).toEqual(["maxvalue", "open"]);
+		const name = tag("x-lower");
+		customElements.define(name, El);
+		const el = document.createElement(name) as El;
+		el.maxValue = 3;
+		expect(el.getAttribute("maxvalue")).toBe("3");
+		document.body.appendChild(el);
+		expect(el.innerHTML).toBe("<span>3</span>");
+	});
+
+	test("a Crank parent sets declared props as properties", async () => {
+		class El extends CrankHTMLElement<typeof El> {
+			static shadow = null;
+			static props = {value: Number, items: Object, open: Boolean};
+			render({value, items, open}: ElementProps<typeof El>) {
+				return (
+					<span>
+						{value}:{(items as Array<string>).join("")}:{String(open)}
+					</span>
+				);
+			}
+		}
+
+		const name = tag("x-parent");
+		customElements.define(name, El);
+		renderer.render(
+			createElement(name, {value: 5, items: ["a", "b"], open: true}),
+			document.body,
+		);
+		const el = document.body.firstElementChild as El;
+		expect(el.getAttribute("value")).toBe("5");
+		expect(el.hasAttribute("items")).toBe(false);
+		expect(el.innerHTML).toBe("<span>5:ab:true</span>");
+		renderer.render(
+			createElement(name, {value: 6, items: ["c"], open: false}),
+			document.body,
+		);
+		await flush();
+		expect(el.hasAttribute("open")).toBe(false);
+		expect(el.innerHTML).toBe("<span>6:c:false</span>");
+	});
+
+	test("a declared prop set before upgrade is applied", () => {
+		const name = tag("x-early");
+		const el = document.createElement(name) as any;
+		el.value = 5;
+		el.items = ["x"];
+		document.body.appendChild(el);
+
+		class El extends CrankHTMLElement<typeof El> {
+			static shadow = null;
+			static props = {value: Number, items: Object};
+			render({value, items}: ElementProps<typeof El>) {
+				return (
+					<span>
+						{value}:{(items as Array<string>).join("")}
+					</span>
+				);
+			}
+		}
+
+		customElements.define(name, El);
+		expect(el.getAttribute("value")).toBe("5");
+		expect(el.innerHTML).toBe("<span>5:x</span>");
+	});
+
+	test("an accessor the author defines wins over the declaration", async () => {
+		class El extends CrankHTMLElement<typeof El> {
+			static shadow = null;
+			static props = {color: String};
+			get color(): string | null {
+				return this.getAttribute("color")?.toUpperCase() ?? null;
+			}
+			set color(v: string | null) {
+				if (v == null) {
+					this.removeAttribute("color");
+				} else {
+					this.setAttribute("color", v.toLowerCase());
+				}
+			}
+			render({color}: ElementProps<typeof El>) {
+				return <span>{color ?? "none"}</span>;
+			}
+		}
+
+		const name = tag("x-own-accessor");
+		customElements.define(name, El);
+		const el = document.createElement(name) as El;
+		document.body.appendChild(el);
+		el.color = "Red";
+		expect(el.getAttribute("color")).toBe("red");
+		expect(el.color).toBe("RED");
+		await flush();
+		expect(el.innerHTML).toBe("<span>RED</span>");
+	});
+
 	test("sync render produces content synchronously on connect (light DOM)", () => {
 		class El extends CrankHTMLElement {
 			static shadow = null;
 
-			static observedAttributes = ["label"];
-			render({label}: Record<string, string | null>) {
+			static props = {label: String};
+			render({label}: {label: string | null}) {
 				return <span>{label ?? "default"}</span>;
 			}
 		}
@@ -111,8 +366,8 @@ describe("wc", () => {
 		class El extends CrankHTMLElement {
 			static shadow = null;
 
-			static observedAttributes = ["label"];
-			render({label}: Record<string, string | null>) {
+			static props = {label: String};
+			render({label}: {label: string | null}) {
 				return <span>{label}</span>;
 			}
 		}
@@ -444,8 +699,8 @@ describe("wc", () => {
 		class El extends CrankHTMLElement {
 			static shadow = null;
 
-			static observedAttributes = ["x"];
-			*render(_props: Record<string, string | null>, ctx: Context) {
+			static props = {x: String};
+			*render(_props: {x: string | null}, ctx: Context) {
 				for (_props of ctx) {
 					renders++;
 					yield <span>{this.getAttribute("x")}</span>;
@@ -473,11 +728,11 @@ describe("wc", () => {
 		class El extends CrankHTMLElement {
 			static shadow = null;
 
-			static observedAttributes = ["bad"];
-			*render(props: Record<string, string | null>, ctx: Context) {
+			static props = {bad: Boolean};
+			*render(props: {bad: boolean}, ctx: Context) {
 				for (props of ctx) {
 					try {
-						if (props.bad != null) {
+						if (props.bad) {
 							throw new Error("nope");
 						}
 
@@ -812,7 +1067,7 @@ describe("wc", () => {
 		class El extends CrankHTMLElement {
 			static shadow = null;
 
-			static observedAttributes = ["color"];
+			static props = {color: String};
 			get color() {
 				return this.getAttribute("color");
 			}

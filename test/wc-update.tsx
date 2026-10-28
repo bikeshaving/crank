@@ -4,7 +4,7 @@ import {describe, test, afterEach, expect} from "@b9g/libuild/test";
 import {createElement} from "../src/crank.js";
 import type {Context} from "../src/crank.js";
 import {CrankHTMLElement} from "../src/wc.js";
-import type {AttributeProps} from "../src/wc.js";
+import type {ElementProps} from "../src/wc.js";
 
 describe("updateComplete", () => {
 	afterEach(() => {
@@ -18,8 +18,8 @@ describe("updateComplete", () => {
 		const name = tag("x-count");
 		class El extends CrankHTMLElement<typeof El> {
 			static shadow = null;
-			static observedAttributes = ["count"] as const;
-			render({count}: AttributeProps<typeof El>) {
+			static props = {count: Number};
+			render({count}: ElementProps<typeof El>) {
 				return <span>{count}</span>;
 			}
 		}
