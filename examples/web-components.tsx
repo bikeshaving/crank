@@ -1,0 +1,179 @@
+import {renderer} from "@b9g/crank/dom";
+import {CrankHTMLElement} from "@b9g/crank/wc";
+import type {ElementProps} from "@b9g/crank/wc";
+import type {Context} from "@b9g/crank";
+
+// `@b9g/crank/wc` lets you write custom elements as Crank
+// components. Subclass `CrankHTMLElement`, declare configuration as static
+// fields, and write a `render` method: `this` is the element, `ctx` is the
+// Crank context (an argument, not `this`), and `props` holds the current value
+// of each prop declared in `static props`.
+
+// x-blink — a generator render holding a timer across renders, slotting its
+// content through shadow DOM.
+class XBlinkElement extends CrankHTMLElement {
+  *render(_props: unknown, ctx: Context) {
+    let on = true;
+    const id = setInterval(() => ctx.refresh(() => (on = !on)), 750);
+    ctx.cleanup(() => clearInterval(id));
+    for ({} of ctx) {
+      yield (
+        <span style={`visibility: ${on ? "visible" : "hidden"}`}>
+          <slot />
+        </span>
+      );
+    }
+  }
+}
+
+customElements.define("x-blink", XBlinkElement);
+
+// x-marquee — shadow DOM, scoped styles, an imperative start()/stop() API, and
+// typed `on<type>` handlers generated from `static events`.
+class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
+  static props = {scrollamount: Number, paused: Boolean};
+  static events = ["bounce", "finish", "start"] as const;
+
+  render({scrollamount, paused}: ElementProps<typeof XMarqueeElement>) {
+    const duration = 100 / (scrollamount ?? 6);
+    const css = `
+      .track {
+        display: inline-block;
+        white-space: nowrap;
+        animation: scroll linear infinite;
+      }
+      @keyframes scroll {
+        from { transform: translateX(100%) }
+        to   { transform: translateX(-100%) }
+      }`;
+    return (
+      <>
+        <style>{css}</style>
+        <div
+          class="track"
+          style={`animation-duration: ${duration}s; animation-play-state: ${
+            paused ? "paused" : "running"
+          }`}
+        >
+          <slot />
+        </div>
+      </>
+    );
+  }
+
+  start() {
+    this.paused = false;
+    this.dispatchEvent(new Event("start"));
+  }
+
+  stop() {
+    this.paused = true;
+    this.dispatchEvent(new Event("finish"));
+  }
+}
+
+customElements.define("x-marquee", XMarqueeElement);
+
+// x-rating — a form-associated element. `setFormValue`/`setValidity` come from
+// `ElementInternals`; the four form callbacks default to a re-render, and the
+// super-able `formResetCallback`/`formStateRestoreCallback` carry the data work.
+function StarRow({
+  max,
+  value,
+  disabled,
+  onpick,
+}: {
+  max: number;
+  value: number | null;
+  disabled: boolean;
+  onpick: (value: number) => unknown;
+}) {
+  const stars = [];
+  for (let i = 1; i <= max; i++) {
+    const filled = value != null && i <= value;
+    stars.push(
+      <button
+        type="button"
+        disabled={disabled}
+        aria-label={`${i} star${i === 1 ? "" : "s"}`}
+        style={`border: none; background: none; cursor: pointer; font-size: 1.5rem; color: ${
+          filled ? "gold" : "#ccc"
+        }`}
+        onclick={() => onpick(i)}
+      >
+        ★
+      </button>,
+    );
+  }
+
+  return <span role="radiogroup">{stars}</span>;
+}
+
+class XRating extends CrankHTMLElement<typeof XRating> {
+  static shadow = null;
+  static formAssociated = true;
+  static props = {max: Number};
+
+  #internals = this.attachInternals();
+  #value: number | null = null;
+  get value() {
+    return this.#value;
+  }
+  set value(v: number | null) {
+    this.#value = v;
+    this.requestUpdate();
+  }
+
+  formResetCallback() {
+    super.formResetCallback(); // queues a re-render, batched to a microtask
+    this.#value = null; // so the re-render sees this
+  }
+  formStateRestoreCallback(
+    state: File | string | FormData | null,
+    mode: "restore" | "autocomplete",
+  ) {
+    super.formStateRestoreCallback(state, mode);
+    this.#value = state == null ? null : Number(state); // the payload, off the args
+  }
+
+  *render(
+    {max}: ElementProps<typeof XRating>,
+    ctx: Context<ElementProps<typeof XRating>>,
+  ) {
+    for ({max} of ctx) {
+      this.#internals.setFormValue(
+        this.#value == null ? null : String(this.#value),
+      );
+      this.#internals.setValidity(
+        this.#value == null ? {valueMissing: true} : {},
+        "Pick a rating",
+      );
+      yield (
+        <StarRow
+          max={max ?? 5}
+          value={this.#value}
+          disabled={this.matches(":disabled")}
+          onpick={(v: number) => (this.value = v)}
+        />
+      );
+    }
+  }
+}
+
+customElements.define("x-rating", XRating);
+
+// A small demo wiring the three together.
+renderer.render(
+  <div>
+    <h2>
+      <x-blink>web components, the Crank way</x-blink>
+    </h2>
+    <x-marquee scrollamount="8">Slotted content scrolls past.</x-marquee>
+    <form>
+      <label>
+        Rate it: <x-rating name="rating" max="5" />
+      </label>
+    </form>
+  </div>,
+  document.body,
+);

@@ -9,6 +9,63 @@ const ruleTester = createTsRuleTester();
 
 describe("require-cleanup-for-timers", () => {
 	describe("valid cases", () => {
+		it("should allow cleanup on the context parameter", () => {
+			ruleTester.run("require-cleanup-for-timers", requireCleanupForTimers, {
+				valid: [
+					{
+						code: `
+              function* Timer(props: unknown, ctx: Context) {
+                const timer = setInterval(() => ctx.refresh(), 1000);
+                ctx.cleanup(() => clearInterval(timer));
+                for ({} of ctx) {
+                  yield <div>Tick</div>;
+                }
+              }
+            `,
+					},
+					{
+						code: `
+              class XBlink extends CrankHTMLElement {
+                *render(props: unknown, ctx: Context) {
+                  const id = setInterval(() => ctx.refresh(), 750);
+                  ctx.cleanup(() => clearInterval(id));
+                  for ({} of ctx) {
+                    yield <span />;
+                  }
+                }
+              }
+            `,
+					},
+				],
+				invalid: [
+					{
+						code: `
+              function* Timer(props: unknown, ctx: Context) {
+                const timer = setInterval(() => ctx.refresh(), 1000);
+                other.cleanup(() => clearInterval(timer));
+                for ({} of ctx) {
+                  yield <div>Tick</div>;
+                }
+              }
+            `,
+						errors: [{messageId: "missingCleanup"}],
+					},
+					{
+						code: `
+              function* Timer(props: unknown, ctx: Context) {
+                const timer = setInterval(() => ctx.refresh(), 1000);
+                ctx.cleanup(() => {});
+                for ({} of ctx) {
+                  yield <div>Tick</div>;
+                }
+              }
+            `,
+						errors: [{messageId: "missingClearInCleanup"}],
+					},
+				],
+			});
+		});
+
 		it("should allow timers with proper cleanup", () => {
 			ruleTester.run("require-cleanup-for-timers", requireCleanupForTimers, {
 				valid: [

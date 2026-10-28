@@ -1,5 +1,5 @@
 import {Portal, Renderer} from "./crank.js";
-import type {ElementValue, RenderAdapter} from "./crank.js";
+import type {Children, Context, ElementValue, RenderAdapter} from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import {REACT_SVG_PROPS} from "./_svg.js";
 
@@ -279,9 +279,283 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 		},
 	};
 
+// Classes which can render on the server (CrankHTMLElement) expose a function
+// under this key. Given a tag name, it returns a function which prepares an
+// element for rendering from its props. The HTML renderer never imports the
+// web components module.
+const _ServerRender = Symbol.for("crank.ServerRender");
+
+interface ServerRender {
+	children: Children;
+	template: Record<string, unknown> | null;
+}
+
+interface Definition {
+	ctor: Function;
+	prepare(props: Record<string, any>): ServerRender;
+}
+
+interface Placeholder {
+	tag: string;
+	definition: Definition;
+	props: Record<string, any>;
+	children: string;
+	// Arranged since an expansion last read it.
+	pending: boolean;
+	// Its node has been removed. A render without a root removes its nodes
+	// before it resolves, so a pending placeholder outlives its node until the
+	// expansion reads it.
+	removed: boolean;
+}
+
+interface CustomElementState {
+	registry: Map<string, Definition>;
+	// By id. An entry lives as long as its node: a node Crank keeps across
+	// renders (copy, a reused element) expands again, and removing the node
+	// deletes the entry, or marks it for the expansion to delete.
+	placeholders: Map<string, Placeholder>;
+	pattern: RegExp;
+}
+
+const states = new WeakMap<HTMLRenderer, CustomElementState>();
+
+const reservedNames = new Set([
+	"annotation-xml",
+	"color-profile",
+	"font-face",
+	"font-face-src",
+	"font-face-uri",
+	"font-face-format",
+	"font-face-name",
+	"missing-glyph",
+]);
+
+// A simplified version of the HTML spec's valid custom element name.
+function isValidElementName(name: string): boolean {
+	return (
+		/^[a-z][^\sA-Z/>=]*-[^\sA-Z/>=]*$/.test(name) && !reservedNames.has(name)
+	);
+}
+
+function then<T, U>(
+	value: Promise<T> | T,
+	fn: (value: T) => Promise<U> | U,
+): Promise<U> | U {
+	return value instanceof Promise ? value.then(fn) : fn(value as T);
+}
+
+// Replaces each placeholder in rendered HTML with its element, rendered in a
+// root of its own as it would be in a browser.
+function expand(
+	renderer: HTMLRenderer,
+	html: Promise<string> | string,
+): Promise<string> | string {
+	return then(html, (html) => {
+		const {registry, placeholders, pattern} = states.get(renderer)!;
+		if (!registry.size) {
+			return html;
+		}
+
+		const matches = Array.from(html.matchAll(pattern));
+		if (!matches.length) {
+			return html;
+		}
+
+		const parts: Array<Promise<string> | string> = [];
+		let isAsync = false;
+		let last = 0;
+		try {
+			for (const match of matches) {
+				parts.push(html.slice(last, match.index));
+				const placeholder = placeholders.get(match[1]);
+				const part = placeholder ? expandElement(renderer, placeholder) : "";
+				isAsync = isAsync || part instanceof Promise;
+				parts.push(part);
+				last = match.index + match[0].length;
+			}
+		} finally {
+			// Even if an element throws, every placeholder in this HTML has been
+			// read, so release the ones whose nodes are gone.
+			release(placeholders, matches);
+		}
+
+		parts.push(html.slice(last));
+		return isAsync
+			? Promise.all(parts).then((parts) => parts.join(""))
+			: parts.join("");
+	});
+}
+
+function release(
+	placeholders: Map<string, Placeholder>,
+	matches: Array<RegExpMatchArray>,
+): void {
+	for (const match of matches) {
+		const placeholder = placeholders.get(match[1]);
+		if (placeholder) {
+			placeholder.pending = false;
+			if (placeholder.removed) {
+				placeholders.delete(match[1]);
+			}
+		}
+	}
+}
+
+// Releases the placeholders in HTML which is dropped rather than expanded.
+function discard(renderer: HTMLRenderer, html: string): void {
+	const {placeholders, pattern} = states.get(renderer)!;
+	release(placeholders, Array.from(html.matchAll(pattern)));
+}
+
+function expandElement(
+	renderer: HTMLRenderer,
+	{tag, definition, props, children}: Placeholder,
+): Promise<string> | string {
+	const prepared = definition.prepare(props);
+	const contents = renderer.render(prepared.children);
+	return then(contents, (contents) => {
+		if (prepared.template === null) {
+			if (children) {
+				console.error(
+					`<${tag}> renders its own children, so children passed to it are ignored.`,
+				);
+				discard(renderer, children);
+			}
+
+			return print(contents);
+		}
+
+		// Light children follow the declarative shadow root, where slots project
+		// them.
+		const template = printAttrs(prepared.template);
+		return then(expand(renderer, children), (children) =>
+			print(`<template ${template}>${contents}</template>${children}`),
+		);
+	});
+
+	function print(inner: string): string {
+		// The tag's attributes come from its props, as for any element.
+		const attrs = printAttrs(props);
+		return `<${tag}${attrs.length ? " " : ""}${attrs}>${inner}</${tag}>`;
+	}
+}
+
 export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 	constructor() {
-		super(impl);
+		const registry = new Map<string, Definition>();
+		const placeholders = new Map<string, Placeholder>();
+		const nonce = Math.random().toString(36).slice(2);
+		const ids = new WeakMap<TextNode, string>();
+		let nextId = 0;
+		super({
+			...impl,
+			arrange(data) {
+				const {tag, node, props, children, scope} = data;
+				// Inside SVG and MathML, a hyphenated tag is a foreign element, not
+				// a custom element.
+				const definition =
+					typeof tag === "string" && scope === undefined
+						? registry.get(tag)
+						: undefined;
+				if (!definition) {
+					return impl.arrange!(data);
+				} else if ("innerHTML" in props || "dangerouslySetInnerHTML" in props) {
+					console.error(
+						`<${tag as string}> is a defined custom element, so its innerHTML is ignored.`,
+					);
+				}
+
+				// A defined element renders in a root of its own once this render
+				// finishes, so for now it is a placeholder. Text is escaped, so no
+				// rendered text can contain one.
+				let id = ids.get(node);
+				if (id === undefined) {
+					id = String(nextId++);
+					ids.set(node, id);
+				}
+
+				placeholders.set(id, {
+					tag: tag as string,
+					definition,
+					props,
+					children: join(children),
+					pending: true,
+					removed: false,
+				});
+				node.value = `<!--crank-element:${nonce}:${id}-->`;
+			},
+			remove(data) {
+				const id = ids.get(data.node);
+				const placeholder = id !== undefined && placeholders.get(id);
+				if (placeholder) {
+					if (placeholder.pending) {
+						placeholder.removed = true;
+					} else {
+						placeholders.delete(id as string);
+					}
+				}
+
+				impl.remove?.(data);
+			},
+		});
+		states.set(this, {
+			registry,
+			placeholders,
+			pattern: new RegExp(`<!--crank-element:${nonce}:(\\d+)-->`, "g"),
+		});
+	}
+
+	render(
+		children: Children,
+		root?: any,
+		bridge?: Context,
+	): Promise<string> | string {
+		return expand(this, super.render(children, root, bridge));
+	}
+
+	/**
+	 * Registers a custom element class with this renderer, the server's
+	 * equivalent of `customElements.define`. Each registered tag renders its
+	 * contents (a declarative shadow root for shadow DOM elements) in a root of
+	 * its own, as in a browser. In the browser, shadow DOM elements hydrate the
+	 * declarative shadow root and light DOM elements replace their content.
+	 *
+	 * Defining the same tag with the same class again does nothing.
+	 */
+	define(tagName: string, ctor: CustomElementConstructor): void {
+		const {registry} = states.get(this)!;
+		const existing = registry.get(tagName);
+		if (existing && existing.ctor === ctor) {
+			return;
+		} else if (existing) {
+			throw new Error(`<${tagName}> has already been defined`);
+		} else if (!isValidElementName(tagName)) {
+			throw new SyntaxError(`"${tagName}" is not a valid custom element name`);
+		} else if (typeof (ctor as any)[_ServerRender] !== "function") {
+			throw new TypeError(
+				`Cannot define <${tagName}>: ${ctor.name || "class"} is not a CrankHTMLElement`,
+			);
+		}
+
+		for (const [name, definition] of registry) {
+			if (definition.ctor === ctor) {
+				throw new Error(
+					`${ctor.name || "class"} has already been defined as <${name}>`,
+				);
+			}
+		}
+
+		registry.set(tagName, {
+			ctor,
+			prepare: (ctor as any)[_ServerRender](tagName),
+		});
+	}
+
+	/** Returns the class defined for a tag, if any. */
+	get(tagName: string): CustomElementConstructor | undefined {
+		return states.get(this)!.registry.get(tagName)?.ctor as
+			| CustomElementConstructor
+			| undefined;
 	}
 }
 
