@@ -21,7 +21,7 @@ describe("wc", () => {
 				count: Number,
 				open: Boolean,
 				size: ["medium", "small", "large"] as const,
-				items: Object,
+				items: null,
 			};
 			render({label, count, open, size, items}: ElementProps<typeof Tuple>) {
 				const _label: string | null = label;
@@ -217,10 +217,10 @@ describe("wc", () => {
 		expect(el.hasAttribute("size")).toBe(false);
 	});
 
-	test("Object props are properties only and re-render", async () => {
+	test("null props are properties only and re-render", async () => {
 		class El extends CrankHTMLElement<typeof El> {
 			static shadow = null;
-			static props = {items: Object};
+			static props = {items: null};
 			render({items}: ElementProps<typeof El>) {
 				return <span>{(items as Array<string> | undefined)?.join(",")}</span>;
 			}
@@ -241,7 +241,7 @@ describe("wc", () => {
 	test("observedAttributes is derived from props, lowercased", () => {
 		class El extends CrankHTMLElement<typeof El> {
 			static shadow = null;
-			static props = {maxValue: Number, open: Boolean, items: Object};
+			static props = {maxValue: Number, open: Boolean, items: null};
 			render({maxValue}: ElementProps<typeof El>) {
 				return <span>{maxValue}</span>;
 			}
@@ -260,7 +260,7 @@ describe("wc", () => {
 	test("a Crank parent sets declared props as properties", async () => {
 		class El extends CrankHTMLElement<typeof El> {
 			static shadow = null;
-			static props = {value: Number, items: Object, open: Boolean};
+			static props = {value: Number, items: null, open: Boolean};
 			render({value, items, open}: ElementProps<typeof El>) {
 				return (
 					<span>
@@ -298,7 +298,7 @@ describe("wc", () => {
 
 		class El extends CrankHTMLElement<typeof El> {
 			static shadow = null;
-			static props = {value: Number, items: Object};
+			static props = {value: Number, items: null};
 			render({value, items}: ElementProps<typeof El>) {
 				return (
 					<span>

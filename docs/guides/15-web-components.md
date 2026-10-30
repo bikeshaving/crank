@@ -102,7 +102,7 @@ class XMarqueeElement extends CrankHTMLElement {
     speed: Number,
     paused: Boolean,
     size: ["medium", "small", "large"],
-    items: Object,
+    items: null,
   };
 
   render({label, speed, paused, size, items}) {
@@ -119,13 +119,13 @@ Each declared prop becomes an accessor on the element and a prop `render` receiv
 | `Number` | The parsed number, or `null` when missing or not a number. | Stringified. `NaN` and `Infinity` throw. |
 | `Boolean` | Whether the attribute is present. | Adds or removes the attribute. |
 | `["a", "b"]` | The matching keyword, case-insensitively, or the first when missing or unknown. | The matching keyword's declared spelling. |
-| `Object` | The value set on the element. | Stored on the element and re-renders it. Never an attribute. |
+| `null` | The value set on the element. | Stored on the element and re-renders it. Never an attribute. |
 
 Setting a reflected prop to `null` or `undefined` removes the attribute. Missing numbers and strings read as `null` rather than the platform's `0` and `""`, so `speed ?? 6` gives a default. Nothing is written for defaults: an element with no `speed` attribute has none.
 
-`Object` props hold arrays, objects and anything else without an attribute form. Setting one calls `requestUpdate()`. On the server they reach `render` but not the markup, and there is no JSON parsing of attributes.
+Props declared `null` hold arrays, objects and anything else without an attribute form. Setting one calls `requestUpdate()`. On the server they reach `render` but not the markup, and there is no JSON parsing of attributes.
 
-A Crank parent sets declared props as properties, so `<x-marquee speed={5} items={list} />` goes through the accessors. Properties assigned before the element upgrades are applied through them on first connect, so pre-upgrade code works. The base never overwrites an accessor you define yourself, so for custom conversion declare the prop as `Object` and write a getter and setter that call `requestUpdate()`.
+A Crank parent sets declared props as properties, so `<x-marquee speed={5} items={list} />` goes through the accessors. Properties assigned before the element upgrades are applied through them on first connect, so pre-upgrade code works. The base never overwrites an accessor you define yourself, so for custom conversion declare the prop as `null` and write a getter and setter that call `requestUpdate()`.
 
 For state beyond props, the base adds one instance method, `requestUpdate()`: a microtask-batched re-render request. From the element's own setters and methods, call `this.requestUpdate()`: setting several properties in a row renders once, and it works before the element is connected. Inside `render`, for timers and listeners the component sets up, use `ctx.refresh()` as in any Crank component.
 
@@ -170,7 +170,7 @@ class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
   static props = {
     speed: Number,
     size: ["medium", "small", "large"] as const,
-    items: Object,
+    items: null,
   };
   static shadow: ShadowRootInit = {mode: "open", delegatesFocus: true};
 
@@ -193,7 +193,7 @@ el.onbounce = (ev) => {}; // typed
 el.onnope = () => {}; // error
 ```
 
-`ElementProps` gives `string | null`, `number | null`, `boolean`, the keyword union, or `unknown` for `Object`. Narrow `Object` props in `render` or write your own typed accessor.
+`ElementProps` gives `string | null`, `number | null`, `boolean`, the keyword union, or `unknown` for `null`. Narrow `null` props in `render` or write your own typed accessor.
 
 For typed event payloads, pass an event map in place of the class:
 

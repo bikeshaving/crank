@@ -454,7 +454,7 @@ describe("wc state", () => {
 				value: Number,
 				open: Boolean,
 				size: ["medium", "small"] as const,
-				items: Object,
+				items: null,
 			};
 			render({value, open, size, items}: ElementProps<typeof El>) {
 				return (

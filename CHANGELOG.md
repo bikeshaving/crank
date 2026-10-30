@@ -30,9 +30,9 @@
   (`props`, `events`, `shadow`, `formAssociated`) and write a `render`
   method, which is a normal Crank component in any of the four forms.
   `static props = {label: String, count: Number, open: Boolean, size:
-  ["medium", "small"], items: Object}` declares the element's properties.
+  ["medium", "small"], items: null}` declares the element's properties.
   `String`, `Number`, `Boolean` and keyword props reflect to the attribute of
-  the same name, both ways, and `Object` props are properties only. Each
+  the same name, both ways, and `null` props are properties only. Each
   becomes an accessor on the element and a prop `render` receives. Elements
   render into an open shadow root by default; `shadow` takes the options
   passed to `attachShadow`, or `null` for light DOM.

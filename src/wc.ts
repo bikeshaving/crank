@@ -54,13 +54,13 @@ type Props = Record<string, unknown>;
 /**
  * A prop's declared type in `static props`: `String`, `Number` and `Boolean`
  * reflect to an attribute, an array of keywords reflects to one of those
- * keywords, and `Object` is a property only.
+ * keywords, and `null` is a property only.
  */
 export type PropType =
 	| StringConstructor
 	| NumberConstructor
 	| BooleanConstructor
-	| ObjectConstructor
+	| null
 	| ReadonlyArray<string>;
 
 /**
@@ -85,7 +85,7 @@ type PropValue<T> = T extends BooleanConstructor
 /**
  * The properties `static props` declares, as `render` receives them and as
  * they read on the element: `string | null`, `number | null`, `boolean`, the
- * keyword union (declare the array `as const`), or `unknown` for `Object`.
+ * keyword union (declare the array `as const`), or `unknown` for `null`.
  */
 export type ElementProps<O = {}> = O extends {props: infer P}
 	? {[K in keyof P]: PropValue<P[K]>}
@@ -431,7 +431,7 @@ function getProps(el: CrankHTMLElementImpl): Props {
 
 // Classes whose declared props have accessors on their prototype.
 const defined = new WeakSet<Function>();
-// Values of Object props, which never become attributes.
+// Values of props declared null, which never become attributes.
 const objectProps = new WeakMap<object, Map<string, unknown>>();
 
 function hasOwnAccessor(ctor: Function, name: string): boolean {
@@ -807,7 +807,7 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 	/**
 	 * The element's properties and their types. `String`, `Number`, `Boolean`
 	 * and keyword arrays reflect to the attribute of the same name, lowercased;
-	 * `Object` props are properties only. Each becomes an accessor on the
+	 * `null` props are properties only. Each becomes an accessor on the
 	 * element and a prop `render` receives.
 	 */
 	static props?: Record<string, PropType>;
@@ -818,7 +818,7 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 		const names: Array<string> = [];
 		if (declared) {
 			for (const name in declared) {
-				if (declared[name] !== Object) {
+				if (declared[name] !== null) {
 					names.push(name.toLowerCase());
 				}
 			}
