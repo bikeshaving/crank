@@ -32,7 +32,7 @@ customElements.define("x-blink", XBlinkElement);
 // typed `on<type>` handlers generated from `static events`.
 class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
   static props = {scrollamount: Number, paused: Boolean};
-  static events = ["bounce", "finish", "start"] as const;
+  static events = {bounce: Event, finish: Event, start: Event};
 
   render({scrollamount, paused}: ElementProps<typeof XMarqueeElement>) {
     const duration = 100 / (scrollamount ?? 6);

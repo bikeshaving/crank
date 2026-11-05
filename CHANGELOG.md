@@ -39,9 +39,11 @@
   `requestUpdate()` queues a microtask-batched re-render, and
   `updateComplete` resolves once the element has finished rendering. Errors
   thrown from `render` dispatch a cancelable `error` event on the element.
-  `class X extends CrankHTMLElement<typeof X>` types the generated `on<type>`
-  handlers from `static events`, and `ElementProps<typeof X>` types the
-  props `render` receives from `static props`.
+  `static events = {bounce: Event, pick: CustomEvent<number>}` declares the
+  events the element emits and generates an `on<type>` handler property for
+  each. `class X extends CrankHTMLElement<typeof X>` types those handlers by
+  their event class, and `ElementProps<typeof X>` types the props `render`
+  receives from `static props`.
 
 - **Server rendering for web components**
   `HTMLRenderer.prototype.define(tagName, ctor)` registers a `CrankHTMLElement`

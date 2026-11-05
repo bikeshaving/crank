@@ -14,34 +14,34 @@ import {renderer} from "./dom.js";
  */
 
 /**
- * Maps an `events` tuple or event map to `on<type>` handler properties.
- * `CrankHTMLElement<typeof X>` applies it for you. Merge it into a subclass of
- * an element to type events the subclass adds:
+ * Maps an `events` table to `on<type>` handler properties, each typed by its
+ * event class. `CrankHTMLElement<typeof X>` applies it for you. Merge it into
+ * a subclass of an element to type events the subclass adds:
  *
  * ```ts
- * class XMarquee extends CrankHTMLElement<{events: readonly ["bounce"]}> {
- *   static events: ReadonlyArray<string> = ["bounce"];
+ * class XMarquee extends CrankHTMLElement<typeof XMarquee> {
+ *   static events = {bounce: Event};
  * }
  *
- * interface XFancy extends EventHandlers<{events: readonly ["sparkle"]}> {}
+ * interface XFancy extends EventHandlers<{events: typeof XFancy.events}> {}
  * class XFancy extends XMarquee {
- *   static events = [...XMarquee.events, "sparkle"];
+ *   static events = {...XMarquee.events, sparkle: CustomEvent<number>};
  * }
  * ```
- *
- * A tuple gives names-only typing; an event map gives typed payloads.
  */
 export type EventHandlers<O> = O extends {events: infer E}
-	? E extends ReadonlyArray<infer N extends string>
-		? {[K in N as HandlerName<K>]: ((ev: Event) => unknown) | null}
-		: E extends Record<string, any>
-			? {
-					[K in keyof E as HandlerName<string & K>]:
-						| ((ev: E[K]) => unknown)
-						| null;
-				}
-			: {}
+	? {
+			[K in keyof E as HandlerName<string & K>]:
+				| ((ev: E[K] extends EventType ? InstanceType<E[K]> : Event) => unknown)
+				| null;
+		}
 	: {};
+
+/**
+ * An event's class in `static events`: `Event`, `MouseEvent`, or a generic
+ * one with its type argument, like `CustomEvent<number>`.
+ */
+export type EventType = abstract new (...args: any) => Event;
 
 // Event types with a built-in handler property (onchange, oninput, ...) keep
 // the platform's, which already fires for dispatched events of that type.
@@ -68,7 +68,7 @@ export type PropType =
  * (`typeof X`), whose static fields have these shapes.
  */
 export interface ElementOptions {
-	events?: ReadonlyArray<string> | Record<string, Event>;
+	events?: Record<string, EventType>;
 	props?: Record<string, PropType>;
 }
 
@@ -826,8 +826,12 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 
 		return names;
 	}
-	/** Emitted event types; generates the `on<type>` handler properties. */
-	static events?: ReadonlyArray<string>;
+	/**
+	 * Emitted events, by type: `{bounce: Event, pick: CustomEvent<number>}`.
+	 * Generates the `on<type>` handler properties. The class only types the
+	 * handler.
+	 */
+	static events?: Record<string, EventType>;
 	/** `true` opts the element into form association. Read by the platform. */
 	static formAssociated?: boolean;
 	/**
@@ -851,7 +855,7 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 		);
 		const events = ctor.events;
 		if (events) {
-			for (const type of events) {
+			for (const type in events) {
 				// A built-in handler property (onchange, oninput, ...) already fires
 				// for dispatched events of its type.
 				if (!("on" + type in Base.prototype)) {
@@ -983,16 +987,13 @@ Object.defineProperty(CrankHTMLElementImpl, _ServerRender, {
  *
  * ```ts
  * class XMarquee extends CrankHTMLElement<typeof XMarquee> {
- *   static events = ["bounce", "finish"] as const;
+ *   static events = {bounce: Event, pick: CustomEvent<number>};
  *   static props = {speed: Number, paused: Boolean};
  *   render({speed, paused}: ElementProps<typeof XMarquee>) {
  *     return paused ? null : speed;
  *   }
  * }
  * ```
- *
- * For typed event payloads, pass an event map instead:
- * `CrankHTMLElement<{events: {pick: CustomEvent<number>}}>`.
  */
 export type CrankHTMLElement<O extends ElementOptions = {}> =
 	CrankHTMLElementImpl<O> & EventHandlers<O> & ElementProps<O>;

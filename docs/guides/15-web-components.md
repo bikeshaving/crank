@@ -50,7 +50,7 @@ Configuration is static fields; behavior is methods and accessors. No constructo
 | Static field | Type | Meaning |
 |---|---|---|
 | `props` | `Record<string, PropType>` | The element's properties and their types. See below. |
-| `events` | `readonly string[]` | Emitted event types; generates `on<type>` handler properties. |
+| `events` | `Record<string, EventType>` | Emitted events by type, each with its event class; generates `on<type>` handler properties. |
 | `shadow` | `ShadowRootInit` or `null` | The options passed to `attachShadow`; defaults to `{mode: "open"}`. `null`: no shadow root (light DOM). |
 | `formAssociated` | `boolean` | Opts into form association. Read by the platform. |
 
@@ -138,11 +138,11 @@ await el.updateComplete;
 
 ## Events
 
-The element is an `EventTarget`; components emit events with `this.dispatchEvent`. `static events` additionally generates an `on<type>` accessor per declared type — a faithful event-handler IDL attribute like `onclick`: assigning a function registers a listener, `null` removes it, and listener order interleaves with `addEventListener` by registration order.
+The element is an `EventTarget`; components emit events with `this.dispatchEvent`. `static events` lists the events the element emits, each with its event class, and generates an `on<type>` accessor per entry — a faithful event-handler IDL attribute like `onclick`: assigning a function registers a listener, `null` removes it, and listener order interleaves with `addEventListener` by registration order. The class is only used for typing; the element dispatches whatever it constructs.
 
 ```jsx
 class XMarqueeElement extends CrankHTMLElement {
-  static events = ["bounce", "finish"];
+  static events = {bounce: Event, finish: Event};
   // ...
 }
 
@@ -160,15 +160,15 @@ Pass the class itself as `CrankHTMLElement`'s type argument, as with `Context<ty
 ```tsx
 import type {Context} from "@b9g/crank";
 import {CrankHTMLElement} from "@b9g/crank/wc";
-import type {ElementProps, EventHandlers} from "@b9g/crank/wc";
+import type {ElementProps} from "@b9g/crank/wc";
 
 type Props = ElementProps<typeof XMarqueeElement>;
 
 class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
-  // `as const` keeps the names literal, so handlers and keywords are typed.
-  static events = ["bounce", "finish"] as const;
+  static events = {bounce: CustomEvent<number>, finish: Event};
   static props = {
     speed: Number,
+    // `as const` keeps the keywords literal, so they are typed as a union.
     size: ["medium", "small", "large"] as const,
     items: null,
   };
@@ -189,37 +189,24 @@ class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
 const el = new XMarqueeElement();
 el.speed = 5; // number | null
 el.size = "small"; // the keyword union
-el.onbounce = (ev) => {}; // typed
+el.onbounce = (ev) => ev.detail.toFixed(); // CustomEvent<number>
+el.onfinish = (ev) => {}; // Event
 el.onnope = () => {}; // error
 ```
 
 `ElementProps` gives `string | null`, `number | null`, `boolean`, the keyword union, or `unknown` for `null`. Narrow `null` props in `render` or write your own typed accessor.
 
-For typed event payloads, pass an event map in place of the class:
+Each handler's `ev` is typed by the class in `static events`. `CustomEvent<number>` written as a value is an instantiation expression: TypeScript 4.7 and later accept a type argument on a generic class in value position, and at runtime it is just `CustomEvent`. Any event class works, like `MouseEvent` or a class of your own.
+
+A subclass which adds events spreads the base's table and merges `EventHandlers` for its own, since the base's type argument is already fixed:
 
 ```tsx
-class XPickerElement extends CrankHTMLElement<{
-  events: {pick: CustomEvent<number>};
-}> {
-  static events = ["pick"];
-}
-
-picker.onpick = (ev) => ev.detail.toFixed();
-```
-
-A class meant to be subclassed annotates `static events` instead of using `as const`, since a subclass cannot widen a literal tuple, and passes its event names as the type argument. A subclass which adds events merges `EventHandlers` for them:
-
-```tsx
-class XMarqueeElement extends CrankHTMLElement<{
-  events: readonly ["bounce", "finish"];
-}> {
-  static events: ReadonlyArray<string> = ["bounce", "finish"];
-}
+import type {EventHandlers} from "@b9g/crank/wc";
 
 interface XFancyMarqueeElement
-  extends EventHandlers<{events: readonly ["sparkle"]}> {}
+  extends EventHandlers<{events: typeof XFancyMarqueeElement.events}> {}
 class XFancyMarqueeElement extends XMarqueeElement {
-  static events = [...XMarqueeElement.events, "sparkle"];
+  static events = {...XMarqueeElement.events, sparkle: CustomEvent<string>};
 }
 ```
 

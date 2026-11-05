@@ -12,10 +12,14 @@ describe("wc", () => {
 	// render's props. Never called (constructing an unregistered element would
 	// throw).
 	function _eventTyping() {
-		// The class itself: names only, each handler typed `(ev: Event) => unknown`.
+		// The class itself: each handler is typed by its event class.
 		class Tuple extends CrankHTMLElement<typeof Tuple> {
 			static shadow = null;
-			static events = ["bounce", "finish", "change"] as const;
+			static events = {
+				bounce: CustomEvent<{count: number}>,
+				finish: Event,
+				change: Event,
+			};
 			static props = {
 				label: String,
 				count: Number,
@@ -35,8 +39,13 @@ describe("wc", () => {
 		}
 
 		const el = new Tuple();
-		el.onbounce = (_e: Event) => {};
-		el.onfinish = null;
+		el.onbounce = (e) => e.detail.count;
+		el.onbounce = null;
+		// @ts-expect-error - payload is CustomEvent<{count}>, not a plain number
+		el.onbounce = (n: number) => n;
+		el.onfinish = (_e: Event) => {};
+		// @ts-expect-error - a plain Event has no detail
+		el.onfinish = (e) => e.detail;
 		// A built-in handler keeps the platform's type.
 		el.onchange = (_e: Event) => {};
 		el.requestUpdate();
@@ -54,38 +63,23 @@ describe("wc", () => {
 		const _props: ElementProps<typeof Tuple> = {label: null, color: null};
 		void _props;
 
-		// An event map: typed payloads flow to each handler argument.
-		class Mapped extends CrankHTMLElement<{
-			events: {bounce: CustomEvent<{count: number}>};
-		}> {
+		// A subclass which adds events spreads the base's table and merges
+		// EventHandlers for its own.
+		class Base extends CrankHTMLElement<typeof Base> {
 			static shadow = null;
-			static events = ["bounce"];
-			render() {
-				return null;
-			}
+			static events = {bounce: Event};
 		}
 
-		const m = new Mapped();
-		m.onbounce = (e) => e.detail.count;
-		m.onbounce = null;
-		// @ts-expect-error - payload is CustomEvent<{count}>, not a plain number
-		m.onbounce = (n: number) => n;
-
-		// A class meant to be subclassed annotates its events, and a subclass
-		// which adds events merges EventHandlers for them.
-		class Base extends CrankHTMLElement<{events: readonly ["bounce"]}> {
-			static shadow = null;
-			static events: ReadonlyArray<string> = ["bounce"];
-		}
-
-		interface Sub extends EventHandlers<{events: readonly ["extra"]}> {}
+		interface Sub extends EventHandlers<{events: typeof Sub.events}> {}
 		class Sub extends Base {
-			static events = [...Base.events, "extra"];
+			static events = {...Base.events, extra: CustomEvent<string>};
 		}
 
 		const sub = new Sub();
 		sub.onbounce = null;
-		sub.onextra = null;
+		sub.onextra = (e) => e.detail.toUpperCase();
+		// @ts-expect-error - undeclared handler
+		sub.onnope = null;
 
 		const unknown: unknown = sub;
 		if (unknown instanceof CrankHTMLElement) {
@@ -471,7 +465,7 @@ describe("wc", () => {
 		class El extends CrankHTMLElement {
 			static shadow = null;
 
-			static events = ["bounce"] as const;
+			static events = {bounce: Event};
 			render() {
 				return <span />;
 			}
@@ -499,7 +493,7 @@ describe("wc", () => {
 		class El extends CrankHTMLElement {
 			static shadow = null;
 
-			static events = ["ping"] as const;
+			static events = {ping: Event};
 			render() {
 				return <span />;
 			}
@@ -1100,7 +1094,7 @@ describe("wc", () => {
 		class El extends CrankHTMLElement {
 			static shadow = null;
 
-			static events = ["ping"] as const;
+			static events = {ping: Event};
 			render() {
 				return null;
 			}
@@ -1129,7 +1123,7 @@ describe("wc", () => {
 		class El extends CrankHTMLElement {
 			static shadow = null;
 
-			static events = ["ping"] as const;
+			static events = {ping: Event};
 			render() {
 				return null;
 			}

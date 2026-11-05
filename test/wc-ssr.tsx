@@ -626,7 +626,7 @@ describe("wc SSR parity", () => {
 	test("events named like built-in handlers keep the platform's handler", () => {
 		const name = tag("x-change");
 		class El extends CrankHTMLElement {
-			static events = ["change", "bounce"] as const;
+			static events = {change: Event, bounce: Event};
 			render() {
 				return null;
 			}
