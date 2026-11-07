@@ -718,6 +718,16 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 				isHydrating,
 			);
 		}
+
+		// A server-rendered custom element waits for its properties under the
+		// defer-hydration protocol. They are set, so it may render.
+		if (
+			isHydrating &&
+			!("defer-hydration" in props) &&
+			element.hasAttribute("defer-hydration")
+		) {
+			element.removeAttribute("defer-hydration");
+		}
 	},
 
 	arrange({

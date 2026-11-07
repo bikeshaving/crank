@@ -241,7 +241,11 @@ describe("wc", () => {
 			}
 		}
 
-		expect(El.observedAttributes).toEqual(["maxvalue", "open"]);
+		expect(El.observedAttributes).toEqual([
+			"defer-hydration",
+			"maxvalue",
+			"open",
+		]);
 		const name = tag("x-lower");
 		customElements.define(name, El);
 		const el = document.createElement(name) as El;

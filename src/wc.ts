@@ -104,6 +104,11 @@ interface ServerRender {
 	children: Children;
 	/** Attributes for a declarative shadow root's template, or null for light DOM. */
 	template: Record<string, unknown> | null;
+	/**
+	 * Whether the element was given a property which is not in its markup, so
+	 * its first browser render must wait for the parent to set it again.
+	 */
+	defer: boolean;
 }
 
 // Read by the DOM renderer, which leaves a light DOM element's children to the
@@ -580,6 +585,10 @@ function update(el: CrankHTMLElementImpl): void {
 	if (el.ownerDocument.readyState === "loading") {
 		// The element renders once the document is parsed (connectedCallback).
 		return;
+	} else if (el.hasAttribute("defer-hydration")) {
+		// The server marked the element as missing a property. The parent which
+		// sets it removes the attribute, which renders.
+		return;
 	}
 
 	const root = roots.get(el)!;
@@ -706,7 +715,27 @@ function renderForServer(
 	return {
 		children: createElement(components.get(el)!, getProps(el)),
 		template: ctor.shadow == null ? null : getTemplateProps(ctor.shadow),
+		defer: needsDeferredHydration(ctor, props),
 	};
+}
+
+// A property-only prop with a value is not in the HTML, so the element's first
+// browser render would lack it. The defer-hydration attribute holds that render
+// until the parent sets the property and removes the attribute.
+function needsDeferredHydration(
+	ctor: typeof CrankHTMLElementImpl,
+	props: Record<string, any>,
+): boolean {
+	const declared = ctor.props;
+	if (declared) {
+		for (const name in declared) {
+			if (declared[name] === null && props[name] !== undefined) {
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 // The template attributes declarative shadow DOM defines for ShadowRootInit
@@ -815,7 +844,7 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 	/** Read by the platform. Derived from `props`. */
 	static get observedAttributes(): ReadonlyArray<string> {
 		const declared = this.props;
-		const names: Array<string> = [];
+		const names: Array<string> = ["defer-hydration"];
 		if (declared) {
 			for (const name in declared) {
 				if (declared[name] !== null) {

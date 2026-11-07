@@ -422,6 +422,157 @@ describe("wc SSR", () => {
 	});
 });
 
+describe("defer-hydration", () => {
+	afterEach(() => {
+		document.body.innerHTML = "";
+	});
+
+	let uid = 0;
+	const tag = (name: string) => `${name}-defer-${uid++}`;
+
+	function serve(html: string): HTMLElement {
+		const container = document.createElement("div");
+		(container as any).setHTMLUnsafe(html);
+		document.body.appendChild(container);
+		return container;
+	}
+
+	class List extends CrankHTMLElement<typeof List> {
+		static props = {items: null, n: Number};
+		static renders = 0;
+		render({items}: ElementProps<typeof List>) {
+			(this.constructor as typeof List).renders++;
+			return (
+				<ul>
+					{((items as Array<string>) ?? []).map((item) => (
+						<li>{item}</li>
+					))}
+				</ul>
+			);
+		}
+	}
+
+	test("the server marks an element given a property-only prop", () => {
+		const name = tag("x-list");
+		class El extends List {}
+		customElements.define(name, El);
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		expect(html.render(createElement(name, {items: ["a"]}))).toBe(
+			`<${name} defer-hydration><template shadowrootmode="open"><ul><li>a</li></ul></template></${name}>`,
+		);
+		expect(html.render(createElement(name, {n: 1}))).toBe(
+			`<${name} n="1"><template shadowrootmode="open"><ul></ul></template></${name}>`,
+		);
+		expect(html.render(createElement(name, {items: undefined}))).toBe(
+			`<${name}><template shadowrootmode="open"><ul></ul></template></${name}>`,
+		);
+	});
+
+	test("a marked element keeps the server's nodes until the page sets its props", async () => {
+		const name = tag("x-wait");
+		class El extends List {}
+		function App({items}: {items: Array<string>}) {
+			return <main>{createElement(name, {items})}</main>;
+		}
+
+		const container = serve(
+			`<main><${name} defer-hydration=""><template shadowrootmode="open"><ul><li>a</li><li>b</li></ul></template></${name}></main>`,
+		);
+		customElements.define(name, El);
+		const el = container.querySelector(name) as El;
+		const li = el.shadowRoot!.querySelector("li");
+		expect(El.renders).toBe(0);
+		expect(el.shadowRoot!.innerHTML).toBe("<ul><li>a</li><li>b</li></ul>");
+
+		renderer.hydrate(<App items={["a", "b"]} />, container);
+		expect(el.hasAttribute("defer-hydration")).toBe(false);
+		await el.updateComplete;
+		expect(El.renders).toBe(1);
+		expect(el.shadowRoot!.innerHTML).toBe("<ul><li>a</li><li>b</li></ul>");
+		expect(el.shadowRoot!.querySelector("li")).toBe(li);
+	});
+
+	test("a marked light DOM element shows the server's content until then", async () => {
+		const name = tag("x-wait-light");
+		class El extends List {
+			static shadow = null;
+		}
+		function App({items}: {items: Array<string>}) {
+			return <main>{createElement(name, {items})}</main>;
+		}
+
+		const container = serve(
+			`<main><${name} defer-hydration=""><ul><li>a</li></ul></${name}></main>`,
+		);
+		customElements.define(name, El);
+		const el = container.querySelector(name) as El;
+		expect(El.renders).toBe(0);
+		expect(el.innerHTML).toBe("<ul><li>a</li></ul>");
+
+		renderer.hydrate(<App items={["a"]} />, container);
+		await el.updateComplete;
+		expect(El.renders).toBe(1);
+		expect(el.innerHTML).toBe("<ul><li>a</li></ul>");
+	});
+
+	test("a parent element sets its child's props and lets it render", async () => {
+		const child = tag("x-child");
+		const parent = tag("x-parent");
+		class Child extends List {}
+		class Parent extends CrankHTMLElement {
+			render() {
+				return createElement(child, {items: ["a", "b"]});
+			}
+		}
+
+		const container = serve(
+			`<${parent}><template shadowrootmode="open"><${child} defer-hydration=""><template shadowrootmode="open"><ul><li>a</li><li>b</li></ul></template></${child}></template></${parent}>`,
+		);
+		customElements.define(child, Child);
+		const el = container.firstElementChild!.shadowRoot!.querySelector(
+			child,
+		) as Child;
+		const li = el.shadowRoot!.querySelector("li");
+		expect(Child.renders).toBe(0);
+
+		customElements.define(parent, Parent);
+		expect(el.hasAttribute("defer-hydration")).toBe(false);
+		await el.updateComplete;
+		expect(Child.renders).toBe(1);
+		expect(el.shadowRoot!.innerHTML).toBe("<ul><li>a</li><li>b</li></ul>");
+		expect(el.shadowRoot!.querySelector("li")).toBe(li);
+	});
+
+	test("removing the attribute by hand renders the element", async () => {
+		const name = tag("x-manual");
+		class El extends List {}
+		const container = serve(
+			`<${name} defer-hydration><template shadowrootmode="open"><ul><li>a</li></ul></template></${name}>`,
+		);
+		customElements.define(name, El);
+		const el = container.firstElementChild as El;
+		el.items = ["a"];
+		await el.updateComplete;
+		expect(El.renders).toBe(0);
+
+		el.removeAttribute("defer-hydration");
+		await el.updateComplete;
+		expect(El.renders).toBe(1);
+		expect(el.shadowRoot!.innerHTML).toBe("<ul><li>a</li></ul>");
+	});
+
+	test("an unmarked element renders on upgrade as before", () => {
+		const name = tag("x-plain");
+		class El extends List {}
+		serve(
+			`<${name}><template shadowrootmode="open"><ul><li>stale</li></ul></template></${name}>`,
+		);
+		customElements.define(name, El);
+		expect(El.renders).toBe(1);
+	});
+});
+
 describe("wc state", () => {
 	afterEach(() => {
 		document.body.innerHTML = "";
@@ -478,7 +629,7 @@ describe("wc state", () => {
 				}),
 			),
 		).toBe(
-			`<${name} value="5" open size="Small"><span>5:true:small:ab</span></${name}>`,
+			`<${name} value="5" open size="Small" defer-hydration><span>5:true:small:ab</span></${name}>`,
 		);
 	});
 

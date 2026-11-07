@@ -288,6 +288,7 @@ const _ServerRender = Symbol.for("crank.ServerRender");
 interface ServerRender {
 	children: Children;
 	template: Record<string, unknown> | null;
+	defer: boolean;
 }
 
 interface Definition {
@@ -435,7 +436,9 @@ function expandElement(
 
 	function print(inner: string): string {
 		// The tag's attributes come from its props, as for any element.
-		const attrs = printAttrs(props);
+		const attrs = printAttrs(
+			prepared.defer ? {...props, "defer-hydration": true} : props,
+		);
 		return `<${tag}${attrs.length ? " " : ""}${attrs}>${inner}</${tag}>`;
 	}
 }

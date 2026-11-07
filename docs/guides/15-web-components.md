@@ -303,7 +303,7 @@ const html = await renderer.render(
 );
 ```
 
-On the server the renderer constructs a real instance of the class, gives it its props (objects and arrays are assigned as properties; strings, numbers and booleans become attributes), and renders `render` in a root of its own, as in a browser: the async forms and nested elements work, and provisions and errors do not cross the element boundary. A light-DOM element renders its content as children; a shadow-DOM element renders a declarative shadow root, followed by its light children for its slots to project:
+On the server the renderer constructs a real instance of the class, gives it its props (declared props go through their accessors, so reflected ones become attributes; of the rest, objects and arrays are assigned as properties and other values become attributes), and renders `render` in a root of its own, as in a browser: the async forms and nested elements work, and provisions and errors do not cross the element boundary. A light-DOM element renders its content as children; a shadow-DOM element renders a declarative shadow root, followed by its light children for its slots to project:
 
 ```html
 <x-card>
@@ -312,7 +312,14 @@ On the server the renderer constructs a real instance of the class, gives it its
 </x-card>
 ```
 
-The server tag prints the element's props as attributes, as for any element, so attributes an element sets on itself while rendering are not included. State an element needs to render its server content in the browser must come from attributes, since properties are not in the HTML. A parent element which passes a child its state as a property should be defined before the child, so the child does not render without it.
+The server tag prints the element's props as attributes, as for any element, so attributes an element sets on itself while rendering are not included. Reflected props are therefore in the HTML, and the upgraded element reads them back before its first render, so it renders with what the server had.
+
+A prop declared `null` is not in the HTML. An element given one on the server prints a `defer-hydration` attribute, and in the browser it does not render while that attribute is present. Whatever sets the element's props removes the attribute, which renders it: the DOM renderer does so for each element it hydrates, once its props are set, whether the page is hydrated by a Crank app or the element is rendered by a parent element. The element keeps the server's nodes meanwhile and adopts them on that first render, so there is no empty flash and no second render. This is the `defer-hydration` community protocol, so a parent written another way removes the attribute itself once the properties are in place:
+
+```js
+el.items = items;
+el.removeAttribute("defer-hydration");
+```
 
 Define elements in a module script (`<script type="module">`), which runs after the page is parsed. An element defined by a classic script before the parser reaches it still hydrates, but while the page is parsing, its first render waits for `DOMContentLoaded`.
 

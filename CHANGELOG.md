@@ -51,7 +51,10 @@
   children for light DOM, or as a declarative shadow root for shadow DOM, and
   `get(tagName)` looks a definition up. In the browser a shadow DOM element
   hydrates its declarative shadow root, and a light DOM element replaces its
-  server rendered content. The module loads where there is no DOM.
+  server rendered content. An element given a prop declared `null`, which has
+  no attribute form, is printed with the `defer-hydration` attribute and
+  waits to render until its props are set: the DOM renderer removes the
+  attribute once it has set them. The module loads where there is no DOM.
 
 - **The DOM renderer accepts a `ShadowRoot` as a render root.**
 
