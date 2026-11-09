@@ -162,8 +162,6 @@ import type {Context} from "@b9g/crank";
 import {CrankHTMLElement} from "@b9g/crank/wc";
 import type {ElementProps} from "@b9g/crank/wc";
 
-type Props = ElementProps<typeof XMarqueeElement>;
-
 class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
   static events = {bounce: CustomEvent<number>, finish: Event};
   static props = {
@@ -175,7 +173,10 @@ class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
   static shadow: ShadowRootInit = {mode: "open", delegatesFocus: true};
 
   // TypeScript does not infer an override's parameters, so annotate them.
-  *render({speed, size, items}: Props, ctx: Context<Props>) {
+  *render(
+    {speed, size, items}: ElementProps<typeof XMarqueeElement>,
+    ctx: Context,
+  ) {
     for ({speed, size, items} of ctx) {
       yield (
         <div class={`track ${size}`} data-speed={speed ?? 6}>
