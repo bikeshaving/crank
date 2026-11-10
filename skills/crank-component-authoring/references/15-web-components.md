@@ -89,7 +89,7 @@ async *render(props, ctx) { /* ... */ }                     // async generator
 
 Use a generator when you need state across renders. The full Crank lifecycle applies through the context: `refresh`, `schedule`, `after`, and `cleanup`.
 
-A sync render produces content immediately on connect. The async forms show nothing until they resolve, so prefer a sync render with a loading state, or render the element on the server.
+A sync render commits on connect. An async render commits when it settles, and until then the element keeps what it already has: content rendered on the server, or for a light DOM element, the children written in the HTML. A shadow DOM element with no server content shows nothing until its render settles, since its light children are not projected before the shadow root has a slot.
 
 ## Props
 
