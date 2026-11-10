@@ -32,8 +32,8 @@ describe("wc SSR", () => {
 			static shadow = null;
 
 			static props = {amount: Number};
-			render({amount}: {amount: number | null}) {
-				return <span>${((amount ?? 0) / 100).toFixed(2)}</span>;
+			render({amount}: {amount: number}) {
+				return <span>${(amount / 100).toFixed(2)}</span>;
 			}
 		}
 
@@ -206,7 +206,7 @@ describe("wc SSR", () => {
 		class El extends CrankHTMLElement {
 			static shadow = null;
 			static props = {datetime: String};
-			render({datetime}: {datetime: string | null}) {
+			render({datetime}: {datetime: string}) {
 				return <time>{datetime}</time>;
 			}
 		}
@@ -340,7 +340,7 @@ describe("wc SSR", () => {
 			static shadow = null;
 
 			static props = {n: String};
-			render({n}: {n: string | null}) {
+			render({n}: {n: string}) {
 				return <span>{n}</span>;
 			}
 		}
@@ -678,7 +678,7 @@ describe("wc SSR parity", () => {
 		class El extends CrankHTMLElement {
 			static shadow = null;
 			static props = {label: String};
-			render({label}: {label: string | null}) {
+			render({label}: {label: string}) {
 				return label;
 			}
 		}

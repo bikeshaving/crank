@@ -75,16 +75,16 @@ export interface ElementOptions {
 type PropValue<T> = T extends BooleanConstructor
 	? boolean
 	: T extends NumberConstructor
-		? number | null
+		? number
 		: T extends StringConstructor
-			? string | null
+			? string
 			: T extends ReadonlyArray<infer K extends string>
 				? K
 				: unknown;
 
 /**
  * The properties `static props` declares, as `render` receives them and as
- * they read on the element: `string | null`, `number | null`, `boolean`, the
+ * they read on the element: `string`, `number`, `boolean`, the
  * keyword union (declare the array `as const`), or `unknown` for `null`.
  */
 export type ElementProps<O = {}> = O extends {props: infer P}
@@ -491,11 +491,11 @@ function createAccessor(name: string, type: PropType): PropertyDescriptor {
 		descriptor.get = function (this: Element) {
 			const value = this.getAttribute(attr);
 			if (value === null || value.trim() === "") {
-				return null;
+				return 0;
 			}
 
 			const n = Number(value);
-			return Number.isFinite(n) ? n : null;
+			return Number.isFinite(n) ? n : 0;
 		};
 		descriptor.set = function (this: Element, value: unknown) {
 			if (value == null) {
@@ -510,7 +510,7 @@ function createAccessor(name: string, type: PropType): PropertyDescriptor {
 		};
 	} else if (type === String) {
 		descriptor.get = function (this: Element) {
-			return this.getAttribute(attr);
+			return this.getAttribute(attr) ?? "";
 		};
 		descriptor.set = function (this: Element, value: unknown) {
 			if (value == null) {

@@ -35,7 +35,7 @@ class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
   static events = {bounce: Event, finish: Event, start: Event};
 
   render({scrollamount, paused}: ElementProps<typeof XMarqueeElement>) {
-    const duration = 100 / (scrollamount ?? 6);
+    const duration = 100 / (scrollamount || 6);
     const css = `
       .track {
         display: inline-block;

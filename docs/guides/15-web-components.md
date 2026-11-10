@@ -115,13 +115,13 @@ Each declared prop becomes an accessor on the element and a prop `render` receiv
 
 | Type | Reading | Writing |
 |---|---|---|
-| `String` | The attribute, or `null` when missing. | Stringified. |
-| `Number` | The parsed number, or `null` when missing or not a number. | Stringified. `NaN` and `Infinity` throw. |
+| `String` | The attribute, or `""` when missing. | Stringified. |
+| `Number` | The parsed number, or `0` when missing or not a number. | Stringified. `NaN` and `Infinity` throw. |
 | `Boolean` | Whether the attribute is present. | Adds or removes the attribute. |
 | `["a", "b"]` | The matching keyword, case-insensitively, or the first when missing or unknown. | The matching keyword's declared spelling. |
 | `null` | The value set on the element. | Stored on the element and re-renders it. Never an attribute. |
 
-Setting a reflected prop to `null` or `undefined` removes the attribute. Missing numbers and strings read as `null` rather than the platform's `0` and `""`, so `speed ?? 6` gives a default. Nothing is written for defaults: an element with no `speed` attribute has none.
+Setting a reflected prop to `null` or `undefined` removes the attribute. Missing numbers and strings read as `0` and `""`, as built-in elements' do, so `speed || 6` gives a default. Nothing is written for defaults: an element with no `speed` attribute has none.
 
 Props declared `null` hold arrays, objects and anything else without an attribute form. Setting one calls `requestUpdate()`. On the server they reach `render` but not the markup, and there is no JSON parsing of attributes.
 
@@ -179,7 +179,7 @@ class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
   ) {
     for ({speed, size, items} of ctx) {
       yield (
-        <div class={`track ${size}`} data-speed={speed ?? 6}>
+        <div class={`track ${size}`} data-speed={speed || 6}>
           {(items as Array<string>).map((item) => <span>{item}</span>)}
         </div>
       );
@@ -188,14 +188,14 @@ class XMarqueeElement extends CrankHTMLElement<typeof XMarqueeElement> {
 }
 
 const el = new XMarqueeElement();
-el.speed = 5; // number | null
+el.speed = 5; // number
 el.size = "small"; // the keyword union
 el.onbounce = (ev) => ev.detail.toFixed(); // CustomEvent<number>
 el.onfinish = (ev) => {}; // Event
 el.onnope = () => {}; // error
 ```
 
-`ElementProps` gives `string | null`, `number | null`, `boolean`, the keyword union, or `unknown` for `null`. Narrow `null` props in `render` or write your own typed accessor.
+`ElementProps` gives `string`, `number`, `boolean`, the keyword union, or `unknown` for `null`. Narrow `null` props in `render` or write your own typed accessor.
 
 Each handler's `ev` is typed by the class in `static events`. `CustomEvent<number>` written as a value is an instantiation expression: TypeScript 4.7 and later accept a type argument on a generic class in value position, and at runtime it is just `CustomEvent`. Any event class works, like `MouseEvent` or a class of your own.
 

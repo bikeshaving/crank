@@ -28,8 +28,8 @@ describe("wc", () => {
 				items: null,
 			};
 			render({label, count, open, size, items}: ElementProps<typeof Tuple>) {
-				const _label: string | null = label;
-				const _count: number | null = count;
+				const _label: string = label;
+				const _count: number = count;
 				const _open: boolean = open;
 				const _size: "medium" | "small" | "large" = size;
 				const _items: unknown = items;
@@ -103,7 +103,7 @@ describe("wc", () => {
 			static shadow = null;
 			static props = {label: String};
 			render({label}: ElementProps<typeof El>) {
-				return <span>{label ?? "none"}</span>;
+				return <span>{label || "none"}</span>;
 			}
 		}
 
@@ -111,7 +111,7 @@ describe("wc", () => {
 		customElements.define(name, El);
 		const el = document.createElement(name) as El;
 		document.body.appendChild(el);
-		expect(el.label).toBe(null);
+		expect(el.label).toBe("");
 		expect(el.innerHTML).toBe("<span>none</span>");
 
 		el.label = "hi";
@@ -124,7 +124,7 @@ describe("wc", () => {
 		await flush();
 		expect(el.innerHTML).toBe("<span>there</span>");
 
-		el.label = null;
+		(el as any).label = null;
 		expect(el.hasAttribute("label")).toBe(false);
 		(el as any).label = undefined;
 		expect(el.hasAttribute("label")).toBe(false);
@@ -141,19 +141,19 @@ describe("wc", () => {
 		const name = tag("x-number");
 		customElements.define(name, El);
 		const el = document.createElement(name) as El;
-		expect(el.value).toBe(null);
+		expect(el.value).toBe(0);
 		el.value = 5;
 		expect(el.getAttribute("value")).toBe("5");
 		expect(el.value).toBe(5);
 		el.setAttribute("value", "2.5");
 		expect(el.value).toBe(2.5);
 		el.setAttribute("value", "abc");
-		expect(el.value).toBe(null);
+		expect(el.value).toBe(0);
 		el.setAttribute("value", "");
-		expect(el.value).toBe(null);
+		expect(el.value).toBe(0);
 		(el as any).value = "7";
 		expect(el.value).toBe(7);
-		el.value = null;
+		(el as any).value = null;
 		expect(el.hasAttribute("value")).toBe(false);
 		expect(() => (el.value = NaN)).toThrow(TypeError);
 		expect(() => (el.value = Infinity)).toThrow(TypeError);
@@ -315,18 +315,14 @@ describe("wc", () => {
 		class El extends CrankHTMLElement<typeof El> {
 			static shadow = null;
 			static props = {color: String};
-			get color(): string | null {
-				return this.getAttribute("color")?.toUpperCase() ?? null;
+			get color(): string {
+				return this.getAttribute("color")?.toUpperCase() ?? "";
 			}
-			set color(v: string | null) {
-				if (v == null) {
-					this.removeAttribute("color");
-				} else {
-					this.setAttribute("color", v.toLowerCase());
-				}
+			set color(v: string) {
+				this.setAttribute("color", v.toLowerCase());
 			}
 			render({color}: ElementProps<typeof El>) {
-				return <span>{color ?? "none"}</span>;
+				return <span>{color || "none"}</span>;
 			}
 		}
 
@@ -346,8 +342,8 @@ describe("wc", () => {
 			static shadow = null;
 
 			static props = {label: String};
-			render({label}: {label: string | null}) {
-				return <span>{label ?? "default"}</span>;
+			render({label}: {label: string}) {
+				return <span>{label || "default"}</span>;
 			}
 		}
 
@@ -365,7 +361,7 @@ describe("wc", () => {
 			static shadow = null;
 
 			static props = {label: String};
-			render({label}: {label: string | null}) {
+			render({label}: {label: string}) {
 				return <span>{label}</span>;
 			}
 		}
