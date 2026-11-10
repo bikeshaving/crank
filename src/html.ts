@@ -402,37 +402,25 @@ function release(
 	}
 }
 
-// Releases the placeholders in HTML which is dropped rather than expanded.
-function discard(renderer: HTMLRenderer, html: string): void {
-	const {placeholders, pattern} = states.get(renderer)!;
-	release(placeholders, Array.from(html.matchAll(pattern)));
-}
-
 function expandElement(
 	renderer: HTMLRenderer,
 	{tag, definition, props, children}: Placeholder,
 ): Promise<string> | string {
 	const prepared = definition.prepare(props);
-	const contents = renderer.render(prepared.children);
-	return then(contents, (contents) => {
-		if (prepared.template === null) {
-			if (children) {
-				console.error(
-					`<${tag}> renders its own children, so children passed to it are ignored.`,
-				);
-				discard(renderer, children);
-			}
+	if (prepared.template === null) {
+		// A light DOM element renders its own content on upgrade, in front of
+		// the children passed to it, so only those print.
+		return then(expand(renderer, children), print);
+	}
 
-			return print(contents);
-		}
-
-		// Light children follow the declarative shadow root, where slots project
-		// them.
-		const template = printAttrs(prepared.template);
-		return then(expand(renderer, children), (children) =>
+	// Light children follow the declarative shadow root, where slots project
+	// them.
+	const template = printAttrs(prepared.template);
+	return then(renderer.render(prepared.children), (contents) =>
+		then(expand(renderer, children), (children) =>
 			print(`<template ${template}>${contents}</template>${children}`),
-		);
-	});
+		),
+	);
 
 	function print(inner: string): string {
 		// The tag's attributes come from its props, as for any element.

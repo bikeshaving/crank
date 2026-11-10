@@ -1,8 +1,4 @@
 /// <reference lib="dom" preserve="true" />
-import {createElement} from "./crank.js";
-import type {Children, Component, Context} from "./crank.js";
-import {renderer} from "./dom.js";
-
 /**
  * `@b9g/crank/wc` — write Web Components with Crank.
  *
@@ -12,6 +8,10 @@ import {renderer} from "./dom.js";
  *
  * See https://github.com/bikeshaving/crank/issues/360.
  */
+
+import {createElement, Renderer} from "./crank.js";
+import type {Children, Component, Context} from "./crank.js";
+import {adapter} from "./dom.js";
 
 /**
  * Maps an `events` table to `on<type>` handler properties, each typed by its
@@ -110,10 +110,6 @@ interface ServerRender {
 	 */
 	defer: boolean;
 }
-
-// Read by the DOM renderer, which leaves a light DOM element's children to the
-// element when the tree containing it hydrates or re-renders.
-const _OwnsChildren = Symbol.for("crank.OwnsChildren");
 
 /*** SERVER SHIM ***/
 interface ServerElementState {
@@ -383,6 +379,11 @@ const roots = new WeakMap<CrankHTMLElementImpl, Element | ShadowRoot>();
 // Elements with a batched update waiting for its microtask.
 const dirty = new Set<CrankHTMLElementImpl>();
 
+// The DOM adapter, rendering into elements and shadow roots alike.
+const renderer = new Renderer<Node, string, Element | ShadowRoot>(
+	adapter as any,
+);
+
 // Each element's latest render while it is async, for updateComplete.
 const renders = new WeakMap<CrankHTMLElementImpl, Promise<unknown>>();
 
@@ -549,6 +550,10 @@ function createAccessor(name: string, type: PropType): PropertyDescriptor {
 			}
 
 			values.set(name, value);
+			if (this.hasAttribute("defer-hydration")) {
+				this.removeAttribute("defer-hydration");
+			}
+
 			this.requestUpdate();
 		};
 	}
@@ -586,8 +591,8 @@ function update(el: CrankHTMLElementImpl): void {
 		// The element renders once the document is parsed (connectedCallback).
 		return;
 	} else if (el.hasAttribute("defer-hydration")) {
-		// The server marked the element as missing a property. The parent which
-		// sets it removes the attribute, which renders.
+		// The server marked the element as missing a property. Assigning one
+		// removes the attribute, as may the parent, and either renders.
 		return;
 	}
 
@@ -595,13 +600,7 @@ function update(el: CrankHTMLElementImpl): void {
 	const children = createElement(components.get(el)!, getProps(el));
 	let result: unknown;
 	try {
-		// A shadow root with content holds a declarative shadow root, which only
-		// a server produces, so it is hydrated. Hydrating a root which has
-		// already rendered just updates it.
-		result =
-			root !== el && root.firstChild
-				? renderer.hydrate(children, root)
-				: renderer.render(children, root);
+		result = render(el, root, children);
 	} catch (err) {
 		fail(el, root, err);
 		return;
@@ -609,12 +608,10 @@ function update(el: CrankHTMLElementImpl): void {
 
 	if (result instanceof Promise) {
 		const settled: Promise<void> = result.then(
-			(value) => {
+			() => {
 				if (renders.get(el) === settled) {
 					renders.delete(el);
 				}
-
-				replaceChildren(el, root, value);
 			},
 			(err) => {
 				if (renders.get(el) === settled) {
@@ -625,27 +622,22 @@ function update(el: CrankHTMLElementImpl): void {
 			},
 		);
 		renders.set(el, settled);
-	} else {
-		replaceChildren(el, root, result);
 	}
 }
 
-// A light DOM element renders all of its children, so once a render commits,
-// children it did not render (server output or fallback content written by
-// hand, present before the first render) are removed.
-function replaceChildren(
+function render(
 	el: CrankHTMLElementImpl,
 	root: Element | ShadowRoot,
-	value: unknown,
-): void {
-	if (root === el) {
-		const rendered = new Set(Array.isArray(value) ? value : [value]);
-		for (const node of Array.from(el.childNodes)) {
-			if (!rendered.has(node)) {
-				el.removeChild(node);
-			}
-		}
-	}
+	children: Children,
+): unknown {
+	// A shadow root with content holds a declarative shadow root, which only a
+	// server produces, so it is hydrated. Hydrating a root which has already
+	// rendered just updates it. A light DOM element renders in front of its
+	// children and leaves them be: a Crank parent passes its children before
+	// the element connects, and the server prints only those.
+	return root !== el && root.firstChild
+		? renderer.hydrate(children, root)
+		: renderer.render(children, root);
 }
 
 // Reports a render error, and unmounts the failed render so the next update
@@ -874,10 +866,6 @@ class CrankHTMLElementImpl<O extends ElementOptions = {}> extends Base {
 		super();
 		const ctor = this.constructor as typeof CrankHTMLElementImpl;
 		defineProps(ctor);
-		if (ctor.shadow == null) {
-			Object.defineProperty(this, _OwnsChildren, {value: true});
-		}
-
 		roots.set(this, attachRoot(this, ctor.shadow));
 		components.set(this, (props: Props, ctx: Context) =>
 			this.render(props as ElementProps<O>, ctx),

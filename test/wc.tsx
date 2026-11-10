@@ -922,7 +922,7 @@ describe("wc", () => {
 		expect(el.innerHTML).toBe("<span>early</span>");
 	});
 
-	test("light DOM render replaces authored children", () => {
+	test("light DOM render goes in front of authored children", () => {
 		class El extends CrankHTMLElement {
 			static shadow = null;
 
@@ -937,7 +937,7 @@ describe("wc", () => {
 		el.innerHTML = "<em>authored</em>";
 		document.body.appendChild(el);
 
-		expect(el.innerHTML).toBe("<span>owned</span>");
+		expect(el.innerHTML).toBe("<span>owned</span><em>authored</em>");
 	});
 
 	// --- integration points ---

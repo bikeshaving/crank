@@ -26,7 +26,7 @@ describe("wc SSR", () => {
 		return container;
 	}
 
-	test("renders a light DOM element's contents", () => {
+	test("prints a light DOM element without its own content", () => {
 		const name = tag("x-money");
 		class El extends CrankHTMLElement {
 			static shadow = null;
@@ -40,7 +40,11 @@ describe("wc SSR", () => {
 		customElements.define(name, El);
 		const html = new HTMLRenderer();
 		html.define(name, El);
-		expect(html.render(createElement(name, {amount: "4999"}))).toBe(
+		const page = html.render(createElement(name, {amount: "4999"})) as string;
+		expect(page).toBe(`<${name} amount="4999"></${name}>`);
+
+		const container = serve(page);
+		expect(container.innerHTML).toBe(
 			`<${name} amount="4999"><span>$49.99</span></${name}>`,
 		);
 	});
@@ -86,16 +90,12 @@ describe("wc SSR", () => {
 		const inner = tag("x-inner");
 		const outer = tag("x-outer");
 		class Inner extends CrankHTMLElement {
-			static shadow = null;
-
 			render() {
 				return "inner";
 			}
 		}
 
 		class Outer extends CrankHTMLElement {
-			static shadow = null;
-
 			render() {
 				return createElement(inner, null);
 			}
@@ -107,15 +107,13 @@ describe("wc SSR", () => {
 		html.define(inner, Inner);
 		html.define(outer, Outer);
 		expect(html.render(createElement(outer, null))).toBe(
-			`<${outer}><${inner}>inner</${inner}></${outer}>`,
+			`<${outer}><template shadowrootmode="open"><${inner}><template shadowrootmode="open">inner</template></${inner}></template></${outer}>`,
 		);
 	});
 
 	test("assigns properties the element defines", () => {
 		const name = tag("x-list");
 		class El extends CrankHTMLElement {
-			static shadow = null;
-
 			_items: Array<string> = [];
 			get items() {
 				return this._items;
@@ -135,15 +133,13 @@ describe("wc SSR", () => {
 		const html = new HTMLRenderer();
 		html.define(name, El);
 		expect(html.render(createElement(name, {items: ["a", "b"]}))).toBe(
-			`<${name}><li>a</li><li>b</li></${name}>`,
+			`<${name}><template shadowrootmode="open"><li>a</li><li>b</li></template></${name}>`,
 		);
 	});
 
 	test("async render", async () => {
 		const name = tag("x-async");
 		class El extends CrankHTMLElement {
-			static shadow = null;
-
 			async render() {
 				await new Promise((resolve) => setTimeout(resolve));
 				return <span>loaded</span>;
@@ -154,7 +150,7 @@ describe("wc SSR", () => {
 		const html = new HTMLRenderer();
 		html.define(name, El);
 		expect(await html.render(createElement(name, null))).toBe(
-			`<${name}><span>loaded</span></${name}>`,
+			`<${name}><template shadowrootmode="open"><span>loaded</span></template></${name}>`,
 		);
 	});
 
@@ -181,27 +177,7 @@ describe("wc SSR", () => {
 		return warnings;
 	}
 
-	test("a light DOM element replaces server rendered content", () => {
-		const name = tag("x-light");
-		let renders = 0;
-		class El extends CrankHTMLElement {
-			static shadow = null;
-			render() {
-				renders++;
-				return <span>hello</span>;
-			}
-		}
-
-		const container = serve(`<${name}><span>hello</span></${name}>`);
-		const span = container.querySelector("span")!;
-		const warnings = captureWarnings(() => customElements.define(name, El));
-		expect(container.innerHTML).toBe(`<${name}><span>hello</span></${name}>`);
-		expect(container.querySelector("span")).not.toBe(span);
-		expect(renders).toBe(1);
-		expect(warnings).toEqual([]);
-	});
-
-	test("a light DOM element replaces hand-written fallback content", () => {
+	test("a light DOM element renders in front of hand-written fallback content", () => {
 		const name = tag("x-time");
 		class El extends CrankHTMLElement {
 			static shadow = null;
@@ -214,12 +190,12 @@ describe("wc SSR", () => {
 		const container = serve(`<${name} datetime="2026-10-22">Oct 22</${name}>`);
 		const warnings = captureWarnings(() => customElements.define(name, El));
 		expect(container.innerHTML).toBe(
-			`<${name} datetime="2026-10-22"><time>2026-10-22</time></${name}>`,
+			`<${name} datetime="2026-10-22"><time>2026-10-22</time>Oct 22</${name}>`,
 		);
 		expect(warnings).toEqual([]);
 	});
 
-	test("an async light DOM render keeps the placeholder until it commits", async () => {
+	test("an async light DOM render shows the fallback content until it commits", async () => {
 		const name = tag("x-slow");
 		class El extends CrankHTMLElement {
 			static shadow = null;
@@ -234,7 +210,7 @@ describe("wc SSR", () => {
 		const el = container.firstElementChild as El;
 		expect(el.innerHTML).toBe("loading");
 		await el.updateComplete;
-		expect(el.innerHTML).toBe("<b>ready</b>");
+		expect(el.innerHTML).toBe("<b>ready</b>loading");
 	});
 
 	test("an undefined custom element's children hydrate like any element's", () => {
@@ -397,7 +373,7 @@ describe("wc SSR", () => {
 		expect(container.querySelector("p")).toBe(p);
 	});
 
-	test("children passed to a light DOM element are reported", () => {
+	test("children passed to a light DOM element are its children", async () => {
 		const name = tag("x-kids");
 		class El extends CrankHTMLElement {
 			static shadow = null;
@@ -408,17 +384,22 @@ describe("wc SSR", () => {
 		}
 
 		customElements.define(name, El);
-		const errors: Array<unknown> = [];
-		const error = console.error;
-		console.error = (...args: Array<unknown>) => errors.push(args[0]);
-		try {
-			renderer.render(createElement(name, null, <b>child</b>), document.body);
-		} finally {
-			console.error = error;
-		}
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		expect(html.render(createElement(name, null, <b>child</b>))).toBe(
+			`<${name}><b>child</b></${name}>`,
+		);
 
-		expect(document.body.innerHTML).toBe(`<${name}><span>own</span></${name}>`);
-		expect(errors.length).toBe(1);
+		renderer.render(createElement(name, null, <b>child</b>), document.body);
+		expect(document.body.innerHTML).toBe(
+			`<${name}><span>own</span><b>child</b></${name}>`,
+		);
+		const el = document.body.firstElementChild as El;
+		el.requestUpdate();
+		await el.updateComplete;
+		expect(document.body.innerHTML).toBe(
+			`<${name}><span>own</span><b>child</b></${name}>`,
+		);
 	});
 });
 
@@ -493,7 +474,7 @@ describe("defer-hydration", () => {
 		expect(el.shadowRoot!.querySelector("li")).toBe(li);
 	});
 
-	test("a marked light DOM element shows the server's content until then", async () => {
+	test("a marked light DOM element stays empty until then", async () => {
 		const name = tag("x-wait-light");
 		class El extends List {
 			static shadow = null;
@@ -502,13 +483,14 @@ describe("defer-hydration", () => {
 			return <main>{createElement(name, {items})}</main>;
 		}
 
-		const container = serve(
-			`<main><${name} defer-hydration=""><ul><li>a</li></ul></${name}></main>`,
-		);
 		customElements.define(name, El);
+		const html = new HTMLRenderer();
+		html.define(name, El);
+		const page = html.render(<App items={["a"]} />) as string;
+		expect(page).toBe(`<main><${name} defer-hydration></${name}></main>`);
+		const container = serve(page);
 		const el = container.querySelector(name) as El;
 		expect(El.renders).toBe(0);
-		expect(el.innerHTML).toBe("<ul><li>a</li></ul>");
 
 		renderer.hydrate(<App items={["a"]} />, container);
 		await el.updateComplete;
@@ -552,14 +534,30 @@ describe("defer-hydration", () => {
 		);
 		customElements.define(name, El);
 		const el = container.firstElementChild as El;
-		el.items = ["a"];
 		await el.updateComplete;
 		expect(El.renders).toBe(0);
 
 		el.removeAttribute("defer-hydration");
 		await el.updateComplete;
 		expect(El.renders).toBe(1);
+		expect(el.shadowRoot!.innerHTML).toBe("<ul></ul>");
+	});
+
+	test("assigning a property-only prop renders the element", async () => {
+		const name = tag("x-assign");
+		class El extends List {}
+		const container = serve(
+			`<${name} defer-hydration><template shadowrootmode="open"><ul><li>a</li></ul></template></${name}>`,
+		);
+		customElements.define(name, El);
+		const el = container.firstElementChild as El;
+		const li = el.shadowRoot!.querySelector("li");
+		el.items = ["a"];
+		expect(el.hasAttribute("defer-hydration")).toBe(false);
+		await el.updateComplete;
+		expect(El.renders).toBe(1);
 		expect(el.shadowRoot!.innerHTML).toBe("<ul><li>a</li></ul>");
+		expect(el.shadowRoot!.querySelector("li")).toBe(li);
 	});
 
 	test("an unmarked element renders on upgrade as before", () => {
@@ -600,7 +598,6 @@ describe("wc state", () => {
 	test("declared props reflect on the server", () => {
 		const name = tag("x-declared");
 		class El extends CrankHTMLElement<typeof El> {
-			static shadow = null;
 			static props = {
 				value: Number,
 				open: Boolean,
@@ -629,7 +626,7 @@ describe("wc state", () => {
 				}),
 			),
 		).toBe(
-			`<${name} value="5" open size="Small" defer-hydration><span>5:true:small:ab</span></${name}>`,
+			`<${name} value="5" open size="Small" defer-hydration><template shadowrootmode="open"><span>5:true:small:ab</span></template></${name}>`,
 		);
 	});
 
@@ -676,7 +673,6 @@ describe("wc SSR parity", () => {
 	test("the server tag prints its props, as for any element", () => {
 		const name = tag("x-attrs");
 		class El extends CrankHTMLElement {
-			static shadow = null;
 			static props = {label: String};
 			render({label}: {label: string}) {
 				return label;
@@ -694,13 +690,14 @@ describe("wc SSR parity", () => {
 					open: true,
 				}),
 			),
-		).toBe(`<${name} label="hi" class="a" open>hi</${name}>`);
+		).toBe(
+			`<${name} label="hi" class="a" open><template shadowrootmode="open">hi</template></${name}>`,
+		);
 	});
 
 	test("a getter-only property becomes an attribute", () => {
 		const name = tag("x-getter");
 		class El extends CrankHTMLElement {
-			static shadow = null;
 			get value() {
 				return "fixed";
 			}
@@ -714,14 +711,13 @@ describe("wc SSR parity", () => {
 		const html = new HTMLRenderer();
 		html.define(name, El);
 		expect(html.render(createElement(name, {value: "x"}))).toBe(
-			`<${name} value="x">fixed</${name}>`,
+			`<${name} value="x"><template shadowrootmode="open">fixed</template></${name}>`,
 		);
 	});
 
 	test("meta props stay on the host", () => {
 		const name = tag("x-meta");
 		class El extends CrankHTMLElement {
-			static shadow = null;
 			render() {
 				return "ok";
 			}
@@ -736,7 +732,9 @@ describe("wc SSR parity", () => {
 		try {
 			expect(
 				html.render(createElement(name, {key: "k", copy: "!a", hydrate: "!a"})),
-			).toBe(`<${name}>ok</${name}>`);
+			).toBe(
+				`<${name}><template shadowrootmode="open">ok</template></${name}>`,
+			);
 		} finally {
 			console.error = error;
 		}
@@ -797,7 +795,6 @@ describe("wc SSR isolation", () => {
 	test("provisions do not cross an element, as in a browser", () => {
 		const name = "x-consumer-ssr-isolation";
 		class El extends CrankHTMLElement {
-			static shadow = null;
 			render(_props: unknown, ctx: Context) {
 				return String(ctx.consume("theme"));
 			}
@@ -819,7 +816,9 @@ describe("wc SSR isolation", () => {
 					<main>{createElement(name, null)}</main>
 				</Provider>,
 			),
-		).toBe(`<main><${name}>undefined</${name}></main>`);
+		).toBe(
+			`<main><${name}><template shadowrootmode="open">undefined</template></${name}></main>`,
+		);
 	});
 });
 
@@ -830,7 +829,6 @@ describe("wc SSR rendering again", () => {
 	test("an element kept across renders expands again", () => {
 		const name = tag("x-kept");
 		class El extends CrankHTMLElement {
-			static shadow = null;
 			render() {
 				return "kept";
 			}
@@ -841,7 +839,7 @@ describe("wc SSR rendering again", () => {
 		html.define(name, El);
 		const root = {};
 		const el = createElement(name, null);
-		const expected = `<div><${name}>kept</${name}></div>`;
+		const expected = `<div><${name}><template shadowrootmode="open">kept</template></${name}></div>`;
 		expect(html.render(<div>{el}</div>, root)).toBe(expected);
 		expect(html.render(<div>{el}</div>, root)).toBe(expected);
 		expect(

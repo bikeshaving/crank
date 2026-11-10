@@ -63,7 +63,7 @@ static shadow = {mode: "open", delegatesFocus: true};
 
 In TypeScript, annotate the field: `static shadow: ShadowRootInit = {mode: "closed"};`.
 
-Set `shadow` to `null` to render into the element itself (light DOM). Page CSS then reaches the content and ID references like `<label for>` resolve, but there are no slots: a light-DOM element generates all of its content from state, so it takes no children. Content written inside it, such as fallback text for when JavaScript is off, is shown until the element upgrades and then replaced. Children passed to it from a Crank tree are reported as an error. Use light DOM for leaf elements, like a formatted price or a relative time:
+Set `shadow` to `null` to render into the element itself (light DOM). Page CSS then reaches the content and ID references like `<label for>` resolve, but there are no slots: a light-DOM element generates its content from state. It renders that content in front of its children and leaves them alone, whether they were passed from a Crank tree or written in the HTML. Fallback content for when JavaScript is off therefore stays, so hide it with CSS once the element is defined: `x-time:defined > .fallback { display: none }`. Use light DOM for leaf elements, like a formatted price or a relative time:
 
 ```jsx
 class XMoneyElement extends CrankHTMLElement {
@@ -89,7 +89,7 @@ async *render(props, ctx) { /* ... */ }                     // async generator
 
 Use a generator when you need state across renders. The full Crank lifecycle applies through the context: `refresh`, `schedule`, `after`, and `cleanup`.
 
-A sync render commits on connect. An async render commits when it settles, and until then the element keeps what it already has: content rendered on the server, or for a light DOM element, the children written in the HTML. A shadow DOM element with no server content shows nothing until its render settles, since its light children are not projected before the shadow root has a slot.
+A sync render commits on connect. An async render commits when it settles, and until then the element shows what it already has: a declarative shadow root rendered on the server, or for a light DOM element, its children. A shadow DOM element with no server content shows nothing until its render settles, since its light children are not projected before the shadow root has a slot.
 
 ## Props
 
@@ -245,7 +245,7 @@ The base owns the custom-element reactions and maps them onto the component life
 | Reaction | What happens |
 |---|---|
 | construction (upgrade) | The shadow root is attached, or an open declarative shadow root from server-rendered HTML is reused. No render. |
-| first `connectedCallback` | Pre-set properties are upgraded and the first render happens synchronously. A declarative shadow root from the server is hydrated; light DOM content is replaced once the first render commits. While the page is still parsing, the first render waits for `DOMContentLoaded`. |
+| first `connectedCallback` | Pre-set properties are upgraded and the first render happens synchronously. A declarative shadow root from the server is hydrated; a light DOM element renders in front of its children. While the page is still parsing, the first render waits for `DOMContentLoaded`. |
 | `attributeChangedCallback` | Re-renders with new props, unless the value is unchanged. |
 | `disconnectedCallback` | A microtask distinguishes a move from a removal: a reconnected element stays mounted; a removed one unmounts and runs `cleanup`. |
 
@@ -304,18 +304,20 @@ const html = await renderer.render(
 );
 ```
 
-On the server the renderer constructs a real instance of the class, gives it its props (declared props go through their accessors, so reflected ones become attributes; of the rest, objects and arrays are assigned as properties and other values become attributes), and renders `render` in a root of its own, as in a browser: the async forms and nested elements work, and provisions and errors do not cross the element boundary. A light-DOM element renders its content as children; a shadow-DOM element renders a declarative shadow root, followed by its light children for its slots to project:
+On the server the renderer constructs a real instance of the class, gives it its props (declared props go through their accessors, so reflected ones become attributes; of the rest, objects and arrays are assigned as properties and other values become attributes), and renders `render` in a root of its own, as in a browser: the async forms and nested elements work, and provisions and errors do not cross the element boundary. A shadow-DOM element renders a declarative shadow root, followed by its light children for its slots to project. A light-DOM element prints only its tag and the children passed to it, and renders its own content when it upgrades in the browser:
 
 ```html
 <x-card>
   <template shadowrootmode="open"><b><slot></slot></b></template>
-  <x-money amount="4999">$49.99</x-money>
+  <x-money amount="4999"></x-money>
 </x-card>
 ```
 
+Content that must be in the HTML, for search engines or for readers without JavaScript, belongs in a shadow DOM element.
+
 The server tag prints the element's props as attributes, as for any element, so attributes an element sets on itself while rendering are not included. Reflected props are therefore in the HTML, and the upgraded element reads them back before its first render, so it renders with what the server had.
 
-A prop declared `null` is not in the HTML. An element given one on the server prints a `defer-hydration` attribute, and in the browser it does not render while that attribute is present. Whatever sets the element's props removes the attribute, which renders it: the DOM renderer does so for each element it hydrates, once its props are set, whether the page is hydrated by a Crank app or the element is rendered by a parent element. The element keeps the server's nodes meanwhile and adopts them on that first render, so there is no empty flash and no second render. This is the `defer-hydration` community protocol, so a parent written another way removes the attribute itself once the properties are in place:
+A prop declared `null` is not in the HTML. An element given one on the server prints a `defer-hydration` attribute, and in the browser it does not render while that attribute is present. Assigning one of those props removes the attribute and renders the element, so a Crank parent, or any parent which sets properties, needs nothing more. A shadow DOM element keeps the server's nodes meanwhile and adopts them on that first render, so there is no empty flash and no second render. This is the `defer-hydration` community protocol, under which a parent may also remove the attribute itself once the properties are in place:
 
 ```js
 el.items = items;
@@ -324,14 +326,9 @@ el.removeAttribute("defer-hydration");
 
 Define elements in a module script (`<script type="module">`), which runs after the page is parsed. An element defined by a classic script before the parser reaches it still hydrates, but while the page is parsing, its first render waits for `DOMContentLoaded`.
 
-In the browser, the rule is to hydrate only content which unambiguously came from a server:
+In the browser, a shadow DOM element hydrates its declarative shadow root (`<template shadowrootmode>`), which only server rendering produces. The server's nodes are kept, not replaced, so focus, input and other state from before the upgrade survive. A light DOM element has no server content to hydrate: it renders on upgrade, in front of its children.
 
-- **Shadow DOM elements hydrate.** A declarative shadow root (`<template shadowrootmode>`) is only ever produced by server rendering, so its presence says to adopt it. The server's nodes are kept, not replaced, so focus, input and other state from before the upgrade survive.
-- **Light DOM elements do not.** Their existing children could be server output, fallback content written by hand, or another framework's content, and current web component conventions offer no way to tell. So the element treats them as a placeholder: it shows them until its first render commits, then replaces them.
-
-If a clear signal for light DOM hydration emerges, adopting it will not change pages which lack it.
-
-A Crank app which hydrates the page adopts each custom element. It leaves a light DOM element's contents to the element and hydrates only the light children it passes to a shadow DOM element. It can tell them apart only once an element is defined, so define your elements before hydrating the page; an undefined element's contents are hydrated as the app's own.
+A Crank app which hydrates the page treats a custom element as any element and hydrates the children it passes. That holds for any custom element with light children, defined by Crank or not. A Crank element's own content is not among those children, and it renders it again when the page's hydration has placed the element.
 
 `CrankHTMLElement` loads where there is no DOM. It extends a small stand-in for `HTMLElement` which backs attributes, `attachShadow`, `attachInternals` (whose form methods do nothing), and events, but not a node tree, so construction and `render` must not reach for the node tree or layout: `closest`, `querySelector`, `ownerDocument`, `style`, `focus` and the like throw on the server. `localName`, `id`, `className`, `hidden`, `dataset` and other attribute-backed properties work. Guard browser-only registration:
 

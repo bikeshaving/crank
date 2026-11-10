@@ -17,18 +17,6 @@ const MATHML_NAMESPACE = "http://www.w3.org/1998/Math/MathML";
 const ELEMENT_NODE = 1;
 const TEXT_NODE = 3;
 const DOCUMENT_NODE = 9;
-const DOCUMENT_FRAGMENT_NODE = 11;
-
-// Set by @b9g/crank/wc on light DOM custom elements, whose children
-// are rendered by the element rather than by the tree which contains it.
-const _OwnsChildren = Symbol.for("crank.OwnsChildren");
-
-// Whether a defined light DOM custom element renders its own children. An
-// element which is not defined yet cannot be told apart from one whose
-// children belong to the tree around it, so it is hydrated as usual.
-function ownsChildren(element: Element): boolean {
-	return !!(element as any)[_OwnsChildren];
-}
 
 function getRootDocument(root: Node | undefined): Document {
 	if (root && root.ownerDocument) {
@@ -643,12 +631,6 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 			return;
 		}
 
-		if (tag !== Portal && ownsChildren(node as Element)) {
-			// The element renders its own contents, so the tree adopts the element
-			// but leaves its contents alone.
-			return [];
-		}
-
 		return Array.from(node.childNodes);
 	},
 
@@ -718,16 +700,6 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 				isHydrating,
 			);
 		}
-
-		// A server-rendered custom element waits for its properties under the
-		// defer-hydration protocol. They are set, so it may render.
-		if (
-			isHydrating &&
-			!("defer-hydration" in props) &&
-			element.hasAttribute("defer-hydration")
-		) {
-			element.removeAttribute("defer-hydration");
-		}
 	},
 
 	arrange({
@@ -746,16 +718,6 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 			throw new TypeError(
 				`<Portal> root is not a node. Received: ${String(node)}`,
 			);
-		}
-
-		if (tag !== Portal && (node as any)[_OwnsChildren]) {
-			if (children.length) {
-				console.error(
-					`<${(node as Element).localName}> renders its own children, so children passed to it are ignored.`,
-				);
-			}
-
-			return;
 		}
 
 		if (!("innerHTML" in props) && !("dangerouslySetInnerHTML" in props)) {
@@ -904,14 +866,14 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 	},
 };
 
-export class DOMRenderer extends Renderer<Node, string, Element | ShadowRoot> {
+export class DOMRenderer extends Renderer<Node, string, Element> {
 	constructor() {
 		super(adapter);
 	}
 
 	render(
 		children: Children,
-		root: Element | ShadowRoot,
+		root: Element,
 		ctx?: Context,
 	): Promise<ElementValue<Node>> | ElementValue<Node> {
 		validateRoot(root);
@@ -920,7 +882,7 @@ export class DOMRenderer extends Renderer<Node, string, Element | ShadowRoot> {
 
 	hydrate(
 		children: Children,
-		root: Element | ShadowRoot,
+		root: Element,
 		ctx?: Context,
 	): Promise<ElementValue<Node>> | ElementValue<Node> {
 		validateRoot(root);
@@ -928,21 +890,15 @@ export class DOMRenderer extends Renderer<Node, string, Element | ShadowRoot> {
 	}
 }
 
-function validateRoot(root: unknown): asserts root is Element | ShadowRoot {
+function validateRoot(root: unknown): asserts root is Element {
 	if (
 		root == null ||
 		(typeof root === "object" && typeof (root as any).nodeType !== "number")
 	) {
 		throw new TypeError(`Render root is not a node. Received: ${String(root)}`);
-	} else if (
-		(root as Node).nodeType !== ELEMENT_NODE &&
-		!(
-			(root as Node).nodeType === DOCUMENT_FRAGMENT_NODE &&
-			(root as ShadowRoot).host != null
-		)
-	) {
+	} else if ((root as Node).nodeType !== ELEMENT_NODE) {
 		throw new TypeError(
-			`Render root must be an element or shadow root. Received: ${String(root)}`,
+			`Render root must be an element node. Received: ${String(root)}`,
 		);
 	}
 }

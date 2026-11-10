@@ -47,16 +47,13 @@
 
 - **Server rendering for web components**
   `HTMLRenderer.prototype.define(tagName, ctor)` registers a `CrankHTMLElement`
-  class with the HTML renderer, which then renders the element's contents: as
-  children for light DOM, or as a declarative shadow root for shadow DOM. In
-  the browser a shadow DOM element
-  hydrates its declarative shadow root, and a light DOM element replaces its
-  server rendered content. An element given a prop declared `null`, which has
+  class with the HTML renderer, which then renders a shadow DOM element's
+  contents as a declarative shadow root, which the element hydrates in the
+  browser. A light DOM element prints only its tag and the children passed to
+  it, and renders its own content in front of them on upgrade. An element given a prop declared `null`, which has
   no attribute form, is printed with the `defer-hydration` attribute and
-  waits to render until its props are set: the DOM renderer removes the
-  attribute once it has set them. The module loads where there is no DOM.
-
-- **The DOM renderer accepts a `ShadowRoot` as a render root.**
+  waits to render until one of those props is assigned or the attribute is
+  removed. The module loads where there is no DOM.
 
 ### Performance
 - **The `jsx` template tag caches static subtrees** (#383)

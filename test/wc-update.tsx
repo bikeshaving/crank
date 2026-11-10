@@ -225,7 +225,7 @@ describe("recovering from render errors", () => {
 		expect(el.shadowRoot!.innerHTML).toBe("<span>ok</span>");
 	});
 
-	test("light DOM fallback content goes once a later render commits", async () => {
+	test("light DOM fallback content stays once a later render commits", async () => {
 		const name = "x-recover-fallback";
 		let fail = true;
 		class El extends CrankHTMLElement {
@@ -249,6 +249,6 @@ describe("recovering from render errors", () => {
 		fail = false;
 		el.requestUpdate();
 		await el.updateComplete;
-		expect(el.innerHTML).toBe("<span>ok</span>");
+		expect(el.innerHTML).toBe("<span>ok</span><i>fallback</i>");
 	});
 });
