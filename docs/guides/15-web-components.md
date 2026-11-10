@@ -121,7 +121,7 @@ Each declared prop becomes an accessor on the element and a prop `render` receiv
 | `["a", "b"]` | The matching keyword, case-insensitively, or the first when missing or unknown. | The matching keyword's declared spelling. |
 | `null` | The value set on the element. | Stored on the element and re-renders it. Never an attribute. |
 
-Setting a reflected prop to `null` or `undefined` removes the attribute. Missing numbers and strings read as `0` and `""`, as built-in elements' do, so `speed || 6` gives a default. Nothing is written for defaults: an element with no `speed` attribute has none.
+A missing number reads as `0` and a missing string as `""`, as on built-in elements, so a default belongs in `render`: `speed || 6`. The element never writes a default to the attribute. Setting a reflected prop to `null` or `undefined` removes the attribute.
 
 Props declared `null` hold arrays, objects and anything else without an attribute form. Setting one calls `requestUpdate()`. On the server they reach `render` but not the markup, and there is no JSON parsing of attributes.
 
