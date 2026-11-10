@@ -48,8 +48,8 @@
 - **Server rendering for web components**
   `HTMLRenderer.prototype.define(tagName, ctor)` registers a `CrankHTMLElement`
   class with the HTML renderer, which then renders the element's contents: as
-  children for light DOM, or as a declarative shadow root for shadow DOM, and
-  `get(tagName)` looks a definition up. In the browser a shadow DOM element
+  children for light DOM, or as a declarative shadow root for shadow DOM. In
+  the browser a shadow DOM element
   hydrates its declarative shadow root, and a light DOM element replaces its
   server rendered content. An element given a prop declared `null`, which has
   no attribute form, is printed with the `defer-hydration` attribute and

@@ -759,7 +759,6 @@ describe("wc SSR parity", () => {
 		html.define(a, El);
 		// Defining the same tag with the same class again is a no-op.
 		html.define(a, El);
-		expect(html.get(a)).toBe(El);
 		expect(() => html.define(a, Other)).toThrow("already been defined");
 		expect(() => html.define(b, El)).toThrow("already been defined");
 	});

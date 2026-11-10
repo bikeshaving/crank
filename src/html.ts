@@ -553,13 +553,6 @@ export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 			prepare: (ctor as any)[_ServerRender](tagName),
 		});
 	}
-
-	/** Returns the class defined for a tag, if any. */
-	get(tagName: string): CustomElementConstructor | undefined {
-		return states.get(this)!.registry.get(tagName)?.ctor as
-			| CustomElementConstructor
-			| undefined;
-	}
 }
 
 export const renderer = new HTMLRenderer();
