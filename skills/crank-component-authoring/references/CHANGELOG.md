@@ -50,10 +50,11 @@
   class with the HTML renderer, which then renders a shadow DOM element's
   contents as a declarative shadow root, which the element hydrates in the
   browser. A light DOM element prints only its tag and the children passed to
-  it, and renders its own content in front of them on upgrade. An element given a prop declared `null`, which has
-  no attribute form, is printed with the `defer-hydration` attribute and
-  waits to render until one of those props is assigned or the attribute is
-  removed. The module loads where there is no DOM.
+  it, and renders its own content in front of them on upgrade. An element
+  given a prop declared `null`, which has no attribute form, is printed with
+  the `defer-hydration` attribute and waits to render until one of those
+  props is assigned or the attribute is removed. The module loads where there
+  is no DOM.
 
 ### Performance
 - **The `jsx` template tag caches static subtrees** (#383)

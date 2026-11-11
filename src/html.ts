@@ -506,10 +506,11 @@ export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 
 	/**
 	 * Registers a custom element class with this renderer, the server's
-	 * equivalent of `customElements.define`. Each registered tag renders its
-	 * contents (a declarative shadow root for shadow DOM elements) in a root of
-	 * its own, as in a browser. In the browser, shadow DOM elements hydrate the
-	 * declarative shadow root and light DOM elements replace their content.
+	 * equivalent of `customElements.define`. A shadow DOM element renders its
+	 * contents as a declarative shadow root, in a root of its own as in a
+	 * browser, and hydrates it in the browser. A light DOM element prints only
+	 * its tag and the children passed to it, and renders its own content in
+	 * front of them on upgrade.
 	 *
 	 * Defining the same tag with the same class again does nothing.
 	 */
