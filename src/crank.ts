@@ -3065,6 +3065,10 @@ function runComponent<TNode, TResult>(
 	// rejected diff would otherwise leave it set for the next run.
 	setFlag(ctx.ret, IsSupersededByRefresh, false);
 	if (initial) {
+		// A function component starts over on each run, so an error from a
+		// previous run no longer applies. Without this, a rejected async run
+		// left the retainer errored and every later run rendered nothing.
+		setFlag(ctx.ret, IsErrored, false);
 		setFlag(ctx.ret, IsExecuting);
 		clearEventListeners(ctx.ctx);
 		let returned: ReturnType<Component>;

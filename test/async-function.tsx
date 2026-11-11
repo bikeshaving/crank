@@ -228,4 +228,28 @@ describe("async functions", () => {
 		expect(document.body.innerHTML).toBe("<div>Hello 8</div>");
 		expect(Child.callCount).toBe(4);
 	});
+
+	test("renders again after a rejected run", async () => {
+		let fail = true;
+		async function Component(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 1));
+			if (fail) {
+				throw new Error("boom");
+			}
+
+			return <span>ok</span>;
+		}
+
+		let error: unknown;
+		try {
+			await renderer.render(<Component />, document.body);
+		} catch (err) {
+			error = err;
+		}
+
+		expect((error as Error).message).toBe("boom");
+		fail = false;
+		await renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toBe("<span>ok</span>");
+	});
 });

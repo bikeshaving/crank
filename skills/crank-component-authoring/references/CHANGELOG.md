@@ -25,6 +25,37 @@
   tag and merges them into the props. The tag defaults to `div`, so
   `h(".card")` is a div with the class `card`.
 
+- **`@b9g/crank/wc` — write Web Components with Crank**
+  A `CrankHTMLElement` base class: declare configuration as static fields
+  (`props`, `events`, `shadow`, `formAssociated`) and write a `render`
+  method, which is a normal Crank component in any of the four forms.
+  `static props = {label: String, count: Number, open: Boolean, size:
+  ["medium", "small"], items: null}` declares the element's properties.
+  `String`, `Number`, `Boolean` and keyword props reflect to the attribute of
+  the same name, both ways, and `null` props are properties only. Each
+  becomes an accessor on the element and a prop `render` receives. Elements
+  render into an open shadow root by default; `shadow` takes the options
+  passed to `attachShadow`, or `null` for light DOM.
+  `requestUpdate()` queues a microtask-batched re-render, and
+  `updateComplete` resolves once the element has finished rendering. Errors
+  thrown from `render` dispatch a cancelable `error` event on the element.
+  `static events = {bounce: Event, pick: CustomEvent<number>}` declares the
+  events the element emits and generates an `on<type>` handler property for
+  each. `class X extends CrankHTMLElement<typeof X>` types those handlers by
+  their event class, and `ElementProps<typeof X>` types the props `render`
+  receives from `static props`.
+
+- **Server rendering for web components**
+  `HTMLRenderer.prototype.define(tagName, ctor)` registers a `CrankHTMLElement`
+  class with the HTML renderer, which then renders a shadow DOM element's
+  contents as a declarative shadow root, which the element hydrates in the
+  browser. A light DOM element prints only its tag and the children passed to
+  it, and renders its own content in front of them on upgrade. An element
+  given a prop declared `null`, which has no attribute form, is printed with
+  the `defer-hydration` attribute and waits to render until one of those
+  props is assigned or the attribute is removed. The module loads where there
+  is no DOM.
+
 ### Performance
 - **The `jsx` template tag caches static subtrees** (#383)
   Parts of a template with no expressions are built once and the same element
