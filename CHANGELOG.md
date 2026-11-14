@@ -43,6 +43,12 @@
   defuses the parser's `<!--` state. Style and script inside
   inline SVG keep escaping, where the parser does decode entities.
 
+- **Style objects keep unitless and custom properties intact** (#397)
+  Numeric values for `scale`, `lineClamp`, `fillOpacity`, `floodOpacity`,
+  `stopOpacity` and the `stroke*` properties no longer get `px` appended, and
+  a vendor-prefixed property is unitless when the property it prefixes is.
+  Custom properties (`--myVar`) keep their exact names and numeric values.
+
 - **The DOM renderer no longer relies on the `Node`/`Element` globals** (#381)
   `nodeType` constants are inlined and the Portal root is duck-typed, so the
   renderer works with custom DOM implementations (e.g. termdom) which don’t
