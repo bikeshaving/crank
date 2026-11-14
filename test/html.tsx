@@ -135,6 +135,30 @@ test("styles numeric values with px conversion", () => {
 	);
 });
 
+// https://github.com/bikeshaving/crank/issues/397
+test("styles unitless properties keep numeric values", () => {
+	Assert.is(
+		renderer.render(
+			<div
+				style={{
+					scale: 2,
+					WebkitLineClamp: 3,
+					fillOpacity: 0.5,
+					strokeWidth: 4,
+				}}
+			/>,
+		),
+		'<div style="scale:2;-webkit-line-clamp:3;fill-opacity:0.5;stroke-width:4;"></div>',
+	);
+});
+
+test("styles custom properties keep their names and values", () => {
+	Assert.is(
+		renderer.render(<div style={{"--myVar": "red", "--cols": 3}} />),
+		'<div style="--myVar:red;--cols:3;"></div>',
+	);
+});
+
 test("class and className", () => {
 	Assert.is(
 		renderer.render(

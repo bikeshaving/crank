@@ -607,6 +607,38 @@ test("style object numeric values with px conversion", () => {
 	Assert.is(div.style.fontSize, "16px");
 });
 
+// https://github.com/bikeshaving/crank/issues/397
+test("style object unitless properties keep numeric values", () => {
+	renderer.render(
+		<div
+			style={{scale: 2, WebkitLineClamp: 3, fillOpacity: 0.5, strokeWidth: 4}}
+		/>,
+		document.body,
+	);
+
+	const div = document.body.firstChild as HTMLElement;
+	Assert.is(div.style.getPropertyValue("scale"), "2");
+	Assert.is(div.style.getPropertyValue("-webkit-line-clamp"), "3");
+	Assert.is(div.style.getPropertyValue("fill-opacity"), "0.5");
+	Assert.is(div.style.getPropertyValue("stroke-width"), "4");
+});
+
+test("style object custom properties keep their names and values", () => {
+	renderer.render(
+		<div style={{"--myVar": "red", "--cols": 3}} />,
+		document.body,
+	);
+
+	const div = document.body.firstChild as HTMLElement;
+	Assert.is(div.style.getPropertyValue("--myVar"), "red");
+	Assert.is(div.style.getPropertyValue("--my-var"), "");
+	Assert.is(div.style.getPropertyValue("--cols"), "3");
+
+	renderer.render(<div style={{"--cols": 3}} />, document.body);
+	Assert.is(div.style.getPropertyValue("--myVar"), "");
+	Assert.is(div.style.getPropertyValue("--cols"), "3");
+});
+
 test("uncontrolled props", () => {
 	const input = renderer.render(<input value="hello" />, document.body) as any;
 	Assert.ok(input instanceof HTMLInputElement);
