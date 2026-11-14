@@ -139,6 +139,30 @@ describe("html", () => {
 		);
 	});
 
+	// https://github.com/bikeshaving/crank/issues/397
+	test("styles unitless properties keep numeric values", () => {
+		expect(
+			renderer.render(
+				<div
+					style={{
+						scale: 2,
+						WebkitLineClamp: 3,
+						fillOpacity: 0.5,
+						strokeWidth: 4,
+					}}
+				/>,
+			),
+		).toBe(
+			'<div style="scale:2;-webkit-line-clamp:3;fill-opacity:0.5;stroke-width:4;"></div>',
+		);
+	});
+
+	test("styles custom properties keep their names and values", () => {
+		expect(
+			renderer.render(<div style={{"--myVar": "red", "--cols": 3}} />),
+		).toBe('<div style="--myVar:red;--cols:3;"></div>');
+	});
+
 	test("class and className", () => {
 		expect(
 			renderer.render(

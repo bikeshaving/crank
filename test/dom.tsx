@@ -619,6 +619,43 @@ describe("dom", () => {
 		expect(div.style.fontSize).toBe("16px");
 	});
 
+	// https://github.com/bikeshaving/crank/issues/397
+	test("style object unitless properties keep numeric values", () => {
+		renderer.render(
+			<div
+				style={{
+					scale: 2,
+					WebkitLineClamp: 3,
+					fillOpacity: 0.5,
+					strokeWidth: 4,
+				}}
+			/>,
+			document.body,
+		);
+
+		const div = document.body.firstChild as HTMLElement;
+		expect(div.style.getPropertyValue("scale")).toBe("2");
+		expect(div.style.getPropertyValue("-webkit-line-clamp")).toBe("3");
+		expect(div.style.getPropertyValue("fill-opacity")).toBe("0.5");
+		expect(div.style.getPropertyValue("stroke-width")).toBe("4");
+	});
+
+	test("style object custom properties keep their names and values", () => {
+		renderer.render(
+			<div style={{"--myVar": "red", "--cols": 3}} />,
+			document.body,
+		);
+
+		const div = document.body.firstChild as HTMLElement;
+		expect(div.style.getPropertyValue("--myVar")).toBe("red");
+		expect(div.style.getPropertyValue("--my-var")).toBe("");
+		expect(div.style.getPropertyValue("--cols")).toBe("3");
+
+		renderer.render(<div style={{"--cols": 3}} />, document.body);
+		expect(div.style.getPropertyValue("--myVar")).toBe("");
+		expect(div.style.getPropertyValue("--cols")).toBe("3");
+	});
+
 	test("uncontrolled props", () => {
 		const input = renderer.render(
 			<input value="hello" />,
