@@ -1,4 +1,12 @@
 # Changelog
+## [0.7.13] - 2026-11-14
+### Bug Fixes
+- **Style objects keep unitless and custom properties intact** (#397)
+  Numeric values for `scale`, `lineClamp`, `fillOpacity`, `floodOpacity`,
+  `stopOpacity` and the `stroke*` properties no longer get `px` appended, and
+  a vendor-prefixed property is unitless when the property it prefixes is.
+  Custom properties (`--myVar`) keep their exact names and numeric values.
+
 ## [0.7.12] - 2026-09-04
 ### Performance
 - **Cache static subtrees in the `jsx` template tag** (#383, #384)
