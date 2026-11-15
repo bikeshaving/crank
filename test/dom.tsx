@@ -637,7 +637,8 @@ describe("dom", () => {
 		expect(div.style.getPropertyValue("scale")).toBe("2");
 		expect(div.style.getPropertyValue("-webkit-line-clamp")).toBe("3");
 		expect(div.style.getPropertyValue("fill-opacity")).toBe("0.5");
-		expect(div.style.getPropertyValue("stroke-width")).toBe("4");
+		// Firefox serializes a unitless stroke-width with px.
+		expect(parseFloat(div.style.getPropertyValue("stroke-width"))).toBe(4);
 	});
 
 	test("style object custom properties keep their names and values", () => {
