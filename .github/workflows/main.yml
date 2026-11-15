@@ -35,7 +35,8 @@ jobs:
 
   test:
     name: Test (${{ matrix.browser }})
-    runs-on: ubuntu-latest
+    # The pinned Playwright has no browser builds for newer Ubuntu releases.
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         browser: [chromium, firefox, webkit]
