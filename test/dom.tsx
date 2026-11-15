@@ -620,7 +620,8 @@ test("style object unitless properties keep numeric values", () => {
 	Assert.is(div.style.getPropertyValue("scale"), "2");
 	Assert.is(div.style.getPropertyValue("-webkit-line-clamp"), "3");
 	Assert.is(div.style.getPropertyValue("fill-opacity"), "0.5");
-	Assert.is(div.style.getPropertyValue("stroke-width"), "4");
+	// Firefox serializes a unitless stroke-width with px.
+	Assert.is(parseFloat(div.style.getPropertyValue("stroke-width")), 4);
 });
 
 test("style object custom properties keep their names and values", () => {
