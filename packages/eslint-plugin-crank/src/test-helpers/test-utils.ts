@@ -7,10 +7,7 @@ export function createError(
 	messageId: string,
 	data?: Record<string, string>,
 ): RuleTester.TestCaseError {
-	return {
-		messageId,
-		...(data && {data}),
-	} as RuleTester.TestCaseError;
+	return {messageId, ...(data && {data})} as RuleTester.TestCaseError;
 }
 
 /**
@@ -21,32 +18,27 @@ export function createInvalidTest(
 	output: string,
 	errors: RuleTester.TestCaseError[],
 ): RuleTester.InvalidTestCase {
-	return {
-		code,
-		output,
-		errors,
-	};
+	return {code, output, errors};
 }
 
 /**
  * Creates a mock AST statement node for testing
  */
-export function createMockStatement(type: string, text: string) {
+export function createMockStatement(
+	type: string,
+	text: string,
+): {type: string; text: string} {
 	return {type, text};
 }
 
 /**
  * Creates a mock callback node with a block statement body
  */
-export function createMockCallbackNode(
-	statements: Array<{type: string; text: string}>,
-) {
-	return {
-		body: {
-			type: "BlockStatement",
-			body: statements,
-		},
-	};
+export function createMockCallbackNode(statements: Array<{
+	type: string;
+	text: string;
+}>): {body: {type: string; body: Array<{type: string; text: string}>}} {
+	return {body: {type: "BlockStatement", body: statements}};
 }
 
 /**

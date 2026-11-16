@@ -1,7 +1,8 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 import * as Sinon from "sinon";
 
-import {createElement, Element} from "../src/crank.js";
+import type {Element} from "../src/crank.js";
+import {createElement} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("async functions", () => {
@@ -35,6 +36,7 @@ describe("async functions", () => {
 
 	test("updates enqueue", async () => {
 		const fn = Sinon.fake();
+
 		async function Component({message}: {message: string}): Promise<Element> {
 			fn();
 			await new Promise((resolve) => setTimeout(resolve, 25));
@@ -126,7 +128,8 @@ describe("async functions", () => {
 	});
 
 	test("update", async () => {
-		const resolves: Array<Function> = [];
+		const resolves: Array<(value?: any) => void> = [];
+
 		async function Component({message}: {message: string}): Promise<Element> {
 			await new Promise((resolve) => resolves.push(resolve));
 			return <span>{message}</span>;
@@ -157,13 +160,9 @@ describe("async functions", () => {
 	});
 
 	test("out of order", async () => {
-		async function Component({
-			message,
-			delay,
-		}: {
-			message: string;
-			delay: number;
-		}): Promise<Element> {
+		async function Component(
+			{message, delay}: {message: string; delay: number},
+		): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, delay));
 			return <span>{message}</span>;
 		}
@@ -188,14 +187,12 @@ describe("async functions", () => {
 	});
 
 	test("async children enqueue", async () => {
-		const Child = Sinon.fake(async function Child({
-			message,
-		}: {
-			message: string;
-		}): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 100));
-			return <div>{message}</div>;
-		});
+		const Child = Sinon.fake(
+			async function Child({message}: {message: string}): Promise<Element> {
+				await new Promise((resolve) => setTimeout(resolve, 100));
+				return <div>{message}</div>;
+			},
+		);
 
 		async function Parent({message}: {message: string}): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 50));

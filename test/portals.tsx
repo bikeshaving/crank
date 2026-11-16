@@ -99,7 +99,7 @@ describe("portal", () => {
 
 	test("portal with rendered page and hydrate", () => {
 		const onclick = Sinon.fake();
-		document.body.innerHTML = `<div id="portal"><button>Click</button></div>`;
+		document.body.innerHTML = "<div id=\"portal\"><button>Click</button></div>";
 		const portal = document.getElementById("portal")!;
 		const button = portal.firstChild as HTMLButtonElement;
 		renderer.render(
@@ -113,10 +113,10 @@ describe("portal", () => {
 		);
 
 		expect(document.body.innerHTML).toBe(
-			`<div>Hello world</div><div id="portal"><button>Click</button></div>`,
+			"<div>Hello world</div><div id=\"portal\"><button>Click</button></div>",
 		);
 		expect(portal.firstChild).toBe(button);
-		expect(portal.innerHTML).toBe(`<button>Click</button>`);
+		expect(portal.innerHTML).toBe("<button>Click</button>");
 		button.click();
 		expect(onclick.callCount).toBe(1);
 	});

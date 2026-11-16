@@ -1,6 +1,6 @@
 import {getNodeText} from "./ast-utils.js";
-import {SourceCode} from "eslint";
-import {ESLintNode} from "./types.js";
+import type {SourceCode} from "eslint";
+import type {ESLintNode} from "./types.js";
 
 /**
  * Indentation constants
@@ -175,7 +175,7 @@ export function extractCallbackBodyWithoutRefresh(
  */
 export function normalizeIndentation(
 	code: string,
-	targetIndentation: number = 0,
+	targetIndentation = 0,
 ): string {
 	if (!code || code === "/* your code */") {
 		return code;
@@ -267,8 +267,8 @@ export function generateCallbackText(
 	contextRef: string,
 	asyncKeyword: string,
 	bodyText: string,
-	baseIndentation: number = 0,
-	includeSemicolon: boolean = true,
+	baseIndentation = 0,
+	includeSemicolon = true,
 ): string {
 	// Apply the exact transformation pattern:
 	// [X]const callback = () => {          → [X]const callback = () => this.refresh(

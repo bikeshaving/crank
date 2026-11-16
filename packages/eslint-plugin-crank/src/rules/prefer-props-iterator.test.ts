@@ -58,11 +58,7 @@ describe("prefer-props-iterator", () => {
               }
             }
           `,
-					errors: [
-						{
-							messageId: "preferPropsIterator",
-						},
-					],
+					errors: [{messageId: "preferPropsIterator"}],
 				},
 				// while(true) with context parameter and accessed prop
 				{
@@ -82,11 +78,7 @@ describe("prefer-props-iterator", () => {
               }
             }
           `,
-					errors: [
-						{
-							messageId: "preferPropsIterator",
-						},
-					],
+					errors: [{messageId: "preferPropsIterator"}],
 				},
 				// while(true) with multiple accessed props
 				{
@@ -104,11 +96,7 @@ describe("prefer-props-iterator", () => {
               }
             }
           `,
-					errors: [
-						{
-							messageId: "preferPropsIterator",
-						},
-					],
+					errors: [{messageId: "preferPropsIterator"}],
 				},
 			],
 		});

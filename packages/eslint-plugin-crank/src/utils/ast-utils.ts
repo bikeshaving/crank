@@ -1,4 +1,4 @@
-import {SourceCode} from "eslint";
+import type {SourceCode} from "eslint";
 import type {ESLintNode} from "./types";
 
 /**
@@ -11,8 +11,7 @@ export function isFinalAction(node: ESLintNode): boolean {
 	// is the final action in its block
 	let statementNode = node;
 	if (
-		node.type === "CallExpression" &&
-		node.parent.type === "ExpressionStatement"
+		node.type === "CallExpression" && node.parent.type === "ExpressionStatement"
 	) {
 		statementNode = node.parent;
 	}
@@ -88,9 +87,7 @@ export function traverseAST(
 	// Recursively traverse all properties
 	for (const key in node) {
 		if (
-			key !== "parent" &&
-			typeof node[key] === "object" &&
-			node[key] !== null
+			key !== "parent" && typeof node[key] === "object" && node[key] !== null
 		) {
 			if (Array.isArray(node[key])) {
 				node[key].forEach((item: any) => traverseAST(item, visitor));
@@ -211,8 +208,7 @@ export function getAssignedVariableName(node: ESLintNode): string | null {
 
 	// Assignment expression: x = ...
 	if (
-		parent.type === "AssignmentExpression" &&
-		parent.left.type === "Identifier"
+		parent.type === "AssignmentExpression" && parent.left.type === "Identifier"
 	) {
 		return parent.left.name;
 	}
@@ -251,8 +247,7 @@ export function findIdentifierReferences(
 	const found = new Set<string>();
 	traverseAST(node, (current) => {
 		if (
-			current.type === "Identifier" &&
-			identifierNames.includes(current.name)
+			current.type === "Identifier" && identifierNames.includes(current.name)
 		) {
 			found.add(current.name);
 		}

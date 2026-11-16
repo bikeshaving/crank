@@ -1,7 +1,7 @@
 import {describe, test, beforeEach, afterEach, expect} from "@b9g/libuild/test";
 /// <ref lib="dom" />
 import {Copy, createElement, Fragment, Raw} from "../src/crank.js";
-import type {Context} from "../src/crank.js";
+import type {Context, Element} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 describe("dom", () => {
@@ -302,13 +302,7 @@ describe("dom", () => {
 	});
 
 	test("fragment with null and undefined", () => {
-		renderer.render(
-			<Fragment>
-				{null}
-				{undefined}
-			</Fragment>,
-			document.body,
-		);
+		renderer.render(<Fragment>{null}{undefined}</Fragment>, document.body);
 		expect(document.body.innerHTML).toBe("");
 		renderer.render(
 			<Fragment>
@@ -422,7 +416,7 @@ describe("dom", () => {
 	});
 
 	test("raw node", () => {
-		var template = document.createElement("template");
+		const template = document.createElement("template");
 		template.innerHTML = '<span id="raw">Hi</span>';
 		const span = template.content.firstChild!;
 		renderer.render(
@@ -658,10 +652,8 @@ describe("dom", () => {
 	});
 
 	test("uncontrolled props", () => {
-		const input = renderer.render(
-			<input value="hello" />,
-			document.body,
-		) as any;
+		const input =
+			renderer.render(<input value="hello" />, document.body) as any;
 		expect(input instanceof HTMLInputElement).toBeTruthy();
 		expect(input.value).toBe("hello");
 		input.value = "world";
@@ -743,11 +735,7 @@ describe("dom", () => {
 	test("object classnames basic", () => {
 		renderer.render(
 			<div
-				class={{
-					active: true,
-					disabled: false,
-					primary: true,
-				}}
+				class={{active: true, disabled: false, primary: true}}
 			>
 				Test
 			</div>,
@@ -763,11 +751,7 @@ describe("dom", () => {
 	test("object classnames update", () => {
 		renderer.render(
 			<div
-				class={{
-					active: true,
-					disabled: false,
-					primary: true,
-				}}
+				class={{active: true, disabled: false, primary: true}}
 			>
 				Test
 			</div>,
@@ -783,12 +767,7 @@ describe("dom", () => {
 		// Update classnames
 		renderer.render(
 			<div
-				class={{
-					active: false,
-					disabled: true,
-					primary: true,
-					warning: true,
-				}}
+				class={{active: false, disabled: true, primary: true, warning: true}}
 			>
 				Test
 			</div>,
@@ -813,10 +792,7 @@ describe("dom", () => {
 		// Switch to object classnames (should clear old string classes)
 		renderer.render(
 			<div
-				class={{
-					"object-class": true,
-					"new-class": true,
-				}}
+				class={{"object-class": true, "new-class": true}}
 			>
 				Test
 			</div>,
@@ -834,10 +810,7 @@ describe("dom", () => {
 		// Start with object classnames
 		renderer.render(
 			<div
-				class={{
-					"object-class": true,
-					"another-class": true,
-				}}
+				class={{"object-class": true, "another-class": true}}
 			>
 				Test
 			</div>,
@@ -936,10 +909,7 @@ describe("dom", () => {
 		// When two keys share a class, toggling one shouldn't remove the shared class
 		renderer.render(
 			<div
-				class={{
-					"a b": true,
-					"b c": true,
-				}}
+				class={{"a b": true, "b c": true}}
 			>
 				Test
 			</div>,
@@ -954,10 +924,7 @@ describe("dom", () => {
 		// Toggle first key off - "b" should remain because "b c" is still true
 		renderer.render(
 			<div
-				class={{
-					"a b": false,
-					"b c": true,
-				}}
+				class={{"a b": false, "b c": true}}
 			>
 				Test
 			</div>,
@@ -972,10 +939,7 @@ describe("dom", () => {
 		// Toggle both off
 		renderer.render(
 			<div
-				class={{
-					"a b": false,
-					"b c": false,
-				}}
+				class={{"a b": false, "b c": false}}
 			>
 				Test
 			</div>,
@@ -1007,19 +971,15 @@ describe("dom", () => {
 		try {
 			// Initial render
 			renderer.render(<iframe src="/test-path" />, document.body);
-			expect(srcSetCount).toBe(
-				1,
-			) /* src should be set once on initial render */;
+			expect(srcSetCount).toBe(1);
 
 			// Re-render with same src
 			renderer.render(<iframe src="/test-path" />, document.body);
-			expect(srcSetCount).toBe(
-				1,
-			) /* src should not be set again when unchanged */;
+			expect(srcSetCount).toBe(1);
 
 			// Re-render with different src
 			renderer.render(<iframe src="/different-path" />, document.body);
-			expect(srcSetCount).toBe(2) /* src should be set when changed */;
+			expect(srcSetCount).toBe(2);
 		} finally {
 			// Restore original property
 			Object.defineProperty(
@@ -1049,19 +1009,15 @@ describe("dom", () => {
 		try {
 			// Initial render
 			renderer.render(<a href="/test-link">Link</a>, document.body);
-			expect(hrefSetCount).toBe(
-				1,
-			) /* href should be set once on initial render */;
+			expect(hrefSetCount).toBe(1);
 
 			// Re-render with same href
 			renderer.render(<a href="/test-link">Link</a>, document.body);
-			expect(hrefSetCount).toBe(
-				1,
-			) /* href should not be set again when unchanged */;
+			expect(hrefSetCount).toBe(1);
 
 			// Re-render with different href
 			renderer.render(<a href="/different-link">Link</a>, document.body);
-			expect(hrefSetCount).toBe(2) /* href should be set when changed */;
+			expect(hrefSetCount).toBe(2);
 		} finally {
 			// Restore original property
 			Object.defineProperty(
@@ -1094,9 +1050,7 @@ describe("dom", () => {
 
 			// Re-render with same absolute URL
 			renderer.render(<iframe src="https://example.com/page" />, document.body);
-			expect(srcSetCount).toBe(
-				1,
-			) /* absolute src should not be set again when unchanged */;
+			expect(srcSetCount).toBe(1);
 		} finally {
 			Object.defineProperty(
 				HTMLIFrameElement.prototype,
@@ -1272,7 +1226,7 @@ describe("dom", () => {
 			<div class={{active: true, highlight: true, large: true}}>Test</div>,
 			document.body,
 		);
-		let div = document.querySelector("div")!;
+		const div = document.querySelector("div")!;
 		expect(div.classList.contains("active")).toBeTruthy();
 		expect(div.classList.contains("highlight")).toBeTruthy();
 		expect(div.classList.contains("large")).toBeTruthy();
@@ -1293,7 +1247,7 @@ describe("dom", () => {
 			<div class={{a: true, b: true, c: true}}>Test</div>,
 			document.body,
 		);
-		let div = document.querySelector("div")!;
+		const div = document.querySelector("div")!;
 		expect(div.classList.contains("a")).toBeTruthy();
 		expect(div.classList.contains("b")).toBeTruthy();
 		expect(div.classList.contains("c")).toBeTruthy();
@@ -1309,7 +1263,7 @@ describe("dom", () => {
 
 	test("class object to empty object clears classes", () => {
 		renderer.render(<div class={{x: true, y: true}}>Test</div>, document.body);
-		let div = document.querySelector("div")!;
+		const div = document.querySelector("div")!;
 		expect(div.classList.contains("x")).toBeTruthy();
 		expect(div.classList.contains("y")).toBeTruthy();
 
@@ -1326,7 +1280,7 @@ describe("dom", () => {
 			</div>,
 			document.body,
 		);
-		let div = document.querySelector("div")!;
+		const div = document.querySelector("div")!;
 		expect(div.id).toBe("old");
 		expect(div.style.color).toBe("red");
 		expect(div.classList.contains("active")).toBeTruthy();
@@ -1524,9 +1478,7 @@ describe("dom", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toBe("<div><span>second</span></div>");
-		expect(document.body.querySelector("span")).toBe(
-			span,
-		) /* should reuse the span element */;
+		expect(document.body.querySelector("span")).toBe(span);
 	});
 
 	test("one to one child, different tag", () => {
@@ -1621,9 +1573,7 @@ describe("dom", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toBe("<div><span>b</span></div>");
-		expect(document.body.querySelector("span")).not.toBe(
-			span1,
-		) /* should create a new span for different key */;
+		expect(document.body.querySelector("span")).not.toBe(span1);
 	});
 
 	test("one child with key to one child without key", () => {
@@ -1641,9 +1591,7 @@ describe("dom", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toBe("<div><span>b</span></div>");
-		expect(document.body.querySelector("span")).not.toBe(
-			span1,
-		) /* should create a new span when key removed */;
+		expect(document.body.querySelector("span")).not.toBe(span1);
 	});
 
 	test("one child without key to one child with key", () => {
@@ -1661,9 +1609,7 @@ describe("dom", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toBe("<div><span>b</span></div>");
-		expect(document.body.querySelector("span")).not.toBe(
-			span1,
-		) /* should create a new span when key added */;
+		expect(document.body.querySelector("span")).not.toBe(span1);
 	});
 
 	test("one keyed child to many children", () => {
@@ -1726,7 +1672,7 @@ describe("dom", () => {
 	});
 
 	test("component single child transition", () => {
-		function* Inner(this: Context, {message}: {message: string}): Generator {
+		function *Inner(this: Context, {message}: {message: string}): Generator {
 			let count = 0;
 			for ({message} of this) {
 				count++;
@@ -1767,9 +1713,7 @@ describe("dom", () => {
 	test("rapid cardinality cycling", () => {
 		for (let round = 0; round < 3; round++) {
 			renderer.render(<div />, document.body);
-			expect(document.body.innerHTML).toBe(
-				"<div></div>",
-			) /* `round ${round}: zero` */;
+			expect(document.body.innerHTML).toBe("<div></div>");
 
 			renderer.render(
 				<div>
@@ -1777,9 +1721,7 @@ describe("dom", () => {
 				</div>,
 				document.body,
 			);
-			expect(document.body.innerHTML).toBe(
-				"<div><span>one</span></div>",
-			) /* `round ${round}: one` */;
+			expect(document.body.innerHTML).toBe("<div><span>one</span></div>");
 
 			renderer.render(
 				<div>
@@ -1791,7 +1733,7 @@ describe("dom", () => {
 			);
 			expect(document.body.innerHTML).toBe(
 				"<div><span>a</span><span>b</span><span>c</span></div>",
-			) /* `round ${round}: many` */;
+			);
 		}
 	});
 
@@ -1859,7 +1801,7 @@ describe("dom", () => {
 	});
 
 	test("Copy element as single child", () => {
-		function* Counter(this: Context): Generator {
+		function *Counter(this: Context): Generator {
 			let count = 0;
 			for (const _ of this) {
 				count++;
@@ -1909,7 +1851,8 @@ describe("dom", () => {
 
 	test("same element reference skips re-render", () => {
 		let renderCount = 0;
-		function Tracker(): ReturnType<typeof createElement> {
+
+		function Tracker(): Element {
 			renderCount++;
 			return <span>rendered</span>;
 		}
@@ -1933,7 +1876,8 @@ describe("dom", () => {
 
 	test("nullish child unmounts component subtree", () => {
 		const cleanups: string[] = [];
-		function* Child(this: Context, {name}: {name: string}): Generator {
+
+		function *Child(this: Context, {name}: {name: string}): Generator {
 			try {
 				for ({name} of this) {
 					yield <span>{name}</span>;
@@ -1985,7 +1929,8 @@ describe("dom", () => {
 
 	test("nullish child unmounts nested component tree", () => {
 		const cleanups: string[] = [];
-		function* Leaf(this: Context, {id}: {id: string}): Generator {
+
+		function *Leaf(this: Context, {id}: {id: string}): Generator {
 			try {
 				for ({id} of this) {
 					yield <span>{id}</span>;
@@ -2069,7 +2014,7 @@ describe("dom", () => {
 	});
 
 	test("generator component preserves state through single-child path", () => {
-		function* Stateful(this: Context, {label}: {label: string}): Generator {
+		function *Stateful(this: Context, {label}: {label: string}): Generator {
 			let renders = 0;
 			for ({label} of this) {
 				renders++;

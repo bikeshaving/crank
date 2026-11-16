@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
 import {Root} from "../components/root.js";
@@ -14,31 +15,27 @@ interface ViewProps {
 	arams: Record<string, string>;
 }
 
-export default async function APIView({url}: ViewProps) {
+export default async function APIView({url}: ViewProps): Promise<Element> {
 	const docsDir = await self.directories.open("docs");
 	const apiDir = await docsDir.getDirectoryHandle("api");
 	const docs = await collectDocuments(apiDir, "api");
 
 	// Find the matching document
 	// Handle /api -> /api/index mapping
-	let lookupUrl = url.replace(/\/$/, "");
-	let post = docs.find((doc) => doc.url.replace(/\/$/, "") === lookupUrl);
+	const lookupURL = url.replace(/\/$/, "");
+	let post = docs.find((doc) => doc.url.replace(/\/$/, "") === lookupURL);
 
 	// If not found and URL ends without a specific file, try adding /index
-	if (!post && !lookupUrl.match(/\/[^/]+\.[^/]+$/)) {
-		const indexUrl = lookupUrl + "/index";
-		post = docs.find((doc) => doc.url.replace(/\/$/, "") === indexUrl);
+	if (!post && !lookupURL.match(/\/[^/]+\.[^/]+$/)) {
+		const indexURL = lookupURL + "/index";
+		post = docs.find((doc) => doc.url.replace(/\/$/, "") === indexURL);
 	}
 
 	if (!post) {
 		throw new Error(`API document not found: ${url}`);
 	}
 
-	const {
-		attributes: {title, description},
-		body,
-		filename,
-	} = post;
+	const {attributes: {title, description}, body, filename} = post;
 
 	return jsx`
 		<${Root}

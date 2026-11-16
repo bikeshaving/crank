@@ -17,19 +17,19 @@ describe("sync generator", () => {
 	});
 
 	test("basic", () => {
-		const Component = Sinon.fake(function* Component(
-			this: Context,
-			{message}: {message: string},
-		): Generator<Element> {
-			let i = 0;
-			for ({message} of this) {
-				if (++i > 2) {
-					return <span>Final</span>;
-				}
+		const Component = Sinon.fake(
+			function *Component(this: Context, {message}: {message:
+			string;}): Generator<Element> {
+				let i = 0;
+				for ({message} of this) {
+					if (++i > 2) {
+						return <span>Final</span>;
+					}
 
-				yield <span>{message}</span>;
-			}
-		});
+					yield <span>{message}</span>;
+				}
+			},
+		);
 
 		renderer.render(
 			<div>
@@ -57,7 +57,8 @@ describe("sync generator", () => {
 
 	test("refresh", () => {
 		let ctx!: Context;
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			ctx = this;
 			let i = 1;
 			while (true) {
@@ -86,7 +87,8 @@ describe("sync generator", () => {
 		}
 
 		let ctx!: Context;
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			ctx = this;
 			let mounted = false;
 			while (true) {
@@ -119,7 +121,8 @@ describe("sync generator", () => {
 		}
 
 		let ctx!: Context;
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			ctx = this;
 			let mounted = false;
 			while (true) {
@@ -148,7 +151,8 @@ describe("sync generator", () => {
 
 	test("refresh null to element", () => {
 		let ctx!: Context;
-		function* Component(this: Context): Generator<Child> {
+
+		function *Component(this: Context): Generator<Child> {
 			ctx = this;
 			yield null;
 			yield <span>Hello</span>;
@@ -173,7 +177,8 @@ describe("sync generator", () => {
 
 	test("refresh with different child", () => {
 		let ctx!: Context;
-		function* Component(this: Context): Generator<Child> {
+
+		function *Component(this: Context): Generator<Child> {
 			ctx = this;
 			yield <span>1</span>;
 			yield <div>2</div>;
@@ -198,7 +203,8 @@ describe("sync generator", () => {
 
 	test("refresh with different child and siblings", () => {
 		let ctx!: Context;
-		function* Component(this: Context): Generator<Child> {
+
+		function *Component(this: Context): Generator<Child> {
 			if (ctx === undefined) {
 				ctx = this;
 			}
@@ -233,7 +239,8 @@ describe("sync generator", () => {
 
 	test("refresh fragment", () => {
 		let ctx!: Context;
-		function* Component(this: Context): Generator<Child> {
+
+		function *Component(this: Context): Generator<Child> {
 			ctx = this;
 			yield (
 				<Fragment>
@@ -264,11 +271,7 @@ describe("sync generator", () => {
 				</Fragment>
 			);
 			yield (
-				<Fragment>
-					{true}
-					{false}
-					{undefined}
-				</Fragment>
+				<Fragment>{true}{false}{undefined}</Fragment>
 			);
 		}
 
@@ -293,7 +296,8 @@ describe("sync generator", () => {
 
 	test("refresh component yielding raw with static content", () => {
 		let ctx!: Context;
-		function* Component(this: Context): Generator<Child> {
+
+		function *Component(this: Context): Generator<Child> {
 			ctx = this;
 			while (true) {
 				yield (
@@ -317,17 +321,17 @@ describe("sync generator", () => {
 
 	test("async children", async () => {
 		const mock = Sinon.fake();
-		async function Component({
-			children,
-		}: {
-			children: Children;
-		}): Promise<Element> {
+
+		async function Component(
+			{children}: {children: Children},
+		): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			return <span>{children}</span>;
 		}
 
 		let ctx!: Context;
-		function* Gen(this: Context): Generator<Element> {
+
+		function *Gen(this: Context): Generator<Element> {
 			ctx = this;
 			let i = 0;
 			for (const _ of this) {
@@ -360,13 +364,15 @@ describe("sync generator", () => {
 
 	test("refreshing doesn’t cause siblings to update", () => {
 		const mock = Sinon.fake();
+
 		function Sibling(): Element {
 			mock();
 			return <div>Sibling</div>;
 		}
 
 		let ctx!: Context;
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			ctx = this;
 			let i = 0;
 			while (true) {
@@ -374,6 +380,7 @@ describe("sync generator", () => {
 				yield <div>Hello {i}</div>;
 			}
 		}
+
 		renderer.render(
 			<Fragment>
 				<Component />
@@ -414,13 +421,15 @@ describe("sync generator", () => {
 
 	test("refreshing child doesn’t cause siblings to update", () => {
 		const mock = Sinon.fake();
+
 		function Sibling(): Element {
 			mock();
 			return <div>Sibling</div>;
 		}
 
 		let ctx!: Context;
-		function* Child(this: Context): Generator<Element> {
+
+		function *Child(this: Context): Generator<Element> {
 			ctx = this;
 			let i = 0;
 			while (true) {
@@ -429,7 +438,7 @@ describe("sync generator", () => {
 			}
 		}
 
-		function* Parent(): Generator<Element> {
+		function *Parent(): Generator<Element> {
 			while (true) {
 				yield (
 					<Fragment>
@@ -454,7 +463,8 @@ describe("sync generator", () => {
 
 	test("yield resumes with a node", () => {
 		let html: string | undefined;
-		function* Component(): Generator<Element> {
+
+		function *Component(): Generator<Element> {
 			let i = 0;
 			while (true) {
 				const node: any = yield <div id={i}>{i}</div>;
@@ -474,7 +484,7 @@ describe("sync generator", () => {
 	});
 
 	test("generator returns", () => {
-		const Component = Sinon.fake(function* Component(): Generator<Child> {
+		const Component = Sinon.fake(function *Component(): Generator<Child> {
 			yield "Hello";
 			return "Goodbye";
 		});
@@ -527,7 +537,7 @@ describe("sync generator", () => {
 		}
 
 		// eslint-disable-next-line require-yield
-		const Component = Sinon.fake(function* Component(): Generator<Child> {
+		const Component = Sinon.fake(function *Component(): Generator<Child> {
 			return <Child />;
 		});
 
@@ -552,7 +562,8 @@ describe("sync generator", () => {
 		const beforeYieldFn = Sinon.fake();
 		const afterYieldFn = Sinon.fake();
 		const finallyFn = Sinon.fake();
-		function* Component() {
+
+		function *Component() {
 			try {
 				let i = 0;
 				while (true) {
@@ -588,7 +599,8 @@ describe("sync generator", () => {
 		const afterYieldFn = Sinon.fake();
 		const afterLoopFn = Sinon.fake();
 		const finallyFn = Sinon.fake();
-		function* Component(this: Context) {
+
+		function *Component(this: Context) {
 			try {
 				let i = 0;
 				for ({} of this) {
@@ -624,7 +636,8 @@ describe("sync generator", () => {
 
 	test("try/finally triggered by div", () => {
 		const mock = Sinon.fake();
-		function* Component(): Generator<Element> {
+
+		function *Component(): Generator<Element> {
 			try {
 				let i = 0;
 				while (true) {
@@ -647,7 +660,8 @@ describe("sync generator", () => {
 
 	test("try/finally triggered by rendering string", () => {
 		const mock = Sinon.fake();
-		function* Component(): Generator<Element> {
+
+		function *Component(): Generator<Element> {
 			try {
 				let i = 0;
 				while (true) {
@@ -657,6 +671,7 @@ describe("sync generator", () => {
 				mock();
 			}
 		}
+
 		renderer.render(<Component />, document.body);
 		renderer.render(<Component />, document.body);
 		renderer.render(<Component />, document.body);
@@ -669,7 +684,8 @@ describe("sync generator", () => {
 
 	test("try/finally triggerd by rendering async", async () => {
 		const mock = Sinon.fake();
-		function* Component(): Generator<Element> {
+
+		function *Component(): Generator<Element> {
 			try {
 				let i = 0;
 				while (true) {
@@ -696,7 +712,8 @@ describe("sync generator", () => {
 
 	test("Context iterator returns on unmount", () => {
 		const mock = Sinon.fake();
-		function* Component(this: Context): Generator<Element> {
+
+		function *Component(this: Context): Generator<Element> {
 			let i = 0;
 			for ({} of this) {
 				yield <div>Hello {i++}</div>;
@@ -716,7 +733,8 @@ describe("sync generator", () => {
 
 	test("return called when component continues to yield", () => {
 		const mock = Sinon.fake();
-		function* Component(this: Context, {}): Generator<Element> {
+
+		function *Component(this: Context, {}): Generator<Element> {
 			let i = 0;
 			for ({} of this) {
 				yield <div>Hello {i++}</div>;
@@ -739,7 +757,8 @@ describe("sync generator", () => {
 
 	test("multiple iterations without a yield throw", () => {
 		let i = 0;
-		function* Component(this: Context) {
+
+		function *Component(this: Context) {
 			for (const _ of this) {
 				// just so the test suite doesn’t enter an infinite loop
 				if (i > 100) {

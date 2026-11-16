@@ -8,11 +8,10 @@ function check(Component) {
 	return typeof Component === "function";
 }
 
-async function renderToStaticMarkup(
-	Component,
-	props,
-	{default: children, ...slotted},
-) {
+async function renderToStaticMarkup(Component, props, {
+	default: children,
+	...slotted
+}) {
 	const slots = {};
 	for (const [key, value] of Object.entries(slotted)) {
 		const name = slotName(key);
@@ -22,16 +21,15 @@ async function renderToStaticMarkup(
 	}
 
 	const attrs = {...props, ...slots};
-	const html = await renderer.render(jsx`
+	const html = await renderer.render(
+		jsx`
 		<${Component} ...${attrs}>
 			${children && jsx`<${Raw} value=${children.toString()} />`}
 		<//Component>
-	`);
+	`,
+	);
 
 	return {attrs, html};
 }
 
-export default {
-	check,
-	renderToStaticMarkup,
-};
+export default {check, renderToStaticMarkup};

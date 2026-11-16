@@ -22,9 +22,7 @@ describe("callback-formatters", () => {
 			]);
 
 			const mockRefreshStatement = mockCallbackNode.body.body[1];
-			const mockSourceCode = {
-				getText: (node: any) => node.text,
-			};
+			const mockSourceCode = {getText: (node: any) => node.text};
 
 			const result = extractCallbackBodyWithoutRefresh(
 				mockCallbackNode,
@@ -36,9 +34,7 @@ describe("callback-formatters", () => {
 		});
 
 		it("should return placeholder for non-block statements", () => {
-			const mockCallbackNode = {
-				body: {type: "ExpressionStatement"},
-			};
+			const mockCallbackNode = {body: {type: "ExpressionStatement"}};
 
 			const result = extractCallbackBodyWithoutRefresh(
 				mockCallbackNode,
@@ -55,9 +51,7 @@ describe("callback-formatters", () => {
 			]);
 
 			const mockRefreshStatement = mockCallbackNode.body.body[0];
-			const mockSourceCode = {
-				getText: (node: any) => node.text,
-			};
+			const mockSourceCode = {getText: (node: any) => node.text};
 
 			const result = extractCallbackBodyWithoutRefresh(
 				mockCallbackNode,
@@ -98,9 +92,7 @@ describe("callback-formatters", () => {
 	describe("getNodeIndentation", () => {
 		it("should return correct indentation level", () => {
 			const mockNode = {text: "    await doSomething();", range: [0, 20]};
-			const mockSourceCode = {
-				getText: () => mockNode.text,
-			};
+			const mockSourceCode = {getText: () => mockNode.text};
 
 			const result = getNodeIndentation(mockNode, mockSourceCode);
 			expect(result).toBe(4);
@@ -108,9 +100,7 @@ describe("callback-formatters", () => {
 
 		it("should handle nodes with no indentation", () => {
 			const mockNode = {text: "await doSomething();", range: [0, 18]};
-			const mockSourceCode = {
-				getText: () => mockNode.text,
-			};
+			const mockSourceCode = {getText: () => mockNode.text};
 
 			const result = getNodeIndentation(mockNode, mockSourceCode);
 			expect(result).toBe(0);
@@ -127,12 +117,14 @@ describe("callback-formatters", () => {
 				0,
 			);
 
-			expect(result).toBe(`(e: Event) => ctx.refresh(
+			expect(result).toBe(
+				`(e: Event) => ctx.refresh(
   async () => {
     await doSomething();
     return;
   }
-);`);
+);`,
+			);
 		});
 
 		it("should handle base indentation", () => {
@@ -144,11 +136,13 @@ describe("callback-formatters", () => {
 				4,
 			);
 
-			expect(result).toBe(`() => this.refresh(
+			expect(result).toBe(
+				`() => this.refresh(
       () => {
         doSomething();
       }
-    );`);
+    );`,
+			);
 		});
 	});
 
@@ -156,10 +150,7 @@ describe("callback-formatters", () => {
 		it("should find ExpressionStatement parent", () => {
 			const mockNode = {
 				type: "CallExpression",
-				parent: {
-					type: "ExpressionStatement",
-					parent: {type: "BlockStatement"},
-				},
+				parent: {type: "ExpressionStatement", parent: {type: "BlockStatement"}},
 			};
 
 			const result = findRefreshStatementParent(mockNode);
@@ -185,10 +176,7 @@ describe("callback-formatters", () => {
 		it("should return null if no ExpressionStatement found", () => {
 			const mockNode = {
 				type: "CallExpression",
-				parent: {
-					type: "MemberExpression",
-					parent: {type: "BlockStatement"},
-				},
+				parent: {type: "MemberExpression", parent: {type: "BlockStatement"}},
 			};
 
 			const result = findRefreshStatementParent(mockNode);

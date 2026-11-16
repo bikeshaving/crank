@@ -57,6 +57,7 @@ describe("h", () => {
 		function Component() {
 			return null;
 		}
+
 		expect(h(Component, {a: 1}).tag).toBe(Component);
 		expect(h(Fragment, null, "a", "b").props.children).toEqual(["a", "b"]);
 	});

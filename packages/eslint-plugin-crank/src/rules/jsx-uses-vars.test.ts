@@ -12,11 +12,11 @@ describe("jsx-uses-vars", () => {
 		ruleTester.run("jsx-uses-vars", jsxUsesVars, {
 			valid: [
 				// Component used in JSX — should not trigger
-				{code: `var App = 1; <App />`},
+				{code: "var App = 1; <App />"},
 				// Member expression — marks the root object as used
-				{code: `var Foo = 1; <Foo.Bar />`},
+				{code: "var Foo = 1; <Foo.Bar />"},
 				// Nested member expression
-				{code: `var Foo = 1; <Foo.Bar.Baz />`},
+				{code: "var Foo = 1; <Foo.Bar.Baz />"},
 			],
 			invalid: [],
 		});
@@ -26,8 +26,8 @@ describe("jsx-uses-vars", () => {
 		ruleTester.run("jsx-uses-vars", jsxUsesVars, {
 			valid: [
 				// Lowercase tags are native elements, rule should not mark them
-				{code: `<div />`},
-				{code: `<span>text</span>`},
+				{code: "<div />"},
+				{code: "<span>text</span>"},
 			],
 			invalid: [],
 		});

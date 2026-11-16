@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
 export interface BlogCardProps {
@@ -19,7 +20,7 @@ export function BlogCard({
 	readTime,
 	author,
 	featured,
-}: BlogCardProps) {
+}: BlogCardProps): Element {
 	const publishDateDisplay =
 		publishDate &&
 		publishDate.toLocaleString("en-US", {
@@ -57,23 +58,22 @@ export function BlogCard({
 			`}
 		>
 			${
-				hasMetadata &&
-				jsx`
-				<div class=${css`
-					display: flex;
-					flex-wrap: wrap;
-					gap: 0.5rem;
-					align-items: center;
-					margin-bottom: 0.75rem;
-					font-size: 0.85rem;
-					color: var(--text-color);
-					opacity: 0.7;
-				`}>
-					${publishDateDisplay && jsx`<span>${publishDateDisplay}</span>`}
-					${publishDateDisplay && readTime && jsx`<span style="opacity: 0.5">/</span>`}
-					${readTime && jsx`<span>${readTime} min read</span>`}
-				</div>
-			`
+				hasMetadata && jsx`
+					<div class=${css`
+						display: flex;
+						flex-wrap: wrap;
+						gap: 0.5rem;
+						align-items: center;
+						margin-bottom: 0.75rem;
+						font-size: 0.85rem;
+						color: var(--text-color);
+						opacity: 0.7;
+					`}>
+						${publishDateDisplay && jsx`<span>${publishDateDisplay}</span>`}
+						${publishDateDisplay && readTime && jsx`<span style="opacity: 0.5">/</span>`}
+						${readTime && jsx`<span>${readTime} min read</span>`}
+					</div>
+				`
 			}
 			<h3 class=${css`
 				font-size: ${featured ? "1.75rem" : "1.35rem"};
@@ -86,27 +86,25 @@ export function BlogCard({
 				}
 			`}>${title}</h3>
 			${
-				description &&
-				jsx`
-				<p class=${css`
-					margin: 0;
-					color: var(--text-color);
-					opacity: 0.85;
-					line-height: 1.6;
-					font-size: ${featured ? "1.05rem" : "0.95rem"};
-				`}>${description}</p>
-			`
+				description && jsx`
+					<p class=${css`
+						margin: 0;
+						color: var(--text-color);
+						opacity: 0.85;
+						line-height: 1.6;
+						font-size: ${featured ? "1.05rem" : "0.95rem"};
+					`}>${description}</p>
+				`
 			}
 			${
-				author &&
-				jsx`
-				<p class=${css`
-					margin: 1rem 0 0;
-					font-size: 0.85rem;
-					color: var(--text-color);
-					opacity: 0.6;
-				`}>By ${author}</p>
-			`
+				author && jsx`
+					<p class=${css`
+						margin: 1rem 0 0;
+						font-size: 0.85rem;
+						color: var(--text-color);
+						opacity: 0.6;
+					`}>By ${author}</p>
+				`
 			}
 		</a>
 	`;
