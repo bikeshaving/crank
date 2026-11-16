@@ -8,6 +8,7 @@ import {
 	arrayify,
 	isIteratorLike,
 	isPromiseLike,
+	logError,
 	markStart,
 	measureMark,
 	safeRace,
@@ -246,7 +247,7 @@ export function createElement<TTag extends Tag>(
 	}
 
 	if ("static" in (props as TagProps<TTag>)) {
-		console.error(`The \`static\` prop is deprecated. Use \`copy\` instead.`);
+		logError(`The \`static\` prop is deprecated. Use \`copy\` instead.`);
 		(props as TagProps<TTag>)["copy"] = (props as TagProps<TTag>)["static"];
 		delete (props as any)["static"];
 	}
@@ -258,7 +259,7 @@ export function createElement<TTag extends Tag>(
 			const deprecatedPropName = propPrefix + propBase;
 			if (deprecatedPropName in (props as TagProps<TTag>)) {
 				const targetPropBase = propBase === "static" ? "copy" : propBase;
-				console.error(
+				logError(
 					`The \`${deprecatedPropName}\` prop is deprecated. Use \`${targetPropBase}\` instead.`,
 				);
 				(props as TagProps<TTag>)[targetPropBase] = (props as TagProps<TTag>)[
@@ -1320,7 +1321,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 			let oldKey = typeof ret === "object" ? ret.el.props.key : undefined;
 			let newKey = typeof child === "object" ? child.props.key : undefined;
 			if (newKey !== undefined && seenKeys && seenKeys.has(newKey)) {
-				console.error(
+				logError(
 					`Duplicate key found in <${getTagName(parent.el.tag)}>`,
 					newKey,
 				);
@@ -1627,12 +1628,12 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		tag === Text
 	) {
 		if (typeof el.props.copy === "string") {
-			console.error(
+			logError(
 				`String copy prop ignored for <${getTagName(tag)}>. Use booleans instead.`,
 			);
 		}
 		if (typeof el.props.hydrate === "string") {
-			console.error(
+			logError(
 				`String hydrate prop ignored for <${getTagName(tag)}>. Use booleans instead.`,
 			);
 		}
@@ -2134,7 +2135,7 @@ class MetaProp {
 		}
 
 		if (!allBangs && !noBangs) {
-			console.error(
+			logError(
 				`Invalid ${propName} prop "${propValue}".\nUse prop or !prop but not both.`,
 			);
 			this.include = true;
@@ -2580,12 +2581,12 @@ export class Context<
 	refresh(callback?: () => unknown): Promise<TResult> | TResult {
 		const ctx = this[_ContextState];
 		if (getFlag(ctx.ret, IsUnmounted)) {
-			console.error(
+			logError(
 				`Component <${getTagName(ctx.ret.el.tag)}> is unmounted. Check the isUnmounted property if necessary.`,
 			);
 			return ctx.adapter.read(getValue(ctx.ret));
 		} else if (getFlag(ctx.ret, IsExecuting)) {
-			console.error(
+			logError(
 				`Component <${getTagName(ctx.ret.el.tag)}> is already executing Check the isExecuting property if necessary.`,
 			);
 			return ctx.adapter.read(getValue(ctx.ret));
@@ -2754,7 +2755,7 @@ export class Context<
 	flush(): Promise<TResult>;
 	flush(callback: (value: TResult) => unknown): void;
 	flush(callback?: (value: TResult) => unknown): Promise<TResult> | void {
-		console.error("Context.flush() method has been renamed to after()");
+		logError("Context.flush() method has been renamed to after()");
 		this.after(callback!);
 	}
 
@@ -2848,7 +2849,7 @@ function diffComponent<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	if (ret.ctx) {
 		ctx = ret.ctx;
 		if (getFlag(ctx.ret, IsExecuting)) {
-			console.error(
+			logError(
 				`Component <${getTagName(ctx.ret.el.tag)}> is already executing`,
 			);
 			return;
@@ -2873,7 +2874,7 @@ function diffComponentChildren<TNode, TResult>(
 	if (getFlag(ctx.ret, IsUnmounted) || getFlag(ctx.ret, IsErrored)) {
 		return;
 	} else if (children === undefined) {
-		console.error(
+		logError(
 			`Component <${getTagName(ctx.ret.el.tag)}> has ${isYield ? "yielded" : "returned"} undefined. If this was intentional, ${isYield ? "yield" : "return"} null instead.`,
 		);
 	}
@@ -3076,7 +3077,7 @@ function runComponent<TNode, TResult>(
 			!getFlag(ctx.ret, IsUnmounted) &&
 			!getFlag(ctx.ret, IsSchedulingRefresh)
 		) {
-			console.error(
+			logError(
 				`Component <${getTagName(ctx.ret.el.tag)}> yielded/returned more than once in for...of loop`,
 			);
 		}
@@ -3145,7 +3146,7 @@ function runComponent<TNode, TResult>(
 							!getFlag(ctx.ret, IsUnmounted) &&
 							!getFlag(ctx.ret, IsSchedulingRefresh)
 						) {
-							console.error(
+							logError(
 								`Component <${getTagName(ctx.ret.el.tag)}> yielded/returned more than once in for...of loop`,
 							);
 						}

@@ -154,19 +154,28 @@ test("class and className both defined warns", () => {
 		document.body,
 	);
 	Assert.is(mock.callCount, 1);
-	Assert.match(mock.firstCall.args[0], /Both "class" and "className" set/);
+	Assert.match(
+		mock.firstCall.args[0].message,
+		/Both "class" and "className" set/,
+	);
 });
 
 test("string copy prop on Fragment warns", () => {
 	renderer.render(<Fragment copy="!children">Test</Fragment>, document.body);
 	Assert.is(mock.callCount, 1);
-	Assert.match(mock.firstCall.args[0], /String copy prop ignored for <>/);
+	Assert.match(
+		mock.firstCall.args[0].message,
+		/String copy prop ignored for <>/,
+	);
 });
 
 test("string hydrate prop on Fragment warns", () => {
 	renderer.render(<Fragment hydrate="!children">Test</Fragment>, document.body);
 	Assert.is(mock.callCount, 1);
-	Assert.match(mock.firstCall.args[0], /String hydrate prop ignored for <>/);
+	Assert.match(
+		mock.firstCall.args[0].message,
+		/String hydrate prop ignored for <>/,
+	);
 });
 
 test("string copy prop on Portal warns", () => {
@@ -179,7 +188,7 @@ test("string copy prop on Portal warns", () => {
 	);
 	Assert.is(mock.callCount, 1);
 	Assert.match(
-		mock.firstCall.args[0],
+		mock.firstCall.args[0].message,
 		/String copy prop ignored for <crank\.Portal>/,
 	);
 });
@@ -194,7 +203,7 @@ test("string hydrate prop on Portal warns", () => {
 	);
 	Assert.is(mock.callCount, 1);
 	Assert.match(
-		mock.firstCall.args[0],
+		mock.firstCall.args[0].message,
 		/String hydrate prop ignored for <crank\.Portal>/,
 	);
 });
@@ -203,7 +212,7 @@ test("string copy prop on Text warns", () => {
 	renderer.render(<Text value="Test" copy="!children" />, document.body);
 	Assert.is(mock.callCount, 1);
 	Assert.match(
-		mock.firstCall.args[0],
+		mock.firstCall.args[0].message,
 		/String copy prop ignored for <crank\.Text>/,
 	);
 });
@@ -212,7 +221,7 @@ test("string hydrate prop on Text warns", () => {
 	renderer.render(<Text value="Test" hydrate="!children" />, document.body);
 	Assert.is(mock.callCount, 1);
 	Assert.match(
-		mock.firstCall.args[0],
+		mock.firstCall.args[0].message,
 		/String hydrate prop ignored for <crank\.Text>/,
 	);
 });
@@ -224,7 +233,7 @@ test("string copy prop on Raw warns", () => {
 	);
 	Assert.is(mock.callCount, 1);
 	Assert.match(
-		mock.firstCall.args[0],
+		mock.firstCall.args[0].message,
 		/String copy prop ignored for <crank\.Raw>/,
 	);
 });
@@ -236,7 +245,7 @@ test("string hydrate prop on Raw warns", () => {
 	);
 	Assert.is(mock.callCount, 1);
 	Assert.match(
-		mock.firstCall.args[0],
+		mock.firstCall.args[0].message,
 		/String hydrate prop ignored for <crank\.Raw>/,
 	);
 });
@@ -248,7 +257,7 @@ test("string copy prop on component warns", () => {
 	renderer.render(<TestComponent copy="!children" />, document.body);
 	Assert.is(mock.callCount, 1);
 	Assert.match(
-		mock.firstCall.args[0],
+		mock.firstCall.args[0].message,
 		/String copy prop ignored for <TestComponent>/,
 	);
 });
@@ -260,7 +269,7 @@ test("string hydrate prop on component warns", () => {
 	renderer.render(<TestComponent hydrate="!children" />, document.body);
 	Assert.is(mock.callCount, 1);
 	Assert.match(
-		mock.firstCall.args[0],
+		mock.firstCall.args[0].message,
 		/String hydrate prop ignored for <TestComponent>/,
 	);
 });
