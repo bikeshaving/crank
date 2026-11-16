@@ -7,6 +7,7 @@ import {
 	RenderAdapter,
 } from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
+import {logError} from "./_utils.js";
 import {REACT_SVG_PROPS} from "./_svg.js";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
@@ -659,7 +660,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		if (node.nodeType !== ELEMENT_NODE) {
 			throw new TypeError(`Cannot patch node: ${String(node)}`);
 		} else if (props.class && props.className) {
-			console.error(
+			logError(
 				`Both "class" and "className" set in props for <${tagName}>. Use one or the other.`,
 			);
 		}

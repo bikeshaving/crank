@@ -392,7 +392,7 @@ describe("copy-prop", () => {
 		);
 
 		expect(consoleError.callCount).toBe(1);
-		expect(consoleError.firstCall.args[0]).toEqual(
+		expect(consoleError.firstCall.args[0].message).toEqual(
 			'Invalid copy prop "!style data-greeting".\nUse prop or !prop but not both.',
 		);
 
