@@ -1,5 +1,5 @@
 # Changelog
-## [0.7.13] - 2026-11-14
+## [0.7.13] - 2026-11-16
 ### Bug Fixes
 - **Style objects keep unitless and custom properties intact** (#397)
   Numeric values for `scale`, `lineClamp`, `fillOpacity`, `floodOpacity`,
