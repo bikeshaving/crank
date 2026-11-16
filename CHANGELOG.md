@@ -7,6 +7,13 @@
   a vendor-prefixed property is unitless when the property it prefixes is.
   Custom properties (`--myVar`) keep their exact names and numeric values.
 
+- **Errors Crank logs include a stack trace everywhere** (#396)
+  Crank logged errors as strings, which Node, Bun and Deno print without a
+  trace, so a message like "String copy prop ignored" gave no way to find the
+  element. It now logs an `Error`, which every runtime prints with a trace back
+  to the code which rendered it. Code which inspects the logged arguments reads
+  the text from the first argument's `message`.
+
 ## [0.7.12] - 2026-09-04
 ### Performance
 - **Cache static subtrees in the `jsx` template tag** (#383, #384)
