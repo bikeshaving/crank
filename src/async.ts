@@ -1,5 +1,5 @@
 import type {Children, Component, Context} from "./crank.js";
-import {createElement, Portal, Raw} from "./crank.js";
+import {createElement, Fragment, Portal, Raw} from "./crank.js";
 
 /**
  * Creates a lazy-loaded component from an initializer function.
@@ -97,6 +97,52 @@ function* SuspenseBoundaryChildren(
 }
 
 /**
+ * Returns the contents of a processing instruction. Browsers which do not
+ * parse processing instructions in HTML parse them as comments.
+ */
+function getInstruction(node: any): string {
+	if (node && node.nodeType === 7) {
+		return (node.target + " " + node.data).trim();
+	} else if (node && node.nodeType === 8 && node.data[0] === "?") {
+		return node.data.slice(1);
+	}
+
+	return "";
+}
+
+/**
+ * Called while hydrating with the nodes which are left to hydrate. Returns
+ * whether the first of them are the children of a Suspense component.
+ *
+ * A renderer which wrote the fallback to a stream and never replaced it left
+ * the fallback between processing instructions. The children are rendered
+ * rather than hydrated, and the fallback is removed.
+ */
+function hasChildren(nodes: Array<any>): boolean {
+	if (!getInstruction(nodes[0]).startsWith('start name="crank-')) {
+		return true;
+	}
+
+	let end = 1;
+	for (let depth = 0; end < nodes.length; end++) {
+		const instruction = getInstruction(nodes[end]);
+		if (instruction.startsWith("start")) {
+			depth++;
+		} else if (instruction === "end" && !depth--) {
+			break;
+		}
+	}
+
+	for (const node of nodes.splice(0, end + 1)) {
+		if (node.parentNode) {
+			node.parentNode.removeChild(node);
+		}
+	}
+
+	return false;
+}
+
+/**
  * A component that displays a fallback while its children are loading.
  *
  * When used within a SuspenseList, coordinates with siblings to control
@@ -123,7 +169,9 @@ export async function* Suspense(
 	}: {children: Children; fallback: Children; timeout?: number},
 ): AsyncGenerator<Children> {
 	const controller = this.consume(SuspenseListController);
-	const createBoundary = this.consume(SuspenseBoundaries);
+	const createBoundary = this.consume(SuspenseBoundaries) as
+		| (() => SuspenseBoundary | undefined)
+		| undefined;
 	this.provide(SuspenseListController, undefined);
 	for await ({children, fallback, timeout} of this) {
 		if (timeout == null) {
@@ -135,15 +183,21 @@ export async function* Suspense(
 		}
 
 		if (this.isHydrating) {
-			// The document already has the children if they were rendered in
-			// time, and the fallback until they can replace it if they were not.
-			yield children;
+			// The document already has the children, unless they failed to
+			// render after the fallback was written.
+			yield createElement(Fragment, {hydrate: hasChildren}, children);
 			continue;
 		}
 
-		const boundary: SuspenseBoundary | undefined =
+		const boundary =
 			controller || !createBoundary ? undefined : createBoundary();
-		if (boundary) {
+		if (createBoundary && !boundary) {
+			// A renderer which is not rendering for a screen has no use for a
+			// fallback it cannot replace: a render to a string, and the Suspense
+			// components of a SuspenseList in a stream, wait for the children.
+			yield children;
+			continue;
+		} else if (boundary) {
 			// The children are rendered into the boundary, which decides whether
 			// they are written in place or after the document.
 			yield createElement(SuspenseFallback, {
@@ -201,8 +255,10 @@ export async function* Suspense(
 const SuspenseListController = Symbol.for("SuspenseListController");
 
 /**
- * Provided by a renderer which can write the children of a Suspense component
- * after the rest of the document, replacing its fallback.
+ * Provided by a renderer which does not render for a screen. The function
+ * returns a boundary if the renderer can write the children of a Suspense
+ * component after the rest of the document, replacing its fallback, and
+ * nothing if the component has to wait for its children.
  */
 const SuspenseBoundaries = Symbol.for("crank.SuspenseBoundaries");
 
@@ -242,7 +298,7 @@ declare global {
 	namespace Crank {
 		interface ProvisionMap {
 			[SuspenseListController]: SuspenseListController;
-			[SuspenseBoundaries]: () => SuspenseBoundary;
+			[SuspenseBoundaries]: () => SuspenseBoundary | undefined;
 		}
 	}
 }

@@ -241,6 +241,69 @@ describe("hydration", () => {
 		);
 	});
 
+	test("Suspense whose children were never streamed", async () => {
+		async function Slow() {
+			await new Promise((resolve) => setTimeout(resolve, 30));
+			return <p>Content</p>;
+		}
+
+		const tree = (
+			<div>
+				<Suspense fallback={<p>Loading</p>} timeout={5}>
+					<Slow />
+				</Suspense>
+				<footer>Footer</footer>
+			</div>
+		);
+
+		// The markers are processing instructions, which browsers that do not
+		// support them parse as comments.
+		for (const html of [
+			'<div><?start name="crank-0"><p>Loading</p><?end><footer>Footer</footer></div>',
+			'<div><!--?start name="crank-0"--><p>Loading</p><!--?end--><footer>Footer</footer></div>',
+		]) {
+			container.innerHTML = html;
+			const footer = container.querySelector("footer");
+			const result = renderer.hydrate(tree, container);
+			// The fallback stays until the children can replace it.
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(container.textContent).toBe("LoadingFooter");
+			await result;
+			expect(container.innerHTML).toBe(
+				"<div><p>Content</p><footer>Footer</footer></div>",
+			);
+			expect(container.querySelector("footer")).toBe(footer);
+			expect(consoleWarn.callCount).toBe(0);
+			renderer.render(null, container);
+		}
+	});
+
+	test("Suspense at the root whose children were never streamed", async () => {
+		async function Slow() {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			return <p>Content</p>;
+		}
+
+		container.innerHTML =
+			'<h1>Title</h1><?start name="crank-3"><p>Loading</p><b>…</b><?end><footer>Footer</footer>';
+		const footer = container.querySelector("footer");
+		await renderer.hydrate(
+			<Fragment>
+				<h1>Title</h1>
+				<Suspense fallback={<p>Loading</p>}>
+					<Slow />
+				</Suspense>
+				<footer>Footer</footer>
+			</Fragment>,
+			container,
+		);
+		expect(container.innerHTML).toBe(
+			"<h1>Title</h1><p>Content</p><footer>Footer</footer>",
+		);
+		expect(container.querySelector("footer")).toBe(footer);
+		expect(consoleWarn.callCount).toBe(0);
+	});
+
 	test("async generator component", async () => {
 		container.innerHTML = "<button>Click</button>";
 		const button = container.firstChild as HTMLButtonElement;

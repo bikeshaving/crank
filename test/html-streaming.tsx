@@ -2,7 +2,7 @@ import {describe, test, expect} from "@b9g/libuild/test";
 
 import {createElement, Fragment, Portal, Raw} from "../src/crank.js";
 import type {Children, Context} from "../src/crank.js";
-import {Suspense} from "../src/async.js";
+import {Suspense, SuspenseList} from "../src/async.js";
 import {renderer} from "../src/html.js";
 
 interface Recording {
@@ -811,11 +811,11 @@ describe("html streaming suspense", () => {
 		expect((stream.aborted() as Error).message).toBe("boom");
 	});
 
-	test("rendering to a string is unchanged", async () => {
+	test("rendering to a string waits for the children", async () => {
 		const result = await renderer.render(
 			<body>
-				<Suspense fallback="Loading" timeout={60}>
-					<Delay ms={10}>
+				<Suspense fallback="Loading" timeout={5}>
+					<Delay ms={40}>
 						<p>Ready</p>
 					</Delay>
 				</Suspense>
@@ -823,5 +823,54 @@ describe("html streaming suspense", () => {
 		);
 
 		expect(result).toBe("<body><p>Ready</p></body>");
+	});
+
+	test("a SuspenseList writes its children in place", async () => {
+		const stream = record();
+		const result = await renderer.render(
+			<body>
+				<SuspenseList>
+					<Suspense fallback="A?" timeout={5}>
+						<Delay ms={40}>
+							<b>A</b>
+						</Delay>
+					</Suspense>
+					<Suspense fallback="B?" timeout={5}>
+						<Delay ms={20}>
+							<b>B</b>
+						</Delay>
+					</Suspense>
+				</SuspenseList>
+			</body>,
+			stream.writable,
+		);
+
+		expect(result).toBe("<body><b>A</b><b>B</b></body>");
+		expect(stream.text()).toBe(result);
+	});
+
+	test("scripts are written with the nonce of the document's scripts", async () => {
+		const stream = record();
+		const result = await renderer.render(
+			<html>
+				<head>
+					<script nonce="abc123" src="/client.js" />
+				</head>
+				<body>
+					<Suspense fallback="A?" timeout={5}>
+						<Delay ms={30}>
+							<b>A</b>
+						</Delay>
+					</Suspense>
+				</body>
+			</html>,
+			stream.writable,
+		);
+
+		expect(result).toContain(
+			"</template>" +
+				OPEN_SCRIPT.slice(0, -1) +
+				' nonce="abc123">function $crank',
+		);
 	});
 });

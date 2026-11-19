@@ -1909,7 +1909,13 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 
 	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 	let skippedHydrationNodes: Array<TNode> | undefined;
-	if (
+	if (hydrationNodes && typeof el.props.hydrate === "function") {
+		// The function is passed the nodes which are left to hydrate, and takes
+		// from them whatever it decides not to hydrate.
+		if (!el.props.hydrate(hydrationNodes)) {
+			hydrationNodes = undefined;
+		}
+	} else if (
 		hydrationNodes &&
 		el.props.hydrate != null &&
 		!el.props.hydrate &&

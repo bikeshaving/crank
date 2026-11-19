@@ -175,6 +175,11 @@ class StreamRoot extends Sink {
 	declare patches: Array<string> | undefined;
 	/** Whether the contents of any boundary have been written. */
 	declare patched: boolean;
+	/**
+	 * The nonce of the first script element which was written with one. The
+	 * scripts which replace fallbacks are written with the same nonce.
+	 */
+	declare nonce: string | undefined;
 	constructor(writer: WritableStreamDefaultWriter<string>) {
 		super();
 		this.writer = writer;
@@ -185,6 +190,7 @@ class StreamRoot extends Sink {
 		this.pending = new Set();
 		this.patches = [];
 		this.patched = false;
+		this.nonce = undefined;
 	}
 
 	write(chunk: string): void {
@@ -228,7 +234,8 @@ class StreamRoot extends Sink {
 		// The script which defines $crank() is only written once.
 		const patch =
 			`<template for="${name}">${contents}</template>` +
-			`${OPEN_SCRIPT}${this.patched ? "" : PATCH_SCRIPT}$crank("${name}")</script>`;
+			`${OPEN_SCRIPT}${this.nonce === undefined ? "" : ` nonce="${escape(this.nonce)}"`}>` +
+			`${this.patched ? "" : PATCH_SCRIPT}$crank("${name}")</script>`;
 		this.patched = true;
 		if (this.patches) {
 			this.patches.push(patch);
@@ -276,7 +283,7 @@ class StreamRoot extends Sink {
 
 // This module can end up inlined in a script element, where a "<script"
 // which follows a "<!--" keeps the element from being closed.
-const OPEN_SCRIPT = ["<", "script>"].join("");
+const OPEN_SCRIPT = ["<", "script"].join("");
 
 /**
  * Replaces the placeholder of a boundary with its contents in browsers which
@@ -382,11 +389,16 @@ function NOOP(): void {}
 
 const SuspenseBoundaries = Symbol.for("crank.SuspenseBoundaries");
 
-function StreamProvider(
+/**
+ * Tells Suspense components that there is nothing to show a fallback on: they
+ * render into a boundary of the stream, or wait for their children when
+ * there is no stream.
+ */
+function BoundaryProvider(
 	this: Context,
-	{stream, children}: {stream: StreamRoot; children: Children},
+	{stream, children}: {stream?: StreamRoot; children: Children},
 ): Children {
-	this.provide(SuspenseBoundaries as any, () => stream.boundary());
+	this.provide(SuspenseBoundaries as any, () => stream && stream.boundary());
 	return children;
 }
 
@@ -581,6 +593,13 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 				return;
 			}
 
+			if (tag === "script" && typeof props.nonce === "string") {
+				const stream = root instanceof Boundary ? root.stream : root;
+				if ((stream as StreamRoot).nonce === undefined) {
+					(stream as StreamRoot).nonce = props.nonce;
+				}
+			}
+
 			if (node.open === undefined) {
 				node.open = printOpen(tag, props, scope);
 				node.props = props;
@@ -682,14 +701,21 @@ export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 	): Promise<string> | string {
 		const writer = getWriter(root);
 		if (writer === undefined) {
-			return super.render(children, root, bridge);
+			return super.render(
+				// Rendering nothing unmounts the tree of a root.
+				children == null
+					? children
+					: createElement(BoundaryProvider, null, children),
+				root,
+				bridge,
+			);
 		}
 
 		const stream = new StreamRoot(writer);
 		return new Promise<string>((resolve) =>
 			resolve(
 				super.render(
-					createElement(StreamProvider, {stream}, children),
+					createElement(BoundaryProvider, {stream}, children),
 					stream,
 					bridge,
 				),
