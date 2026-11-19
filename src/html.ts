@@ -1,4 +1,4 @@
-import {Portal, Renderer} from "./crank.js";
+import {createElement, Portal, Renderer} from "./crank.js";
 import type {Children, Context, ElementValue, RenderAdapter} from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import {REACT_SVG_PROPS} from "./_svg.js";
@@ -116,8 +116,6 @@ function printAttrs(props: Record<string, any>, isSVG?: boolean): string {
  * The equivalent of DOM Node for the HTML Renderer. Not to be confused with
  * the DOM's Text node. It's just an object with value string so that
  * we can reference the value of the HTML by reference, not value.
- *
- * TextNode is never actually
  */
 interface TextNode {
 	value?: string;
@@ -129,15 +127,14 @@ interface TextNode {
 }
 
 /**
- * The root of a render into a stream.
+ * Something the adapter writes HTML to as nodes are committed.
  *
  * The renderer commits nodes in document order, so the adapter writes each
  * node the first time it is committed: the opening tag of an element when it
  * is patched, text when it is created, and the closing tag of an element when
  * it is arranged.
  */
-class StreamRoot {
-	declare writer: WritableStreamDefaultWriter<string>;
+class Sink {
 	/** Everything which has been written. */
 	declare text: string;
 	/**
@@ -147,17 +144,47 @@ class StreamRoot {
 	 * arranged, when its contents are written with its closing tag.
 	 */
 	declare held: TextNode | undefined;
+	constructor() {
+		this.text = "";
+		this.held = undefined;
+	}
+
+	write(chunk: string): void {
+		this.text += chunk;
+	}
+}
+
+/**
+ * The root of a render into a stream.
+ */
+class StreamRoot extends Sink {
+	declare writer: WritableStreamDefaultWriter<string>;
 	declare error: unknown;
 	/** What has been written but not flushed to the stream. */
 	declare buffer: string;
 	declare timer: ReturnType<typeof setTimeout> | undefined;
+	/** The number of boundaries which have been created. */
+	declare boundaries: number;
+	/** Boundaries whose contents have not been written or abandoned. */
+	declare pending: Set<Promise<unknown>>;
+	/**
+	 * The contents of boundaries which were ready before the document was
+	 * finished. They are written after the document, because a template can
+	 * only replace a placeholder from the top level of the body.
+	 */
+	declare patches: Array<string> | undefined;
+	/** Whether the contents of any boundary have been written. */
+	declare patched: boolean;
 	constructor(writer: WritableStreamDefaultWriter<string>) {
+		super();
 		this.writer = writer;
-		this.text = "";
-		this.held = undefined;
 		this.error = undefined;
 		this.buffer = "";
 		this.timer = undefined;
+		this.boundaries = 0;
+		this.pending = new Set();
+		this.patches = [];
+		this.patched = false;
 	}
 
 	write(chunk: string): void {
@@ -187,8 +214,32 @@ class StreamRoot {
 	}
 
 	/**
-	 * Writes whatever part of the result has not been written, and closes the
-	 * stream.
+	 * Creates a boundary: a part of the document whose contents may be written
+	 * after the document, replacing a placeholder.
+	 */
+	boundary(): Boundary {
+		return new Boundary(this, "crank-" + this.boundaries++);
+	}
+
+	/**
+	 * Writes the contents of a boundary whose placeholder has been written.
+	 */
+	patch(name: string, contents: string): void {
+		// The script which defines $crank() is only written once.
+		const patch =
+			`<template for="${name}">${contents}</template>` +
+			`${OPEN_SCRIPT}${this.patched ? "" : PATCH_SCRIPT}$crank("${name}")</script>`;
+		this.patched = true;
+		if (this.patches) {
+			this.patches.push(patch);
+		} else {
+			this.write(patch);
+		}
+	}
+
+	/**
+	 * Writes whatever part of the document has not been written, then the
+	 * contents of its boundaries as they are ready, and closes the stream.
 	 */
 	async end(result: string): Promise<string> {
 		if (!result.startsWith(this.text)) {
@@ -198,19 +249,145 @@ class StreamRoot {
 		}
 
 		this.write(result.slice(this.text.length));
+		const patches = this.patches!;
+		this.patches = undefined;
+		for (let i = 0; i < patches.length; i++) {
+			this.write(patches[i]);
+		}
+
+		while (this.pending.size) {
+			await Promise.all(this.pending);
+		}
+
 		this.flush();
 		await this.writer.close();
 		if (this.error !== undefined) {
 			throw this.error;
 		}
 
-		return result;
+		return this.text;
 	}
 
 	abort(reason: unknown): void {
 		clearTimeout(this.timer);
 		this.writer.abort(reason).catch(() => {});
 	}
+}
+
+// This module can end up inlined in a script element, where a "<script"
+// which follows a "<!--" keeps the element from being closed.
+const OPEN_SCRIPT = ["<", "script>"].join("");
+
+/**
+ * Replaces the placeholder of a boundary with its contents in browsers which
+ * do not support <template for>. These browsers parse the processing
+ * instructions which mark the placeholder as comments.
+ */
+const PATCH_SCRIPT =
+	"function $crank(n){" +
+	"var t=document.querySelector('template[for=\"'+n+'\"]'),w=document.createTreeWalker(document,128),s,e,d=0,r;" +
+	"document.currentScript.remove();" +
+	"if(!t)return;" +
+	"while((s=w.nextNode())&&s.data!=='?start name=\"'+n+'\"');" +
+	"if(!s)return;" +
+	"for(e=s.nextSibling;e;e=e.nextSibling)" +
+	"if(e.nodeType===8)" +
+	"if(!e.data.indexOf('?start'))d++;" +
+	"else if(e.data==='?end'&&!d--)break;" +
+	"r=document.createRange();" +
+	"r.setStartBefore(s);" +
+	"r.setEndAfter(e||s.parentNode.lastChild);" +
+	"r.deleteContents();" +
+	"r.insertNode(t.content);" +
+	"t.remove()" +
+	"}";
+
+/**
+ * A part of a document whose contents may be written after the rest of the
+ * document. The Suspense component renders its children into a boundary.
+ *
+ * If the contents are ready when the commit reaches the boundary, they are
+ * written in place. Otherwise the fallback is written between the start and
+ * end markers, and the contents are written after the document in a template
+ * which the browser replaces the fallback with.
+ */
+class Boundary extends Sink {
+	declare stream: StreamRoot;
+	declare name: string;
+	/** A processing instruction which marks the start of the fallback. */
+	declare start: string;
+	/** A processing instruction which marks the end of the fallback. */
+	declare end: string;
+	/** Whether the fallback has been written. */
+	declare deferred: boolean;
+	/**
+	 * The contents if they are to be written in place. The boundary is passed
+	 * to a Raw element as a node, which reads its value when it is committed.
+	 */
+	declare value: string;
+	declare settle: () => void;
+	constructor(stream: StreamRoot, name: string) {
+		super();
+		this.stream = stream;
+		this.name = name;
+		this.start = `<?start name="${name}">`;
+		this.end = "<?end>";
+		this.deferred = false;
+		this.value = "";
+		const pending = new Promise<void>((resolve) => (this.settle = resolve));
+		stream.pending.add(pending);
+		pending.then(() => stream.pending.delete(pending));
+	}
+
+	/**
+	 * Called when the fallback has been written.
+	 */
+	defer(): void {
+		this.deferred = true;
+	}
+
+	/**
+	 * Called when the contents have been written to the boundary.
+	 */
+	close(): void {
+		if (this.deferred) {
+			this.stream.patch(this.name, this.text);
+		} else {
+			this.value = this.text;
+		}
+
+		this.settle();
+	}
+
+	/**
+	 * Called when the contents have failed to render. If the fallback has been
+	 * written, it stays in the document, and the render rejects with the error
+	 * when the stream has closed.
+	 */
+	abort(err: unknown): boolean {
+		if (this.deferred) {
+			this.close = NOOP;
+			if (this.stream.error === undefined) {
+				this.stream.error = err;
+			}
+
+			this.settle();
+		}
+
+		return this.deferred;
+	}
+}
+
+function NOOP(): void {}
+
+const SuspenseBoundaries = Symbol.for("crank.SuspenseBoundaries");
+
+function StreamProvider(
+	this: Context,
+	{stream, children}: {stream: StreamRoot; children: Children},
+): Children {
+	this.provide(SuspenseBoundaries as any, () => stream.boundary());
+	return children;
 }
 
 /**
@@ -366,7 +543,7 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 			root: unknown;
 		}): TextNode {
 			const node = {value: escape(value), raw: value};
-			if (root instanceof StreamRoot && !root.held && !oldNode) {
+			if (root instanceof Sink && !root.held && !oldNode) {
 				root.write(node.value);
 			}
 
@@ -380,7 +557,7 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 			value: string | TextNode;
 			root: unknown;
 		}): ElementValue<TextNode> {
-			if (root instanceof StreamRoot && !root.held) {
+			if (root instanceof Sink && !root.held) {
 				root.write(typeof value === "string" ? value : value.value || "");
 			}
 
@@ -400,11 +577,7 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 			scope: string | undefined;
 			root: unknown;
 		}): void {
-			if (
-				!(root instanceof StreamRoot) ||
-				root.held ||
-				typeof tag !== "string"
-			) {
+			if (!(root instanceof Sink) || root.held || typeof tag !== "string") {
 				return;
 			}
 
@@ -470,7 +643,7 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 								? joinRawText(children, tag, props["type"])
 								: join(children);
 				result = `${open}${contents}${close}`;
-				if (root instanceof StreamRoot) {
+				if (root instanceof Sink) {
 					if (root.held === node) {
 						root.held = undefined;
 						if (!node.value) {
@@ -514,13 +687,20 @@ export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 
 		const stream = new StreamRoot(writer);
 		return new Promise<string>((resolve) =>
-			resolve(super.render(children, stream, bridge)),
+			resolve(
+				super.render(
+					createElement(StreamProvider, {stream}, children),
+					stream,
+					bridge,
+				),
+			),
 		)
-			.then((result) => {
+			.then((result) => stream.end(result))
+			.then((text) => {
 				// Renders without a root unmount when they finish, and the stream
 				// is not a root anything can render into again.
 				super.render(null, stream, bridge);
-				return stream.end(result);
+				return text;
 			})
 			.catch((err) => {
 				super.render(null, stream, bridge);

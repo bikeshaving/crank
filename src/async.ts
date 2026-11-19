@@ -1,5 +1,5 @@
 import type {Children, Component, Context} from "./crank.js";
-import {createElement} from "./crank.js";
+import {createElement, Portal, Raw} from "./crank.js";
 
 /**
  * Creates a lazy-loaded component from an initializer function.
@@ -76,6 +76,26 @@ function SuspenseChildren(
 	return children;
 }
 
+function* SuspenseBoundaryChildren(
+	this: Context,
+	{children, boundary}: {children: Children; boundary: SuspenseBoundary},
+): Generator<Children> {
+	for ({children, boundary} of this) {
+		try {
+			this.schedule(() => boundary.close());
+			yield children;
+		} catch (err) {
+			// Once the fallback has been rendered, the rest of the document does
+			// not depend on the children, so the error is the boundary's.
+			if (!boundary.abort(err)) {
+				throw err;
+			}
+
+			yield null;
+		}
+	}
+}
+
 /**
  * A component that displays a fallback while its children are loading.
  *
@@ -103,6 +123,7 @@ export async function* Suspense(
 	}: {children: Children; fallback: Children; timeout?: number},
 ): AsyncGenerator<Children> {
 	const controller = this.consume(SuspenseListController);
+	const createBoundary = this.consume(SuspenseBoundaries);
 	this.provide(SuspenseListController, undefined);
 	for await ({children, fallback, timeout} of this) {
 		if (timeout == null) {
@@ -111,6 +132,31 @@ export async function* Suspense(
 			} else {
 				timeout = 300;
 			}
+		}
+
+		const boundary: SuspenseBoundary | undefined =
+			controller || !createBoundary ? undefined : createBoundary();
+		if (boundary) {
+			// The children are rendered into the boundary, which decides whether
+			// they are written in place or after the document.
+			yield createElement(SuspenseFallback, {
+				timeout: timeout!,
+				children: [
+					createElement(Raw, {value: boundary.start}),
+					fallback,
+					createElement(Raw, {value: boundary.end}),
+				],
+				schedule: () => boundary.defer(),
+			});
+			yield [
+				createElement(
+					Portal,
+					{root: boundary},
+					createElement(SuspenseBoundaryChildren, {children, boundary}),
+				),
+				createElement(Raw, {value: boundary}),
+			];
+			continue;
 		}
 
 		if (!controller) {
@@ -147,6 +193,28 @@ export async function* Suspense(
 
 const SuspenseListController = Symbol.for("SuspenseListController");
 
+/**
+ * Provided by a renderer which can write the children of a Suspense component
+ * after the rest of the document, replacing its fallback.
+ */
+const SuspenseBoundaries = Symbol.for("crank.SuspenseBoundaries");
+
+interface SuspenseBoundary {
+	/** Markup which marks the start and the end of the fallback. */
+	start: string;
+	end: string;
+	/** Called when the fallback has been rendered. */
+	defer(): void;
+	/** Called when the children have been rendered into the boundary. */
+	close(): void;
+	/**
+	 * Called when the children have failed to render. Returns whether the
+	 * boundary takes the error, which it does if the fallback has been
+	 * rendered.
+	 */
+	abort(err: unknown): boolean;
+}
+
 interface SuspenseListItem {
 	ctx: Context;
 	resolve: () => void;
@@ -167,6 +235,7 @@ declare global {
 	namespace Crank {
 		interface ProvisionMap {
 			[SuspenseListController]: SuspenseListController;
+			[SuspenseBoundaries]: () => SuspenseBoundary;
 		}
 	}
 }

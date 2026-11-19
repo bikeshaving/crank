@@ -2,6 +2,7 @@ import {describe, test, expect} from "@b9g/libuild/test";
 
 import {createElement, Fragment, Portal, Raw} from "../src/crank.js";
 import type {Children, Context} from "../src/crank.js";
+import {Suspense} from "../src/async.js";
 import {renderer} from "../src/html.js";
 
 interface Recording {
@@ -618,5 +619,209 @@ describe("html streaming", () => {
 		expect(stream1.text()).toBe(result1);
 		expect(result2).toBe("<div>2two</div>");
 		expect(stream2.text()).toBe(result2);
+	});
+});
+
+// The test bundle is inlined in a script element, so the source cannot
+// contain an opening or closing script tag.
+const OPEN_SCRIPT = ["<", "script>"].join("");
+const CLOSE_SCRIPT = ["<", "/script>"].join("");
+
+// The script which replaces a fallback in browsers without <template for>
+// is written with the first template, and called after each. This replaces
+// each script with a marker.
+function stripScripts(html: string): string {
+	return html
+		.split(OPEN_SCRIPT)
+		.map((part, i) =>
+			i === 0 ? part : "[script]" + part.slice(part.indexOf(CLOSE_SCRIPT) + 9),
+		)
+		.join("");
+}
+
+describe("html streaming suspense", () => {
+	test("writes the fallback in place and the children after the document", async () => {
+		const stream = record();
+		const result = await renderer.render(
+			<body>
+				<h1>Title</h1>
+				<Suspense fallback={<p>Loading</p>} timeout={10}>
+					<Delay ms={60}>
+						<ul>
+							<li>Item</li>
+						</ul>
+					</Delay>
+				</Suspense>
+				<footer>Footer</footer>
+			</body>,
+			stream.writable,
+		);
+
+		expect(stripScripts(result)).toBe(
+			'<body><h1>Title</h1><?start name="crank-0"><p>Loading</p><?end><footer>Footer</footer></body>' +
+				'<template for="crank-0"><ul><li>Item</li></ul></template>[script]',
+		);
+		expect(stream.text()).toBe(result);
+		expect(result).toContain('$crank("crank-0")' + CLOSE_SCRIPT);
+		// The footer does not wait for the children.
+		expect(stream.timeOf("<footer>")).toBeLessThan(45);
+		expect(stream.timeOf("<template")).toBeGreaterThanOrEqual(55);
+		expect(stream.isClosed()).toBe(true);
+	});
+
+	test("writes the children in place when they are ready before the fallback", async () => {
+		const stream = record();
+		const result = await renderer.render(
+			<body>
+				<Suspense fallback={<p>Loading</p>} timeout={60}>
+					<Delay ms={10}>
+						<p>Ready</p>
+					</Delay>
+				</Suspense>
+				<footer>Footer</footer>
+			</body>,
+			stream.writable,
+		);
+
+		expect(result).toBe("<body><p>Ready</p><footer>Footer</footer></body>");
+		expect(stream.text()).toBe(result);
+	});
+
+	test("writes sync children in place", async () => {
+		const stream = record();
+		const result = await renderer.render(
+			<body>
+				<Suspense fallback={<p>Loading</p>}>
+					<p>Ready</p>
+				</Suspense>
+			</body>,
+			stream.writable,
+		);
+
+		expect(result).toBe("<body><p>Ready</p></body>");
+		expect(stream.text()).toBe(result);
+	});
+
+	test("writes templates in the order their children are ready", async () => {
+		const stream = record();
+		const result = await renderer.render(
+			<body>
+				<Suspense fallback="A?" timeout={5}>
+					<Delay ms={80}>
+						<b>A</b>
+					</Delay>
+				</Suspense>
+				<Suspense fallback="B?" timeout={5}>
+					<Delay ms={40}>
+						<b>B</b>
+					</Delay>
+				</Suspense>
+			</body>,
+			stream.writable,
+		);
+
+		expect(stripScripts(result)).toBe(
+			'<body><?start name="crank-0">A?<?end><?start name="crank-1">B?<?end></body>' +
+				'<template for="crank-1"><b>B</b></template>[script]' +
+				'<template for="crank-0"><b>A</b></template>[script]',
+		);
+		// The function which the scripts call is only defined once.
+		expect(result.split("function $crank").length).toBe(2);
+	});
+
+	test("nested boundaries", async () => {
+		const stream = record();
+		const result = await renderer.render(
+			<body>
+				<Suspense fallback="outer?" timeout={5}>
+					<Delay ms={40}>
+						<b>outer</b>
+						<Suspense fallback="inner?" timeout={5}>
+							<Delay ms={40}>
+								<i>inner</i>
+							</Delay>
+						</Suspense>
+					</Delay>
+				</Suspense>
+			</body>,
+			stream.writable,
+		);
+
+		expect(stripScripts(result)).toBe(
+			'<body><?start name="crank-0">outer?<?end></body>' +
+				'<template for="crank-0"><b>outer</b><?start name="crank-1">inner?<?end></template>[script]' +
+				'<template for="crank-1"><i>inner</i></template>[script]',
+		);
+	});
+
+	test("children which fail after the fallback has been written", async () => {
+		async function Boom(): Promise<never> {
+			await delay(40);
+			throw new Error("boom");
+		}
+
+		const stream = record();
+		let err: unknown;
+		try {
+			await renderer.render(
+				<body>
+					<Suspense fallback="Loading" timeout={5}>
+						<Boom />
+					</Suspense>
+					<footer>Footer</footer>
+				</body>,
+				stream.writable,
+			);
+		} catch (err1) {
+			err = err1;
+		}
+
+		// The document is complete, with the fallback left in place.
+		expect((err as Error).message).toBe("boom");
+		expect(stream.text()).toBe(
+			'<body><?start name="crank-0">Loading<?end><footer>Footer</footer></body>',
+		);
+		expect(stream.isClosed()).toBe(true);
+	});
+
+	test("children which fail before the fallback has been written", async () => {
+		async function Boom(): Promise<never> {
+			await delay(10);
+			throw new Error("boom");
+		}
+
+		const stream = record();
+		let err: unknown;
+		try {
+			await renderer.render(
+				<body>
+					<Suspense fallback="Loading" timeout={60}>
+						<Boom />
+					</Suspense>
+				</body>,
+				stream.writable,
+			);
+		} catch (err1) {
+			err = err1;
+		}
+
+		expect((err as Error).message).toBe("boom");
+		expect(stream.text()).toBe("<body>");
+		expect(stream.isClosed()).toBe(false);
+		expect((stream.aborted() as Error).message).toBe("boom");
+	});
+
+	test("rendering to a string is unchanged", async () => {
+		const result = await renderer.render(
+			<body>
+				<Suspense fallback="Loading" timeout={60}>
+					<Delay ms={10}>
+						<p>Ready</p>
+					</Delay>
+				</Suspense>
+			</body>,
+		);
+
+		expect(result).toBe("<body><p>Ready</p></body>");
 	});
 });

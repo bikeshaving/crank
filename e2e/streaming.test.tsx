@@ -6,6 +6,7 @@ import type {Browser} from "playwright";
 
 import {createElement, Raw} from "../src/crank.js";
 import type {Children} from "../src/crank.js";
+import {Suspense} from "../src/async.js";
 import {renderer} from "../src/html.js";
 
 // WebKit on Linux does not start parsing a response until it has received
@@ -37,6 +38,28 @@ function Page(): Children {
 	);
 }
 
+// A page whose slow component is in a Suspense component, so that the footer
+// does not wait for it.
+function SuspensePage(): Children {
+	return (
+		<html>
+			<head>
+				<Raw value={PADDING} />
+				<title>Streaming</title>
+			</head>
+			<body>
+				<h1>Shell</h1>
+				<Suspense fallback={<p id="fallback">Loading</p>} timeout={0}>
+					<Slow>
+						<p id="slow">Slow</p>
+					</Slow>
+				</Suspense>
+				<footer>Footer</footer>
+			</body>
+		</html>
+	);
+}
+
 const SHELL = `<html><head>${PADDING}<title>Streaming</title></head><body><h1>Shell</h1>`;
 const REST = '<p id="slow">Slow</p><footer>Footer</footer></body></html>';
 
@@ -62,9 +85,12 @@ let browser: Browser;
 beforeAll(async () => {
 	server = Bun.serve({
 		port: 0,
-		fetch() {
+		fetch(req) {
 			const {readable, writable} = new TextEncoderStream();
-			renderer.render(<Page />, writable).catch(() => {});
+			const isSuspense = new URL(req.url).pathname === "/suspense";
+			renderer
+				.render(isSuspense ? <SuspensePage /> : <Page />, writable)
+				.catch(() => {});
 			return new Response(readable, {
 				headers: {"Content-Type": "text/html; charset=utf-8"},
 			});
@@ -111,6 +137,27 @@ test("the browser shows the shell before the slow component settles", async () =
 		expect(await page.evaluate(() => document.readyState)).toBe("loading");
 		expect(await page.evaluate(() => document.body.innerHTML)).toBe(
 			"<h1>Shell</h1>",
+		);
+
+		release();
+		await page.waitForLoadState("load");
+		expect(await page.evaluate(() => document.body.innerHTML)).toBe(
+			'<h1>Shell</h1><p id="slow">Slow</p><footer>Footer</footer>',
+		);
+	} finally {
+		await page.close();
+	}
+});
+
+test("the browser replaces the fallback of a Suspense component", async () => {
+	const page = await browser.newPage();
+	try {
+		await page.goto(server.url.href + "suspense", {waitUntil: "commit"});
+		// The footer comes after the slow component in the document.
+		await page.waitForSelector("footer");
+		expect(await page.evaluate(() => document.readyState)).toBe("loading");
+		expect(await page.evaluate(() => document.body.textContent)).toBe(
+			"ShellLoadingFooter",
 		);
 
 		release();
