@@ -10,6 +10,7 @@ import {
 } from "../src/crank.js";
 import type {Context} from "../src/crank.js";
 
+import {Suspense} from "../src/async.js";
 import {renderer} from "../src/dom.js";
 
 describe("hydration", () => {
@@ -175,6 +176,69 @@ describe("hydration", () => {
 		expect(container.querySelector("h1")).toBe(h1);
 		expect(container.querySelector("p")).toBe(p);
 		expect(consoleWarn.callCount).toBe(0);
+	});
+
+	test("isHydrating", async () => {
+		container.innerHTML = "<div>Hello</div>";
+		const hydrating: Array<boolean> = [];
+		let ctx!: Context;
+		async function Component(this: Context) {
+			ctx = this;
+			hydrating.push(this.isHydrating);
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			hydrating.push(this.isHydrating);
+			return <div>Hello</div>;
+		}
+
+		await renderer.hydrate(<Component />, container);
+		expect(hydrating).toEqual([true, true]);
+		expect(ctx.isHydrating).toBe(false);
+		await renderer.render(<Component />, container);
+		expect(hydrating).toEqual([true, true, false, false]);
+	});
+
+	test("Suspense does not show its fallback while hydrating", async () => {
+		container.innerHTML = "<div><p>Content</p><footer>Footer</footer></div>";
+		const p = container.querySelector("p");
+		async function Slow({ms}: {ms: number}) {
+			await new Promise((resolve) => setTimeout(resolve, ms));
+			return <p>Content</p>;
+		}
+
+		const tree = (ms: number) => (
+			<div>
+				<Suspense fallback={<p>Loading</p>} timeout={5}>
+					<Slow ms={ms} />
+				</Suspense>
+				<footer>Footer</footer>
+			</div>
+		);
+
+		// The children take longer than the timeout, but the document already
+		// has what they are going to render.
+		const result = renderer.hydrate(tree(40), container);
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(container.innerHTML).toBe(
+			"<div><p>Content</p><footer>Footer</footer></div>",
+		);
+		await result;
+		expect(container.innerHTML).toBe(
+			"<div><p>Content</p><footer>Footer</footer></div>",
+		);
+		expect(container.querySelector("p")).toBe(p);
+		expect(consoleWarn.callCount).toBe(0);
+
+		// Later renders show the fallback as usual.
+		const result1 = renderer.render(tree(40), container);
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(container.innerHTML).toBe(
+			"<div><p>Loading</p><footer>Footer</footer></div>",
+		);
+		await result1;
+		await new Promise((resolve) => setTimeout(resolve, 40));
+		expect(container.innerHTML).toBe(
+			"<div><p>Content</p><footer>Footer</footer></div>",
+		);
 	});
 
 	test("async generator component", async () => {

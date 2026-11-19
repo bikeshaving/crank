@@ -134,6 +134,13 @@ export async function* Suspense(
 			}
 		}
 
+		if (this.isHydrating) {
+			// The document already has the children if they were rendered in
+			// time, and the fallback until they can replace it if they were not.
+			yield children;
+			continue;
+		}
+
 		const boundary: SuspenseBoundary | undefined =
 			controller || !createBoundary ? undefined : createBoundary();
 		if (boundary) {
