@@ -62,7 +62,13 @@ function SuspensePage(): Children {
 }
 
 // A page whose app is hydrated by a script when the document has loaded.
-function HydratedPage(): Children {
+function HydratedPage({fail}: {fail?: boolean}): Children {
+	// The slow part of the app waits for the test, and then renders or fails.
+	const wait = () =>
+		new Promise<void>((resolve, reject) => {
+			release = fail ? () => reject(new Error("failed")) : resolve;
+		});
+
 	return (
 		<html>
 			<head>
@@ -72,7 +78,7 @@ function HydratedPage(): Children {
 			</head>
 			<body>
 				<div id="root">
-					<App wait={() => new Promise((resolve) => (release = resolve))} />
+					<App wait={wait} />
 				</div>
 			</body>
 		</html>
@@ -125,6 +131,8 @@ beforeAll(async () => {
 						<SuspensePage />
 					) : pathname === "/hydrate" ? (
 						<HydratedPage />
+					) : pathname === "/failed" ? (
+						<HydratedPage fail={true} />
 					) : (
 						<Page />
 					),
@@ -236,6 +244,37 @@ test("the browser hydrates a Suspense component whose children were streamed", a
 		expect(
 			await page.evaluate(
 				() => (document.getElementById("slow") as any).fromServer,
+			),
+		).toBe(true);
+
+		await page.click("#count");
+		expect(await page.textContent("#count")).toBe("1");
+	} finally {
+		await page.close();
+	}
+});
+
+test("the browser renders a Suspense component whose children failed on the server", async () => {
+	const page = await browser.newPage();
+	try {
+		await page.goto(server.url.href + "failed", {waitUntil: "commit"});
+		await page.waitForSelector("footer");
+		await page.evaluate(
+			() => ((document.querySelector("footer") as any).fromServer = true),
+		);
+
+		// The server finishes the document with the fallback in place.
+		release();
+		await page.waitForFunction(() => (window as any).hydrated);
+		expect(await page.evaluate(() => (window as any).warnings)).toEqual([]);
+		expect(
+			await page.evaluate(() => document.getElementById("root")!.innerHTML),
+		).toBe(
+			'<main><h1>Shell</h1><p id="slow">Slow</p><button id="count">0</button><footer>Footer</footer></main>',
+		);
+		expect(
+			await page.evaluate(
+				() => (document.querySelector("footer") as any).fromServer,
 			),
 		).toBe(true);
 
