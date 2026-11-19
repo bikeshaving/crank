@@ -1207,10 +1207,10 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	const schedulePromises: Array<PromiseLike<unknown>> = [];
 	if (!isPromiseLike(diff)) {
 		return commitRoot(adapter, root, ret, schedulePromises);
-	} else if (getFlag(ret, DidCommit)) {
-		// The root has already been committed, so its nodes may be live. Updates
-		// to live nodes are atomic: nothing is committed until everything has
-		// diffed.
+	} else if (getFlag(ret, DidCommit) || ret.el.props.hydrate) {
+		// The root has already been committed, or is being hydrated, so its
+		// nodes may be live. Updates to live nodes are atomic: nothing is
+		// committed until everything has diffed.
 		return diff.then(() => commitRoot(adapter, root, ret, schedulePromises));
 	}
 
