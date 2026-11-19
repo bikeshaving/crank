@@ -8,6 +8,7 @@ import {createElement, Raw} from "../src/crank.js";
 import type {Children} from "../src/crank.js";
 import {Suspense} from "../src/async.js";
 import {renderer} from "../src/html.js";
+import {App} from "./app.js";
 
 // WebKit on Linux does not start parsing a response until it has received
 // some amount of it, so the page starts with a comment larger than that.
@@ -60,6 +61,24 @@ function SuspensePage(): Children {
 	);
 }
 
+// A page whose app is hydrated by a script when the document has loaded.
+function HydratedPage(): Children {
+	return (
+		<html>
+			<head>
+				<Raw value={PADDING} />
+				<title>Streaming</title>
+				<script type="module" src="/client.js" />
+			</head>
+			<body>
+				<div id="root">
+					<App wait={() => new Promise((resolve) => (release = resolve))} />
+				</div>
+			</body>
+		</html>
+	);
+}
+
 const SHELL = `<html><head>${PADDING}<title>Streaming</title></head><body><h1>Shell</h1>`;
 const REST = '<p id="slow">Slow</p><footer>Footer</footer></body></html>';
 
@@ -81,15 +100,36 @@ async function readChunks(response: Response): Promise<Array<string>> {
 }
 
 let server: ReturnType<typeof Bun.serve>;
+let client: string;
 let browser: Browser;
 beforeAll(async () => {
+	const build = await Bun.build({
+		entrypoints: [import.meta.dir + "/client.tsx"],
+		target: "browser",
+	});
+	client = await build.outputs[0].text();
 	server = Bun.serve({
 		port: 0,
 		fetch(req) {
+			const {pathname} = new URL(req.url);
+			if (pathname === "/client.js") {
+				return new Response(client, {
+					headers: {"Content-Type": "text/javascript"},
+				});
+			}
+
 			const {readable, writable} = new TextEncoderStream();
-			const isSuspense = new URL(req.url).pathname === "/suspense";
 			renderer
-				.render(isSuspense ? <SuspensePage /> : <Page />, writable)
+				.render(
+					pathname === "/suspense" ? (
+						<SuspensePage />
+					) : pathname === "/hydrate" ? (
+						<HydratedPage />
+					) : (
+						<Page />
+					),
+					writable,
+				)
 				.catch(() => {});
 			return new Response(readable, {
 				headers: {"Content-Type": "text/html; charset=utf-8"},
@@ -165,6 +205,42 @@ test("the browser replaces the fallback of a Suspense component", async () => {
 		expect(await page.evaluate(() => document.body.innerHTML)).toBe(
 			'<h1>Shell</h1><p id="slow">Slow</p><footer>Footer</footer>',
 		);
+	} finally {
+		await page.close();
+	}
+});
+
+test("the browser hydrates a Suspense component whose children were streamed", async () => {
+	const page = await browser.newPage();
+	try {
+		await page.goto(server.url.href + "hydrate", {waitUntil: "commit"});
+		await page.waitForSelector("footer");
+		expect(await page.evaluate(() => document.readyState)).toBe("loading");
+		expect(await page.evaluate(() => document.body.textContent)).toBe(
+			"ShellLoadingFooter",
+		);
+
+		release();
+		await page.waitForSelector("#slow");
+		// The script marks the node, so that hydration replacing it would show.
+		await page.evaluate(
+			() => ((document.getElementById("slow") as any).fromServer = true),
+		);
+		await page.waitForFunction(() => (window as any).hydrated);
+		expect(await page.evaluate(() => (window as any).warnings)).toEqual([]);
+		expect(
+			await page.evaluate(() => document.getElementById("root")!.innerHTML),
+		).toBe(
+			'<main><h1>Shell</h1><p id="slow">Slow</p><button id="count">0</button><footer>Footer</footer></main>',
+		);
+		expect(
+			await page.evaluate(
+				() => (document.getElementById("slow") as any).fromServer,
+			),
+		).toBe(true);
+
+		await page.click("#count");
+		expect(await page.textContent("#count")).toBe("1");
 	} finally {
 		await page.close();
 	}
