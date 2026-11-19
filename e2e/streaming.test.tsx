@@ -118,6 +118,30 @@ function ListPage(): Children {
 	);
 }
 
+// A page whose slow component renders scripts: one which runs, and one which
+// carries data.
+function ScriptPage(): Children {
+	return (
+		<html>
+			<head>
+				<Raw value={PADDING} />
+				<title>Streaming</title>
+			</head>
+			<body>
+				<Suspense fallback="Loading" timeout={0}>
+					<Slow>
+						<script>{"window.ran = (window.ran || 0) + 1;"}</script>
+						<script type="application/json" id="data">
+							{'{"posts": 3}'}
+						</script>
+					</Slow>
+				</Suspense>
+				<footer>Footer</footer>
+			</body>
+		</html>
+	);
+}
+
 const SHELL = `<html><head>${PADDING}<title>Streaming</title></head><body><h1>Shell</h1>`;
 const REST = '<p id="slow">Slow</p><footer>Footer</footer></body></html>';
 
@@ -164,6 +188,8 @@ beforeAll(async () => {
 						<SuspensePage />
 					) : pathname === "/hydrate" ? (
 						<HydratedPage />
+					) : pathname === "/script" ? (
+						<ScriptPage />
 					) : pathname === "/list" ? (
 						<ListPage />
 					) : pathname === "/failed" ? (
@@ -350,6 +376,26 @@ test("the browser reveals the Suspense components of a list in order", async () 
 		expect(await page.evaluate(() => document.body.innerHTML)).toBe(
 			"<b>A</b><b>B</b><b>C</b><footer>Footer</footer>",
 		);
+	} finally {
+		await page.close();
+	}
+});
+
+test("scripts in the children of a Suspense component run once", async () => {
+	const page = await browser.newPage();
+	try {
+		await page.goto(server.url.href + "script", {waitUntil: "commit"});
+		await page.waitForSelector("footer");
+		expect(await page.evaluate(() => (window as any).ran)).toBe(undefined);
+
+		release();
+		await page.waitForLoadState("load");
+		expect(await page.evaluate(() => (window as any).ran)).toBe(1);
+		expect(
+			await page.evaluate(() =>
+				JSON.parse(document.getElementById("data")!.textContent!),
+			),
+		).toEqual({posts: 3});
 	} finally {
 		await page.close();
 	}
