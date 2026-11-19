@@ -169,6 +169,10 @@ For any given render:
 4. `after()` callbacks run (nodes live in DOM)
 5. `cleanup()` callbacks run on unmount
 
+When a tree with async components is rendered for the first time, the `ref` and `schedule()` callbacks of each component run as soon as that component and everything before it in the document have rendered, without waiting for slower components later in the tree. `after()` callbacks still wait until the whole tree has been inserted. Updates to a tree which is already in the document are applied all at once, when every component has rendered.
+
+If a render throws, the components which that render mounted are unmounted and their `cleanup()` callbacks run, while components which were already mounted stay mounted. If an async render into a root rejects, the components it mounted stay mounted until the root is rendered into again.
+
 ### Promise-based API
 
 All three methods return promises when called without arguments, for use in async generator components:

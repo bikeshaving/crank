@@ -93,22 +93,19 @@ async function BlogPost({slug}) {
 const html = await renderer.render(<BlogPost slug="hello-world" />);
 ```
 
-### Streaming (manual)
+### Streaming
+
+Pass a `WritableStream` of strings as the second argument to write the HTML as it is rendered. Everything before an async component is sent without waiting for it. See [HTMLRenderer](/api/html/classes/HTMLRenderer#streaming) for details.
 
 ```tsx
 import {renderer} from "@b9g/crank/html";
 
-async function* streamPage(res) {
-  // Send head immediately
-  res.write("<!DOCTYPE html><html><head>...</head><body>");
-
-  // Render and send body
-  const body = await renderer.render(<App />);
-  res.write(body);
-
-  // Close document
-  res.write("</body></html>");
-  res.end();
+function handleRequest(): Response {
+  const {readable, writable} = new TextEncoderStream();
+  renderer.render(<App />, writable).catch(console.error);
+  return new Response(readable, {
+    headers: {"Content-Type": "text/html; charset=utf-8"},
+  });
 }
 ```
 
