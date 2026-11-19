@@ -38,7 +38,7 @@ When used within a [SuspenseList](/api/async/components/SuspenseList), Suspense 
 
 While a tree is being hydrated, `Suspense` does not render its fallback, however long its children take: the document already has what the server rendered, and replacing it with a fallback would only hide it.
 
-When rendered to a stream by the [HTML renderer](/api/html/classes/HTMLRenderer#suspense), the fallback is sent in place of slow children and the children are sent after the rest of the document.
+When rendered to a stream by the [HTML renderer](/api/html/classes/HTMLRenderer#suspense), the fallback is sent in place of slow children and the children are sent after the rest of the document. When rendered to a string, there is nothing which could replace a fallback later, so `Suspense` waits for its children.
 
 ## Examples
 

@@ -198,11 +198,11 @@ If `Posts` is slow, this is what is sent, with the last line arriving when `Post
 <template for="crank-0"><ul>…</ul></template>
 ```
 
-- Browsers which support [`<template for>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#out-of-order_patching) replace the fallback themselves. A small inline script, written after each template, does it in the others. The script is not given a nonce, so a content security policy which forbids inline scripts stops it running in those browsers.
+- Browsers which support [`<template for>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#out-of-order_patching) replace the fallback themselves. A small inline script, written after each template, does it in the others. The script is written with the `nonce` of the first `<script>` element in the document which has one, so that it runs under a content security policy which requires a nonce.
 - If the children are ready within the timeout, they are written in place and there is no fallback or template.
-- If the children fail after the fallback has been written, the document is finished without them and the stream is closed normally, and the promise returned by `render()` rejects with the error.
+- If the children fail after the fallback has been written, the document is finished without them and the stream is closed normally, and the promise returned by `render()` rejects with the error. When the document is hydrated, the browser renders the children and replaces the fallback.
 - The promise resolves to everything which was written, including the templates.
-- `Suspense` components inside a `SuspenseList`, and renders to a string rather than a stream, are not affected: they send the fallback if the children take longer than the timeout.
+- A fallback is only written where it can be replaced. A `Suspense` component inside a `SuspenseList` waits for its children and writes them in place, in document order. A render to a string rather than a stream waits for the children of every `Suspense` component.
 - Hydrate the document after it has loaded, which is when a `type="module"` script runs. See the [hydration guide](/guides/hydration).
 
 ### Express.js integration
