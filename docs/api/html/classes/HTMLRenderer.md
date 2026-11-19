@@ -37,10 +37,10 @@ Renders an element tree to an HTML string.
 
 **Parameters:**
 - **children** - `Children` - The element tree to render.
-- **root** (optional) - `any` - Typically unused for HTML rendering.
+- **root** (optional) - `unknown` - Either a `WritableStream<string>` or a Node.js writable stream which the HTML is written to as it is rendered (see [Streaming](#streaming)), or any other object, which is used as a key: rendering again with the same key updates the same tree, so components keep their state between renders.
 - **ctx** (optional) - `Context` - An ancestor context for bridging renderers.
 
-**Returns:** The HTML string, or a promise if the tree contains async components.
+**Returns:** The HTML string, or a promise if the tree contains async components. When a stream is passed, the result is always a promise.
 
 ## Description
 
@@ -103,6 +103,76 @@ async function UserList() {
 // render() returns a Promise for async components
 const html = await renderer.render(<UserList />);
 ```
+
+### Streaming
+
+When a `WritableStream` of strings is passed as the second argument, the HTML is written to the stream as it is rendered, in document order. Everything before an async component is written without waiting for the component, so the browser can start loading stylesheets and scripts and paint the top of the page while the rest is still rendering.
+
+```tsx
+import {Fragment, Raw} from "@b9g/crank";
+import {renderer} from "@b9g/crank/html";
+
+async function Posts() {
+  const posts = await fetchPosts();
+  return (
+    <ul>
+      {posts.map((post) => (
+        <li key={post.id}>{post.title}</li>
+      ))}
+    </ul>
+  );
+}
+
+function handleRequest(): Response {
+  const {readable, writable} = new TextEncoderStream();
+  renderer
+    .render(
+      <Fragment>
+        <Raw value="<!DOCTYPE html>" />
+        <html>
+          <head>
+            <title>Posts</title>
+            <link rel="stylesheet" href="/styles.css" />
+          </head>
+          <body>
+            <h1>Posts</h1>
+            <Posts />
+          </body>
+        </html>
+      </Fragment>,
+      writable,
+    )
+    .catch(console.error);
+
+  return new Response(readable, {
+    headers: {"Content-Type": "text/html; charset=utf-8"},
+  });
+}
+```
+
+In this example, everything up to and including `<h1>Posts</h1>` is sent immediately, and the list and the closing tags are sent when `fetchPosts()` resolves.
+
+A Node.js writable stream, such as the response of an `http` server, can be passed directly:
+
+```tsx
+import {createServer} from "node:http";
+import {renderer} from "@b9g/crank/html";
+
+createServer((req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  Promise.resolve(renderer.render(<App />, res)).catch(console.error);
+}).listen(3000);
+```
+
+The response is ended when the render finishes, and destroyed if the render fails.
+
+- The promise returned by `render()` still resolves to the complete HTML string.
+- The stream is closed when the render finishes, and the tree is unmounted, as it is for a render without a root: a stream cannot be rendered into a second time. If the render fails, the stream is aborted and the promise rejects. HTML which has already been sent cannot be taken back, so a response which fails partway is a truncated document.
+- Content is written in document order. A slow component holds back everything after it, even if later components have finished.
+- The contents of `<style>` and `<script>` elements, and of elements with an `innerHTML` prop, are written together with the closing tag.
+- Writes are not held back for a slow consumer.
+- Browsers may wait for a minimum amount of the response before they start parsing it. WebKit on Linux did not begin to parse a page whose first chunk was under a hundred bytes until the response had finished, and did once the chunk was a couple of kilobytes. A real document head is usually large enough.
+- A `Suspense` component whose children take longer than its timeout is sent as its fallback, the same as when rendering to a string.
 
 ### Express.js integration
 

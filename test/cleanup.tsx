@@ -388,6 +388,128 @@ describe("cleanup", () => {
 		expect(fn.callCount).toBe(2);
 	});
 
+	test("components mounted by a render which throws", () => {
+		const cleanups: Array<string> = [];
+		function* Mounted(
+			this: Context,
+			{name}: {name: string},
+		): Generator<Element> {
+			this.cleanup(() => cleanups.push(name));
+			for ({} of this) {
+				yield <span>Hello</span>;
+			}
+		}
+
+		function Thrower(this: Context): never {
+			this.cleanup(() => cleanups.push("thrower"));
+			throw new Error("boom");
+		}
+
+		expect(() =>
+			renderer.render(
+				<div>
+					<Mounted name="sibling" />
+					<p>
+						<Mounted name="nested" />
+						<Thrower />
+					</p>
+				</div>,
+				document.body,
+			),
+		).toThrow("boom");
+		expect(cleanups).toEqual(["nested", "thrower", "sibling"]);
+		expect(document.body.innerHTML).toBe("");
+	});
+
+	test("components mounted by an update which throws", () => {
+		const cleanups: Array<string> = [];
+		function* Mounted(
+			this: Context,
+			{name}: {name: string},
+		): Generator<Element> {
+			this.cleanup(() => cleanups.push(name));
+			for ({name} of this) {
+				yield <span>{name}</span>;
+			}
+		}
+
+		function Thrower(): never {
+			throw new Error("boom");
+		}
+
+		renderer.render(
+			<div>
+				<Mounted name="old" />
+			</div>,
+			document.body,
+		);
+		expect(() =>
+			renderer.render(
+				<div>
+					<Mounted name="old" />
+					<Mounted name="new" />
+					<Thrower />
+				</div>,
+				document.body,
+			),
+		).toThrow("boom");
+		expect(cleanups).toEqual(["new"]);
+		expect(document.body.innerHTML).toBe("<div><span>old</span></div>");
+		renderer.render(null, document.body);
+		expect(cleanups).toEqual(["new", "old"]);
+	});
+
+	test("component reused from a fallback throws", async () => {
+		const cleanup = Sinon.fake();
+		function* Thrower(
+			this: Context,
+			{fail}: {fail?: boolean},
+		): Generator<Element> {
+			this.cleanup(cleanup);
+			for ({fail} of this) {
+				if (fail) {
+					throw new Error("boom");
+				}
+
+				yield <span>Hello</span>;
+			}
+		}
+
+		async function Async(): Promise<Element> {
+			await new Promise((r) => setTimeout(r, 50));
+			return <b>Async</b>;
+		}
+
+		renderer.render(
+			<div>
+				<Thrower />
+			</div>,
+			document.body,
+		);
+		// The mounted component is the fallback of the pending component.
+		const p = renderer.render(
+			<div>
+				<Async />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toBe("<div><span>Hello</span></div>");
+		// Rendering the component again reuses it from the fallback.
+		expect(() =>
+			renderer.render(
+				<div>
+					<Thrower fail={true} />
+				</div>,
+				document.body,
+			),
+		).toThrow("boom");
+		expect(cleanup.callCount).toBe(1);
+		expect(document.body.innerHTML).toBe("<div></div>");
+		await p;
+		expect(document.body.innerHTML).toBe("<div><b>Async</b></div>");
+		expect(cleanup.callCount).toBe(1);
+	});
+
 	test("components can linger", async () => {
 		let fn = Sinon.fake();
 		let resolve: Function;

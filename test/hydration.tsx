@@ -152,6 +152,31 @@ describe("hydration", () => {
 		expect(consoleWarn.callCount).toBe(0);
 	});
 
+	test("the document is left alone until an async component has rendered", async () => {
+		container.innerHTML = "<div><h1>Title</h1><p>Slow</p></div>";
+		const h1 = container.querySelector("h1");
+		const p = container.querySelector("p");
+		async function Slow() {
+			await new Promise((resolve) => setTimeout(resolve, 30));
+			return <p>Slow</p>;
+		}
+
+		const result = renderer.hydrate(
+			<div>
+				<h1>Title</h1>
+				<Slow />
+			</div>,
+			container,
+		);
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(container.innerHTML).toBe("<div><h1>Title</h1><p>Slow</p></div>");
+		await result;
+		expect(container.innerHTML).toBe("<div><h1>Title</h1><p>Slow</p></div>");
+		expect(container.querySelector("h1")).toBe(h1);
+		expect(container.querySelector("p")).toBe(p);
+		expect(consoleWarn.callCount).toBe(0);
+	});
+
 	test("async generator component", async () => {
 		container.innerHTML = "<button>Click</button>";
 		const button = container.firstChild as HTMLButtonElement;
