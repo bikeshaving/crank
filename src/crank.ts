@@ -450,6 +450,18 @@ const IsSchedulingRefresh = 1 << 17;
  */
 const IsSupersededByRefresh = 1 << 18;
 
+/**
+ * What a commit which is following a diff rejects with when it stops: part of
+ * the diff failed, or part of the tree was diffed again under it. renderRoot()
+ * commits the tree when the diff as a whole settles instead.
+ */
+const ABANDONED = new Error("Commit abandoned");
+ABANDONED.name = "AbortError";
+
+function abandon(): never {
+	throw ABANDONED;
+}
+
 function getFlag(ret: Retainer<unknown>, flag: number): boolean {
 	return !!(ret.f & flag);
 }
@@ -484,7 +496,8 @@ class Retainer<TNode, TScope = unknown> {
 	declare oldProps: Record<string, any> | undefined;
 	declare pendingDiff: Promise<undefined> | undefined;
 	// A pendingDiff resolver. The argument is only used for thenable adoption,
-	// and one call site resolves with an array of diffs.
+	// and one call site resolves with an array of diffs. It is only defined
+	// while pendingDiff is pending. See isDiffing().
 	declare onNextDiff: ((diff: unknown) => void) | undefined;
 	declare graveyard: Array<Retainer<TNode, TScope>> | undefined;
 	declare lingerers:
@@ -503,6 +516,33 @@ class Retainer<TNode, TScope = unknown> {
 		this.onNextDiff = undefined;
 		this.graveyard = undefined;
 		this.lingerers = undefined;
+	}
+}
+
+/** Whether the latest diff of a retainer's children is still pending. */
+function isDiffing(ret: Retainer<unknown>): boolean {
+	return ret.onNextDiff !== undefined;
+}
+
+/**
+ * Finds what a commit which is following a diff has to wait for before it
+ * can commit a child, if anything.
+ */
+function getWait(ret: Retainer<unknown>): Promise<unknown> | undefined {
+	const tag = ret.el.tag;
+	if (typeof tag === "function" && ret.ctx && ret.ctx.ready !== undefined) {
+		// The component has not produced the children it was asked for.
+		return ret.ctx.ready;
+	} else if (
+		isDiffing(ret) &&
+		getFlag(ret, DidCommit) &&
+		(getFlag(ret, IsCopied) || (typeof tag !== "function" && tag !== Fragment))
+	) {
+		// This host has already been committed, so its nodes may be live. Updates
+		// to live nodes are atomic: nothing under the host is committed until
+		// everything under the host has diffed. A copied element is not
+		// committed at all, but its value is not final until it has diffed.
+		return ret.pendingDiff;
 	}
 }
 
@@ -548,6 +588,10 @@ function getValue<TNode>(
 			ret.ctx.index = index;
 		}
 		return unwrap(getChildValues(ret, index));
+	} else if (!getFlag(ret, DidCommit)) {
+		// The node of a host is created before its children are committed, and
+		// its children can take a while. It is not a value until it is done.
+		return;
 	}
 
 	return ret.value;
@@ -1057,9 +1101,19 @@ export class Renderer<
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
 		const ret = getRootRetainer(this, bridge, {children, root});
-		return renderRoot(this.adapter, root, ret, children) as
+		const result = renderRoot(this.adapter, root, ret, children) as
 			| Promise<TResult>
 			| TResult;
+		if (isPromiseLike(result) && (typeof root !== "object" || root === null)) {
+			// A render without a root cannot be rendered again, so what it mounted
+			// is unmounted if it fails.
+			return result.catch((err) => {
+				unmount(this.adapter, ret, ret.ctx, root, ret, false);
+				throw err;
+			});
+		}
+
+		return result;
 	}
 
 	hydrate(
@@ -1138,7 +1192,6 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	ret: Retainer<TNode, TScope>,
 	children: Children,
 ): Promise<TResult> | TResult {
-	const commitLabel = "commit (" + getTagName(ret.el.tag) + ")";
 	markStart("diff");
 	const diff = diffChildren(
 		adapter,
@@ -1149,42 +1202,70 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		ret,
 		children,
 	);
+	measureMark("diff");
 
 	const schedulePromises: Array<PromiseLike<unknown>> = [];
-	if (isPromiseLike(diff)) {
-		return diff.then(() => {
-			measureMark("diff");
-			markStart(commitLabel);
-			commit(
-				adapter,
-				ret,
-				ret,
-				ret.ctx,
-				ret.scope,
-				root,
-				0,
-				schedulePromises,
-				undefined,
-			);
-			measureMark(commitLabel);
-			if (schedulePromises.length > 0) {
-				return Promise.all(schedulePromises).then(() => {
-					if (typeof root !== "object" || root === null) {
-						unmount(adapter, ret, ret.ctx, root, ret, false);
-					}
-					return adapter.read(unwrap(getChildValues(ret)));
-				});
-			}
-
-			if (typeof root !== "object" || root === null) {
-				unmount(adapter, ret, ret.ctx, root, ret, false);
-			}
-			return adapter.read(unwrap(getChildValues(ret)));
-		});
+	if (!isPromiseLike(diff)) {
+		return commitRoot(adapter, root, ret, schedulePromises);
+	} else if (getFlag(ret, DidCommit)) {
+		// The root has already been committed, so its nodes may be live. Updates
+		// to live nodes are atomic: nothing is committed until everything has
+		// diffed.
+		return diff.then(() => commitRoot(adapter, root, ret, schedulePromises));
 	}
 
-	measureMark("diff");
-	markStart(commitLabel);
+	// The commit starts as soon as the diff has fanned out, and follows it in
+	// document order. If the diff fails, the render fails with it.
+	markStart("commit (" + getTagName(ret.el.tag) + ")");
+	const committed = Promise.resolve(
+		commit(
+			adapter,
+			ret,
+			ret,
+			ret.ctx,
+			ret.scope,
+			root,
+			0,
+			schedulePromises,
+			undefined,
+			true,
+		),
+	);
+	committed.catch(NOOP);
+	// Until the root is committed, nothing which has been committed under it is
+	// in place, however far along the commit is.
+	const key = typeof root === "object" && root !== null ? root : ANONYMOUS_ROOT;
+	committingRoots.set(key, (committingRoots.get(key) || 0) + 1);
+	// The commit could follow the diff only so long as nothing it covers was
+	// diffed again, by a later render into the same root or by a component
+	// refreshing itself. Otherwise we commit the tree as it is now that the
+	// diff has settled. A render which a later render has replaced does not
+	// wait for its commit to notice.
+	return diff
+		.then(() => (ret.pendingDiff === diff ? committed : abandon()))
+		.then(
+			() => {
+				stopCommitting(key);
+				return finishRoot(adapter, root, ret, schedulePromises);
+			},
+			(err) => {
+				stopCommitting(key);
+				if (err !== ABANDONED) {
+					throw err;
+				}
+
+				return commitRoot(adapter, root, ret, schedulePromises);
+			},
+		);
+}
+
+function commitRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
+	root: TRoot | undefined,
+	ret: Retainer<TNode, TScope>,
+	schedulePromises: Array<PromiseLike<unknown>>,
+): Promise<TResult> | TResult {
+	markStart("commit (" + getTagName(ret.el.tag) + ")");
 	commit(
 		adapter,
 		ret,
@@ -1195,8 +1276,18 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		0,
 		schedulePromises,
 		undefined,
+		false,
 	);
-	measureMark(commitLabel);
+	return finishRoot(adapter, root, ret, schedulePromises);
+}
+
+function finishRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
+	root: TRoot | undefined,
+	ret: Retainer<TNode, TScope>,
+	schedulePromises: Array<PromiseLike<unknown>>,
+): Promise<TResult> | TResult {
+	measureMark("commit (" + getTagName(ret.el.tag) + ")");
 	if (schedulePromises.length > 0) {
 		return Promise.all(schedulePromises).then(() => {
 			if (typeof root !== "object" || root === null) {
@@ -1210,6 +1301,15 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		unmount(adapter, ret, ret.ctx, root, ret, false);
 	}
 	return adapter.read(unwrap(getChildValues(ret)));
+}
+
+function stopCommitting(key: object): void {
+	const count = committingRoots.get(key)! - 1;
+	if (count > 0) {
+		committingRoots.set(key, count);
+	} else {
+		committingRoots.delete(key);
+	}
 }
 
 function diffChild<TNode, TScope, TRoot extends TNode | undefined, TResult>(
@@ -1336,6 +1436,10 @@ function diffChild<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	if (isPromiseLike(diff)) {
 		const diff1 = diff.finally(() => {
 			setFlag(parent, DidDiff);
+			if (parent.onNextDiff === onNextDiffs) {
+				parent.onNextDiff = undefined;
+			}
+
 			if (graveyard) {
 				if (parent.graveyard) {
 					for (let i = 0; i < graveyard.length; i++) {
@@ -1596,6 +1700,10 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 			.then(() => undefined)
 			.finally(() => {
 				setFlag(parent, DidDiff);
+				if (parent.onNextDiff === onNextDiffs) {
+					parent.onNextDiff = undefined;
+				}
+
 				if (graveyard) {
 					if (parent.graveyard) {
 						for (let i = 0; i < graveyard.length; i++) {
@@ -1735,6 +1843,14 @@ function diffHost<TNode, TScope, TRoot extends TNode | undefined>(
 	);
 }
 
+/**
+ * Commits an element.
+ *
+ * @param following - Whether the commit follows the diff in document order.
+ * When it does, it commits what is ready, waits wherever the diff is still
+ * pending, and returns a promise if it had to wait. Otherwise the commit is
+ * synchronous.
+ */
 function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	host: Retainer<TNode, TScope>,
@@ -1745,7 +1861,8 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	index: number,
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
-): ElementValue<TNode> {
+	following: boolean,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
 		return getValue(ret);
 	}
@@ -1771,7 +1888,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		}
 	}
 
-	let value: ElementValue<TNode>;
+	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 	let skippedHydrationNodes: Array<TNode> | undefined;
 	if (
 		hydrationNodes &&
@@ -1785,46 +1902,79 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 
 	if (typeof tag === "function") {
 		ret.ctx!.index = index;
-		value = commitComponent(ret.ctx!, schedulePromises, hydrationNodes);
+		value = commitComponent(
+			ret.ctx!,
+			schedulePromises,
+			hydrationNodes,
+			following,
+		);
+	} else if (tag === Fragment) {
+		value = commitChildren(
+			adapter,
+			host,
+			ctx,
+			scope,
+			root,
+			ret,
+			index,
+			schedulePromises,
+			hydrationNodes,
+			following,
+		);
+	} else if (tag === Text) {
+		value = commitText(
+			adapter,
+			ret,
+			el as Element<Text>,
+			scope,
+			hydrationNodes,
+			root,
+		);
+	} else if (tag === Raw) {
+		value = commitRaw(adapter, host, ret, scope, hydrationNodes, root);
 	} else {
-		if (tag === Fragment) {
-			value = commitChildren(
-				adapter,
-				host,
-				ctx,
-				scope,
-				root,
-				ret,
-				index,
-				schedulePromises,
-				hydrationNodes,
-			);
-		} else if (tag === Text) {
-			value = commitText(
-				adapter,
-				ret,
-				el as Element<Text>,
-				scope,
-				hydrationNodes,
-				root,
-			);
-		} else if (tag === Raw) {
-			value = commitRaw(adapter, host, ret, scope, hydrationNodes, root);
-		} else {
-			value = commitHost(
-				adapter,
-				ret,
-				ctx,
-				root,
-				schedulePromises,
-				hydrationNodes,
-			);
-		}
+		value = commitHost(
+			adapter,
+			ret,
+			ctx,
+			root,
+			schedulePromises,
+			hydrationNodes,
+			following,
+		);
+	}
 
-		if (ret.fallback) {
-			unmount(adapter, host, ctx, root, ret.fallback, false);
-			ret.fallback = undefined;
-		}
+	if (isPromiseLike(value)) {
+		return (value as Promise<ElementValue<TNode>>).then((value) =>
+			commitEnd(adapter, host, ret, ctx, root, value, skippedHydrationNodes),
+		);
+	}
+
+	return commitEnd(
+		adapter,
+		host,
+		ret,
+		ctx,
+		root,
+		value as ElementValue<TNode>,
+		skippedHydrationNodes,
+	);
+}
+
+function commitEnd<TNode, TScope, TRoot extends TNode | undefined, TResult>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
+	host: Retainer<TNode, TScope>,
+	ret: Retainer<TNode, TScope>,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+	root: TRoot | undefined,
+	value: ElementValue<TNode>,
+	skippedHydrationNodes: Array<TNode> | undefined,
+): ElementValue<TNode> {
+	const el = ret.el;
+	const tag = el.tag;
+	if (typeof tag !== "function" && ret.fallback) {
+		unmount(adapter, host, ctx, root, ret.fallback, false);
+		ret.fallback = undefined;
 	}
 
 	if (skippedHydrationNodes) {
@@ -1849,6 +1999,15 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	return value;
 }
 
+/**
+ * Commits the children of a retainer.
+ *
+ * @param following - See commit().
+ * @param diff - The pending diff of the parent which the commit started
+ * under. Only passed when resuming after a wait.
+ * @param start - The index of the child to resume from.
+ * @param values - The values of the children before start.
+ */
 function commitChildren<
 	TNode,
 	TScope,
@@ -1864,8 +2023,28 @@ function commitChildren<
 	index: number,
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
-): Array<TNode> {
-	let values: Array<TNode> = [];
+	following = false,
+	diff?: Promise<undefined> | undefined,
+	start = 0,
+	values: Array<TNode> = [],
+): Promise<Array<TNode>> | Array<TNode> {
+	const resumed = diff !== undefined;
+	if (
+		resumed &&
+		(parent.pendingDiff !== diff || getFlag(parent, IsUnmounted))
+	) {
+		// The parent was diffed again or unmounted while the commit was waiting,
+		// so its children are not the children the commit started with.
+		return Promise.reject(ABANDONED);
+	} else if (following) {
+		if (isDiffing(parent)) {
+			diff = parent.pendingDiff;
+		} else {
+			// Everything under the parent has diffed.
+			following = false;
+		}
+	}
+
 	const rawChildren = parent.children;
 	const isChildrenArray = Array.isArray(rawChildren);
 	const childrenLength =
@@ -1874,93 +2053,131 @@ function commitChildren<
 			: isChildrenArray
 				? (rawChildren as Array<any>).length
 				: 1;
-	for (let i = 0; i < childrenLength; i++) {
+	for (let i = start; i < childrenLength; i++) {
 		let child = isChildrenArray
 			? (rawChildren as Array<Retainer<TNode, TScope> | undefined>)[i]
 			: (rawChildren as Retainer<TNode, TScope> | undefined);
-		let schedulePromises1: Array<unknown> | undefined;
-		let isSchedulingFallback = false;
-		while (
-			child &&
-			((!getFlag(child, DidDiff) && child.fallback) ||
-				getFlag(child, IsScheduling))
-		) {
-			// If the child is scheduling, it is a component retainer so ctx will be
-			// defined.
-			if (getFlag(child, IsScheduling) && child.ctx!.schedule) {
-				(schedulePromises1 = schedulePromises1 || []).push(
-					child.ctx!.schedule.promise,
+		// Whether the child is still diffing, and is committed as it diffs.
+		let isFollowing = false;
+		if (following && child !== undefined) {
+			const wait = getWait(child);
+			if (wait !== undefined) {
+				// Everything before this child has been committed, so this is where
+				// the commit waits.
+				// It never waits for longer than the diff of the parent.
+				const i1 = i;
+				return safeRace([wait, diff]).then(
+					() =>
+						commitChildren(
+							adapter,
+							host,
+							ctx,
+							scope,
+							root,
+							parent,
+							index,
+							schedulePromises,
+							hydrationNodes,
+							following,
+							diff,
+							i1,
+							values,
+						),
+					abandon,
 				);
-				isSchedulingFallback = true;
 			}
 
-			if (!getFlag(child, DidDiff) && getFlag(child, DidCommit)) {
-				// If this child has not diffed but has committed, it means it is a
-				// fallback that is being resurrected.
-				for (const node of getChildValues(child)) {
-					adapter.remove({
-						node,
-						parentNode: host.value as TNode,
-						isNested: false,
-						root,
-					});
-				}
-			}
-
-			child = child.fallback;
-			// When a scheduling component is mounting asynchronously but diffs
-			// immediately, it will cause previous async diffs to settle due to the
-			// chasing mechanism. This would cause earlier renders to resolve sooner
-			// than expected, because the render would be missing both its usual
-			// children and the children of the scheduling render. Therefore, we need
-			// to defer the settling of previous renders until either that render
-			// settles, or the scheduling component finally finishes scheduling.
-			//
-			// To do this, we take advantage of the fact that commits for aborted
-			// renders will still fire and walk the tree. During that commit walk,
-			// when we encounter a scheduling element, we push a race of the
-			// scheduling promise with the inflight diff of the async fallback
-			// fallback to schedulePromises to delay the initiator.
-			//
-			// However, we need to make sure we only use the inflight diffs for the
-			// fallback which we are trying to delay, in the case of multiple renders
-			// and fallbacks. To do this, we take advantage of the fact that when
-			// multiple renders race (e.g., render1->render2->render3->scheduling
-			// component), the chasing mechanism will call stale commits in reverse
-			// order.
-			//
-			// We can use this ordering to delay to find which fallbacks we need to
-			// add to the race. Each commit call progressively marks an additional
-			// fallback as a scheduling fallback, and does not contribute to the
-			// scheduling promises if it is further than the last seen level.
-			//
-			// This prevents promise contamination where newer renders settle early
-			// due to diffs from older renders.
-			if (schedulePromises1 && isSchedulingFallback && child) {
-				if (!getFlag(child, DidDiff)) {
-					const inflightDiff = getInflightDiff(child);
-					schedulePromises1.push(inflightDiff);
-				} else {
-					// If a scheduling component's fallback has already diffed, we do not
-					// need delay the render.
-					schedulePromises1 = undefined;
-				}
-
-				if (getFlag(child, IsSchedulingFallback)) {
-					// This fallback was marked by a more recent commit - keep processing
-					// deeper levels
-					isSchedulingFallback = true;
-				} else {
-					// First unmarked fallback we've encountered - mark it and stop
-					// contributing to schedulePromises1 for deeper levels.
-					setFlag(child, IsSchedulingFallback, true);
-					isSchedulingFallback = false;
-				}
-			}
+			// A component in a for await...of loop diffs its children whenever it
+			// yields and commits itself, so its diff is not one to follow. It is
+			// committed as it is.
+			isFollowing = isDiffing(child) && !(child.ctx && child.ctx.pull);
 		}
 
-		if (schedulePromises1 && schedulePromises1.length > 1) {
-			schedulePromises.push(safeRace(schedulePromises1));
+		if (!isFollowing) {
+			let schedulePromises1: Array<unknown> | undefined;
+			let isSchedulingFallback = false;
+			while (
+				child &&
+				((!getFlag(child, DidDiff) && child.fallback) ||
+					getFlag(child, IsScheduling))
+			) {
+				// If the child is scheduling, it is a component retainer so ctx will be
+				// defined.
+				if (getFlag(child, IsScheduling) && child.ctx!.schedule) {
+					(schedulePromises1 = schedulePromises1 || []).push(
+						child.ctx!.schedule.promise,
+					);
+					isSchedulingFallback = true;
+				}
+
+				if (!getFlag(child, DidDiff) && getFlag(child, DidCommit)) {
+					// If this child has not diffed but has committed, it means it is a
+					// fallback that is being resurrected.
+					for (const node of getChildValues(child)) {
+						adapter.remove({
+							node,
+							parentNode: host.value as TNode,
+							isNested: false,
+							root,
+						});
+					}
+				}
+
+				child = child.fallback;
+				// When a scheduling component is mounting asynchronously but diffs
+				// immediately, it will cause previous async diffs to settle due to the
+				// chasing mechanism. This would cause earlier renders to resolve sooner
+				// than expected, because the render would be missing both its usual
+				// children and the children of the scheduling render. Therefore, we need
+				// to defer the settling of previous renders until either that render
+				// settles, or the scheduling component finally finishes scheduling.
+				//
+				// To do this, we take advantage of the fact that commits for aborted
+				// renders will still fire and walk the tree. During that commit walk,
+				// when we encounter a scheduling element, we push a race of the
+				// scheduling promise with the inflight diff of the async fallback
+				// fallback to schedulePromises to delay the initiator.
+				//
+				// However, we need to make sure we only use the inflight diffs for the
+				// fallback which we are trying to delay, in the case of multiple renders
+				// and fallbacks. To do this, we take advantage of the fact that when
+				// multiple renders race (e.g., render1->render2->render3->scheduling
+				// component), the chasing mechanism will call stale commits in reverse
+				// order.
+				//
+				// We can use this ordering to delay to find which fallbacks we need to
+				// add to the race. Each commit call progressively marks an additional
+				// fallback as a scheduling fallback, and does not contribute to the
+				// scheduling promises if it is further than the last seen level.
+				//
+				// This prevents promise contamination where newer renders settle early
+				// due to diffs from older renders.
+				if (schedulePromises1 && isSchedulingFallback && child) {
+					if (!getFlag(child, DidDiff)) {
+						const inflightDiff = getInflightDiff(child);
+						schedulePromises1.push(inflightDiff);
+					} else {
+						// If a scheduling component's fallback has already diffed, we do not
+						// need delay the render.
+						schedulePromises1 = undefined;
+					}
+
+					if (getFlag(child, IsSchedulingFallback)) {
+						// This fallback was marked by a more recent commit - keep processing
+						// deeper levels
+						isSchedulingFallback = true;
+					} else {
+						// First unmarked fallback we've encountered - mark it and stop
+						// contributing to schedulePromises1 for deeper levels.
+						setFlag(child, IsSchedulingFallback, true);
+						isSchedulingFallback = false;
+					}
+				}
+			}
+
+			if (schedulePromises1 && schedulePromises1.length > 1) {
+				schedulePromises.push(safeRace(schedulePromises1));
+			}
 		}
 
 		if (child) {
@@ -1974,18 +2191,73 @@ function commitChildren<
 				index,
 				schedulePromises,
 				hydrationNodes,
+				isFollowing,
 			);
 
-			if (Array.isArray(value)) {
+			if (isPromiseLike(value)) {
+				const i1 = i;
+				return (value as Promise<ElementValue<TNode>>).then((value) => {
+					if (Array.isArray(value)) {
+						for (let j = 0; j < value.length; j++) {
+							values.push(value[j]);
+						}
+						index += value.length;
+					} else if (value) {
+						values.push(value);
+						index++;
+					}
+
+					return commitChildren(
+						adapter,
+						host,
+						ctx,
+						scope,
+						root,
+						parent,
+						index,
+						schedulePromises,
+						hydrationNodes,
+						following,
+						diff,
+						i1 + 1,
+						values,
+					);
+				});
+			} else if (Array.isArray(value)) {
 				for (let j = 0; j < value.length; j++) {
 					values.push(value[j]);
 				}
 				index += value.length;
 			} else if (value) {
-				values.push(value);
+				values.push(value as TNode);
 				index++;
 			}
 		}
+	}
+
+	if (following) {
+		// Every child has been committed, but the diff has not settled. The diff
+		// is what marks the parent as diffed and collects the retainers which
+		// have to be unmounted, so we wait for it before finishing.
+		return diff!.then(
+			() =>
+				commitChildren(
+					adapter,
+					host,
+					ctx,
+					scope,
+					root,
+					parent,
+					index,
+					schedulePromises,
+					hydrationNodes,
+					following,
+					diff,
+					childrenLength,
+					values,
+				),
+			abandon,
+		);
 	}
 
 	if (parent.graveyard) {
@@ -1997,9 +2269,12 @@ function commitChildren<
 		parent.graveyard = undefined;
 	}
 
-	if (parent.lingerers) {
+	if (parent.lingerers || resumed) {
 		// if parent.lingerers is set, a descendant component is unmounting
 		// asynchronously, so we overwrite values to include lingerering DOM nodes.
+		//
+		// If the commit had to wait, components which were committed before the
+		// wait may have committed themselves again during it.
 		values = getChildValues(parent);
 	}
 
@@ -2064,7 +2339,8 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 	root: TRoot | undefined,
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
-): ElementValue<TNode> {
+	following: boolean,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
 		return getValue(ret);
 	}
@@ -2205,21 +2481,53 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 		});
 	}
 
-	if (!copyChildren) {
-		const children = commitChildren(
-			adapter,
-			ret,
-			ctx,
-			scope,
-			tag === Portal ? (node as TRoot) : root,
-			ret,
-			0,
-			schedulePromises,
-			hydrationMetaProp && !hydrationMetaProp.includes("children")
-				? undefined
-				: childHydrationNodes,
-		);
+	if (copyChildren) {
+		return commitHostEnd(adapter, ret, node, props, oldProps, root, undefined);
+	}
 
+	const children = commitChildren(
+		adapter,
+		ret,
+		ctx,
+		scope,
+		tag === Portal ? (node as TRoot) : root,
+		ret,
+		0,
+		schedulePromises,
+		hydrationMetaProp && !hydrationMetaProp.includes("children")
+			? undefined
+			: childHydrationNodes,
+		following,
+	);
+
+	if (isPromiseLike(children)) {
+		return (children as Promise<Array<TNode>>).then((children) =>
+			commitHostEnd(adapter, ret, node, props, oldProps, root, children),
+		);
+	}
+
+	return commitHostEnd(
+		adapter,
+		ret,
+		node,
+		props,
+		oldProps,
+		root,
+		children as Array<TNode>,
+	);
+}
+
+function commitHostEnd<TNode, TScope, TRoot extends TNode | undefined>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
+	ret: Retainer<TNode, TScope>,
+	node: TNode,
+	props: Record<string, any>,
+	oldProps: Record<string, any> | undefined,
+	root: TRoot | undefined,
+	children: Array<TNode> | undefined,
+): ElementValue<TNode> {
+	const tag = ret.el.tag as string | symbol;
+	if (children !== undefined) {
 		adapter.arrange({
 			tag,
 			tagName: getTagName(tag),
@@ -2227,7 +2535,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 			props,
 			children,
 			oldProps,
-			scope,
+			scope: ret.scope,
 			root,
 		});
 	}
@@ -2303,6 +2611,12 @@ function contextContains(parent: ContextState, child: ContextState): boolean {
 // When rendering is done without a root, we use this special anonymous root to
 // make sure after callbacks are still called.
 const ANONYMOUS_ROOT: any = {};
+
+/**
+ * The roots which have a commit in progress, with a count because renders
+ * without a root share ANONYMOUS_ROOT.
+ */
+const committingRoots = new WeakMap<object, number>();
 function flush<TRoot>(
 	adapter: RenderAdapter<unknown, unknown, TRoot>,
 	root: TRoot | undefined,
@@ -2360,7 +2674,6 @@ function unmount<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	ret: Retainer<TNode>,
 	isNested: boolean,
 ): void {
-	// TODO: set the IsUnmounted flag consistently for all retainers
 	if (ret.fallback) {
 		unmount(adapter, host, ctx, root, ret.fallback, isNested);
 		ret.fallback = undefined;
@@ -2384,8 +2697,13 @@ function unmount<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	}
 
 	if (typeof ret.el.tag === "function") {
+		// unmountComponent() sets the flag itself.
 		unmountComponent(ret.ctx!, isNested);
-	} else if (ret.el.tag === Fragment) {
+		return;
+	}
+
+	setFlag(ret, IsUnmounted);
+	if (ret.el.tag === Fragment) {
 		unmountChildren(adapter, host, ctx, root, ret, isNested);
 	} else if (ret.el.tag === Portal) {
 		unmountChildren(adapter, ret, ctx, ret.value as TRoot, ret, false);
@@ -2529,6 +2847,15 @@ class ContextState<
 	declare inflight: [Promise<undefined>, Promise<undefined>] | undefined;
 	declare enqueued: [Promise<undefined>, Promise<undefined>] | undefined;
 
+	/**
+	 * A promise which is defined while the component has been asked for
+	 * children it has not produced. It settles when the children have been
+	 * diffed, as opposed to when they have finished diffing, or when something
+	 * else has to be waited for first, in which case it is defined again. It
+	 * rejects when the component fails. See setReady().
+	 */
+	declare ready: Promise<unknown> | undefined;
+
 	declare pull: PullController | undefined;
 
 	// The onPropsProvided callback is set when a component requests props via
@@ -2567,6 +2894,7 @@ class ContextState<
 		this.iterator = undefined;
 		this.inflight = undefined;
 		this.enqueued = undefined;
+		this.ready = undefined;
 
 		this.onPropsProvided = undefined;
 		this.onPropsRequested = undefined;
@@ -2753,6 +3081,10 @@ export class Context<
 			if (isPromiseLike(diff)) {
 				return diff
 					.then(() => {
+						if (isAwaitingCommit(ctx)) {
+							return ctx.adapter.read(getValue(ctx.ret));
+						}
+
 						markStart(commitLabel);
 						const value = commitComponent(ctx, schedulePromises);
 						measureMark(commitLabel);
@@ -2790,6 +3122,10 @@ export class Context<
 						return ctx.adapter.read(getValue(ctx.ret));
 					})
 					.finally(() => setFlag(ctx.ret, IsRefreshing, false));
+			}
+
+			if (isAwaitingCommit(ctx)) {
+				return ctx.adapter.read(getValue(ctx.ret));
 			}
 
 			markStart(commitLabel);
@@ -2957,6 +3293,19 @@ export class Context<
 	}
 }
 
+/**
+ * Whether a component has never been committed and its parent's commit has
+ * not reached it. A component in this state does not commit itself when it
+ * refreshes, so that nothing is committed ahead of what comes before it.
+ */
+function isAwaitingCommit(ctx: ContextState): boolean {
+	return (
+		getFlag(ctx.ret, IsUpdating) &&
+		!getFlag(ctx.ret, DidCommit) &&
+		!getFlag(ctx.ret, IsScheduling)
+	);
+}
+
 function diffComponent<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -2974,9 +3323,12 @@ function diffComponent<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 			);
 			return;
 		} else if (ctx.schedule) {
-			return ctx.schedule.promise.then(() => {
+			const diff = ctx.schedule.promise.then(() => {
 				return diffComponent(adapter, root, host, parent, scope, ret);
 			});
+			// The component is diffed again by the time this settles.
+			setReady(ctx, ctx.schedule.promise);
+			return diff;
 		}
 	} else {
 		ctx = ret.ctx = new ContextState(adapter, root, host, parent, scope, ret);
@@ -3028,6 +3380,46 @@ function diffComponentChildren<TNode, TResult>(
 	return diff;
 }
 
+/**
+ * Sets ContextState.ready, and clears it when it settles.
+ *
+ * A commit which is waiting for the component reads ready again when the
+ * promise settles, so anything which is going to replace it has to be
+ * registered on the same promise before this is called.
+ */
+function setReady(ctx: ContextState, ready: Promise<unknown>): void {
+	ctx.ready = ready;
+	ready
+		.finally(() => {
+			if (ctx.ready === ready) {
+				ctx.ready = undefined;
+			}
+		})
+		.catch(NOOP);
+}
+
+/**
+ * Creates the promise for ContextState.ready from the promise a component
+ * returned, for a run which diffs its children when that promise settles.
+ *
+ * @param result - The promise which the diff of the run is derived from. This
+ * has to be called after the diff has been derived from it.
+ * @param isReady - Whether the run got as far as its children.
+ * @param diff - The diff of the run, which is what says why the run failed.
+ */
+function setReadyAfter(
+	ctx: ContextState,
+	result: Promise<unknown>,
+	isReady: () => boolean,
+	diff: Promise<undefined>,
+): void {
+	const fail = () => diff;
+	setReady(
+		ctx,
+		result.then(() => (isReady() ? undefined : diff), fail),
+	);
+}
+
 /** Enqueues and executes the component associated with the context. */
 function enqueueComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode | undefined, TResult>,
@@ -3056,6 +3448,8 @@ function enqueueComponent<TNode, TResult>(
 		];
 	}
 
+	// The enqueued run starts when the run in flight stops blocking.
+	setReady(ctx, ctx.inflight[0]);
 	return ctx.enqueued[1];
 }
 
@@ -3093,6 +3487,7 @@ function advanceComponent(ctx: ContextState): void {
 function runComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode | undefined, TResult>,
 ): [Promise<undefined> | undefined, Promise<undefined> | undefined] {
+	ctx.ready = undefined;
 	if (getFlag(ctx.ret, IsUnmounted)) {
 		return [undefined, undefined];
 	}
@@ -3134,17 +3529,25 @@ function runComponent<TNode, TResult>(
 				() => measureMark(tagName),
 				() => measureMark(tagName),
 			);
-			return [
-				returned1.catch(NOOP),
-				returned1.then(
-					(returned) =>
-						diffComponentChildren<TNode, TResult>(ctx, returned, false),
-					(err) => {
-						setFlag(ctx.ret, IsErrored);
-						throw err;
-					},
-				),
-			];
+			let isReady = false;
+			const diff: Promise<undefined> = returned1.then(
+				(returned) => {
+					const diff = diffComponentChildren<TNode, TResult>(
+						ctx,
+						returned,
+						false,
+					);
+					isReady = true;
+					return diff;
+				},
+				(err) => {
+					setFlag(ctx.ret, IsErrored);
+					throw err;
+				},
+			);
+
+			setReadyAfter(ctx, returned1, () => isReady, diff);
+			return [returned1.catch(NOOP), diff];
 		}
 	}
 
@@ -3222,6 +3625,10 @@ function runComponent<TNode, TResult>(
 			measureMark(tagName);
 			pullComponent(ctx, iteration);
 			const block = resumePropsAsyncIterator(ctx);
+			if (ctx.pull && ctx.pull.diff) {
+				setReady(ctx, ctx.pull.diff);
+			}
+
 			return [block, ctx.pull && ctx.pull.diff];
 		} else {
 			// We call resumePropsAsyncIterator in case the component exits the
@@ -3254,7 +3661,8 @@ function runComponent<TNode, TResult>(
 			// enqueued run's diff, and the enqueued run only starts once the block
 			// settles — deriving the block from diff would deadlock.
 			let childDiff: Promise<undefined> | undefined;
-			const diff = iteration.then(
+			let isReady = false;
+			const diff: Promise<undefined> = iteration.then(
 				(iteration): Promise<undefined> | undefined => {
 					if (getFlag(ctx.ret, IsInForAwaitOfLoop)) {
 						// We have entered a for await...of loop, so we start pulling
@@ -3296,15 +3704,18 @@ function runComponent<TNode, TResult>(
 						// the enqueued run, but the in-flight run still commits its own
 						// children (see the "for...of enqueues" test).
 						setFlag(ctx.ret, IsSupersededByRefresh, false);
+						isReady = true;
 						return ctx.enqueued ? ctx.enqueued[1] : undefined;
 					}
 
-					return (childDiff = diffComponentChildren<TNode, TResult>(
+					childDiff = diffComponentChildren<TNode, TResult>(
 						ctx,
 						// Children can be void so we eliminate that here
 						iteration.value as Children,
 						!iteration.done,
-					));
+					);
+					isReady = true;
+					return childDiff;
 				},
 				(err) => {
 					setFlag(ctx.ret, IsErrored);
@@ -3321,6 +3732,7 @@ function runComponent<TNode, TResult>(
 				)
 				.catch(NOOP);
 
+			setReadyAfter(ctx, iteration, () => isReady, diff);
 			return [block, diff];
 		}
 	}
@@ -3371,7 +3783,11 @@ async function pullComponent<TNode, TResult>(
 		return;
 	}
 
-	ctx.pull = {iterationP: undefined, diff: undefined, onChildError: undefined};
+	ctx.pull = {
+		iterationP: undefined,
+		diff: undefined,
+		onChildError: undefined,
+	};
 
 	// TODO: replace done with iteration
 	//let iteration: ChildrenIteratorResult | undefined;
@@ -3573,11 +3989,20 @@ async function pullComponent<TNode, TResult>(
 	}
 }
 
+/**
+ * Commits a component.
+ *
+ * Components commit themselves when they refresh or when an async generator
+ * component yields on its own, and are committed by their parents otherwise.
+ *
+ * @param following - See commit().
+ */
 function commitComponent<TNode>(
 	ctx: ContextState<TNode>,
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes?: Array<TNode> | undefined,
-): ElementValue<TNode> {
+	following = false,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (ctx.schedule) {
 		ctx.schedule.promise.then(() => {
 			commitComponent(ctx, []);
@@ -3596,8 +4021,23 @@ function commitComponent<TNode>(
 		ctx.index,
 		schedulePromises,
 		hydrationNodes,
+		following,
 	);
 
+	if (isPromiseLike(values)) {
+		return (values as Promise<Array<TNode>>).then((values) =>
+			commitComponentEnd(ctx, schedulePromises, values),
+		);
+	}
+
+	return commitComponentEnd(ctx, schedulePromises, values as Array<TNode>);
+}
+
+function commitComponentEnd<TNode>(
+	ctx: ContextState<TNode>,
+	schedulePromises: Array<PromiseLike<unknown>>,
+	values: Array<TNode>,
+): ElementValue<TNode> {
 	if (getFlag(ctx.ret, IsUnmounted)) {
 		return;
 	}
@@ -3765,6 +4205,17 @@ function propagateComponent<TNode>(ctx: ContextState<TNode>): void {
 		scope: host.scope,
 		root: ctx.root,
 	});
+
+	const root = ctx.root as unknown;
+	if (
+		committingRoots.has(
+			typeof root === "object" && root !== null ? root : ANONYMOUS_ROOT,
+		)
+	) {
+		// The host has been committed but the root has not, so the host is not
+		// in place yet. The root flushes when it is.
+		return;
+	}
 
 	flush(ctx.adapter, ctx.root, ctx);
 }
