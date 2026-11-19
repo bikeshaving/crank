@@ -6,7 +6,7 @@ import type {Browser} from "playwright";
 
 import {createElement, Raw} from "../src/crank.js";
 import type {Children} from "../src/crank.js";
-import {Suspense} from "../src/async.js";
+import {Suspense, SuspenseList} from "../src/async.js";
 import {renderer} from "../src/html.js";
 import {App} from "./app.js";
 
@@ -85,6 +85,39 @@ function HydratedPage({fail}: {fail?: boolean}): Children {
 	);
 }
 
+// Components which each wait for the test to call their own function.
+const releases: Record<string, () => void> = {};
+async function Named({name}: {name: string}): Promise<Children> {
+	await new Promise<void>((resolve) => (releases[name] = resolve));
+	return <b>{name}</b>;
+}
+
+// A page with a list of Suspense components, which are revealed in order.
+function ListPage(): Children {
+	return (
+		<html>
+			<head>
+				<Raw value={PADDING} />
+				<title>Streaming</title>
+			</head>
+			<body>
+				<SuspenseList>
+					<Suspense fallback="(a)" timeout={0}>
+						<Named name="A" />
+					</Suspense>
+					<Suspense fallback="(b)" timeout={0}>
+						<Named name="B" />
+					</Suspense>
+					<Suspense fallback="(c)" timeout={0}>
+						<Named name="C" />
+					</Suspense>
+				</SuspenseList>
+				<footer>Footer</footer>
+			</body>
+		</html>
+	);
+}
+
 const SHELL = `<html><head>${PADDING}<title>Streaming</title></head><body><h1>Shell</h1>`;
 const REST = '<p id="slow">Slow</p><footer>Footer</footer></body></html>';
 
@@ -131,6 +164,8 @@ beforeAll(async () => {
 						<SuspensePage />
 					) : pathname === "/hydrate" ? (
 						<HydratedPage />
+					) : pathname === "/list" ? (
+						<ListPage />
 					) : pathname === "/failed" ? (
 						<HydratedPage fail={true} />
 					) : (
@@ -280,6 +315,41 @@ test("the browser renders a Suspense component whose children failed on the serv
 
 		await page.click("#count");
 		expect(await page.textContent("#count")).toBe("1");
+	} finally {
+		await page.close();
+	}
+});
+
+test("the browser reveals the Suspense components of a list in order", async () => {
+	const page = await browser.newPage();
+	const text = () => page.evaluate(() => document.body.textContent);
+	try {
+		await page.goto(server.url.href + "list", {waitUntil: "commit"});
+		// Only the fallback of the first component is shown.
+		await page.waitForSelector("footer");
+		expect(await text()).toBe("(a)Footer");
+
+		// The second component waits for the first.
+		releases.B();
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(await text()).toBe("(a)Footer");
+
+		// Both are revealed, and the fallback of the third is shown.
+		releases.A();
+		// This polls on a timer, because waiting on animation frames timed out
+		// in WebKit while the page was still loading.
+		await page.waitForFunction(
+			() => document.body.textContent === "AB(c)Footer",
+			undefined,
+			{polling: 50},
+		);
+		expect(await page.evaluate(() => document.readyState)).toBe("loading");
+
+		releases.C();
+		await page.waitForLoadState("load");
+		expect(await page.evaluate(() => document.body.innerHTML)).toBe(
+			"<b>A</b><b>B</b><b>C</b><footer>Footer</footer>",
+		);
 	} finally {
 		await page.close();
 	}
