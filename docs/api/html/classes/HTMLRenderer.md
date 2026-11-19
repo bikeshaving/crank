@@ -172,7 +172,38 @@ The response is ended when the render finishes, and destroyed if the render fail
 - The contents of `<style>` and `<script>` elements, and of elements with an `innerHTML` prop, are written together with the closing tag.
 - Writes are not held back for a slow consumer.
 - Browsers may wait for a minimum amount of the response before they start parsing it. WebKit on Linux did not begin to parse a page whose first chunk was under a hundred bytes until the response had finished, and did once the chunk was a couple of kilobytes. A real document head is usually large enough.
-- A `Suspense` component whose children take longer than its timeout is sent as its fallback, the same as when rendering to a string.
+
+#### Suspense
+
+A slow component holds back everything after it, unless it is inside a [Suspense](/api/async/components/Suspense) component. When the children of a `Suspense` component take longer than its timeout, the fallback is written in their place and the rest of the document carries on. The children are written after the document when they are ready, and the browser puts them where the fallback was.
+
+```tsx
+<body>
+  <h1>Posts</h1>
+  <Suspense fallback={<p>Loading…</p>}>
+    <Posts />
+  </Suspense>
+  <footer>About</footer>
+</body>
+```
+
+If `Posts` is slow, this is what is sent, with the last line arriving when `Posts` has rendered:
+
+```html
+<body>
+  <h1>Posts</h1>
+  <?start name="crank-0"><p>Loading…</p><?end>
+  <footer>About</footer>
+</body>
+<template for="crank-0"><ul>…</ul></template>
+```
+
+- Browsers which support [`<template for>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#out-of-order_patching) replace the fallback themselves. A small inline script, written after each template, does it in the others. The script is not given a nonce, so a content security policy which forbids inline scripts stops it running in those browsers.
+- If the children are ready within the timeout, they are written in place and there is no fallback or template.
+- If the children fail after the fallback has been written, the document is finished without them and the stream is closed normally, and the promise returned by `render()` rejects with the error.
+- The promise resolves to everything which was written, including the templates.
+- `Suspense` components inside a `SuspenseList`, and renders to a string rather than a stream, are not affected: they send the fallback if the children take longer than the timeout.
+- Hydrate the document after it has loaded, which is when a `type="module"` script runs. See the [hydration guide](/guides/hydration).
 
 ### Express.js integration
 

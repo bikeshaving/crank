@@ -36,6 +36,10 @@ The `timeout` prop controls how long Suspense waits before showing the fallback.
 
 When used within a [SuspenseList](/api/async/components/SuspenseList), Suspense coordinates with siblings to control reveal order and fallback behavior, inheriting the timeout from the parent SuspenseList if not specified.
 
+While a tree is being hydrated, `Suspense` does not render its fallback, however long its children take: the document already has what the server rendered, and replacing it with a fallback would only hide it.
+
+When rendered to a stream by the [HTML renderer](/api/html/classes/HTMLRenderer#suspense), the fallback is sent in place of slow children and the children are sent after the rest of the document.
+
 ## Examples
 
 ### Basic usage
