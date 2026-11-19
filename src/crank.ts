@@ -1280,24 +1280,29 @@ function diffChild<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				ret = new Retainer<TNode, TScope>(child);
 			}
 
-			if (childCopied && getFlag(ret, DidCommit)) {
-				// pass
-			} else if (child.tag === Raw || child.tag === Text) {
-				// pass
-			} else if (child.tag === Fragment) {
-				diff = diffChildren(
-					adapter,
-					root,
-					host,
-					ctx,
-					scope,
-					ret,
-					ret.el.props.children as Children,
-				);
-			} else if (typeof child.tag === "function") {
-				diff = diffComponent(adapter, root, host, ctx, scope, ret);
-			} else {
-				diff = diffHost(adapter, root, ctx, scope, ret);
+			try {
+				if (childCopied && getFlag(ret, DidCommit)) {
+					// pass
+				} else if (child.tag === Raw || child.tag === Text) {
+					// pass
+				} else if (child.tag === Fragment) {
+					diff = diffChildren(
+						adapter,
+						root,
+						host,
+						ctx,
+						scope,
+						ret,
+						ret.el.props.children as Children,
+					);
+				} else if (typeof child.tag === "function") {
+					diff = diffComponent(adapter, root, host, ctx, scope, ret);
+				} else {
+					diff = diffHost(adapter, root, ctx, scope, ret);
+				}
+			} catch (err) {
+				unmountOrphans(adapter, host, ctx, root, parent, [ret]);
+				throw err;
 			}
 		}
 
@@ -1504,24 +1509,30 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 					ret = new Retainer<TNode, TScope>(child);
 				}
 
-				if (childCopied && getFlag(ret, DidCommit)) {
-					// pass
-				} else if (child.tag === Raw || child.tag === Text) {
-					// pass
-				} else if (child.tag === Fragment) {
-					diff = diffChildren(
-						adapter,
-						root,
-						host,
-						ctx,
-						scope,
-						ret,
-						ret.el.props.children as Children,
-					);
-				} else if (typeof child.tag === "function") {
-					diff = diffComponent(adapter, root, host, ctx, scope, ret);
-				} else {
-					diff = diffHost(adapter, root, ctx, scope, ret);
+				try {
+					if (childCopied && getFlag(ret, DidCommit)) {
+						// pass
+					} else if (child.tag === Raw || child.tag === Text) {
+						// pass
+					} else if (child.tag === Fragment) {
+						diff = diffChildren(
+							adapter,
+							root,
+							host,
+							ctx,
+							scope,
+							ret,
+							ret.el.props.children as Children,
+						);
+					} else if (typeof child.tag === "function") {
+						diff = diffComponent(adapter, root, host, ctx, scope, ret);
+					} else {
+						diff = diffHost(adapter, root, ctx, scope, ret);
+					}
+				} catch (err) {
+					newRetained.push(ret);
+					unmountOrphans(adapter, host, ctx, root, parent, newRetained);
+					throw err;
 				}
 			}
 
@@ -1626,6 +1637,34 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		}
 
 		parent.pendingDiff = undefined;
+	}
+}
+
+/**
+ * Unmounts the retainers which a diff created before it threw. The parent
+ * keeps the children it had, so nothing else can reach them.
+ */
+function unmountOrphans<
+	TNode,
+	TScope,
+	TRoot extends TNode | undefined,
+	TResult,
+>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
+	host: Retainer<TNode, TScope>,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+	root: TRoot | undefined,
+	parent: Retainer<TNode, TScope>,
+	orphans: Array<Retainer<TNode, TScope> | undefined>,
+): void {
+	const oldRetained = wrap(parent.children);
+	for (let i = 0; i < orphans.length; i++) {
+		const ret = orphans[i];
+		if (typeof ret === "object" && oldRetained.indexOf(ret) === -1) {
+			// The fallback is one of the parent's children.
+			ret.fallback = undefined;
+			unmount(adapter, host, ctx, root, ret, false);
+		}
 	}
 }
 
