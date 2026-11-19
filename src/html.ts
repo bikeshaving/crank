@@ -223,12 +223,13 @@ class StreamRoot extends Sink {
 	 * Creates a boundary: a part of the document whose contents may be written
 	 * after the document, replacing a placeholder.
 	 */
-	boundary(): Boundary {
-		return new Boundary(this, "crank-" + this.boundaries++);
+	boundary(parent?: Boundary): Boundary {
+		return new Boundary(this, parent, "crank-" + this.boundaries++);
 	}
 
 	/**
-	 * Writes the contents of a boundary whose placeholder has been written.
+	 * Writes a template which replaces the placeholder of a boundary, after
+	 * the document.
 	 */
 	patch(name: string, contents: string): void {
 		// The script which defines $crank() is only written once.
@@ -310,82 +311,187 @@ const PATCH_SCRIPT =
 	"}";
 
 /**
+ * The placeholder of a boundary: its fallback, between two processing
+ * instructions which mark what the contents are going to replace.
+ *
+ * The fallback is rendered into the placeholder, and the placeholder is also
+ * passed to a Raw element as a node, which reads its value when it is
+ * committed.
+ */
+class Placeholder extends Sink {
+	declare boundary: Boundary;
+	declare written: string | undefined;
+	constructor(boundary: Boundary) {
+		super();
+		this.boundary = boundary;
+		this.written = undefined;
+	}
+
+	get value(): string {
+		if (this.written === undefined) {
+			const boundary = this.boundary;
+			boundary.deferred = true;
+			this.written = boundary.mark(boundary.showing ? this.text : "");
+		}
+
+		return this.written;
+	}
+}
+
+/**
  * A part of a document whose contents may be written after the rest of the
  * document. The Suspense component renders its children into a boundary.
  *
- * If the contents are ready when the commit reaches the boundary, they are
- * written in place. Otherwise the fallback is written between the start and
- * end markers, and the contents are written after the document in a template
- * which the browser replaces the fallback with.
+ * If the contents are ready when the commit reaches the boundary, they can be
+ * written in place. Otherwise the placeholder is written in place, and the
+ * contents are written after the document in a template which the browser
+ * replaces the placeholder with.
  */
 class Boundary extends Sink {
 	declare stream: StreamRoot;
+	/** The boundary whose contents this boundary is in. */
+	declare parent: Boundary | undefined;
 	declare name: string;
-	/** A processing instruction which marks the start of the fallback. */
-	declare start: string;
-	/** A processing instruction which marks the end of the fallback. */
-	declare end: string;
-	/** Whether the fallback has been written. */
+	declare placeholder: Placeholder;
+	/** Whether the placeholder has the fallback in it. */
+	declare showing: boolean;
+	/** Whether the placeholder has been written. */
 	declare deferred: boolean;
 	/**
-	 * The contents if they are to be written in place. The boundary is passed
-	 * to a Raw element as a node, which reads its value when it is committed.
+	 * What is written in place. The boundary is passed to a Raw element as a
+	 * node, which reads its value when it is committed.
 	 */
 	declare value: string;
+	/**
+	 * Templates for the boundaries in the contents of this one, which cannot
+	 * replace anything until the contents are in the document.
+	 */
+	declare queue: Array<[string, string]> | undefined;
 	declare settle: () => void;
-	constructor(stream: StreamRoot, name: string) {
+	constructor(stream: StreamRoot, parent: Boundary | undefined, name: string) {
 		super();
 		this.stream = stream;
+		this.parent = parent;
 		this.name = name;
-		this.start = `<?start name="${name}">`;
-		this.end = "<?end>";
+		this.placeholder = new Placeholder(this);
+		this.showing = true;
 		this.deferred = false;
 		this.value = "";
+		this.queue = [];
 		const pending = new Promise<void>((resolve) => (this.settle = resolve));
 		stream.pending.add(pending);
 		pending.then(() => stream.pending.delete(pending));
 	}
 
 	/**
-	 * Called when the fallback has been written.
+	 * Creates a boundary for something in the contents of this one.
 	 */
-	defer(): void {
-		this.deferred = true;
+	boundary(): Boundary {
+		return this.stream.boundary(this);
+	}
+
+	mark(fallback: string): string {
+		return `<?start name="${this.name}">${fallback}<?end>`;
 	}
 
 	/**
-	 * Called when the contents have been written to the boundary.
+	 * Writes a template for this boundary, or for a boundary in its contents,
+	 * once the contents of the boundaries around it are in the document.
 	 */
-	close(): void {
-		if (this.deferred) {
-			this.stream.patch(this.name, this.text);
+	patch(name: string, contents: string): void {
+		if (this.queue) {
+			this.queue.push([name, contents]);
+		} else if (this.parent) {
+			this.parent.patch(name, contents);
 		} else {
+			this.stream.patch(name, contents);
+		}
+	}
+
+	/**
+	 * Called when the contents have been written to the boundary. They are
+	 * written in place if that is allowed and the placeholder has not been
+	 * written. Otherwise the placeholder is, and the contents are held until
+	 * reveal() is called.
+	 *
+	 * @returns Whether the contents were written in place.
+	 */
+	close(inline: boolean): boolean {
+		if (inline && !this.deferred) {
 			this.value = this.text;
+			this.finish();
+			return true;
 		}
 
-		this.settle();
+		if (!this.deferred) {
+			this.value = this.placeholder.value;
+		}
+
+		return false;
 	}
 
 	/**
-	 * Called when the contents have failed to render. If the fallback has been
-	 * written, it stays in the document, and the render rejects with the error
-	 * when the stream has closed.
+	 * Writes the contents which close() held.
+	 */
+	reveal(): void {
+		if (this.queue) {
+			const queue = this.queue;
+			this.queue = undefined;
+			this.patch(this.name, this.text);
+			this.queue = queue;
+			this.finish();
+		}
+	}
+
+	/**
+	 * Called when the fallback of a placeholder which was written without it
+	 * can be shown.
+	 */
+	fallback(): void {
+		this.showing = true;
+		if (this.deferred && this.queue) {
+			const queue = this.queue;
+			this.queue = undefined;
+			this.patch(this.name, this.mark(this.placeholder.text));
+			this.queue = queue;
+		}
+	}
+
+	/**
+	 * Called when the contents have failed to render. If the placeholder has
+	 * been written, it stays in the document, and the render rejects with the
+	 * error when the stream has closed.
+	 *
+	 * @returns Whether the boundary took the error.
 	 */
 	abort(err: unknown): boolean {
-		if (this.deferred) {
-			this.close = NOOP;
+		if (this.deferred && this.queue) {
+			// Nothing can replace the placeholders in contents which are never
+			// going to be in the document.
+			this.queue = [];
 			if (this.stream.error === undefined) {
 				this.stream.error = err;
 			}
 
-			this.settle();
+			this.finish();
 		}
 
 		return this.deferred;
 	}
-}
 
-function NOOP(): void {}
+	/**
+	 * The contents are in the document, or are never going to be.
+	 */
+	finish(): void {
+		const queue = this.queue!;
+		this.queue = undefined;
+		for (let i = 0; i < queue.length; i++) {
+			this.patch(queue[i][0], queue[i][1]);
+		}
+
+		this.settle();
+	}
+}
 
 const SuspenseBoundaries = Symbol.for("crank.SuspenseBoundaries");
 

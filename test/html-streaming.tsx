@@ -825,19 +825,108 @@ describe("html streaming suspense", () => {
 		expect(result).toBe("<body><p>Ready</p></body>");
 	});
 
-	test("a SuspenseList writes its children in place", async () => {
+	// Three components in a list, whose children are ready second, first and
+	// third.
+	function renderList(
+		props: Record<string, unknown>,
+	): Promise<[string, Recording]> {
+		const item = (name: string, ms: number) => (
+			<Suspense fallback={name + "?"} timeout={10}>
+				<Delay ms={ms}>
+					<b>{name}</b>
+				</Delay>
+			</Suspense>
+		);
+
+		const stream = record();
+		return Promise.resolve(
+			renderer.render(
+				<body>
+					<SuspenseList {...props}>
+						{item("A", 90)}
+						{item("B", 50)}
+						{item("C", 130)}
+					</SuspenseList>
+					<footer>Footer</footer>
+				</body>,
+				stream.writable,
+			),
+		).then((result) => [stripScripts(result), stream]);
+	}
+
+	const template = (name: string, contents: string) =>
+		`<template for="crank-${name}">${contents}</template>[script]`;
+	const placeholder = (name: string, fallback = "") =>
+		`<?start name="crank-${name}">${fallback}<?end>`;
+
+	test("a SuspenseList reveals forwards, with the next fallback", async () => {
+		const [result, stream] = await renderList({});
+		expect(result).toBe(
+			`<body>${placeholder("0", "A?")}${placeholder("1")}${placeholder("2")}<footer>Footer</footer></body>` +
+				// B waits for A, and then the fallback of C is shown.
+				template("0", "<b>A</b>") +
+				template("1", "<b>B</b>") +
+				template("2", placeholder("2", "C?")) +
+				template("2", "<b>C</b>"),
+		);
+		expect(stream.timeOf("<footer>")).toBeLessThan(45);
+		expect(stream.timeOf('<template for="crank-1">')).toBeGreaterThanOrEqual(
+			85,
+		);
+	});
+
+	test("a SuspenseList with a hidden tail writes no fallbacks", async () => {
+		const [result] = await renderList({tail: "hidden"});
+		expect(result).toBe(
+			`<body>${placeholder("0")}${placeholder("1")}${placeholder("2")}<footer>Footer</footer></body>` +
+				template("0", "<b>A</b>") +
+				template("1", "<b>B</b>") +
+				template("2", "<b>C</b>"),
+		);
+	});
+
+	test("a SuspenseList reveals backwards", async () => {
+		const [result, stream] = await renderList({revealOrder: "backwards"});
+		expect(result).toBe(
+			`<body>${placeholder("0")}${placeholder("1")}${placeholder("2", "C?")}<footer>Footer</footer></body>` +
+				template("2", "<b>C</b>") +
+				template("1", "<b>B</b>") +
+				template("0", "<b>A</b>"),
+		);
+		expect(stream.timeOf('<template for="crank-1">')).toBeGreaterThanOrEqual(
+			125,
+		);
+	});
+
+	test("a SuspenseList reveals together", async () => {
+		const [result, stream] = await renderList({revealOrder: "together"});
+		expect(result).toBe(
+			`<body>${placeholder("0")}${placeholder("1")}${placeholder("2")}<footer>Footer</footer></body>` +
+				template("0", "<b>A</b>") +
+				template("1", "<b>B</b>") +
+				template("2", "<b>C</b>"),
+		);
+		expect(stream.timeOf('<template for="crank-0">')).toBeGreaterThanOrEqual(
+			125,
+		);
+	});
+
+	test("a SuspenseList writes children in place while they are ready in order", async () => {
 		const stream = record();
 		const result = await renderer.render(
 			<body>
 				<SuspenseList>
-					<Suspense fallback="A?" timeout={5}>
-						<Delay ms={40}>
+					<Suspense fallback="A?" timeout={30}>
+						<Delay ms={5}>
 							<b>A</b>
 						</Delay>
 					</Suspense>
-					<Suspense fallback="B?" timeout={5}>
-						<Delay ms={20}>
-							<b>B</b>
+					<Suspense fallback="B?" timeout={30}>
+						<b>B</b>
+					</Suspense>
+					<Suspense fallback="C?" timeout={30}>
+						<Delay ms={70}>
+							<b>C</b>
 						</Delay>
 					</Suspense>
 				</SuspenseList>
@@ -845,8 +934,46 @@ describe("html streaming suspense", () => {
 			stream.writable,
 		);
 
-		expect(result).toBe("<body><b>A</b><b>B</b></body>");
-		expect(stream.text()).toBe(result);
+		expect(stripScripts(result)).toBe(
+			`<body><b>A</b><b>B</b>${placeholder("2", "C?")}</body>` +
+				template("2", "<b>C</b>"),
+		);
+	});
+
+	test("a SuspenseList skips a component whose children fail", async () => {
+		async function Boom(): Promise<never> {
+			await delay(40);
+			throw new Error("boom");
+		}
+
+		const stream = record();
+		let err: unknown;
+		try {
+			await renderer.render(
+				<body>
+					<SuspenseList>
+						<Suspense fallback="A?" timeout={5}>
+							<Boom />
+						</Suspense>
+						<Suspense fallback="B?" timeout={5}>
+							<Delay ms={20}>
+								<b>B</b>
+							</Delay>
+						</Suspense>
+					</SuspenseList>
+				</body>,
+				stream.writable,
+			);
+		} catch (err1) {
+			err = err1;
+		}
+
+		expect((err as Error).message).toBe("boom");
+		expect(stripScripts(stream.text())).toBe(
+			`<body>${placeholder("0", "A?")}${placeholder("1")}</body>` +
+				template("1", "<b>B</b>"),
+		);
+		expect(stream.isClosed()).toBe(true);
 	});
 
 	test("scripts are written with the nonce of the document's scripts", async () => {
