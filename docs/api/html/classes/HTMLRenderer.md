@@ -202,7 +202,18 @@ If `Posts` is slow, this is what is sent, with the last line arriving when `Post
 - If the children are ready within the timeout, they are written in place and there is no fallback or template.
 - If the children fail after the fallback has been written, the document is finished without them and the stream is closed normally, and the promise returned by `render()` rejects with the error. When the document is hydrated, the browser renders the children and replaces the fallback.
 - The promise resolves to everything which was written, including the templates.
-- A fallback is only written where it can be replaced. A `Suspense` component inside a `SuspenseList` waits for its children and writes them in place, in document order. A render to a string rather than a stream waits for the children of every `Suspense` component.
+- A render to a string rather than a stream has nothing which could replace a fallback later, so it waits for the children of every `Suspense` component.
+
+#### SuspenseList
+
+The `Suspense` components of a [SuspenseList](/api/async/components/SuspenseList) are revealed in the order the list asks for, as they are in the browser. Each one writes a placeholder, and the templates which replace the placeholders are written in the reveal order:
+
+- `revealOrder="forwards"` (the default): the children of a component are not sent until the children of every component before it have been. While they are ready in order, they are written in place, with no placeholder.
+- `revealOrder="backwards"`: the same, from the last component to the first.
+- `revealOrder="together"`: all of the children are sent together, when the last are ready.
+- `tail="collapsed"` (the default): only the component which is going to be revealed next has its fallback. When it is revealed, the fallback of the next one is sent, as a template which fills its placeholder.
+- `tail="hidden"`, and `revealOrder="together"`: the placeholders are empty.
+- A component whose children fail is skipped, and the ones after it are still revealed.
 - Hydrate the document after it has loaded, which is when a `type="module"` script runs. See the [hydration guide](/guides/hydration).
 
 ### Express.js integration
