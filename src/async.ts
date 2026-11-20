@@ -1,5 +1,5 @@
 import type {Children, Component, Context} from "./crank.js";
-import {createElement, Fragment, Portal, Raw} from "./crank.js";
+import {createElement, Portal, Raw} from "./crank.js";
 
 /**
  * Creates a lazy-loaded component from an initializer function.
@@ -108,52 +108,6 @@ function* SuspenseBoundaryChildren(
 }
 
 /**
- * Returns the contents of a processing instruction. Browsers which do not
- * parse processing instructions in HTML parse them as comments.
- */
-function getInstruction(node: any): string {
-	if (node && node.nodeType === 7) {
-		return (node.target + " " + node.data).trim();
-	} else if (node && node.nodeType === 8 && node.data[0] === "?") {
-		return node.data.slice(1);
-	}
-
-	return "";
-}
-
-/**
- * Called while hydrating with the nodes which are left to hydrate. Returns
- * whether the first of them are the children of a Suspense component.
- *
- * A renderer which wrote the fallback to a stream and never replaced it left
- * the fallback between processing instructions. The children are rendered
- * rather than hydrated, and the fallback is removed.
- */
-function hasChildren(nodes: Array<any>): boolean {
-	if (!getInstruction(nodes[0]).startsWith('start name="crank-')) {
-		return true;
-	}
-
-	let end = 1;
-	for (let depth = 0; end < nodes.length; end++) {
-		const instruction = getInstruction(nodes[end]);
-		if (instruction.startsWith("start")) {
-			depth++;
-		} else if (instruction === "end" && !depth--) {
-			break;
-		}
-	}
-
-	for (const node of nodes.splice(0, end + 1)) {
-		if (node.parentNode) {
-			node.parentNode.removeChild(node);
-		}
-	}
-
-	return false;
-}
-
-/**
  * A component that displays a fallback while its children are loading.
  *
  * When used within a SuspenseList, coordinates with siblings to control
@@ -194,9 +148,9 @@ export async function* Suspense(
 		}
 
 		if (this.isHydrating) {
-			// The document already has the children, unless they failed to
-			// render after the fallback was written.
-			yield createElement(Fragment, {hydrate: hasChildren}, children);
+			// The document already has the children, so a fallback would only
+			// replace them.
+			yield children;
 			continue;
 		}
 

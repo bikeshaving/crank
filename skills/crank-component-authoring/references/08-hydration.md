@@ -66,7 +66,7 @@ When the server [streams](/api/html/classes/HTMLRenderer#streaming) a document, 
 
 By then every `Suspense` component in the document has its children, and hydrating one never shows its fallback, however long its children take in the browser.
 
-If the children of a `Suspense` component failed on the server after its fallback was sent, the document still has the fallback, between `<?start>` and `<?end>` markers. When such a document is hydrated, the children are rendered in the browser and replace the fallback.
+If the children of a `Suspense` component failed on the server after its fallback was sent, the document still has the fallback, between `<?start>` and `<?end>` markers. When such a document is hydrated, the children are rendered in the browser and replace the fallback. They do not match the fallback, so hydration warns about the mismatch.
 
 ## The hydrate prop
 You can control hydration and squash warnings with the special `hydrate` prop:
@@ -121,28 +121,6 @@ function Modal({children}) {
 
 Portal children are normally skipped during hydration, but `hydrate={true}`
 ensures their children are included.
-
-### Deciding When the Element Is Hydrated
-
-A function is called when the element is about to be hydrated, with the nodes of its parent which have not been hydrated yet. If it returns `false`, the element is rendered without hydrating, and the function removes from the array whatever nodes the element is replacing.
-
-```jsx
-function isRendered(nodes) {
-  if (nodes[0] && nodes[0].nodeName === "TEMPLATE") {
-    // The server left a placeholder here. Render in its place.
-    nodes.shift().remove();
-    return false;
-  }
-
-  return true;
-}
-
-<Fragment hydrate={isRendered}>
-  <Widget />
-</Fragment>
-```
-
-The `Suspense` component uses this to render its children in the browser when the server never sent them.
 
 ### Selective Prop Hydration
 

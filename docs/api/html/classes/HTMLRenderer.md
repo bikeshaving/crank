@@ -200,7 +200,7 @@ If `Posts` is slow, this is what is sent, with the last line arriving when `Post
 
 - Browsers which support [`<template for>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/template#out-of-order_patching) replace the fallback themselves. A small inline script, written after each template, does it in the others. The script is written with the `nonce` of the first `<script>` element in the document which has one, so that it runs under a content security policy which requires a nonce.
 - If the children are ready within the timeout, they are written in place and there is no fallback or template.
-- If the children fail after the fallback has been written, the document is finished without them and the stream is closed normally, and the promise returned by `render()` rejects with the error. When the document is hydrated, the browser renders the children and replaces the fallback.
+- If the children fail after the fallback has been written, the document is finished without them and the stream is closed normally, and the promise returned by `render()` rejects with the error. When the document is hydrated, the browser renders the children and replaces the fallback, with a hydration warning because they do not match it.
 - The promise resolves to everything which was written, including the templates.
 - A render to a string rather than a stream has nothing which could replace a fallback later, so it waits for the children of every `Suspense` component.
 

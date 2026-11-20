@@ -320,24 +320,19 @@ test("the browser renders a Suspense component whose children failed on the serv
 	try {
 		await page.goto(server.url.href + "failed", {waitUntil: "commit"});
 		await page.waitForSelector("footer");
-		await page.evaluate(
-			() => ((document.querySelector("footer") as any).fromServer = true),
-		);
 
-		// The server finishes the document with the fallback in place.
+		// The server finishes the document with the fallback in place. The
+		// browser renders the children, which do not match it.
 		release();
 		await page.waitForFunction(() => (window as any).hydrated);
-		expect(await page.evaluate(() => (window as any).warnings)).toEqual([]);
+		expect(
+			await page.evaluate(() => (window as any).warnings.length),
+		).toBeGreaterThan(0);
 		expect(
 			await page.evaluate(() => document.getElementById("root")!.innerHTML),
 		).toBe(
 			'<main><h1>Shell</h1><p id="slow">Slow</p><button id="count">0</button><footer>Footer</footer></main>',
 		);
-		expect(
-			await page.evaluate(
-				() => (document.querySelector("footer") as any).fromServer,
-			),
-		).toBe(true);
 
 		await page.click("#count");
 		expect(await page.textContent("#count")).toBe("1");
