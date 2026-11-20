@@ -1,5 +1,5 @@
 import type {Children, Component, Context} from "./crank.js";
-import {createElement} from "./crank.js";
+import {createElement, Portal, Raw} from "./crank.js";
 
 /**
  * Creates a lazy-loaded component from an initializer function.
@@ -76,6 +76,37 @@ function SuspenseChildren(
 	return children;
 }
 
+function* SuspenseBoundaryChildren(
+	this: Context,
+	{
+		children,
+		boundary,
+		ready,
+	}: {
+		children: Children;
+		boundary: SuspenseBoundary;
+		ready: (boundary: SuspenseBoundary | undefined) => void;
+	},
+): Generator<Children> {
+	// Suspense components in the children are in the contents of the boundary.
+	this.provide(SuspenseBoundaries, () => boundary.boundary());
+	for ({children, boundary, ready} of this) {
+		try {
+			this.schedule(() => ready(boundary));
+			yield children;
+		} catch (err) {
+			// Once the placeholder has been rendered, the rest of the document
+			// does not depend on the children, so the error is the boundary's.
+			if (!boundary.abort(err)) {
+				throw err;
+			}
+
+			ready(undefined);
+			yield null;
+		}
+	}
+}
+
 /**
  * A component that displays a fallback while its children are loading.
  *
@@ -103,6 +134,9 @@ export async function* Suspense(
 	}: {children: Children; fallback: Children; timeout?: number},
 ): AsyncGenerator<Children> {
 	const controller = this.consume(SuspenseListController);
+	const createBoundary = this.consume(SuspenseBoundaries) as
+		| (() => SuspenseBoundary | undefined)
+		| undefined;
 	this.provide(SuspenseListController, undefined);
 	for await ({children, fallback, timeout} of this) {
 		if (timeout == null) {
@@ -111,6 +145,66 @@ export async function* Suspense(
 			} else {
 				timeout = 300;
 			}
+		}
+
+		if (this.isHydrating) {
+			// The document already has the children, so a fallback would only
+			// replace them.
+			yield children;
+			continue;
+		}
+
+		const boundary = createBoundary && createBoundary();
+		if (createBoundary && !boundary) {
+			// A render to a string has nothing which could replace a fallback
+			// later, so it waits for the children.
+			yield children;
+			continue;
+		} else if (boundary) {
+			// The children are rendered into the boundary, which writes them in
+			// place, or writes the placeholder in place and the children after
+			// the document.
+			let canShow = true;
+			let ready = (boundary1: SuspenseBoundary | undefined): void => {
+				if (boundary1 && !boundary1.close(true)) {
+					boundary1.reveal();
+				}
+			};
+
+			if (controller) {
+				const items = await controller.register(this);
+				const item = items.find((item) => item.ctx === this);
+				canShow =
+					controller.revealOrder !== "together" && controller.tail !== "hidden";
+				boundary.showing = canShow && controller.isHead(this, items);
+				if (item && canShow && !boundary.showing) {
+					item.fallback = () => boundary.fallback();
+				}
+
+				ready = (boundary1) => controller.ready(this, items, boundary1);
+			}
+
+			yield createElement(SuspenseFallback, {
+				timeout: timeout!,
+				children: [
+					createElement(
+						Portal,
+						{root: boundary.placeholder},
+						canShow ? fallback : null,
+					),
+					createElement(Raw, {value: boundary.placeholder}),
+				],
+				schedule: () => {},
+			});
+			yield [
+				createElement(
+					Portal,
+					{root: boundary},
+					createElement(SuspenseBoundaryChildren, {children, boundary, ready}),
+				),
+				createElement(Raw, {value: boundary}),
+			];
+			continue;
 		}
 
 		if (!controller) {
@@ -147,10 +241,55 @@ export async function* Suspense(
 
 const SuspenseListController = Symbol.for("SuspenseListController");
 
+/**
+ * Provided by a renderer which does not render for a screen. The function
+ * returns a boundary if the renderer can write the children of a Suspense
+ * component after the rest of the document, replacing its fallback, and
+ * nothing if the component has to wait for its children.
+ */
+const SuspenseBoundaries = Symbol.for("crank.SuspenseBoundaries");
+
+interface SuspenseBoundary {
+	/**
+	 * What the fallback is rendered into, and what is rendered in place until
+	 * the children can replace it.
+	 */
+	placeholder: object;
+	/** Whether the placeholder has the fallback in it. */
+	showing: boolean;
+	/** Creates a boundary for a Suspense component in the children. */
+	boundary(): SuspenseBoundary;
+	/**
+	 * Called when the children have been rendered into the boundary. Returns
+	 * whether they were rendered in place, which they can only be if inline is
+	 * true. If they were not, they are held until reveal() is called.
+	 */
+	close(inline: boolean): boolean;
+	reveal(): void;
+	/** Called when a placeholder rendered without the fallback can show it. */
+	fallback(): void;
+	/**
+	 * Called when the children have failed to render. Returns whether the
+	 * boundary takes the error, which it does if the placeholder has been
+	 * rendered.
+	 */
+	abort(err: unknown): boolean;
+}
+
 interface SuspenseListItem {
 	ctx: Context;
 	resolve: () => void;
 	promise: Promise<void>;
+	// The rest is for a list whose components render into boundaries.
+	/** Whether the children have rendered, or failed to. */
+	ready?: boolean;
+	/** Whether the children are in the document, or are never going to be. */
+	revealed?: boolean;
+	/** Whether the children were rendered in place. */
+	inline?: boolean;
+	reveal?: () => void;
+	/** Shows the fallback of a placeholder which was rendered without it. */
+	fallback?: (() => void) | undefined;
 }
 
 interface SuspenseListController {
@@ -161,12 +300,22 @@ interface SuspenseListController {
 	isHead(ctx: Context, items: Array<SuspenseListItem>): boolean;
 	scheduleFallback(ctx: Context, items: Array<SuspenseListItem>): Promise<void>;
 	scheduleChildren(ctx: Context, items: Array<SuspenseListItem>): Promise<void>;
+	/**
+	 * Called when the children of a component which renders into a boundary
+	 * have rendered, or with no boundary when they have failed to.
+	 */
+	ready(
+		ctx: Context,
+		items: Array<SuspenseListItem>,
+		boundary: SuspenseBoundary | undefined,
+	): void;
 }
 
 declare global {
 	namespace Crank {
 		interface ProvisionMap {
 			[SuspenseListController]: SuspenseListController;
+			[SuspenseBoundaries]: () => SuspenseBoundary | undefined;
 		}
 	}
 }
@@ -308,6 +457,59 @@ export function* SuspenseList(
 					.slice(index + 1)
 					.map((item) => item.promise);
 				await Promise.all(waitFor);
+			}
+		},
+
+		ready(
+			ctx: Context,
+			suspenseItems: Array<SuspenseListItem>,
+			boundary: SuspenseBoundary | undefined,
+		) {
+			const index = suspenseItems.findIndex((item) => item.ctx === ctx);
+			const item = suspenseItems[index];
+			if (!item || item.ready) {
+				return;
+			}
+
+			item.ready = true;
+			if (!boundary) {
+				item.revealed = true;
+			} else if (
+				// A template is written after the document, so children are only
+				// rendered in place if nothing which is revealed before them is in
+				// a template.
+				boundary.close(
+					revealOrder === "forwards" &&
+						suspenseItems.slice(0, index).every((item1) => item1.inline),
+				)
+			) {
+				item.inline = true;
+				item.revealed = true;
+			} else {
+				item.reveal = () => boundary.reveal();
+			}
+
+			const order =
+				revealOrder === "backwards"
+					? suspenseItems.slice().reverse()
+					: suspenseItems;
+			if (revealOrder !== "together" || order.every((item1) => item1.ready)) {
+				for (const item1 of order) {
+					if (!item1.ready) {
+						break;
+					} else if (!item1.revealed) {
+						item1.revealed = true;
+						item1.reveal!();
+					}
+				}
+			}
+
+			// A collapsed tail shows the fallback of whichever is revealed next.
+			const next = order.find((item1) => !item1.revealed);
+			if (next && next.fallback) {
+				const fallback = next.fallback;
+				next.fallback = undefined;
+				fallback();
 			}
 		},
 	};

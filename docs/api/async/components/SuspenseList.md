@@ -49,6 +49,8 @@ Suspense components that are not rendered immediately (because they are children
 
 In Crank, async components by default render together. The \u201Ctogether\u201D mode might not be necessary unless you\u2019re using Suspense fallbacks.
 
+When rendered to a stream by the [HTML renderer](/api/html/classes/HTMLRenderer#suspenselist), the list controls the order in which the children of its `Suspense` components are sent, and which fallbacks are sent with the document.
+
 ## Examples
 
 ### Sequential reveal (forwards)

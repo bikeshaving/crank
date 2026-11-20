@@ -42,6 +42,12 @@ Whether the component is currently executing. Useful for preventing recursive re
 
 Whether the component has been unmounted. Check this before performing async operations that might complete after unmount.
 
+### isHydrating
+
+`boolean` (readonly)
+
+Whether the component is being rendered by a call to `hydrate()` which has not finished. Later renders of the same tree are not hydrating.
+
 ## Instance methods
 
 ### refresh()

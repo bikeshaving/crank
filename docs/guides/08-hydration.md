@@ -56,6 +56,18 @@ function TimeDisplay() {
 }
 ```
 
+## Hydrating Streamed Documents
+
+When the server [streams](/api/html/classes/HTMLRenderer#streaming) a document, parts of it can arrive after the rest: the children of a `Suspense` component are sent when they are ready, and the browser moves them into place. Hydrate once the whole document has arrived, which is when a `type="module"` script runs:
+
+```html
+<script type="module" src="/client.js"></script>
+```
+
+By then every `Suspense` component in the document has its children, and hydrating one never shows its fallback, however long its children take in the browser.
+
+If the children of a `Suspense` component failed on the server after its fallback was sent, the document still has the fallback, between `<?start>` and `<?end>` markers. When such a document is hydrated, the children are rendered in the browser and replace the fallback. They do not match the fallback, so hydration warns about the mismatch.
+
 ## The hydrate prop
 You can control hydration and squash warnings with the special `hydrate` prop:
 
