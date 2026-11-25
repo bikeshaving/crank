@@ -2,9 +2,14 @@ import {expect, test} from "bun:test";
 import {createElement} from "@b9g/crank";
 import {scenario} from "./harness.ts";
 
-// Without evaluating text, the transform has to work out which names in the
-// body of a loop are variables of the component. With it, the engine does.
-// So each of these views is run both ways, and has to do the same thing.
+// The transform has to work out which names in the body of a loop are
+// variables of the component. These views are hard to get right.
+//
+// What each one should do was recorded from another way of running a view,
+// which has since been taken out: the body was evaluated from text inside
+// `with` blocks, so that the engine said what each name referred to. The
+// engine is right by definition, so the snapshots are the right answers, and
+// are not to be written again from what this does.
 
 const component = (view: string) => `
 const outer = "module";
@@ -21,7 +26,12 @@ export function* Probe(this: Context, {name}: any, ctx: Context) {
 	const self = function (this: any) { return this === undefined; };
 	class Box { constructor(public value: number) {} }
 	const Row = ({value}: any) => <i>{value}</i>;
-	h.get = () => ({n, list, point});
+	const Wrap = ({children}: any) => <u>{children}</u>;
+	const kit = {Row};
+	const Math = {max: () => "mine"};
+	let $ = 1;
+	let _ = 2;
+	h.get = () => ({n, list, point, $, _});
 	for ({name} of this) {
 		${view}
 	}
@@ -62,14 +72,28 @@ const views: Record<string, string> = {
 	"a block which declares the name, and what comes after it": `let out = ""; { let n = 1; out += n; } out += n; yield <p>{out}</p>;`,
 	"a loop which assigns to a variable of the component": `for (n of [5, 6]) {} for ([n] of [[7]]) {} yield <p>{n}</p>;`,
 	"a function which is called at once": `yield <p>{(function (n: number) { return n + arguments.length; })(40)} {(() => n)()}</p>;`,
+	"an assignment which depends on the value": `n ||= 9; n &&= n + 1; let m: any = null; m ??= n; list &&= [...list, m]; yield <p>{n} {m} {list.length}</p>;`,
+	"a template with the names in it":
+		"yield <p>{`${n}-${name}-${`${point.x}`}`}</p>;",
+	"a component of the setup with children": `yield <p><Wrap><Row value={n} /><Row value={name} /></Wrap></p>;`,
+	"a member of a variable as an element": `const ui = {Row}; yield <p><ui.Row value={n} /><kit.Row value={name} /></p>;`,
+	"a method of a variable": `list.push(n); yield <p>{list.join()} {list.map((n) => n * 2).join()}</p>;`,
+	"a regular expression, a string and a property with the name": `const re = /n+/g; yield <p>{"nnn".replace(re, name)} {({n: "prop"}).n} {"n".length}</p>;`,
+	"a spread and a rest": `const {x, ...rest} = {...point, n}; const [first, ...others] = list; yield <p>{x} {Object.keys(rest).join()} {first} {others.length}</p>;`,
+	"a generator in the view which is delegated to": `function* inner() { return n * 2; } const twice: number = yield* inner(); yield <p>{twice}</p>;`,
+	"a variable with the name of a global": `yield <p>{Math.max(1, 2)} {typeof Math}</p>;`,
+	"variables named with a dollar sign and an underscore": `$++; _ += $; yield <p>{$} {_}</p>;`,
+	"a property which is assigned through a variable": `point.x++; point["y"] += n; yield <p>{point.x} {point.y}</p>;`,
+	"a comma, a conditional and void": `const v = (n++, n > 1 ? list : [name]); yield <p>{v.length} {n} {String(void n)} {String(n ?? "none")}</p>;`,
+	"a function with the name of a variable as a parameter, called with the variable": `const f = (list: Array<number>, n: number) => list.length + n; yield <p>{f(list, n)}</p>;`,
 	"an optional call and chain": `const o: any = {f: undefined}; yield <p>{String(o.f?.())} {double?.(n)} {point?.x}</p>;`,
 };
 
 for (const [title, view] of Object.entries(views)) {
 	test(title, async () => {
 		const results: Array<unknown> = [];
-		for (const rewrite of [false, true]) {
-			const s = scenario(rewrite);
+		{
+			const s = scenario();
 			// The view is an edit, so that it is not the code as it was written.
 			const {Probe} = await s.load(component("yield <p>first</p>;"));
 			const read = () => s.render(<Probe name="a" />);
@@ -83,14 +107,14 @@ for (const [title, view] of Object.entries(views)) {
 			results.push([first, read(), s.h.get(), s.h.inner]);
 		}
 
-		expect(results[1]).toEqual(results[0]);
+		expect(results[0]).toMatchSnapshot();
 		expect(String((results[0] as any)[0])).toMatch(/^<p>/);
 	});
 }
 
 // A try statement around the loop is ended after the loop and started again
-// after the view. Evaluating text leaves the statement as it was written, so
-// the two ways have to do the same thing with what is thrown and returned.
+// after the view. The other way left the statement as it was written, so
+// what it did with what was thrown and returned is the right answer.
 
 const guarded: Record<string, string> = {
 	"a finally clause": `
@@ -201,8 +225,8 @@ for (const [shape, source] of Object.entries(guarded)) {
 	for (const [step, view] of Object.entries(steps)) {
 		test(`${shape}: the view ${step}`, async () => {
 			const results: Array<unknown> = [];
-			for (const rewrite of [false, true]) {
-				const s = scenario(rewrite);
+			{
+				const s = scenario();
 				const outputs: Array<unknown> = [];
 				const read = (Guard: any) => {
 					try {
@@ -230,7 +254,192 @@ for (const [shape, source] of Object.entries(guarded)) {
 				results.push([outputs, s.h.log]);
 			}
 
-			expect(results[1]).toEqual(results[0]);
+			expect(results[0]).toMatchSnapshot();
 		});
 	}
 }
+
+// Components, where the views above were all for one.
+
+interface Case {
+	source: string;
+	first: string;
+	second: string;
+	act(s: any, read: (props?: any) => any, outputs: Array<unknown>): unknown;
+}
+
+const cases: Record<string, Case> = {
+	"an error from what the view renders, which the view catches": {
+		source: `
+export function Bomb({armed}: any) {
+	if (armed) {
+		throw new Error("boom");
+	}
+
+	return <i>safe</i>;
+}
+
+export function* Guard(this: Context) {
+	let n = 0;
+	h.inc = () => { n++; this.refresh(); };
+	for ({} of this) {
+		VIEW
+	}
+}`,
+		first: "yield <p>first {n}</p>;",
+		second: `try {
+			yield <p><Bomb armed={h.armed} /> {n}</p>;
+		} catch (err: any) {
+			h.log.push("caught " + err.message + " " + n);
+			yield <b>recovered {n}</b>;
+		}`,
+		act(s, read) {
+			read();
+			s.h.inc();
+			s.h.armed = true;
+			read();
+			s.h.armed = false;
+			read();
+			read();
+		},
+	},
+	"a handler which keeps what the loop declared for one render": {
+		source: `
+export function* Guard(this: Context, props: any) {
+	let n = 0;
+	h.handlers = [];
+	h.inc = () => { n++; this.refresh(); };
+	for (const {label} of this) {
+		VIEW
+	}
+}`,
+		first: "h.handlers.push(() => label + n); yield <p>{label}</p>;",
+		second:
+			"const mine = label.toUpperCase(); h.handlers.push(() => mine + label + n); yield <b>{label}</b>;",
+		act(s, read, outputs) {
+			read({label: "b"});
+			s.h.inc();
+			read({label: "c"});
+			outputs.push(s.h.handlers.map((handler: any) => handler()));
+		},
+	},
+	"a loop which assigns its props with defaults": {
+		source: `
+export function* Guard(this: Context, props: any) {
+	let id: any, first: any, rest: any;
+	for ({user: {id = "anon"} = {}, tags: [first = "none", ...rest] = []} of this) {
+		VIEW
+	}
+}`,
+		first: "yield <p>{id}</p>;",
+		second: "yield <b>{id} {first} {rest.length}</b>;",
+		act(_s, read) {
+			read({});
+			read({user: {id: "u1"}, tags: ["a", "b", "c"]});
+			read({user: {}, tags: []});
+		},
+	},
+	"what a view schedules": {
+		source: `
+export function* Guard(this: Context) {
+	let n = 0;
+	h.inc = () => { n++; this.refresh(); };
+	for ({} of this) {
+		VIEW
+	}
+}`,
+		first: "yield <p>{n}</p>;",
+		second: `this.schedule(() => h.log.push("schedule " + n));
+		this.after(() => h.log.push("after " + n));
+		this.cleanup(() => h.log.push("cleanup " + n));
+		yield <b>{n}</b>;`,
+		act(s, read) {
+			read();
+			s.h.inc();
+			read();
+			s.render(null);
+		},
+	},
+	"an async generator component with a try statement": {
+		source: `
+export async function* Guard(this: Context) {
+	let n = 0;
+	h.inc = () => { n++; return this.refresh(); };
+	try {
+		for await ({} of this) {
+			VIEW
+		}
+	} catch (err: any) {
+		h.log.push("caught " + err.message);
+		return <i>caught {n}</i>;
+	} finally {
+		h.log.push("finally " + n);
+	}
+}`,
+		first: "yield <p>first {n}</p>;",
+		second: `await null;
+		if (h.armed) {
+			throw new Error("thrown " + n);
+		}
+
+		const value = await Promise.resolve(n * 2);
+		yield <b>{value}</b>;`,
+		async act(s, read, outputs) {
+			await outputs[outputs.length - 1];
+			await read();
+			await s.h.inc();
+			await read();
+			s.h.armed = true;
+			await read();
+			await read();
+			s.render(null);
+		},
+	},
+};
+
+for (const [title, {source, first, second, act}] of Object.entries(cases)) {
+	test(title, async () => {
+		const results: Array<unknown> = [];
+		{
+			const s = scenario();
+			const outputs: Array<unknown> = [];
+			let Guard: any;
+			const read = (props: any = {label: "a"}) => {
+				let output: any;
+				try {
+					output = s.render(<Guard {...props} />);
+				} catch (err: any) {
+					output = "threw " + err.message;
+				}
+
+				outputs.push(output);
+				return output;
+			};
+
+			({Guard} = await s.load(source.replace("VIEW", first)));
+			read();
+			// The view is an edit.
+			await s.load(source.replace("VIEW", second));
+			await act(s, read, outputs);
+			results.push([await Promise.all(outputs), s.h.log]);
+		}
+
+		expect(results[0]).toMatchSnapshot();
+		// The component did something to compare.
+		expect(JSON.stringify(results[0]).length).toBeGreaterThan(20);
+	});
+}
+
+test("a view which asks about its module", async () => {
+	const s = scenario();
+	const source = (view: string) => `
+export function* Meta(this: Context) {
+	for ({} of this) {
+		${view}
+	}
+}`;
+	const {Meta} = await s.load(source("yield <p>first</p>;"));
+	s.render(<Meta />);
+	await s.load(source("yield <p>{typeof import.meta.url}</p>;"));
+	expect(s.render(<Meta />)).toBe("<p>string</p>");
+});

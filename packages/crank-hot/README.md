@@ -174,22 +174,19 @@ written on one line, the component is not separated.
 
 In a debugger, a variable of the component is `__locals.n` in a view.
 
-## Evaluating text
+## Names
 
-With `evaluate: true`, or `CRANK_HOT_EVALUATE=1` for the plugins, the body
-of a loop is left as it was written, and is also compiled to a function in
-JavaScript and passed to the runtime as text. After an edit the runtime
-makes the function with the `Function` constructor, inside `with` blocks
-over the object from the component and the bindings of the module, so the
-engine says what each name refers to. A page has to allow that with
-`unsafe-eval`. Without it the page says so, and is loaded again on each
-edit to a view.
+Nothing is evaluated from text, so a page needs no `unsafe-eval`, and
+everything rests on the transform being right about which names in a body
+are variables of the component. `test/battery/rewrite.test.tsx` has views
+and `try` statements which are hard to get right, with what each should do
+as snapshots.
 
-This is how it was first done. It is kept because the engine is right
-about names by definition: `test/battery/rewrite.test.tsx` runs views which
-are hard to get right both ways and compares them, which is the check on
-what TypeScript is asked. The whole battery and the browser tests run both
-ways.
+The snapshots were recorded from another way of running a view, which has
+been taken out: the body was evaluated from text inside `with` blocks, so
+that the engine said what each name referred to. The engine is right about
+names by definition, so they are the right answers, and a snapshot which
+fails is not to be written again from what the transform does.
 
 ## Source maps
 
@@ -204,12 +201,7 @@ For what does read one, the transform writes a source map with a place for
 every word of the source, so that columns are right too. A use of a
 variable which was rewritten is where the name was: `__locals.n` is at `n`.
 
-When text is evaluated, an edited view is a script of its own, named for
-its module. It is compiled with its body where it is in the module, so the
-map which the compiler writes for it is to the lines and columns of the
-module, and the runtime gives the script that map.
-
-`e2e/debug.ts` checks both through the protocol which the developer tools of
+`e2e/debug.ts` checks this through the protocol which the developer tools of
 Chrome use, with each development server: an error says which line of the
 source it was made on, and a breakpoint on a line of the source stops there
 with the variables of the component to hand, before and after an edit.

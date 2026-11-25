@@ -35,11 +35,7 @@ export interface Scenario {
 /**
  * Every test gets modules, handles and a root of its own.
  */
-export function scenario(
-	// Whether the bodies of loops are functions of the module. The whole
-	// battery runs both ways, and a test can ask for one.
-	rewrite: boolean = process.env.CRANK_HOT_EVALUATE !== "1",
-): Scenario {
+export function scenario(): Scenario {
 	const id = `${run}-${++count}`;
 	const dir = join(work, id);
 	rmSync(dir, {recursive: true, force: true});
@@ -61,7 +57,6 @@ export function scenario(
 			result.code = transform(source, {
 				id: `${id}/${name}.tsx`,
 				runtime: RUNTIME,
-				evaluate: !rewrite,
 			});
 			versions[name] = (versions[name] || 0) + 1;
 			// The module is still in the language it was written in.

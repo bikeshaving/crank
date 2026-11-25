@@ -240,40 +240,21 @@ test("a page which does not allow strings to be evaluated", async () => {
 	read();
 	s.h.inc();
 	const errors: Array<unknown> = [];
-	const original = {
-		error: console.error,
-		Function: globalThis.Function,
-		location: (globalThis as any).location,
-	};
-	let reloads = 0;
+	const original = {error: console.error, Function: globalThis.Function};
 	console.error = (...args: Array<unknown>) => errors.push(args[0]);
-	(globalThis as any).location = {reload: () => reloads++};
 	(globalThis as any).Function = function () {
 		throw new EvalError("Refused to evaluate a string as JavaScript");
 	};
 	try {
 		await s.load(gen({view: "yield <b>{n}</b>;"}));
-		if (process.env.CRANK_HOT_EVALUATE !== "1") {
-			// Nothing is evaluated, so the edit is made as usual.
-			expect(read()).toBe("<b>1</b>");
-		} else {
-			// The page says why, asks to be loaded again, and is left as it was.
-			expect(read()).toBe("<p>1</p>");
-		}
+		// Nothing is evaluated from text, so the edit is made as usual.
+		expect(read()).toBe("<b>1</b>");
 	} finally {
 		console.error = original.error;
 		globalThis.Function = original.Function;
-		(globalThis as any).location = original.location;
 	}
 
-	if (process.env.CRANK_HOT_EVALUATE !== "1") {
-		expect(errors).toEqual([]);
-		expect(reloads).toBe(0);
-		return;
-	}
-
-	expect(String(errors[0])).toContain("unsafe-eval");
-	expect(reloads).toBe(1);
+	expect(errors).toEqual([]);
 });
 
 test("a setup which throws, and the edit which fixes it", async () => {

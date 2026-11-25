@@ -24,17 +24,8 @@ export interface HotOptions {
 	 * A function, class or const whose hash is the same keeps its value.
 	 */
 	hashes?: Map<string, string>;
-	/**
-	 * Whether the runtime evaluates the body of a loop from text, and lets the
-	 * engine say what its names refer to, which a page has to allow with
-	 * `unsafe-eval`. Without it, the body is a function of the module, and the
-	 * uses of the variables of the component in it are rewritten.
-	 */
-	evaluate?: boolean;
 	/** Whether transform() ends the module with its source map. */
 	sourceMap?: boolean;
-	/** Options for compiling the body of a loop, such as the target. */
-	compilerOptions?: ts.CompilerOptions;
 }
 
 export interface HotResult {
@@ -73,7 +64,6 @@ interface Binding {
 	// module has a variable of its own, so it is never the same.
 	kind: "stable" | "text" | "identity" | "fresh";
 	node?: ts.Node;
-	isImport?: boolean;
 }
 
 interface View {
@@ -81,17 +71,10 @@ interface View {
 	text: string;
 	// What was done to the body to make that, as edits to the module.
 	edits: Array<Edit>;
-	// Where the body starts in the module.
-	line: number;
-	column: number;
 	// The vars which are declared in the body of the loop.
 	vars: Array<string>;
-	usesArguments: boolean;
-	// The specifiers which the body imports when it runs.
-	imports: Array<string>;
-	// The variables of the component which the body uses, when their uses
-	// were rewritten.
-	locals: Set<string> | undefined;
+	// The variables of the component which the body uses.
+	locals: Set<string>;
 }
 
 const SCRIPT_KINDS: Record<string, ts.ScriptKind> = {
@@ -220,38 +203,19 @@ function hasYield(node: ts.Node): boolean {
 }
 
 /**
- * Compiles a piece of a module to JavaScript. JSX becomes calls to names
- * which the runtime provides, so that the body of a loop does not need what
- * the module compiles its JSX to.
- */
-function compileText(
-	text: string,
-	options: HotOptions,
-	sourceMap: boolean,
-): ts.TranspileOutput {
-	return ts.transpileModule(text, {
-		fileName: options.id,
-		compilerOptions: {
-			target: ts.ScriptTarget.ESNext,
-			...options.compilerOptions,
-			module: ts.ModuleKind.ESNext,
-			jsx: ts.JsxEmit.React,
-			jsxFactory: "__hotCreateElement",
-			jsxFragmentFactory: "__hotFragment",
-			// Comments are not part of what a component is.
-			removeComments: true,
-			sourceMap,
-			inlineSourceMap: false,
-		},
-	});
-}
-
-/**
  * Returns some source without its types, comments and spacing, for telling
  * whether it has changed.
  */
 function normalize(text: string, options: HotOptions): string {
-	return compileText(text, options, false).outputText;
+	return ts.transpileModule(text, {
+		fileName: options.id,
+		compilerOptions: {
+			target: ts.ScriptTarget.ESNext,
+			module: ts.ModuleKind.ESNext,
+			jsx: ts.JsxEmit.Preserve,
+			removeComments: true,
+		},
+	}).outputText;
 }
 
 /** Where a declaration starts, after `export` and `default`. */
@@ -383,34 +347,6 @@ function getLocals(
 }
 
 /**
- * A function which is found through `with` is called with the object it was
- * found on as its `this`. Every call of a name is written so that the name
- * is read first, which calls it with nothing.
- */
-function wrapCallees(
-	sf: ts.SourceFile,
-	node: ts.Node,
-	edits: Array<Edit>,
-): void {
-	if (ts.isTypeNode(node)) {
-		return;
-	}
-
-	const callee = ts.isCallExpression(node)
-		? node.expression
-		: ts.isTaggedTemplateExpression(node)
-			? node.tag
-			: undefined;
-	// A call of eval by its name is a different kind of call.
-	if (callee && ts.isIdentifier(callee) && callee.text !== "eval") {
-		edits.push([callee.getStart(sf), callee.getStart(sf), "(0, "]);
-		edits.push([callee.end, callee.end, ")"]);
-	}
-
-	ts.forEachChild(node, (child) => wrapCallees(sf, child, edits));
-}
-
-/**
  * Returns the body of a loop as the source of the body of a function, or
  * undefined when it cannot be run as one.
  *
@@ -423,9 +359,10 @@ function wrapCallees(
 function getView(
 	sf: ts.SourceFile,
 	loop: ts.IterationStatement,
-	// What says what a name refers to, and the component, when the uses of
-	// its variables are rewritten.
-	rewrite?: {checker: ts.TypeChecker; fn: ts.Node},
+	// What says what a name refers to.
+	checker: ts.TypeChecker,
+	// The component.
+	fn: ts.Node,
 ): View | undefined {
 	const body = loop.statement;
 	const label = ts.isLabeledStatement(loop.parent)
@@ -433,8 +370,6 @@ function getView(
 		: undefined;
 	const edits: Array<Edit> = [];
 	const vars: Array<string> = [];
-	const imports: Array<string> = [];
-	let usesArguments = false;
 	let ok = true;
 	const visit = (
 		node: ts.Node,
@@ -445,35 +380,6 @@ function getView(
 	): void => {
 		if (ts.isTypeNode(node)) {
 			return;
-		} else if (
-			ts.isIdentifier(node) &&
-			node.text === "arguments" &&
-			!isName(node)
-		) {
-			usesArguments = true;
-			if (!rewrite) {
-				edits.push([node.getStart(sf), node.end, "__arguments"]);
-			}
-
-			return;
-		} else if (
-			ts.isCallExpression(node) &&
-			node.expression.kind === ts.SyntaxKind.ImportKeyword
-		) {
-			// What a view imports is found from its module, which is not where
-			// the view is evaluated.
-			const specifier = node.arguments[0];
-			if (specifier && ts.isStringLiteralLike(specifier)) {
-				imports.push(specifier.text);
-			}
-
-			if (!rewrite) {
-				edits.push([
-					node.expression.getStart(sf),
-					node.expression.end,
-					"__import",
-				]);
-			}
 		}
 
 		if (ts.isFunctionLike(node)) {
@@ -540,11 +446,7 @@ function getView(
 				edits.push([
 					node.getStart(sf),
 					node.end,
-					isBreak
-						? rewrite
-							? "return __hot.BREAK;"
-							: "return __BREAK;"
-						: "return;",
+					isBreak ? "return __hot.BREAK;" : "return;",
 				]);
 			}
 
@@ -574,19 +476,8 @@ function getView(
 		return undefined;
 	}
 
-	let locals: Set<string> | undefined;
-	if (rewrite) {
-		locals = rewriteLocals(
-			sf,
-			rewrite.checker,
-			rewrite.fn,
-			body,
-			"__locals",
-			edits,
-		);
-	} else {
-		wrapCallees(sf, body, edits);
-	}
+	// The uses of the variables of the component go through an object.
+	const locals = rewriteLocals(sf, checker, fn, body, "__locals", edits);
 
 	// A body which is one statement is all of the view.
 	const start = body.getStart(sf) + (ts.isBlock(body) ? 1 : 0);
@@ -596,46 +487,7 @@ function getView(
 		text = text.slice(0, from - start) + replacement + text.slice(to - start);
 	}
 
-	const {line, character} = sf.getLineAndCharacterOfPosition(start);
-	return {
-		text,
-		edits,
-		line,
-		column: character,
-		vars: [...new Set(vars)].sort(),
-		usesArguments,
-		imports,
-		locals,
-	};
-}
-
-/**
- * Compiles a view to a generator function, with a source map from it to the
- * module. Returns the source of an array for the runtime: the function as
- * JavaScript, and the mappings and names of its map.
- *
- * The body is put where it is in the module, after a first line for the
- * function, so that the map which the compiler writes is to the lines and
- * columns of the module.
- */
-function compileView(view: View, kind: string, options: HotOptions): string {
-	const output = compileText(
-		`(${kind === "agen" ? "async " : ""}function* () { "use strict";` +
-			"\n".repeat(view.line) +
-			" ".repeat(view.line ? view.column : 0) +
-			view.text +
-			"\n})",
-		options,
-		true,
-	);
-	const js = output.outputText
-		.replace(/\n\/\/# sourceMappingURL=.*\s*$/, "")
-		.trim()
-		.replace(/;$/, "");
-	const map = JSON.parse(output.sourceMapText!);
-	return `[${JSON.stringify(js)}, ${JSON.stringify(map.mappings)}, ${JSON.stringify(
-		map.names || [],
-	)}]`;
+	return {text, edits, vars: [...new Set(vars)].sort(), locals};
 }
 
 // The names of the global object.
@@ -790,20 +642,6 @@ function getInputs(
 }
 
 /**
- * Collects the names which are used as values somewhere in a module. An
- * import which is only used as a type is not there when the module runs.
- */
-function collectValues(node: ts.Node, values: Set<string>): void {
-	if (ts.isTypeNode(node) || ts.isImportDeclaration(node)) {
-		return;
-	} else if (ts.isIdentifier(node) && !isName(node)) {
-		values.add(node.text);
-	}
-
-	ts.forEachChild(node, (child) => collectValues(child, values));
-}
-
-/**
  * Returns a source map which says where every word of a module was in its
  * source, as JSON.
  */
@@ -864,16 +702,16 @@ export function compile(source: string, options: HotOptions): HotResult {
 			}
 
 			if (clause.name) {
-				bindings.set(clause.name.text, {kind: "identity", isImport: true});
+				bindings.set(clause.name.text, {kind: "identity"});
 			}
 
 			const named = clause.namedBindings;
 			if (named && ts.isNamespaceImport(named)) {
-				bindings.set(named.name.text, {kind: "identity", isImport: true});
+				bindings.set(named.name.text, {kind: "identity"});
 			} else if (named) {
 				for (const el of named.elements) {
 					if (!el.isTypeOnly) {
-						bindings.set(el.name.text, {kind: "identity", isImport: true});
+						bindings.set(el.name.text, {kind: "identity"});
 					}
 				}
 			}
@@ -1017,8 +855,6 @@ export function compile(source: string, options: HotOptions): HotResult {
 	const edits: Array<Edit> = [];
 	// Made when the first view needs it.
 	let checker: ts.TypeChecker | undefined;
-	// The specifiers which views import when they run.
-	const viewImports = new Set<string>();
 	// Nothing is put on a line of its own.
 	let header = `;import * as __hot from ${JSON.stringify(options.runtime)};`;
 	for (const component of components) {
@@ -1033,7 +869,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 			// A function component has nothing which outlives a render, so every
 			// version of one is the same component.
 			const loop = findLoop(fn.body as ts.Block);
-			// Without evaluating text, the body of the loop is a function. When
+			// The body of the loop becomes a function. When
 			// the loop is a statement of the component itself, the function is
 			// declared after the loop, inside the component, and the runtime
 			// calls the component to get it. Otherwise the function goes after
@@ -1049,7 +885,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 			// view is declared in the component itself, and the catch and
 			// finally clauses stay where they were written.
 			let split: ts.TryStatement | undefined;
-			if (holder && !isNested && !options.evaluate) {
+			if (holder && !isNested) {
 				const block = holder.parent;
 				const statement = block.parent;
 				if (
@@ -1074,9 +910,9 @@ export function compile(source: string, options: HotOptions): HotResult {
 			}
 
 			let tail: string | undefined;
-			if (loop && !options.evaluate && isNested) {
+			if (loop && isNested) {
 				tail = "";
-			} else if (loop && !options.evaluate) {
+			} else if (loop) {
 				const after = source.slice(fn.end, component.stmt.end).trim();
 				if (after === "" || after === ";") {
 					tail = collapse(
@@ -1090,16 +926,10 @@ export function compile(source: string, options: HotOptions): HotResult {
 			}
 
 			let view =
-				loop && (options.evaluate || tail !== undefined)
-					? getView(
-							sf,
-							loop,
-							!options.evaluate
-								? {checker: (checker ||= createChecker(sf)), fn}
-								: undefined,
-						)
+				loop && tail !== undefined
+					? getView(sf, loop, (checker ||= createChecker(sf)), fn)
 					: undefined;
-			if (view && view.locals) {
+			if (view) {
 				// Every variable which the view uses has to be one which the
 				// component hands over. If one is not, the component is left
 				// whole, which is safe, where a missing one would be undefined.
@@ -1155,13 +985,11 @@ export function compile(source: string, options: HotOptions): HotResult {
 					// A var of the body is declared where the body was.
 					// The runtime calls the component for its view. This is the
 					// first statement, so nothing else of the component runs.
-					(!options.evaluate && isNested
+					(isNested
 						? " if (__hot.isExtracting()) return __hot.extract(__hotView);"
 						: "") +
 						` __hot.mount(${key}, this);` +
-						(!options.evaluate && view.vars.length
-							? ` var ${view.vars.join(", ")};`
-							: ""),
+						(view.vars.length ? ` var ${view.vars.join(", ")};` : ""),
 				]);
 				const seam =
 					`{ const __result = yield* __hot.view(${key}).call(this, {__proto__: null,${accessors} });` +
@@ -1171,7 +999,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 				const parameters = isTyped ? "this: any, __locals: any" : "__locals";
 				const generator =
 					component.kind === "agen" ? "async function*" : "function*";
-				if (!options.evaluate && isNested) {
+				if (isNested) {
 					// The loop asks for the newest view on every pass. The view
 					// is declared after it, starting where the body of the loop
 					// did, so every line of the component stays where it was. A
@@ -1240,7 +1068,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 					}
 
 					viewArg = '"extract"';
-				} else if (!options.evaluate) {
+				} else {
 					// The view goes after the component. What came after the
 					// loop comes first, on the same line, and the lines which it
 					// was on are left empty.
@@ -1255,33 +1083,6 @@ export function compile(source: string, options: HotOptions): HotResult {
 					]);
 					viewArg = "true";
 					isClosed = true;
-				} else {
-					const isBlock = ts.isBlock(body);
-					const at = body.getStart(sf) + (isBlock ? 1 : 0);
-					edits.push([
-						at,
-						at,
-						// The body is put in a block of its own, so that what it
-						// declares is not what the getters and setters see.
-						`${isBlock ? "" : "{"} { const __view = __hot.view(${key}, () => ({__proto__: null,${accessors} }));` +
-							` if (__view) { const __result = yield* __view.call(this);` +
-							` if (__result === __hot.BREAK) break;` +
-							` if (__result) return __result.value; continue; } } {`,
-					]);
-					edits.push([
-						body.end - (isBlock ? 1 : 0),
-						body.end - (isBlock ? 1 : 0),
-						" }",
-					]);
-					if (!isBlock) {
-						edits.push([body.end, body.end, " }"]);
-					}
-
-					for (const specifier of view.imports) {
-						viewImports.add(specifier);
-					}
-
-					viewArg = compileView(view, component.kind, options);
 				}
 			} else {
 				signature = hash(
@@ -1295,7 +1096,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 
 		const args = `${key}, ${JSON.stringify(component.kind)}, ${JSON.stringify(
 			signature,
-		)}, ${viewArg}, ${!options.evaluate ? "null" : "__hotScope"}, ${inputs}, `;
+		)}, ${viewArg}, ${inputs}, `;
 		if (component.isDeclaration) {
 			// Function declarations are hoisted, so the binding holds what the
 			// runtime returns before anything in the module runs.
@@ -1365,32 +1166,6 @@ export function compile(source: string, options: HotOptions): HotResult {
 	}
 
 	let footer = "\n";
-	if (options.evaluate) {
-		// What a view can reach of the module. An import which is only used as a
-		// type is not there when the module runs.
-		const values = new Set<string>();
-		collectValues(sf, values);
-		footer += "function __hotScope() { return {__proto__: null,";
-		for (const [name, binding] of bindings) {
-			if (!binding.isImport || values.has(name)) {
-				footer += ` get ${name}() { return ${name}; },`;
-			}
-		}
-
-		// The imports are written out, so that whatever bundles the module can
-		// see them.
-		footer += " __import(__specifier) { switch (__specifier) {";
-		for (const specifier of viewImports) {
-			const literal = JSON.stringify(specifier);
-			footer += ` case ${literal}: return import(${literal});`;
-		}
-
-		footer += " default: return import(__specifier); } },";
-		footer += ` }; }\n__hotScope.id = ${JSON.stringify(
-			options.id,
-		)};\n__hotScope.source = ${JSON.stringify(source)};\n`;
-	}
-
 	// A module which exports anything other than components cannot be
 	// replaced on its own, because what imports it would keep the old exports.
 	const names = new Set(components.map((c) => c.name));

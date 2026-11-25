@@ -89,50 +89,6 @@ export const Boxed = wrap(Counter); // CALL
 	}
 });
 
-test("each line of a view maps to the line it was written on", () => {
-	const source = `import {createElement} from "@b9g/crank";
-
-export function* Counter(this: any, {name}: {name: string}) {
-	let n = 0;
-	for ({name} of this) {
-		const label: string = name + n; // FIRST
-		if (n > 10) {
-			return null; // SECOND
-		}
-
-		yield (
-			<button>
-				{label /* THIRD */}
-			</button>
-		);
-	}
-}
-`;
-	const {code} = compile(source, {
-		id: "counter.tsx",
-		runtime: "runtime",
-		evaluate: true,
-	});
-	// The view is a function in JavaScript, with the mappings of its own map.
-	const [js, mappings] = JSON.parse(
-		code.match(/"gen", "[^"]*", (\[.*?\]), __hotScope/s)![1],
-	);
-	const lines = decodeLines(mappings);
-	const sourceLines = source.split("\n");
-	const jsLines: Array<string> = js.split("\n");
-	for (const [inJS, inSource] of [
-		["const label = name + n;", "// FIRST"],
-		["return { value: (null) };", "// SECOND"],
-		// The compiler writes the whole expression on the line it starts on.
-		["yield (__hotCreateElement", "yield ("],
-	]) {
-		const jsLine = jsLines.findIndex((line) => line.includes(inJS));
-		const sourceLine = sourceLines.findIndex((line) => line.includes(inSource));
-		expect(jsLine).toBeGreaterThan(0);
-		expect(lines[jsLine]).toBe(sourceLine);
-	}
-});
-
 // Returns where a place in the code was in the source: the last mapping at
 // or before it on its line, as a debugger reads a map.
 function locate(

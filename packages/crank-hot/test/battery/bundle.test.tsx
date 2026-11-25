@@ -70,7 +70,6 @@ async function build(): Promise<any> {
 				id: "bundle/" + name,
 				runtime: join(import.meta.dir, "../../src/runtime.js"),
 				hashes: graph.hashes.get(join(src, name)),
-				evaluate: process.env.CRANK_HOT_EVALUATE === "1",
 			}),
 		);
 	}

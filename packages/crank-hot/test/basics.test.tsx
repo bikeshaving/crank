@@ -86,7 +86,6 @@ async function load(text: string): Promise<any> {
 	const code = transform(text, {
 		id: "app.tsx",
 		runtime: join(import.meta.dir, "../src/runtime.js"),
-		evaluate: process.env.CRANK_HOT_EVALUATE === "1",
 	});
 	const file = join(work, `app.${++version}.tsx`);
 	writeFileSync(file, code);
@@ -197,17 +196,18 @@ test("statements which leave the loop become return statements", () => {
 		yield item;
 	}
 }`,
-		{id: "list.ts", runtime: "runtime", evaluate: true},
+		{id: "list.ts", runtime: "runtime"},
 	);
-	const view = JSON.parse(
-		code.match(/"gen", "[^"]*", \[("(?:[^"\\]|\\.)*")/)![1],
-	);
+	const view = code.match(
+		/function\* __hotView\([^)]*\) \{(.*?)\n\t\}\n\}/s,
+	)![1];
 	expect(
 		view
+			.replace(/__locals\./g, "")
 			.replace(/\s+/g, " ")
-			.replace(/^\(function\* \(\) \{ "use strict"; | \}\)$/g, ""),
+			.trim(),
 	).toBe(
-		"if (item === 1) return __BREAK; if (item === 2) return; " +
+		"if (item === 1) return __hot.BREAK; if (item === 2) return; " +
 			"for (const inner of item) { if (inner) break; } " +
 			"switch (item) { case 3: break; } yield item;",
 	);

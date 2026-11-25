@@ -1,8 +1,7 @@
 import ts from "typescript";
 
-// For the mode of the transform which does not evaluate text. The body of a
-// loop becomes a function in the module, so nothing resolves its names for
-// it: every use of a variable of the component is rewritten to go through an
+// The body of a loop becomes a function in the module, so nothing resolves
+// its names for it: every use of a variable of the component is rewritten to go through an
 // object, which means working out which names are uses of them.
 
 type Edit = [number, number, string];

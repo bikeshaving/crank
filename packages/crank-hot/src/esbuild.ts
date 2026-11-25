@@ -105,7 +105,6 @@ export default function crankHot(options: HotOptions = {}): any {
 					id: relative(cwd, args.path),
 					runtime: RUNTIME,
 					hashes,
-					evaluate: process.env.CRANK_HOT_EVALUATE === "1",
 					sourceMap: true,
 				});
 				if (entryPoints.includes(args.path)) {

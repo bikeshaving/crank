@@ -1,4 +1,4 @@
-import {Copy, createElement, Fragment} from "@b9g/crank";
+import {Copy, createElement} from "@b9g/crank";
 
 // One family per component, shared by every version of its module.
 const families = (globalThis.__crankFamilies ||= new Map());
@@ -227,10 +227,7 @@ function settle(family) {
 				impl: family.impl,
 				stable: family.stable,
 				view: family.view,
-				scope: family.scope,
 				inputs: family.inputs,
-				make: family.make,
-				fresh: family.fresh,
 			};
 	// The component is the same while the code which holds its state is, and
 	// the values which that code uses are.
@@ -244,16 +241,11 @@ function settle(family) {
 	family.impl = next.impl;
 	family.isExtracted = next.view === "extract";
 	family.view = family.isExtracted ? getView(next.impl) : next.view;
-	family.scope = next.scope;
 	family.inputs = inputs;
-	family.make = undefined;
 	family.verified = isFirst;
 	family.broken = false;
-	if (same) {
-		family.fresh = false;
-	} else {
+	if (!same) {
 		family.stable = next.impl;
-		family.fresh = true;
 		family.remount = !isFirst;
 	}
 }
@@ -265,17 +257,12 @@ function createFamily(key) {
 		impl: undefined,
 		// The version which instances are created from.
 		stable: undefined,
-		// The body of the loop of the newest version: its source, and the line
-		// and column it starts at in its module.
+		// The body of the loop of the newest version, as a function.
 		view: undefined,
-		scope: undefined,
 		inputs: undefined,
 		// The newest version, until something needs the component.
 		next: undefined,
 		previous: undefined,
-		make: undefined,
-		// Whether the view is the one written in the stable version.
-		fresh: true,
 		// Whether the newest version has rendered, or has failed to.
 		verified: true,
 		broken: false,
@@ -347,15 +334,14 @@ function createFamily(key) {
  * @param kind - "fn", "gen" or "agen".
  * @param signature - A hash of the code which holds the state of the
  * component. Instances carry on while it stays the same.
- * @param view - The body of the loop of a generator component as a function
- * in JavaScript, with the mappings and names of its source map, or null when
- * it could not be separated.
- * @param scope - A function which returns the bindings of the module.
+ * @param view - "extract" when the body of the loop of a generator component
+ * is a function inside the component, true when it is one which comes after
+ * the component, or null when it could not be separated.
  * @param inputs - A function which returns the values of the bindings which
  * the code outside the loop uses, or null. Instances carry on while they stay
  * the same.
  */
-export function register(key, kind, signature, view, scope, inputs, impl) {
+export function register(key, kind, signature, view, inputs, impl) {
 	let family = families.get(key);
 	const isFirst = !family;
 	if (!family) {
@@ -363,7 +349,7 @@ export function register(key, kind, signature, view, scope, inputs, impl) {
 		families.set(key, family);
 	}
 
-	family.next = {kind, signature, view, scope, inputs, impl};
+	family.next = {kind, signature, view, inputs, impl};
 	if (!isFirst) {
 		dirty.add(family);
 		// The instances are re-rendered once every module which is being
@@ -435,7 +421,6 @@ export function value(key, signature, inputs, make) {
 			kind,
 			kind === "fn" ? "" : `${signature}:${counter.count++}`,
 			null,
-			undefined,
 			null,
 			result,
 		);
@@ -446,9 +431,9 @@ export function value(key, signature, inputs, make) {
 }
 
 /**
- * Gives the newest version of a component its view, when the view is a
- * function of the module and not text. The function comes after the
- * component in the module, so it arrives after the component is registered.
+ * Gives the newest version of a component its view, when the view comes
+ * after the component in the module, and so after the component is
+ * registered.
  */
 export function setView(key, view) {
 	const family = families.get(key);
@@ -467,131 +452,33 @@ export function mount(key, ctx) {
 	}
 }
 
-// What the JSX of a view is compiled to, whatever the module compiles its
-// own JSX to.
-const BASE = {
-	__proto__: null,
-	__hotCreateElement: createElement,
-	__hotFragment: Fragment,
-};
-
 /**
- * Makes a function which makes a view from the bindings of its module and
- * the variables of an instance.
- *
- * Function bodies are not strict, so `with` is allowed, and the function
- * inside can still be strict. The engine resolves each name: a local of the
- * component, then a binding of the module, then a global.
- *
- * The view comes with a source map to its module. The function which the
- * constructor makes has two lines before its body, so the map is moved down
- * by two lines.
+ * Called by a generator component at the top of its loop. Returns the body
+ * of the loop of the newest version, as a generator function which is called
+ * with the variables of the instance.
  */
-function compile(family) {
-	const [js, mappings, names] = family.view;
-	const scope = family.scope;
-	const map = {
-		version: 3,
-		sources: [scope.id],
-		sourcesContent: [scope.source],
-		names,
-		mappings: ";;" + mappings,
-	};
-	try {
-		return new Function(
-			"__base",
-			"__module",
-			"__locals",
-			"__BREAK",
-			`with (__base) with (__module) with (__locals) { return ${js}\n}` +
-				`\n//# sourceURL=${scope.id}?hot=${counter.count++}` +
-				`\n//# sourceMappingURL=data:application/json;charset=utf-8,${encodeURIComponent(
-					JSON.stringify(map),
-				)}`,
-		);
-	} catch (err) {
-		if (err instanceof SyntaxError) {
-			throw err;
-		}
-
-		// A content security policy which does not allow strings to be
-		// evaluated.
-		console.error(
-			"crank-hot could not evaluate an edit, most likely because the " +
-				"Content-Security-Policy of the page does not allow 'unsafe-eval'. " +
-				"The page is being loaded again instead.",
-			err,
-		);
-		if (
-			globalThis.location &&
-			typeof globalThis.location.reload === "function"
-		) {
-			globalThis.location.reload();
-		}
-
-		return undefined;
-	}
-}
-
-/**
- * Called by a generator component at the top of its loop. Returns a
- * generator function to run in place of the body of the loop, or undefined
- * when the body as it was written is current.
- *
- * @param getLocals - Returns an object with a getter, and a setter where it
- * can be assigned to, for every variable which is in scope at the loop.
- */
-export function view(key, getLocals) {
+export function view(key) {
 	const family = families.get(key);
-	if (!family) {
-		return undefined;
-	}
-
 	settle(family);
-	if (typeof family.view === "function") {
-		// The view is a function of the newest module, and the loop always
-		// runs it.
-		const made = family.view;
-		return family.broken
-			? keep
-			: family.kind === "agen"
-				? function (locals) {
-						return guardAsync(family, made.call(this, locals));
-					}
-				: function (locals) {
-						return guard(family, made.call(this, locals));
-					};
-	} else if (family.view === true) {
+	if (family.view === true) {
 		throw new Error(
 			`The component ${family.shell.name} was rendered before its module had been evaluated as far as its view`,
 		);
-	} else if (family.isExtracted && family.view === undefined) {
+	} else if (typeof family.view !== "function") {
 		throw new Error(
 			`The view of the component ${family.shell.name} could not be found`,
 		);
-	}
-
-	if (family.fresh || family.view == null) {
-		return undefined;
 	} else if (family.broken) {
 		return keep;
 	}
 
-	if (!family.make) {
-		family.make = compile(family);
-		if (!family.make) {
-			family.broken = true;
-			return keep;
-		}
-	}
-
-	const made = family.make(BASE, family.scope(), getLocals(), BREAK);
+	const made = family.view;
 	return family.kind === "agen"
-		? function () {
-				return guardAsync(family, made.call(this));
+		? function (locals) {
+				return guardAsync(family, made.call(this, locals));
 			}
-		: function () {
-				return guard(family, made.call(this));
+		: function (locals) {
+				return guard(family, made.call(this, locals));
 			};
 }
 
