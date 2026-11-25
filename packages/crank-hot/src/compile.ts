@@ -185,16 +185,6 @@ function collectReturns(
 	ts.forEachChild(node, (child) => collectReturns(sf, child, edits));
 }
 
-function hasYield(node: ts.Node): boolean {
-	if (ts.isYieldExpression(node)) {
-		return true;
-	} else if (ts.isFunctionLike(node)) {
-		return false;
-	}
-
-	return !!ts.forEachChild(node, hasYield);
-}
-
 /**
  * Returns some source without its types, comments and spacing, for telling
  * whether it has changed.
@@ -228,27 +218,39 @@ function getStart(sf: ts.SourceFile, node: ts.Node): number {
 }
 
 /**
- * Finds the loop which a generator component renders in: the first loop with
- * a yield in it, not counting loops inside other statements than blocks and
- * the blocks of try statements.
+ * Finds the loop which a generator component renders in, which is the loop
+ * over its context: `for (props of this)`, or of its second parameter. A
+ * loop inside any statement other than a block or the block of a try
+ * statement is not looked for.
  */
-function findLoop(block: ts.Block): ts.IterationStatement | undefined {
+function findLoop(
+	block: ts.Block,
+	fn: ts.FunctionLikeDeclaration,
+): ts.ForOfStatement | undefined {
 	for (let stmt of block.statements) {
 		if (ts.isLabeledStatement(stmt)) {
 			stmt = stmt.statement;
 		}
 
-		if (isLoop(stmt)) {
-			if (hasYield(stmt.statement)) {
+		if (ts.isForOfStatement(stmt)) {
+			const context = fn.parameters[1] && fn.parameters[1].name;
+			const of = stmt.expression;
+			if (
+				of.kind === ts.SyntaxKind.ThisKeyword ||
+				(ts.isIdentifier(of) &&
+					context &&
+					ts.isIdentifier(context) &&
+					of.text === context.text)
+			) {
 				return stmt;
 			}
 		} else if (ts.isTryStatement(stmt)) {
-			const loop = findLoop(stmt.tryBlock);
+			const loop = findLoop(stmt.tryBlock, fn);
 			if (loop) {
 				return loop;
 			}
 		} else if (ts.isBlock(stmt)) {
-			const loop = findLoop(stmt);
+			const loop = findLoop(stmt, fn);
 			if (loop) {
 				return loop;
 			}
@@ -863,7 +865,7 @@ export function compile(
 		if (component.kind !== "fn") {
 			// A function component has nothing which outlives a render, so every
 			// version of one is the same component.
-			const loop = findLoop(fn.body as ts.Block);
+			const loop = findLoop(fn.body as ts.Block, fn);
 			// The body of the loop becomes a function. When
 			// the loop is a statement of the component itself, the function is
 			// declared after the loop, inside the component, and the runtime

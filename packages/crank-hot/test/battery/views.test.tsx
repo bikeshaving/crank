@@ -238,7 +238,25 @@ test("a loop with a label", async () => {
 	expect(read()).toBe("<b>1</b>");
 });
 
-test("a while loop", async () => {
+test("a loop over the context as a parameter", async () => {
+	const s = scenario();
+	const source = (view: string) => `
+export function* Counter(props: any, ctx: Context) {
+	let n = 0;
+	h.inc = () => { n++; ctx.refresh(); };
+	for (props of ctx) {
+		${view}
+	}
+}`;
+	const {Counter} = await s.load(source("yield <p>{n}</p>;"));
+	const read = () => s.render(<Counter />);
+	read();
+	s.h.inc();
+	await s.load(source("yield <b>{n}</b>;"));
+	expect(read()).toBe("<b>1</b>");
+});
+
+test("a loop which is not over the context is not a view", async () => {
 	const s = scenario();
 	const source = (view: string) => `
 export function* Counter(this: Context) {
@@ -252,8 +270,10 @@ export function* Counter(this: Context) {
 	const read = () => s.render(<Counter />);
 	read();
 	s.h.inc();
+	expect(read()).toBe("<p>1</p>");
+	// Any edit to the component starts it again.
 	await s.load(source("yield <b>{n}</b>;"));
-	expect(read()).toBe("<b>1</b>");
+	expect(read()).toBe("<b>0</b>");
 });
 
 test("loops and switches in the new view", async () => {
