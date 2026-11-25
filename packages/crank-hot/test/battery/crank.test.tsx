@@ -305,3 +305,39 @@ test("a setup which throws, and the edit which fixes it", async () => {
 	);
 	expect(read()).toBe("<b>1</b>");
 });
+
+test("the setup of an async generator component which throws, and the edit which fixes it", async () => {
+	const s = scenario();
+	const source = (setup: string, view: string) => `
+export async function* Feed(this: Context) {
+	let n = 0;
+	h.inc = () => { n++; return this.refresh(); };
+	h.log.push("setup");
+	${setup}
+	for await ({} of this) {
+		${view}
+	}
+}`;
+	const {Feed} = await s.load(source("", "yield <p>{n}</p>;"));
+	const read = () => s.render(<Feed />);
+	expect(await read()).toBe("<p>0</p>");
+	const inc = s.h.inc;
+	await inc();
+	const errors: Array<unknown> = [];
+	const original = console.error;
+	console.error = (...args: Array<unknown>) => errors.push(args[0]);
+	try {
+		await s.load(source("(undefined as any).missing;", "yield <b>{n}</b>;"));
+		// The failure is known after the module has been evaluated.
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	} finally {
+		console.error = original;
+	}
+
+	expect(errors[0]).toBeInstanceOf(TypeError);
+	expect(await read()).toBe("<p>1</p>");
+	await inc();
+	expect(await read()).toBe("<p>2</p>");
+	await s.load(source("const fixed = 1;", "yield <b>{n + fixed}</b>;"));
+	expect(await read()).toBe("<b>1</b>");
+});

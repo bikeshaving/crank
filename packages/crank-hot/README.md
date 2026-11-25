@@ -9,6 +9,54 @@ bun run test:e2e      # a browser, with Bun's development server
 bun run dev           # the example, at http://localhost:8000/
 ```
 
+## Using it
+
+The package is not published, so these are paths into this repository.
+
+With Bun's development server, list the plugin in `bunfig.toml`:
+
+```toml
+[serve.static]
+plugins = ["@b9g/crank-hot/bun"]
+```
+
+With Vite:
+
+```ts
+import crankHot from "@b9g/crank-hot/vite";
+
+export default {plugins: [crankHot()]};
+```
+
+With esbuild, the build has to be a bundle in the `esm` format with an
+`outdir`, served by esbuild's own server:
+
+```ts
+import crankHot from "@b9g/crank-hot/esbuild";
+
+const ctx = await esbuild.context({
+	entryPoints: ["src/main.tsx"],
+	bundle: true,
+	format: "esm",
+	outdir: "dist",
+	plugins: [crankHot()],
+});
+await ctx.watch();
+await ctx.serve({servedir: "dist"});
+```
+
+Nothing changes in the app. What it helps to know:
+
+- A component is a function with a capitalized name at the top level of a
+  module, or a default export.
+- An edit inside the loop of a generator component keeps its state. An edit
+  anywhere else in it starts it again.
+- A module which exports only components is replaced on its own. An edit to
+  any other module also evaluates what imports it.
+- `this.cleanup()` runs when a component is started again, like any
+  unmount. What a component gave to something outside itself and did not
+  take back is still there.
+
 ## How it works
 
 - **The view** of a generator component is the body of the first loop it

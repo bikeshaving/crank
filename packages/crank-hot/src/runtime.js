@@ -615,22 +615,33 @@ export function flush() {
 				continue;
 			}
 
-			try {
-				ctx.refresh();
-			} catch (err) {
+			// The new version could not be rendered. If it was a different
+			// component, the version before it is the component again.
+			const recover = (err) => {
 				console.error(err);
 				if (isRemount && family.previous) {
-					// The new version could not be mounted, so the version before
-					// it is the component again.
 					Object.assign(family, family.previous);
 					family.previous = undefined;
 					family.verified = true;
 					try {
-						ctx.refresh();
+						const again = ctx.refresh();
+						if (again && typeof again.then === "function") {
+							again.then(undefined, () => {});
+						}
 					} catch (_) {
 						// The error has been reported.
 					}
 				}
+			};
+
+			try {
+				const result = ctx.refresh();
+				// An async component says so later.
+				if (result && typeof result.then === "function") {
+					result.then(undefined, recover);
+				}
+			} catch (err) {
+				recover(err);
 			}
 		}
 	}
