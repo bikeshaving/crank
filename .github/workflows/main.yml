@@ -48,6 +48,8 @@ jobs:
     name: Test (${{ matrix.browser }})
     runs-on: ubuntu-latest
     strategy:
+      # A failure in one browser says nothing about the others
+      fail-fast: false
       matrix:
         browser: [chromium, firefox, webkit]
     steps:
