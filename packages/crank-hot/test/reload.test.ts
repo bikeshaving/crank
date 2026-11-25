@@ -43,8 +43,8 @@ afterAll(() => {
 });
 
 test("a bundle which listens to nothing is evaluated when the page is told to", async () => {
-	client.connect("http://localhost/main.js", null);
-	client.connect("http://localhost/admin.js?hot=3", null);
+	client.connect("http://localhost/main.js", false);
+	client.connect("http://localhost/admin.js?hot=3", false);
 	await (globalThis as any).__crankHot.update();
 	expect(loaded).toEqual([
 		"http://localhost/main.js?hot=1",
@@ -58,33 +58,19 @@ test("only the bundles which changed are evaluated", async () => {
 	expect(loaded).toEqual(["http://localhost/admin.js?hot=2"]);
 });
 
-test("an event stream is listened to once", async () => {
+test("esbuild's server is listened to once", async () => {
 	loaded.length = 0;
-	client.connect("http://localhost/main.js", "/events");
+	client.connect("http://localhost/main.js", true);
 	const source = FakeEventSource.last;
-	client.connect("http://localhost/admin.js", "/events");
+	client.connect("http://localhost/admin.js", true);
 	expect(FakeEventSource.last).toBe(source);
-	expect(source.url).toBe("/events");
-
-	// What esbuild's server sends.
+	expect(source.url).toBe("/esbuild");
 	source.send(
 		"change",
 		JSON.stringify({added: [], removed: [], updated: ["/main.js"]}),
 	);
-	// What anything else can send, with or without the bundles.
-	source.send("update");
 	await Promise.resolve();
-	expect(loaded).toEqual([
-		"http://localhost/main.js?hot=3",
-		"http://localhost/main.js?hot=4",
-		"http://localhost/admin.js?hot=4",
-	]);
-});
-
-test("a build which failed is said, and a stream which failed is not", () => {
-	FakeEventSource.last.send("error", "Build failed: unexpected token");
-	FakeEventSource.last.send("error");
-	expect(logged).toEqual(["Build failed: unexpected token"]);
+	expect(loaded).toEqual(["http://localhost/main.js?hot=3"]);
 });
 
 test("a bundle which cannot be evaluated is said, and the others are evaluated", async () => {
@@ -98,6 +84,6 @@ test("a bundle which cannot be evaluated is said, and the others are evaluated",
 		loaded.push(url);
 	};
 	await client.update();
-	expect(loaded).toEqual(["http://localhost/admin.js?hot=5"]);
+	expect(loaded).toEqual(["http://localhost/admin.js?hot=4"]);
 	expect(String(logged[0])).toContain("syntax");
 });

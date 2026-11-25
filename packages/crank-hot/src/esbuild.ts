@@ -12,11 +12,10 @@ export interface HotOptions {
 	/** Where the packages which the app imports are built, in the outdir. */
 	deps?: string;
 	/**
-	 * The URL of the event stream which says that a build has finished. It
-	 * is esbuild's own by default. With false, the page listens to nothing,
+	 * With false, the page does not listen to esbuild's server for builds,
 	 * and whatever serves it calls `__crankHot.update()` in the page.
 	 */
-	events?: string | false;
+	events?: false;
 }
 
 /**
@@ -110,11 +109,9 @@ export default function crankHot(options: HotOptions = {}): any {
 					sourceMap: true,
 				});
 				if (entryPoints.includes(args.path)) {
-					const events =
-						options.events === undefined ? "/esbuild" : options.events;
 					contents =
 						`import {connect as __hotConnect} from ${JSON.stringify(RELOAD)};` +
-						`__hotConnect(import.meta.url, ${JSON.stringify(events || null)});` +
+						`__hotConnect(import.meta.url, ${options.events !== false});` +
 						contents;
 				}
 

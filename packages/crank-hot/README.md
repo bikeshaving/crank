@@ -45,21 +45,9 @@ await ctx.watch();
 await ctx.serve({servedir: "dist"});
 ```
 
-With anything else which builds a whole new bundle for each edit, such as
-a framework with a server of its own, use the esbuild plugin for the
-bundles of the page, with `crankHot({events: false})`, and tell the page
-when a build is ready. That is for the server to do, because only it knows
-which bundle a file is in and when it has reloaded itself:
-
-- A file of the page changed, and the bundles have been built: call
-  `__crankHot.update()` in the page, or send an `update` event.
-- A file which only the server uses changed, which the page cannot do
-  anything about: load the page again, with `location.reload()`.
-- A build failed: send an `error` event with what to say.
-
-`crankHot({events: "/my-events"})` makes the page listen to an event stream
-at that URL for those events. An `update` event may have JSON with the paths
-of the bundles which changed, as `updated`.
+With anything else which builds a whole new bundle for each edit, use the
+esbuild plugin for the bundles of the page, with `crankHot({events: false})`,
+and call `__crankHot.update()` in the page when a build is ready.
 
 Nothing changes in the app. What it helps to know:
 
