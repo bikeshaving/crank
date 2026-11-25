@@ -25,6 +25,22 @@
   tag and merges them into the props. The tag defaults to `div`, so
   `h(".card")` is a div with the class `card`.
 
+- **Streaming HTML rendering** (#293, #402)
+  Passing a stream as the second argument of the HTML renderer's `render()`
+  writes the HTML to the stream as it is rendered, so everything before an
+  async component is sent without waiting for it.
+  ```tsx
+  const {readable, writable} = new TextEncoderStream();
+  renderer.render(<App />, writable).catch(console.error);
+  return new Response(readable, {
+    headers: {"Content-Type": "text/html; charset=utf-8"},
+  });
+  ```
+  The stream may be a `WritableStream` of strings or a Node.js writable stream
+  such as an `http.ServerResponse`. The render still resolves to the full
+  string. The stream is closed when the render finishes and aborted if it
+  fails.
+
 ### Performance
 - **The `jsx` template tag caches static subtrees** (#383)
   Parts of a template with no expressions are built once and the same element
@@ -81,6 +97,17 @@
   and as a real line break in a `<pre>`. Whitespace adjacent to an element, an
   expression, or the template edge is still stripped as layout.
 
+- **Components mounted by a render which throws are unmounted** (#402)
+  When a child threw partway through a render, the components which had been
+  mounted before it were never unmounted: their `cleanup` callbacks never ran,
+  and a component reused from a fallback could leave its nodes in the
+  document. An update which throws now unmounts what that update mounted and
+  leaves the existing tree untouched. An async render without a root which
+  fails is unmounted as well.
+
+- **`crank/no-deprecated-flush` no longer rewrites `this.flush()` in class methods** (#402)
+  Released as eslint-plugin-crank 0.2.3.
+
 ### Changed
 - **`window.Crank` (the UMD/CDN browser global) now ships authoring templates and a default renderer.**
   The browser build exposes the `jsx`/`html` tagged templates and `Crank.renderer`
@@ -90,6 +117,15 @@
   The renderers are now flat: `Crank.renderer` and `Crank.domRenderer` (DOM), and
   `Crank.htmlRenderer` (server HTML), with `Crank.DOMRenderer`/`Crank.HTMLRenderer`
   for the classes.
+
+- **The first render of an async tree commits in document order as it progresses** (#402)
+  Previously nothing was committed until every async component had rendered.
+  The commit now starts as soon as the diff has fanned out, and waits at each
+  component which has not rendered yet. `ref` and `schedule` callbacks run as
+  soon as the commit reaches their component, rather than waiting for slow
+  siblings. `after` callbacks still wait until the root is in place. Updates
+  to a root which has already been committed, and hydration, still commit all
+  at once, and synchronous renders are unchanged.
 
 ## [0.7.10] - 2026-08-12
 ### Bug Fixes
