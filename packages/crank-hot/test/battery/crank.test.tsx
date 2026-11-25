@@ -202,3 +202,118 @@ test("an error which the view throws after it has rendered is thrown as usual", 
 	s.h.fail = true;
 	expect(read).toThrow("later");
 });
+
+test("an async function component which rejects, and the edit which fixes it", async () => {
+	const s = scenario();
+	const leaf = gen({
+		name: "Leaf",
+		params: "{}: any",
+		head: "{} of this",
+		view: "yield <i>{n}</i>;",
+	});
+	const page = (body: string) =>
+		leaf + `export async function Page() { await null; return ${body}; }`;
+	const {Page} = await s.load(page("<div>one <Leaf /></div>"));
+	const read = () => s.render(<Page />);
+	await read();
+	s.h.inc();
+	const errors: Array<unknown> = [];
+	const original = console.error;
+	console.error = (...args: Array<unknown>) => errors.push(args[0]);
+	try {
+		await s.load(page("<div>{(undefined as any).missing}<Leaf /></div>"));
+		expect(await read()).toBe("<div>one <i>1</i></div>");
+	} finally {
+		console.error = original;
+	}
+
+	expect(errors[0]).toBeInstanceOf(TypeError);
+	await s.load(page("<div>two <Leaf /></div>"));
+	expect(await read()).toBe("<div>two <i>1</i></div>");
+	expect(s.h.log).toEqual(["setup"]);
+});
+
+test("a page which does not allow strings to be evaluated", async () => {
+	const s = scenario();
+	const {Counter} = await s.load(gen({view: "yield <p>{n}</p>;"}));
+	const read = () => s.render(<Counter name="a" />);
+	read();
+	s.h.inc();
+	const errors: Array<unknown> = [];
+	const original = {
+		error: console.error,
+		Function: globalThis.Function,
+		location: (globalThis as any).location,
+	};
+	let reloads = 0;
+	console.error = (...args: Array<unknown>) => errors.push(args[0]);
+	(globalThis as any).location = {reload: () => reloads++};
+	(globalThis as any).Function = function () {
+		throw new EvalError("Refused to evaluate a string as JavaScript");
+	};
+	try {
+		await s.load(gen({view: "yield <b>{n}</b>;"}));
+		// The page says why, asks to be loaded again, and is left as it was.
+		expect(read()).toBe("<p>1</p>");
+	} finally {
+		console.error = original.error;
+		globalThis.Function = original.Function;
+		(globalThis as any).location = original.location;
+	}
+
+	expect(String(errors[0])).toContain("unsafe-eval");
+	expect(reloads).toBe(1);
+});
+
+test("an error in an edited view is on the line it has in the module", async () => {
+	const s = scenario();
+	const view = (mark: string) => `const padding = 1;
+		h.stack = new Error("${mark}").stack; // MARK
+		yield <p>{n}</p>;`;
+	const {Counter} = await s.load(gen({view: view("first")}));
+	const read = () => s.render(<Counter name="a" />);
+	read();
+	await s.load(gen({view: view("second")}));
+	read();
+	expect(s.h.stack).toContain("second");
+	// The view is evaluated so that it starts where it starts in the module,
+	// which is what lets the source map of the module be used for it.
+	const line =
+		s.code
+			.split("\n")
+			.findIndex((text) => text.includes('new Error("second")')) + 1;
+	const frame = s.h.stack
+		.split("\n")
+		.find((text: string) => text.includes("?hot="))!;
+	expect(frame).toContain(`:${line}:`);
+});
+
+test("a setup which throws, and the edit which fixes it", async () => {
+	const s = scenario();
+	const {Counter} = await s.load(gen({view: "yield <p>{n}</p>;"}));
+	const read = () => s.render(<Counter name="a" />);
+	read();
+	s.h.inc();
+	// The setup which throws replaces this handle before it does.
+	const inc = s.h.inc;
+	const errors: Array<unknown> = [];
+	const original = console.error;
+	console.error = (...args: Array<unknown>) => errors.push(args[0]);
+	try {
+		await s.load(
+			gen({setup: "(undefined as any).missing;", view: "yield <b>{n}</b>;"}),
+		);
+	} finally {
+		console.error = original;
+	}
+
+	// The version before it is still the component, and still works.
+	expect(errors[0]).toBeInstanceOf(TypeError);
+	expect(read()).toBe("<p>1</p>");
+	inc();
+	expect(read()).toBe("<p>2</p>");
+	await s.load(
+		gen({setup: "const fixed = 1;", view: "yield <b>{n + fixed}</b>;"}),
+	);
+	expect(read()).toBe("<b>1</b>");
+});

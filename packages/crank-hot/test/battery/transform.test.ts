@@ -138,13 +138,13 @@ test("statements which leave the loop become return statements", () => {
 		options,
 	);
 	const view = JSON.parse(
-		code.match(/"gen", "[^"]*", ("(?:[^"\\]|\\.)*")/)![1],
+		code.match(/"gen", "[^"]*", \[("(?:[^"\\]|\\.)*")/)![1],
 	);
 	expect(view.replace(/\s+/g, " ").trim()).toBe(
 		"if (item === 1) return __BREAK; " +
 			"if (item === 2) return; " +
 			"if (item === 3) return {value: (item)}; " +
-			"if (item === 4) return {value: (undefined)}; " +
+			"if (item === 4) return {value: undefined}; " +
 			"for (const inner of item) { if (inner) break; else continue; } " +
 			"inner: while (item) { break inner; } " +
 			"switch (item) { case 5: break; } " +
@@ -156,8 +156,6 @@ test("statements which leave the loop become return statements", () => {
 
 test("loops which are not separated", () => {
 	for (const body of [
-		"for (const props of this) { var count = 1; yield count; }",
-		"for (const props of this) { yield arguments.length; }",
 		"for (const props of this) yield 1;",
 		"if (true) { for (const props of this) { yield 1; } }",
 	]) {
@@ -182,4 +180,83 @@ test("the signature covers everything but the body of the loop", () => {
 	expect(signature("let  n  =  0;", "yield n;")).toBe(base);
 	expect(signature("let n = 1;", "yield n;")).not.toBe(base);
 	expect(signature("let n = 0;", "yield n;", "n++;")).not.toBe(base);
+});
+
+test("a var and the arguments of the component in a loop", () => {
+	const code = transform(
+		`export function* Legacy(this: any, props: any) {
+	for ({} of this) {
+		var count = (count || 0) + 1, other = 2;
+		var unset;
+		for (var i = 0; i < 2; i++) {}
+		for (var key in props) {}
+		var {a, b} = props;
+		const inner = function () { var own = arguments; return own; };
+		yield [count, arguments.length, () => arguments[0]];
+	}
+}`,
+		options,
+	);
+	const view = JSON.parse(
+		code.match(/"gen", "[^"]*", \[("(?:[^"\\]|\\.)*")/)![1],
+	);
+	expect(view.replace(/\s+/g, " ").trim()).toBe(
+		"(count = (count || 0) + 1, other = 2); ; " +
+			"for (i = 0; i < 2; i++) { } " +
+			"for (key in props) { } " +
+			"({ a, b } = props); " +
+			"const inner = function () { var own = arguments; return own; }; " +
+			"yield [count, __arguments.length, () => __arguments[0]];",
+	);
+	expect(code).toContain("__arguments: arguments,");
+});
+
+test("what the code outside a loop uses is passed to the runtime", () => {
+	const code = transform(
+		`import {imported, unused} from "./lib";
+const constant = 1;
+const viewOnly = 2;
+function helper() { return deep(); }
+function deep() { return constant; }
+export function Other() { return null; }
+export function* Counter(this: any) {
+	const local = imported + helper();
+	const tag = Other;
+	for ({} of this) {
+		yield viewOnly;
+	}
+}`,
+		options,
+	);
+	// The helper is compared as text, and what it uses in turn as values.
+	expect(code).toMatch(
+		/register\("mod\.tsx#Counter", "gen", "[^"]*", \[.*\], __hotScope, \(\) => \[constant, imported\], Counter\)/s,
+	);
+});
+
+test("the lines of the module are the lines which the compiler wrote", () => {
+	const source = `import {createElement} from "@b9g/crank";
+
+export function* Counter(this: any) {
+	let n = 0;
+	for ({} of this) {
+		yield n; // MARK
+	}
+}
+
+export const Boxed = wrap(Counter);
+`;
+	const plain = transform(
+		source
+			.replace("Counter", "counter")
+			.replace("Boxed", "boxed")
+			.replace("(Counter)", "(counter)"),
+		options,
+	);
+	const hot = transform(source, options);
+	const lineOf = (code: string) =>
+		code.split("\n").findIndex((line) => /^\s*yield n;/.test(line));
+	expect(plain).not.toContain("__hot");
+	expect(lineOf(hot)).toBe(lineOf(plain));
+	expect(hot).toContain("__hot.value(");
 });

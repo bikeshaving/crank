@@ -60,7 +60,7 @@ export function* Steps(this: Context) {
 	expect(s.h.log).toEqual(["setup", "setup"]);
 });
 
-test("a loop with a var in it is remounted by any edit", async () => {
+test("a var in the loop keeps its value through an edit", async () => {
 	const s = scenario();
 	const source = (tag: string) => `
 export function* Legacy(this: Context) {
@@ -75,27 +75,63 @@ export function* Legacy(this: Context) {
 	read();
 	expect(read()).toBe("<p>2</p>");
 	await s.load(source("b"));
-	expect(s.h.log).toEqual(["setup", "setup"]);
-	// The var still keeps its value between renders.
-	read();
-	expect(read()).toMatch(/^<b>[3-9]<\/b>$/);
+	// The edit rendered once, and reading renders again.
+	expect(read()).toBe("<b>4</b>");
+	expect(s.h.log).toEqual(["setup"]);
 });
 
-test("a loop which uses arguments is remounted by any edit", async () => {
+test("a new var in the loop remounts the component", async () => {
+	const s = scenario();
+	const {Counter} = await s.load(gen({view: "yield <p>{n}</p>;"}));
+	const read = () => s.render(<Counter name="a" />);
+	read();
+	s.h.inc();
+	await s.load(gen({view: "var extra = 1; yield <p>{n + extra}</p>;"}));
+	expect(read()).toBe("<p>1</p>");
+	expect(s.h.log).toEqual(["setup", "setup", "cleanup"]);
+});
+
+test("the arguments of the component in an edited loop", async () => {
 	const s = scenario();
 	const source = (tag: string) => `
 export function* Legacy(this: Context, props: any) {
 	h.log.push("setup");
 	for ({} of this) {
-		yield <${tag}>{arguments.length}</${tag}>;
+		yield <${tag}>{arguments.length} {String(arguments[1] === this)}</${tag}>;
 	}
 }`;
 	const {Legacy} = await s.load(source("p"));
 	const read = () => s.render(<Legacy />);
-	expect(read()).toBe("<p>2</p>");
+	expect(read()).toBe("<p>2 true</p>");
 	await s.load(source("b"));
-	expect(read()).toBe("<b>2</b>");
-	expect(s.h.log).toEqual(["setup", "setup"]);
+	expect(read()).toBe("<b>2 true</b>");
+	expect(s.h.log).toEqual(["setup"]);
+});
+
+test("an edit while an async generator component is waiting on its own work", async () => {
+	const s = scenario();
+	const source = (view: string) => `
+export async function* Feed(this: Context) {
+	let n = 0;
+	h.inc = () => { n++; return this.refresh(); };
+	h.log.push("setup");
+	for await ({} of this) {
+		${view}
+	}
+}`;
+	const wait = "await new Promise((resolve) => (h.release = resolve));";
+	const {Feed} = await s.load(source(`${wait} yield <p>{n}</p>;`));
+	const read = () => s.render(<Feed />);
+	const first = read();
+	await new Promise((resolve) => setTimeout(resolve));
+	// The component is in the middle of its first render.
+	await s.load(source("yield <b>{n}</b>;"));
+	s.h.release();
+	await first;
+	expect(await read()).toBe("<b>0</b>");
+	await s.h.inc();
+	expect(await read()).toBe("<b>1</b>");
+	expect(s.h.log).toEqual(["setup"]);
 });
 
 test("a generator component which becomes an async generator component", async () => {

@@ -195,7 +195,7 @@ test("statements which leave the loop become return statements", () => {
 		{id: "list.ts", runtime: "runtime"},
 	);
 	const view = JSON.parse(
-		code.match(/"gen", "[^"]*", ("(?:[^"\\]|\\.)*")/)![1],
+		code.match(/"gen", "[^"]*", \[("(?:[^"\\]|\\.)*")/)![1],
 	);
 	expect(view.replace(/\s+/g, " ").trim()).toBe(
 		"if (item === 1) return __BREAK; if (item === 2) return; " +
@@ -207,10 +207,7 @@ test("statements which leave the loop become return statements", () => {
 test("a loop which cannot be separated is left whole", () => {
 	const code = transform(
 		`export function* Legacy(this: any) {
-	for (const props of this) {
-		var count = (count || 0) + 1;
-		yield count;
-	}
+	for (const props of this) yield props;
 }`,
 		{id: "legacy.ts", runtime: "runtime"},
 	);

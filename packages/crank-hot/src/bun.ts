@@ -23,6 +23,7 @@ const plugin: BunPlugin = {
 					id: relative(process.cwd(), args.path),
 					runtime: RUNTIME,
 					accept: true,
+					sourceMap: true,
 				}),
 				loader: "js",
 			};
