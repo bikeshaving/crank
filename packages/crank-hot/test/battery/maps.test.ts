@@ -76,7 +76,7 @@ export const Boxed = wrap(Counter); // CALL
 	for (const [inCode, inSource] of [
 		["let n = 0;", "// SETUP"],
 		["const label = __locals.name + __locals.n;", "// VIEW"],
-		["= __hot.value(", "// CALL"],
+		["export const Boxed = wrap(Counter);", "// CALL"],
 	]) {
 		const codeLine = codeLines.findIndex(
 			(line) =>

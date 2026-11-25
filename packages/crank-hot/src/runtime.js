@@ -364,11 +364,8 @@ export function register(key, kind, signature, view, inputs, impl) {
 	return family.shell;
 }
 
-// What value() last returned for each key.
+// What reuse() last returned for each key.
 const values = (state.values ||= new Map());
-// This module is evaluated again by a development server which evaluates a
-// whole new bundle, so what it counts is not its own.
-const counter = (state.counter ||= {count: 0});
 
 /**
  * Evaluates a top-level binding for a development server which evaluates
@@ -383,52 +380,7 @@ export function reuse(key, signature, make) {
 	}
 
 	const result = make();
-	values.set(key, {signature, inputs: undefined, result});
-	return result;
-}
-
-/**
- * Evaluates a const which is declared with a call and named like a
- * component, such as `const Fancy = withTheme(Card)`.
- *
- * The result is kept while the call and what it uses are the same. When the
- * result is a function it is registered as a component, so that the rest of
- * the app sees one function for it too.
- */
-export function value(key, signature, inputs, make) {
-	let current;
-	try {
-		current = inputs ? inputs() : [];
-	} catch (_) {
-		current = undefined;
-	}
-
-	const last = values.get(key);
-	if (last && last.signature === signature && isSame(last.inputs, current)) {
-		return last.result;
-	}
-
-	let result = make();
-	if (typeof result === "function") {
-		const name = Object.getPrototypeOf(result).constructor.name;
-		const kind =
-			name === "GeneratorFunction"
-				? "gen"
-				: name === "AsyncGeneratorFunction"
-					? "agen"
-					: "fn";
-		// A generator component which was made again is a different component.
-		result = register(
-			key,
-			kind,
-			kind === "fn" ? "" : `${signature}:${counter.count++}`,
-			null,
-			null,
-			result,
-		);
-	}
-
-	values.set(key, {signature, inputs: current, result});
+	values.set(key, {signature, result});
 	return result;
 }
 

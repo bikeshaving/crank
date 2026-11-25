@@ -254,7 +254,6 @@ export const Boxed = wrap(Counter);
 	const lineOf = (code: string) =>
 		code.split("\n").findIndex((line) => line.includes("// MARK"));
 	expect(lineOf(hot)).toBe(lineOf(source));
-	expect(hot).toContain("__hot.value(");
 });
 
 test("a default export without a name is registered", () => {

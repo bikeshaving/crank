@@ -105,25 +105,24 @@ test("a component which the setup uses is edited", async () => {
 	expect(s.h.log).toEqual(["setup"]);
 });
 
-test("a component made by calling a function", async () => {
+test("a component made by calling a function is made again with its module", async () => {
 	const s = scenario();
 	const source = (view: string, tag: string) =>
 		gen({view}) +
 		`const boxed = (Inner: any) => (props: any) => <${tag}><Inner {...props} /></${tag}>;\n` +
-		"export const Boxed = boxed(Counter);\n";
-	const {Boxed} = await s.load(source("yield <i>{n}</i>;", "div"));
-	const read = () => s.render(<Boxed name="a" />);
-	expect(read()).toBe("<div><i>0</i></div>");
+		"export const Boxed = boxed(Counter);\n" +
+		"export const Model = (() => class { static count = 1; value = 2; })();\n";
+	const first = await s.load(source("yield <i>{n}</i>;", "div"));
+	expect(s.render(<first.Boxed name="a" />)).toBe("<div><i>0</i></div>");
 	s.h.inc();
-	// An edit to the component which was passed: the result is kept.
+	// Only what is written as a function is a component, so the result of the
+	// call is a different function in the new module, and starts again.
 	const second = await s.load(source("yield <b>{n}</b>;", "div"));
-	expect(second.Boxed).toBe(Boxed);
-	expect(read()).toBe("<div><b>1</b></div>");
-	// An edit to the function which made it: it is made again, and is still
-	// the same function to the rest of the app.
-	const third = await s.load(source("yield <b>{n}</b>;", "section"));
-	expect(third.Boxed).toBe(Boxed);
-	expect(read()).toBe("<section><b>0</b></section>");
+	expect(second.Boxed).not.toBe(first.Boxed);
+	expect(s.render(<second.Boxed name="a" />)).toBe("<div><b>0</b></div>");
+	// And what is not a component is left as it was written.
+	expect(new second.Model().value).toBe(2);
+	expect(second.Model.count).toBe(1);
 });
 
 test("a const named like a component which is not one", async () => {
@@ -134,8 +133,10 @@ test("a const named like a component which is not one", async () => {
 		"export function Page() { return <p>{Config.limit}</p>; }\n";
 	const first = await s.load(source(1));
 	expect(first.Config).toEqual({limit: 1});
+	// It is evaluated again with its module, like any other const.
 	const second = await s.load(source(1));
-	expect(second.Config).toBe(first.Config);
+	expect(second.Config).toEqual({limit: 1});
+	expect(second.Config).not.toBe(first.Config);
 	const third = await s.load(source(2));
 	expect(third.Config).toEqual({limit: 2});
 	expect(s.render(<first.Page />)).toBe("<p>2</p>");

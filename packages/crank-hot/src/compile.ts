@@ -679,7 +679,6 @@ export function compile(
 	const components: Array<Component> = [];
 	// Consts which are declared with the result of a call, and are named like
 	// components.
-	const calls: Array<ts.VariableDeclaration> = [];
 	// The other functions, classes and consts, which keep their values
 	// between bundles when there are hashes for them.
 	const kept: Array<ts.Node> = [];
@@ -791,8 +790,6 @@ export function compile(
 				} else if (isFunction) {
 					bindings.set(name, {kind: "text", node: decl});
 					kept.push(decl);
-				} else if (ts.isCallExpression(init) && /^[A-Z]/.test(name)) {
-					calls.push(decl);
 				} else if (!hasAwait(init)) {
 					kept.push(decl);
 				}
@@ -844,7 +841,7 @@ export function compile(
 		}
 	}
 
-	if (!components.length && !calls.length && !(hashes && kept.length)) {
+	if (!components.length && !(hashes && kept.length)) {
 		return {code: source, map: createMap(source, options, [])};
 	}
 
@@ -1105,34 +1102,6 @@ export function compile(
 				edits.push([fn.end, fn.end, ")"]);
 			}
 		}
-	}
-
-	for (const decl of calls) {
-		// The result of a call is kept while the call and what it uses are the
-		// same, so that a component which a function makes is not a new
-		// component every time the module is evaluated.
-		const init = decl.initializer!;
-		const name = (decl.name as ts.Identifier).text;
-		const uses = new Set<string>();
-		collectUses(init, bindings, new Map(), undefined, uses);
-		let [texts, values] = getInputs(sf, options, bindings, uses);
-		let signature = hash(
-			normalize(`(${init.getText(sf)})`, options) + "\0" + texts,
-		);
-		if (hashes && hashes.has(name)) {
-			// The hash already covers what the call uses.
-			signature = hashes.get(name)!;
-			values = "null";
-		}
-
-		edits.push([
-			init.getStart(sf),
-			init.getStart(sf),
-			`__hot.value(${JSON.stringify(`${options.id}#${name}`)}, ${JSON.stringify(
-				signature,
-			)}, ${values}, () => (`,
-		]);
-		edits.push([init.end, init.end, "))"]);
 	}
 
 	for (const node of hashes ? kept : []) {
