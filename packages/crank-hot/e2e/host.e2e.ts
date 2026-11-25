@@ -41,11 +41,15 @@ defineTests(async () => {
 	await ctx.rebuild();
 	const server = Bun.serve({
 		port: 0,
-		fetch(req) {
+		async fetch(req) {
 			const {pathname} = new URL(req.url);
-			return new Response(
-				Bun.file(join(dist, pathname === "/" ? "index.html" : pathname)),
+			const file = Bun.file(
+				join(dist, pathname === "/" ? "index.html" : pathname),
 			);
+			// A browser may ask for an icon, which there is not one of.
+			return (await file.exists())
+				? new Response(file)
+				: new Response(null, {status: 404});
 		},
 	});
 	const url = server.url.href;
