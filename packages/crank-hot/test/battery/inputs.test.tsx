@@ -158,3 +158,155 @@ test("a variable of the module which the setup assigns to", async () => {
 	s.h.add();
 	expect(read()).toBe("<b>1</b>");
 });
+
+// What the code outside the loop uses which is not a binding of its module,
+// or is one under a name which something else in the component also has.
+
+test("a binding of the module with the name of a variable in another block", async () => {
+	const s = scenario();
+	const source = (value: string) => `
+const tag = {value: ${JSON.stringify(value)}};
+export function* Counter(this: Context) {
+	h.log.push("setup");
+	// This is the binding of the module: the variable below is in a block.
+	h.read = () => tag.value;
+	try {
+		const tag = "local";
+		for ({} of this) {
+			yield <p>{tag}</p>;
+		}
+	} finally {
+		h.log.push("cleanup");
+	}
+}`;
+	const {Counter} = await s.load(source("one"));
+	s.render(<Counter />);
+	expect(s.h.read()).toBe("one");
+	await s.load(source("two"));
+	expect(s.h.log).toEqual(["setup", "setup", "cleanup"]);
+	expect(s.h.read()).toBe("two");
+});
+
+test("a global which the setup uses is replaced", async () => {
+	const s = scenario();
+	const source = gen({
+		setup: "const api = hotTestApi; h.call = () => api.name;",
+		view: "yield <p>{n}</p>;",
+	});
+	(globalThis as any).hotTestApi = {name: "one"};
+	const {Counter} = await s.load(source);
+	const read = () => s.render(<Counter name="a" />);
+	read();
+	s.h.inc();
+	// The module is evaluated again, and the global is the same.
+	await s.load(source);
+	expect(s.h.log).toEqual(["setup"]);
+	expect(read()).toBe("<p>1</p>");
+	// It is evaluated again after the global has been replaced.
+	(globalThis as any).hotTestApi = {name: "two"};
+	await s.load(source);
+	expect(s.h.log).toEqual(["setup", "setup", "cleanup"]);
+	expect(s.h.call()).toBe("two");
+	delete (globalThis as any).hotTestApi;
+});
+
+test("a property of the global object which the setup uses is replaced", async () => {
+	const s = scenario();
+	const source = gen({
+		setup:
+			"const client = globalThis.hotTestApp.client; h.call = () => client.name;",
+		view: "yield <p>{n}</p>;",
+	});
+	(globalThis as any).hotTestApp = {client: {name: "one"}};
+	const {Counter} = await s.load(source);
+	s.render(<Counter name="a" />);
+	await s.load(source);
+	expect(s.h.log).toEqual(["setup"]);
+	(globalThis as any).hotTestApp.client = {name: "two"};
+	await s.load(source);
+	expect(s.h.log).toEqual(["setup", "setup", "cleanup"]);
+	expect(s.h.call()).toBe("two");
+	delete (globalThis as any).hotTestApp;
+});
+
+test("a global which only the view uses is replaced", async () => {
+	const s = scenario();
+	const source = gen({view: "yield <p>{hotTestLabel.text} {n}</p>;"});
+	(globalThis as any).hotTestLabel = {text: "one"};
+	const {Counter} = await s.load(source);
+	const read = () => s.render(<Counter name="a" />);
+	read();
+	s.h.inc();
+	(globalThis as any).hotTestLabel = {text: "two"};
+	await s.load(source);
+	expect(read()).toBe("<p>two 1</p>");
+	expect(s.h.log).toEqual(["setup"]);
+	delete (globalThis as any).hotTestLabel;
+});
+
+test("a module which the setup imports when it runs", async () => {
+	const s = scenario();
+	await s.load("export const step = 1;", "lib");
+	const source = gen({
+		setup:
+			'const lib = import("./lib.1.tsx"); h.step = async () => (await lib).step;',
+		view: "yield <p>{n}</p>;",
+	});
+	const {Counter} = await s.load(source);
+	s.render(<Counter name="a" />);
+	expect(await s.h.step()).toBe(1);
+	// Nothing says which module the promise is for, so the component is
+	// remounted whenever its own module is evaluated again, which is what a
+	// development server does when the module it imports has changed.
+	await s.load(source);
+	expect(s.h.log).toEqual(["setup", "setup", "cleanup"]);
+});
+
+test("a module which only the view imports when it runs", async () => {
+	const s = scenario();
+	await s.load("export const step = 1;", "lib");
+	const source = (mark: string) =>
+		gen({
+			view: `h.lib = import("./lib.1.tsx"); yield <p>${mark}{n}</p>;`,
+		});
+	const {Counter} = await s.load(source(""));
+	const read = () => s.render(<Counter name="a" />);
+	read();
+	s.h.inc();
+	await s.load(source("#"));
+	expect(read()).toBe("<p>#1</p>");
+	expect(s.h.log).toEqual(["setup"]);
+	// The edited view finds the module from where its own module is.
+	expect((await s.h.lib).step).toBe(1);
+});
+
+test("a listener which the setup gives to something outside the component", async () => {
+	const s = scenario();
+	const bus = ((globalThis as any).hotTestBus = new EventTarget());
+	const source = (start: number, cleanup: string) =>
+		gen({
+			setup: `const start = ${start};
+	const onping = () => h.log.push("ping " + start);
+	hotTestBus.addEventListener("ping", onping);
+	${cleanup}`,
+			view: "yield <p>{n}</p>;",
+		});
+	const remove =
+		'this.cleanup(() => hotTestBus.removeEventListener("ping", onping));';
+	const {Counter} = await s.load(source(1, remove));
+	s.render(<Counter name="a" />);
+	await s.load(source(2, remove));
+	s.h.log.length = 0;
+	bus.dispatchEvent(new Event("ping"));
+	// The old instance was unmounted, and took its listener with it.
+	expect(s.h.log).toEqual(["ping 2"]);
+
+	// A component which does not remove its listener leaves it behind when it
+	// is unmounted, by an edit or by anything else.
+	await s.load(source(3, ""));
+	await s.load(source(4, ""));
+	s.h.log.length = 0;
+	bus.dispatchEvent(new Event("ping"));
+	expect(s.h.log).toEqual(["ping 3", "ping 4"]);
+	delete (globalThis as any).hotTestBus;
+});

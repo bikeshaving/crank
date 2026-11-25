@@ -271,3 +271,51 @@ test("a default export without a name is registered", () => {
 		expect(code).toContain(ACCEPT);
 	}
 });
+
+test("what the setup uses which is not a binding of the module", () => {
+	const code = transform(
+		`const config = {};
+export function* Counter(this: any, {name}: any) {
+	const client = window.app.client;
+	const started = Date.now();
+	const onclick = (ev: Event) => fetchThing(ev.target, config);
+	const lazy = import("./lazy");
+	try {
+		const config = "local";
+		for ({name} of this) {
+			yield <button onclick={onclick}>{viewOnly}</button>;
+		}
+	} finally {}
+}`,
+		options,
+	);
+	const inputs = code.match(/__hotScope, \(\) => \[(.*?)\], Counter\)/s)![1];
+	const names = inputs.split(", ").sort();
+	expect(names).toEqual(
+		[
+			"Symbol()",
+			"config",
+			'typeof Date === "undefined" ? undefined : Date',
+			'typeof ev === "undefined" ? undefined : ev',
+			'typeof fetchThing === "undefined" ? undefined : fetchThing',
+			"window?.app?.client",
+		].sort(),
+	);
+});
+
+test("an import in a view is found from its module", () => {
+	const code = transform(
+		`export function* Lazy(this: any) {
+	for ({} of this) {
+		const mod = import("./chart");
+		yield import(this.name);
+	}
+}`,
+		options,
+	);
+	expect(code).toContain('const mod = __import(\\"./chart\\");');
+	expect(code).toContain("yield __import(this.name);");
+	expect(code).toContain(
+		'__import(__specifier) { switch (__specifier) { case "./chart": return import("./chart"); default: return import(__specifier); } }',
+	);
+});

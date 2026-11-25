@@ -70,6 +70,8 @@ interface View {
 	// The vars which are declared in the body of the loop.
 	vars: Array<string>;
 	usesArguments: boolean;
+	// The specifiers which the body imports when it runs.
+	imports: Array<string>;
 }
 
 type Edit = [number, number, string];
@@ -341,6 +343,7 @@ function getView(
 		: undefined;
 	const edits: Array<Edit> = [];
 	const vars: Array<string> = [];
+	const imports: Array<string> = [];
 	let usesArguments = false;
 	let ok = true;
 	const visit = (
@@ -360,6 +363,22 @@ function getView(
 			usesArguments = true;
 			edits.push([node.getStart(sf), node.end, "__arguments"]);
 			return;
+		} else if (
+			ts.isCallExpression(node) &&
+			node.expression.kind === ts.SyntaxKind.ImportKeyword
+		) {
+			// What a view imports is found from its module, which is not where
+			// the view is evaluated.
+			const specifier = node.arguments[0];
+			if (specifier && ts.isStringLiteralLike(specifier)) {
+				imports.push(specifier.text);
+			}
+
+			edits.push([
+				node.expression.getStart(sf),
+				node.expression.end,
+				"__import",
+			]);
 		}
 
 		if (ts.isFunctionLike(node)) {
@@ -471,6 +490,7 @@ function getView(
 		column: character,
 		vars: [...new Set(vars)].sort(),
 		usesArguments,
+		imports,
 	};
 }
 
@@ -503,12 +523,47 @@ function compileView(view: View, kind: string, options: HotOptions): string {
 	)}]`;
 }
 
+// The names of the global object.
+const GLOBAL_OBJECTS = new Set(["globalThis", "window", "self"]);
+
 /**
- * Collects the bindings of the module which a node uses. A name which the
- * function around it declares is not one, wherever in the function it is
- * used, which can only miss a use when a function has a variable with the
- * name of a binding of the module in one block and uses the binding in
- * another.
+ * Returns a property access as source which does not throw when part of it
+ * is missing, if it is a chain of names from the global object.
+ */
+function getGlobalChain(
+	node: ts.Node,
+	declared: Map<string, boolean>,
+	bindings: Map<string, Binding>,
+): string | undefined {
+	if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.name)) {
+		const head = getGlobalChain(node.expression, declared, bindings);
+		return head && `${head}?.${node.name.text}`;
+	} else if (
+		ts.isIdentifier(node) &&
+		GLOBAL_OBJECTS.has(node.text) &&
+		!declared.has(node.text) &&
+		!bindings.has(node.text)
+	) {
+		return node.text;
+	}
+
+	return undefined;
+}
+
+/**
+ * Collects what a node uses which was made outside it: the names of bindings
+ * of the module, and, with an equals sign before them, expressions for
+ * everything else, to be compared when the module is evaluated again.
+ *
+ * Only what the function declares for all of itself is taken to be its own.
+ * A name which a block or a function inside it declares may be something
+ * else outside that block, so it is collected, which can only remount a
+ * component which did not need it.
+ *
+ * - A name which is not declared is a global.
+ * - A property of the global object is collected as far as it is written.
+ * - Nothing says which module `import()` is for, so the code which calls it
+ *   is never the same as it was.
  */
 function collectUses(
 	node: ts.Node,
@@ -520,12 +575,27 @@ function collectUses(
 	if (node === skip || ts.isTypeNode(node)) {
 		return;
 	} else if (
-		ts.isIdentifier(node) &&
-		!isName(node) &&
-		bindings.has(node.text) &&
-		!declared.has(node.text)
+		ts.isCallExpression(node) &&
+		node.expression.kind === ts.SyntaxKind.ImportKeyword
 	) {
-		uses.add(node.text);
+		uses.add("=Symbol()");
+	} else if (ts.isPropertyAccessExpression(node)) {
+		const chain = getGlobalChain(node, declared, bindings);
+		if (chain) {
+			uses.add("=" + chain);
+			return;
+		}
+	} else if (ts.isIdentifier(node) && !isName(node)) {
+		const parent = node.parent as any;
+		const name = node.text;
+		if (declared.has(name) || name === "arguments" || name === "undefined") {
+			// Its own.
+		} else if (bindings.has(name)) {
+			uses.add(name);
+		} else if (parent.tagName !== node || !/^[a-z]/.test(name)) {
+			// The name of an element in JSX is not a variable.
+			uses.add(`=typeof ${name} === "undefined" ? undefined : ${name}`);
+		}
 	}
 
 	ts.forEachChild(node, (child) =>
@@ -547,6 +617,11 @@ function resolveUses(
 	identities: Set<string>,
 ): void {
 	for (const name of uses) {
+		if (name[0] === "=") {
+			identities.add(name.slice(1));
+			continue;
+		}
+
 		const binding = bindings.get(name)!;
 		if (binding.kind === "identity") {
 			identities.add(name);
@@ -812,6 +887,8 @@ export function compile(source: string, options: HotOptions): HotResult {
 	}
 
 	const edits: Array<Edit> = [];
+	// The specifiers which views import when they run.
+	const viewImports = new Set<string>();
 	// Nothing is put on a line of its own.
 	let header = `;import * as __hot from ${JSON.stringify(options.runtime)};`;
 	for (const component of components) {
@@ -827,7 +904,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 			const view = loop && getView(sf, loop);
 			const body = view && loop!.statement;
 			const uses = new Set<string>();
-			collectUses(fn, bindings, getLocals(fn, loop || fn.body!), body, uses);
+			collectUses(fn, bindings, getLocals(fn, fn.body!), body, uses);
 			const [texts, values] = getInputs(sf, options, bindings, uses);
 			inputs = values;
 			const start = getStart(sf, fn);
@@ -876,6 +953,10 @@ export function compile(source: string, options: HotOptions): HotResult {
 				]);
 				if (!isBlock) {
 					edits.push([body.end, body.end, " }"]);
+				}
+
+				for (const specifier of view.imports) {
+					viewImports.add(specifier);
 				}
 
 				viewArg = compileView(view, component.kind, options);
@@ -969,6 +1050,15 @@ export function compile(source: string, options: HotOptions): HotResult {
 		}
 	}
 
+	// The imports are written out, so that whatever bundles the module can
+	// see them.
+	footer += " __import(__specifier) { switch (__specifier) {";
+	for (const specifier of viewImports) {
+		const literal = JSON.stringify(specifier);
+		footer += ` case ${literal}: return import(${literal});`;
+	}
+
+	footer += " default: return import(__specifier); } },";
 	footer += ` }; }\n__hotScope.id = ${JSON.stringify(
 		options.id,
 	)};\n__hotScope.source = ${JSON.stringify(source)};\n`;

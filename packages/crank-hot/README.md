@@ -33,6 +33,12 @@ bun run dev           # the example, at http://localhost:8000/
   Functions of the same module are part of the signature, by their source,
   and everything else is compared by value when the module is evaluated
   again. If any is a different value, the component is remounted.
+  What it uses which is not a binding of the module is compared too: a
+  global, a property of the global object as far as it is written, and
+  `import()`, which makes the component different every time, because
+  nothing says which module it is for. Only what a component declares for
+  all of itself is taken to be its own, so a name which a block inside it
+  also declares is not missed.
 - A const which is named like a component and declared with a call, such as
   `const Fancy = withTheme(Card)`, keeps its value while the call and what it
   uses are the same, and is registered as a component when it is a function.
@@ -97,6 +103,12 @@ form, the position of a scroller, and the state of keyed components.
   remounted by every edit to that module.
 - The browser tests run in Chromium and WebKit, and the debugger tests in
   Chromium. Nobody has looked at the panels of the developer tools.
+- What the setup gave to something outside the component, such as a
+  listener on the window, is still there after a remount unless the
+  component removes it in a cleanup. That is so of any unmount.
+- What the setup read from an object and kept, such as `config.limit`, is
+  not noticed when the property is assigned to later. Only bindings, globals
+  and properties of the global object are compared.
 - The JSX of an edited view is compiled to Crank's `createElement`, whatever
   the module compiles its own JSX to.
 - With Vite, JSX which is compiled for React's development mode has props
