@@ -1,37 +1,53 @@
-# Crank hot
+# @b9g/crank-hot
 
-An experiment in hot reloading for Crank components. It is not published. An edit to what a component
-renders keeps its state, and an edit to anything else in it remounts it.
+Hot reloading for [Crank](https://crank.js.org) components. When a file is
+edited, the page updates without being loaded again:
+
+- An edit to what a generator component renders, which is the body of its
+  props loop, keeps the state of the component: its variables, its children,
+  its DOM nodes, focus and what was typed.
+- An edit to a function component keeps everything under it.
+- An edit to anything else in a generator component starts that component
+  again, and nothing above or beside it.
+- An edit which throws is reported, and the page is left as it was until the
+  next edit.
+
+It is experimental, it is for development only, and it changes nothing in an
+app's own code.
+
+## Installing
 
 ```
-bun run test          # the transform and the battery of cases, with the HTML renderer
-bun run test:e2e      # a browser, with Bun's development server
-bun run dev           # the example, at http://localhost:8000/
+npm install --save-dev @b9g/crank-hot typescript
 ```
 
-## Using it
+TypeScript's compiler is how the transform reads a module, whether the
+module is TypeScript or JavaScript.
 
-The package is not published, so these are paths into this repository.
-
-With Bun's development server, list the plugin in `bunfig.toml`:
-
-```toml
-[serve.static]
-plugins = ["@b9g/crank-hot/bun"]
-```
-
-With Vite:
+### Vite
 
 ```ts
+// vite.config.ts
 import crankHot from "@b9g/crank-hot/vite";
 
 export default {plugins: [crankHot()]};
 ```
 
-With esbuild, the build has to be a bundle in the `esm` format with an
-`outdir`, served by esbuild's own server:
+### Bun's development server
+
+```toml
+# bunfig.toml
+[serve.static]
+plugins = ["@b9g/crank-hot/bun"]
+```
+
+### esbuild's development server
+
+The build has to be a bundle in the `esm` format with an `outdir`, served by
+esbuild's own server:
 
 ```ts
+import * as esbuild from "esbuild";
 import crankHot from "@b9g/crank-hot/esbuild";
 
 const ctx = await esbuild.context({
@@ -45,7 +61,28 @@ await ctx.watch();
 await ctx.serve({servedir: "dist"});
 ```
 
-Nothing changes in the app. What it helps to know:
+### Anything else
+
+A development server with `import.meta.hot` can call the transform itself,
+which is all that the plugins for Vite and Bun do:
+
+```ts
+import {transform} from "@b9g/crank-hot/transform";
+
+const code = transform(source, {
+	id: "src/counter.tsx",
+	// Where the module can import the runtime from.
+	runtime: "@b9g/crank-hot/runtime",
+	// End a module which only exports components with
+	// `import.meta.hot.accept()`.
+	accept: true,
+});
+```
+
+The result is in the language the source was in, so it goes before whatever
+compiles TypeScript and JSX.
+
+## What it helps to know
 
 - A component is a function with a capitalized name at the top level of a
   module, or a default export.
@@ -53,9 +90,50 @@ Nothing changes in the app. What it helps to know:
   anywhere else in it starts it again.
 - A module which exports only components is replaced on its own. An edit to
   any other module also evaluates what imports it.
+- A helper or a constant which is edited is seen on the next render. A
+  component whose setup used it is started again, so that nothing which ran
+  once is left holding an old value.
 - `this.cleanup()` runs when a component is started again, like any
   unmount. What a component gave to something outside itself and did not
   take back is still there.
+- In a debugger, a variable of a component is `__locals.n` inside its loop.
+
+## Limits
+
+- Only the page is reloaded. Nothing here reloads a server, and an app which
+  a server renders with the same components takes edits in the page only.
+- Webpack and Rspack are not supported.
+- A variable of a module which can be assigned to (`let`) is a new variable
+  every time the module is evaluated, so a component whose setup uses one is
+  started again by every edit to that module.
+- Only the first loop of a component which yields is its view.
+
+## Trying it
+
+`todomvc/` is TodoMVC, with the configuration for each development server:
+
+```
+bun install
+bun run build             # Crank itself, in the root of the repository
+cd packages/crank-hot
+bun run build
+bun run todomvc:vite      # or todomvc:bun, or todomvc:esbuild
+```
+
+It is at http://localhost:8000/, or at `PORT`. Add some todos, type in the
+field, and edit the JSX in `todomvc/src/todo-item.tsx` or
+`todomvc/src/header.tsx`: the todos, and what was typed, are still there.
+Edit the code above the loop in `todomvc/src/app.tsx`: the app starts again,
+without the page loading.
+
+## Working on it
+
+```
+bun run test          # the transform and the battery of cases, with the HTML renderer
+bun run test:e2e      # a browser, with each development server, and TodoMVC with each
+bun run dev           # the example which the browser tests use, with Bun
+bun run build         # dist/
+```
 
 ## How it works
 
@@ -210,32 +288,26 @@ of its own: `views` (edits which keep state), `setup` (edits which remount),
 shapes), `identity` (what the rest of the app holds), `crank` (keys,
 provisions, events, errors), `transform` (what is written), `maps` (source
 maps) and `bundle` (a whole new bundle with every edit). `e2e/` runs the
-example in a browser with each of the three development servers: a page
+example in a browser with each of the three development servers, in
+Chromium, Firefox and WebKit: a page
 which renders, a page which hydrates, and a page with one component for each
 thing a page can lose when it is loaded again, such as what was typed in a
 form, the position of a scroller, and the state of keyed components.
 
-## What is not done
+## Smaller limits
 
-- Apps which a server renders with the same components: the page takes
-  edits, and nothing here reloads the server, or the page when only the
-  server's code changed.
-- Shovel. Its client bundles are built by esbuild, so the plugin is the
-  part it needs. Its development server has to tell the page when a build
-  is ready, after it has reloaded itself, and tell it to load again when
-  only the server's code changed.
 - A loop which is left through a label outside it is not separated, so any
-  edit to that component remounts it.
-- A variable of a module which can be assigned to is a new variable every
-  time the module is evaluated, so a component whose setup uses one is
-  remounted by every edit to that module.
-- The browser tests run in Chromium and WebKit, and the debugger tests in
-  Chromium. Nobody has looked at the panels of the developer tools.
+  edit to that component starts it again. So is a loop in a block when what
+  comes after the loop cannot be written on one line.
 - What the setup gave to something outside the component, such as a
-  listener on the window, is still there after a remount unless the
-  component removes it in a cleanup. That is so of any unmount.
+  listener on the window, is still there after the component is started
+  again unless the component removes it in a cleanup. That is so of any
+  unmount.
 - What the setup read from an object and kept, such as `config.limit`, is
   not noticed when the property is assigned to later. Only bindings, globals
   and properties of the global object are compared.
+- The debugger tests run in Chromium only, and nobody has looked at the
+  panels of the developer tools.
 - With Vite, JSX which is compiled for React's development mode has props
-  which Crank renders. The test turns that off with `oxc.jsx.development`.
+  which Crank renders, so the plugin turns that off unless the app's
+  configuration says otherwise.

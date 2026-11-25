@@ -1,6 +1,6 @@
 {
-	"include": ["src", "test", "example", "e2e"],
-	"exclude": ["node_modules", ".work"],
+	"include": ["src", "test", "example", "e2e", "todomvc"],
+	"exclude": ["node_modules", ".work", "dist"],
 	"compilerOptions": {
 		"target": "ESNext",
 		"module": "ESNext",

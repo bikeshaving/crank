@@ -46,7 +46,9 @@ export function connect(url) {
 	new globalThis.EventSource("/esbuild").addEventListener("change", (ev) => {
 		let updated;
 		try {
-			updated = JSON.parse(ev.data).updated;
+			// The first build which esbuild watches is said to add its bundles.
+			const data = JSON.parse(ev.data);
+			updated = [...data.added, ...data.updated];
 		} catch (_) {
 			updated = undefined;
 		}

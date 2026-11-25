@@ -66,6 +66,16 @@ test("only the bundles which changed are evaluated", async () => {
 	expect(loaded).toEqual(["http://localhost/admin.js?hot=2"]);
 });
 
+test("a bundle which a build is said to add is evaluated", async () => {
+	loaded.length = 0;
+	FakeEventSource.last.send(
+		"change",
+		JSON.stringify({added: ["/main.js"], removed: [], updated: []}),
+	);
+	await Promise.resolve();
+	expect(loaded).toEqual(["http://localhost/main.js?hot=3"]);
+});
+
 test("a bundle which cannot be evaluated is said, and the others are evaluated", async () => {
 	loaded.length = 0;
 	logged.length = 0;
@@ -77,6 +87,6 @@ test("a bundle which cannot be evaluated is said, and the others are evaluated",
 		loaded.push(url);
 	};
 	await client.update();
-	expect(loaded).toEqual(["http://localhost/admin.js?hot=3"]);
+	expect(loaded).toEqual(["http://localhost/admin.js?hot=4"]);
 	expect(String(logged[0])).toContain("syntax");
 });
