@@ -24,7 +24,7 @@ const plugin: BunPlugin = {
 					id: relative(process.cwd(), args.path),
 					runtime: RUNTIME,
 					accept: true,
-					rewrite: process.env.CRANK_HOT_REWRITE === "1",
+					evaluate: process.env.CRANK_HOT_EVALUATE === "1",
 				}),
 				loader: extname(args.path).slice(1) as any,
 			};

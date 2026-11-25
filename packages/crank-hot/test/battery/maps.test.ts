@@ -65,6 +65,8 @@ export function* Counter(this: Context, {name}: Props) {
 export const Boxed = wrap(Counter); // CALL
 `;
 	const {code, map} = compile(source, {id: "counter.tsx", runtime: "runtime"});
+	// The uses of the variables of the component are rewritten in place.
+	expect(code).toContain("const label = __locals.name + __locals.n;");
 	const parsed = JSON.parse(map);
 	expect(parsed.sources).toEqual(["counter.tsx"]);
 	expect(parsed.sourcesContent).toEqual([source]);
@@ -73,7 +75,7 @@ export const Boxed = wrap(Counter); // CALL
 	const codeLines = code.split("\n");
 	for (const [inCode, inSource] of [
 		["let n = 0;", "// SETUP"],
-		["const label = name + n;", "// VIEW"],
+		["const label = __locals.name + __locals.n;", "// VIEW"],
 		["= __hot.value(", "// CALL"],
 	]) {
 		const codeLine = codeLines.findIndex(
@@ -106,7 +108,11 @@ export function* Counter(this: any, {name}: {name: string}) {
 	}
 }
 `;
-	const {code} = compile(source, {id: "counter.tsx", runtime: "runtime"});
+	const {code} = compile(source, {
+		id: "counter.tsx",
+		runtime: "runtime",
+		evaluate: true,
+	});
 	// The view is a function in JavaScript, with the mappings of its own map.
 	const [js, mappings] = JSON.parse(
 		code.match(/"gen", "[^"]*", (\[.*?\]), __hotScope/s)![1],

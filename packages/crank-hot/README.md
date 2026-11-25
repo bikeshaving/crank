@@ -14,20 +14,22 @@ bun run dev           # the example, at http://localhost:8000/
 - **The view** of a generator component is the body of the first loop it
   yields in. Everything else in the function is its **signature**. A function
   component is all view.
-- `src/transform.ts` adds a few lines to the top of each such loop and
-  registers each component with the runtime. The module stays in the
-  language it was written in, and the body of the loop is left as it was
-  written. The body is also compiled to a function in JavaScript, which is
-  passed to the runtime as text. The transform reads declarations and copies
-  text; it never works out what a name in the body of a loop refers to.
+- `src/transform.ts` makes the body of each such loop a function, which is
+  declared straight after the loop, and registers each component with the
+  runtime. The module stays in the language it was written in, and every
+  line stays on the line it was written on.
+- The body ran against the variables of the component, so each use of one
+  in it is rewritten to go through an object which the component hands
+  over: `n` becomes `__locals.n`. TypeScript says what each name refers to:
+  the part of the compiler which every editor uses, given only the one
+  file. A name is rewritten when what it refers to is declared in the
+  component and outside the body, so `src/rewrite.ts` has no rules of its
+  own about scope.
 - `src/runtime.js` gives each component a wrapper which is what the rest of
   the app sees, so nothing ever holds an old version. When a module is
   evaluated again, a component whose signature is the same keeps its
-  instances, and they run the new body from then on. The body is made with
-  the `Function` constructor, and reaches the variables of the instance
-  through `with` and an object of getters and setters, so the engine resolves
-  each name. A component whose signature changed is rendered as a new
-  component.
+  instances, and they run the body of the newest version from then on. A
+  component whose signature changed is rendered as a new component.
 - The code outside the loop ran once, with the values the module had then.
   The transform lists the bindings of the module which that code uses.
   Functions of the same module are part of the signature, by their source,
@@ -57,24 +59,7 @@ bun run dev           # the example, at http://localhost:8000/
   through every edit, so a reference to one is never a change. The packages
   which the app imports are built once and shared.
 
-## Without evaluating text
-
-With `rewrite: true`, or `CRANK_HOT_REWRITE=1` for the plugins, nothing is
-evaluated from text and a page does not need `unsafe-eval`.
-
-The body of a loop becomes a function of the module, which is passed the
-object of getters and setters. Nothing resolves its names for it, so
-each use of a variable of the component in the body is rewritten: `n`
-becomes `__locals.n`. TypeScript says what each name refers to: the part of
-the compiler which every editor uses, given only the one file. A name is
-rewritten when what it refers to is declared in the component and outside
-the body. So `src/rewrite.ts` has no rules of its own about scope. If a
-view uses a variable which the component does not hand over, the component
-is left whole.
-
-The function is declared straight after the loop, inside the component,
-starting where the body of the loop did, so every line of the component
-stays where it was:
+## What a component becomes
 
 ```tsx
 export function* Counter({name}) { if (__hot.isExtracting()) return __hot.extract(__hotView); __hot.mount(key, this);
@@ -85,6 +70,9 @@ export function* Counter({name}) { if (__hot.isExtracting()) return __hot.extrac
 	}
 }
 ```
+
+The loop asks the runtime for the newest view on every pass, and hands it
+an object with a getter and a setter for each variable in scope.
 
 A function declaration is there from the start of the function it is in.
 So when a version of a component is taken up, the runtime calls it once for
@@ -102,25 +90,28 @@ component which runs is a computed key in the pattern of a parameter.
 When the loop is inside a block, such as a `try`, a function declared after
 it would only be there inside that block. Then the function goes after the
 whole component, and what came after the loop is moved to the line the
-loop starts on, with its lines left empty.
+loop starts on, with its lines left empty. Its lines are wrong in a
+debugger, and when it cannot be written on one line, the component is not
+separated. `this.cleanup()` in place of `try` and `finally` avoids it.
 
-What this costs:
+In a debugger, a variable of the component is `__locals.n` in a view.
 
-- The code which runs is not the code which was written, from the first
-  render, where the other way runs the body as it was written until an edit.
-- What a name refers to is TypeScript's answer and not the engine's. To
-  check that they agree, `test/battery/rewrite.test.tsx` runs views which
-  are hard to get right both ways and compares them.
-- In a debugger, a variable of the component is `__locals.n` in a view.
-- For a loop inside a block, what came after it is on one line, so its
-  lines are wrong in a debugger. When it cannot be written on one line, the
-  component is not separated.
+## Evaluating text
 
-What it gains: an edited view is ordinary code of its module, with the
-source map of whatever compiled the module, and the JSX it was compiled
-with.
+With `evaluate: true`, or `CRANK_HOT_EVALUATE=1` for the plugins, the body
+of a loop is left as it was written, and is also compiled to a function in
+JavaScript and passed to the runtime as text. After an edit the runtime
+makes the function with the `Function` constructor, inside `with` blocks
+over the object from the component and the bindings of the module, so the
+engine says what each name refers to. A page has to allow that with
+`unsafe-eval`. Without it the page says so, and is loaded again on each
+edit to a view.
 
-The whole battery and the browser tests run both ways.
+This is how it was first done. It is kept because the engine is right
+about names by definition: `test/battery/rewrite.test.tsx` runs views which
+are hard to get right both ways and compares them, which is the check on
+what TypeScript is asked. The whole battery and the browser tests run both
+ways.
 
 ## Source maps
 
@@ -128,17 +119,18 @@ The transform only adds to lines, and to the end of a module, so every line
 of a module is on the line it was written on. Whatever compiles the module
 afterwards writes a source map which is right about lines without being
 given one, which matters because Bun's development server does not read the
-source map of a plugin.
+source map of a plugin. A view is code of its module, so the same goes for
+it after an edit.
 
-An edited view is a script of its own, named for its module. It is compiled
-with its body where it is in the module, so the map which the compiler
-writes for it is to the lines and columns of the module, and the runtime
-gives the script that map.
+When text is evaluated, an edited view is a script of its own, named for
+its module. It is compiled with its body where it is in the module, so the
+map which the compiler writes for it is to the lines and columns of the
+module, and the runtime gives the script that map.
 
 `e2e/debug.ts` checks both through the protocol which the developer tools of
 Chrome use, with each development server: an error says which line of the
 source it was made on, and a breakpoint on a line of the source stops there
-with the variables of the component in scope, before and after an edit.
+with the variables of the component to hand, before and after an edit.
 
 ## The battery
 
@@ -174,9 +166,5 @@ form, the position of a scroller, and the state of keyed components.
 - What the setup read from an object and kept, such as `config.limit`, is
   not noticed when the property is assigned to later. Only bindings, globals
   and properties of the global object are compared.
-- The JSX of an edited view is compiled to Crank's `createElement`, whatever
-  the module compiles its own JSX to.
 - With Vite, JSX which is compiled for React's development mode has props
   which Crank renders. The test turns that off with `oxc.jsx.development`.
-- Pages need `unsafe-eval` in development. Without it the page says so and
-  is loaded again on each edit to a view.

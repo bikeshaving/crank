@@ -86,6 +86,7 @@ async function load(text: string): Promise<any> {
 	const code = transform(text, {
 		id: "app.tsx",
 		runtime: join(import.meta.dir, "../src/runtime.js"),
+		evaluate: process.env.CRANK_HOT_EVALUATE === "1",
 	});
 	const file = join(work, `app.${++version}.tsx`);
 	writeFileSync(file, code);
@@ -196,7 +197,7 @@ test("statements which leave the loop become return statements", () => {
 		yield item;
 	}
 }`,
-		{id: "list.ts", runtime: "runtime"},
+		{id: "list.ts", runtime: "runtime", evaluate: true},
 	);
 	const view = JSON.parse(
 		code.match(/"gen", "[^"]*", \[("(?:[^"\\]|\\.)*")/)![1],

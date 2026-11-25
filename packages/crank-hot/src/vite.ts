@@ -32,7 +32,7 @@ export default function crankHot(): any {
 				id: relative(root, path),
 				runtime: RUNTIME,
 				accept: true,
-				rewrite: process.env.CRANK_HOT_REWRITE === "1",
+				evaluate: process.env.CRANK_HOT_EVALUATE === "1",
 			});
 			return {code, map: JSON.parse(map)};
 		},

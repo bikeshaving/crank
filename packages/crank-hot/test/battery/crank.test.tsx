@@ -253,7 +253,7 @@ test("a page which does not allow strings to be evaluated", async () => {
 	};
 	try {
 		await s.load(gen({view: "yield <b>{n}</b>;"}));
-		if (process.env.CRANK_HOT_REWRITE === "1") {
+		if (process.env.CRANK_HOT_EVALUATE !== "1") {
 			// Nothing is evaluated, so the edit is made as usual.
 			expect(read()).toBe("<b>1</b>");
 		} else {
@@ -266,7 +266,7 @@ test("a page which does not allow strings to be evaluated", async () => {
 		(globalThis as any).location = original.location;
 	}
 
-	if (process.env.CRANK_HOT_REWRITE === "1") {
+	if (process.env.CRANK_HOT_EVALUATE !== "1") {
 		expect(errors).toEqual([]);
 		expect(reloads).toBe(0);
 		return;

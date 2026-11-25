@@ -18,8 +18,8 @@
     "./esbuild": "./src/esbuild.ts"
   },
   "scripts": {
-    "test": "bun test test/ && CRANK_HOT_REWRITE=1 bun test test/",
-    "test:e2e": "bun run test:e2e:one && CRANK_HOT_REWRITE=1 bun run test:e2e:one",
+    "test": "bun test test/ && CRANK_HOT_EVALUATE=1 bun test test/",
+    "test:e2e": "bun run test:e2e:one && CRANK_HOT_EVALUATE=1 bun run test:e2e:one",
     "dev": "cd example && bun dev.ts",
     "typecheck": "tsc --noEmit",
     "test:e2e:one": "cd example && bun test --timeout 30000 ../e2e/bun.e2e.ts && bun test --timeout 30000 ../e2e/vite.e2e.ts && bun test --timeout 30000 ../e2e/esbuild.e2e.ts"

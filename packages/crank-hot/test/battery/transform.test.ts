@@ -3,7 +3,13 @@ import {transform} from "../../src/transform.ts";
 
 // What the transform writes, apart from what it does when it runs.
 
-const options = {id: "mod.tsx", runtime: "runtime", accept: true};
+// These are about what is written when the runtime evaluates text.
+const options = {
+	id: "mod.tsx",
+	runtime: "runtime",
+	accept: true,
+	evaluate: true,
+};
 const ACCEPT = "import.meta.hot.accept()";
 
 test("a module which only exports components accepts its own replacement", () => {
@@ -334,7 +340,7 @@ export function* Counter(this: any, {name}: any) {
 	return null; // LAST
 }
 `;
-	const code = transform(source, {...options, rewrite: true});
+	const code = transform(source, {...options, evaluate: false});
 	const lines = code.split("\n");
 	const sourceLines = source.split("\n");
 	for (const mark of ["// SETUP", "// VIEW", "// AFTER", "// LAST"]) {
@@ -361,7 +367,7 @@ test("without evaluating text, what comes after a loop in a block is on one line
 
 export const after = 1; // NEXT
 `;
-	const code = transform(source, {...options, rewrite: true});
+	const code = transform(source, {...options, evaluate: false});
 	const lines = code.split("\n");
 	const sourceLines = source.split("\n");
 	for (const mark of ["// VIEW", "// NEXT"]) {

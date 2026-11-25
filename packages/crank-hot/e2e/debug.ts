@@ -215,7 +215,7 @@ export function defineDebuggerTests(
 			callFrameId: callFrames[0].callFrameId,
 			// A view which is a function of the module reaches the variables of
 			// the component through an object.
-			expression: process.env.CRANK_HOT_REWRITE === "1" ? "__locals.n" : "n",
+			expression: process.env.CRANK_HOT_EVALUATE === "1" ? "n" : "__locals.n",
 		})) as any;
 		await cdp.send("Debugger.removeBreakpoint", {breakpointId});
 		await cdp.send("Debugger.resume");
@@ -253,7 +253,7 @@ export function defineDebuggerTests(
 				document.getElementById("probe")!.textContent!.startsWith("PROBE"),
 			);
 		const {script, line, column} = await getFrame();
-		if (process.env.CRANK_HOT_REWRITE !== "1") {
+		if (process.env.CRANK_HOT_EVALUATE === "1") {
 			// The view is a script of its own, with the name of its module.
 			expect(script.url).toContain(FILE + "?hot=");
 		}

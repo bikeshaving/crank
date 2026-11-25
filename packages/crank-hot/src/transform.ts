@@ -23,11 +23,12 @@ export interface HotOptions {
 	 */
 	hashes?: Map<string, string>;
 	/**
-	 * Whether the body of a loop is a function of the module, and not text
-	 * which the runtime evaluates. The uses of the variables of the component
-	 * in it are rewritten, and nothing needs `unsafe-eval`.
+	 * Whether the runtime evaluates the body of a loop from text, and lets the
+	 * engine say what its names refer to, which a page has to allow with
+	 * `unsafe-eval`. Without it, the body is a function of the module, and the
+	 * uses of the variables of the component in it are rewritten.
 	 */
-	rewrite?: boolean;
+	evaluate?: boolean;
 	/** Whether transform() ends the module with its source map. */
 	sourceMap?: boolean;
 	/** Options for compiling the body of a loop, such as the target. */
@@ -986,9 +987,9 @@ export function compile(source: string, options: HotOptions): HotResult {
 				loop && ts.isLabeledStatement(loop.parent) ? loop.parent : loop;
 			const isNested = !!holder && holder.parent === fn.body;
 			let tail: string | undefined;
-			if (loop && options.rewrite && isNested) {
+			if (loop && !options.evaluate && isNested) {
 				tail = "";
-			} else if (loop && options.rewrite) {
+			} else if (loop && !options.evaluate) {
 				const after = source.slice(fn.end, component.stmt.end).trim();
 				if (after === "" || after === ";") {
 					tail = collapse(
@@ -1002,11 +1003,11 @@ export function compile(source: string, options: HotOptions): HotResult {
 			}
 
 			let view =
-				loop && (!options.rewrite || tail !== undefined)
+				loop && (options.evaluate || tail !== undefined)
 					? getView(
 							sf,
 							loop,
-							options.rewrite
+							!options.evaluate
 								? {checker: (checker ||= createChecker(sf)), fn}
 								: undefined,
 						)
@@ -1067,11 +1068,11 @@ export function compile(source: string, options: HotOptions): HotResult {
 					// A var of the body is declared where the body was.
 					// The runtime calls the component for its view. This is the
 					// first statement, so nothing else of the component runs.
-					(options.rewrite && isNested
+					(!options.evaluate && isNested
 						? " if (__hot.isExtracting()) return __hot.extract(__hotView);"
 						: "") +
 						` __hot.mount(${key}, this);` +
-						(options.rewrite && view.vars.length
+						(!options.evaluate && view.vars.length
 							? ` var ${view.vars.join(", ")};`
 							: ""),
 				]);
@@ -1083,7 +1084,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 				const parameters = isTyped ? "this: any, __locals: any" : "__locals";
 				const generator =
 					component.kind === "agen" ? "async function*" : "function*";
-				if (options.rewrite && isNested) {
+				if (!options.evaluate && isNested) {
 					// The loop asks for the newest view on every pass. The view
 					// is declared after it, starting where the body of the loop
 					// did, so every line of the component stays where it was. A
@@ -1095,7 +1096,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 						`${seam} ${generator} __hotView(${parameters}) {${view.text}}`,
 					]);
 					viewArg = '"extract"';
-				} else if (options.rewrite) {
+				} else if (!options.evaluate) {
 					// The view goes after the component. What came after the
 					// loop comes first, on the same line, and the lines which it
 					// was on are left empty.
@@ -1150,7 +1151,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 
 		const args = `${key}, ${JSON.stringify(component.kind)}, ${JSON.stringify(
 			signature,
-		)}, ${viewArg}, ${options.rewrite ? "null" : "__hotScope"}, ${inputs}, `;
+		)}, ${viewArg}, ${!options.evaluate ? "null" : "__hotScope"}, ${inputs}, `;
 		if (component.isDeclaration) {
 			// Function declarations are hoisted, so the binding holds what the
 			// runtime returns before anything in the module runs.
@@ -1220,7 +1221,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 	}
 
 	let footer = "\n";
-	if (!options.rewrite) {
+	if (options.evaluate) {
 		// What a view can reach of the module. An import which is only used as a
 		// type is not there when the module runs.
 		const values = new Set<string>();
