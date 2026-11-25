@@ -44,7 +44,7 @@
     "test:core": "libuild test test/ --platform chromium",
     "test:crankdown": "cd packages/crankdown && npm run typecheck && bun test",
     "test:eslint": "cd packages/eslint-plugin-crank && bun test",
-    "test:hot": "cd packages/crank-hot && bun run typecheck && bun test",
+    "test:hot": "cd packages/crank-hot && bun run typecheck && bun run test",
     "typecheck": "tsc --noEmit",
     "skill": "skillpack SKILL.md -o skills/",
     "prepublishOnly": "echo 'ERROR: Cannot publish from root directory. Use libuild publish instead.' && exit 1"

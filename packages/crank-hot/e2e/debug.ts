@@ -77,11 +77,18 @@ function decode(
 	}
 }
 
-async function getSegments(script: Script): Promise<Array<Segment>> {
+async function getSegments(
+	script: Script,
+	page: string,
+): Promise<Array<Segment>> {
 	// The map is in the URL, or beside the script.
 	const url = script.sourceMapURL.startsWith("data:")
 		? script.sourceMapURL
-		: new URL(script.sourceMapURL, script.url).href;
+		: new URL(
+				script.sourceMapURL,
+				// Bun evaluates a module which has been replaced from a blob.
+				/^https?:/.test(script.url) ? script.url : page,
+			).href;
 	const response = await fetch(url);
 	const segments: Array<Segment> = [];
 	decode(await response.json(), 0, 0, segments);
@@ -186,7 +193,7 @@ export function defineDebuggerTests(
 		script: Script,
 		comment: string,
 	): Promise<{line: number; n: unknown}> => {
-		const segments = await getSegments(script);
+		const segments = await getSegments(script, env.lab().url());
 		const place = toCode(segments, lineOf(comment));
 		const {breakpointId} = (await cdp.send("Debugger.setBreakpointByUrl", {
 			url: script.url,
@@ -206,7 +213,9 @@ export function defineDebuggerTests(
 		const stopped = toSource(segments, lineNumber, columnNumber)!;
 		const {result} = (await cdp.send("Debugger.evaluateOnCallFrame", {
 			callFrameId: callFrames[0].callFrameId,
-			expression: "n",
+			// A view which is a function of the module reaches the variables of
+			// the component through an object.
+			expression: process.env.CRANK_HOT_REWRITE === "1" ? "__locals.n" : "n",
 		})) as any;
 		await cdp.send("Debugger.removeBreakpoint", {breakpointId});
 		await cdp.send("Debugger.resume");
@@ -218,7 +227,11 @@ export function defineDebuggerTests(
 	test("an error says which line of the source it was made on", async () => {
 		await connect();
 		const {script, line, column} = await getFrame();
-		const place = toSource(await getSegments(script), line, column)!;
+		const place = toSource(
+			await getSegments(script, env.lab().url()),
+			line,
+			column,
+		)!;
 		expect(place.source.endsWith(FILE)).toBe(true);
 		expect(place.sourceLine).toBe(lineOf("// TRACE"));
 	});
@@ -240,9 +253,16 @@ export function defineDebuggerTests(
 				document.getElementById("probe")!.textContent!.startsWith("PROBE"),
 			);
 		const {script, line, column} = await getFrame();
-		// The view is a script of its own, with the name of its module.
-		expect(script.url).toContain(FILE + "?hot=");
-		const place = toSource(await getSegments(script), line, column)!;
+		if (process.env.CRANK_HOT_REWRITE !== "1") {
+			// The view is a script of its own, with the name of its module.
+			expect(script.url).toContain(FILE + "?hot=");
+		}
+
+		const place = toSource(
+			await getSegments(script, env.lab().url()),
+			line,
+			column,
+		)!;
 		expect(place.source.endsWith(FILE)).toBe(true);
 		expect(place.sourceLine).toBe(lineOf("// TRACE"));
 	});

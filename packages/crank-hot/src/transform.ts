@@ -1,6 +1,7 @@
 import {createHash} from "node:crypto";
 import {extname} from "node:path";
 import ts from "typescript";
+import {collapse, rewriteLocals} from "./rewrite.ts";
 
 export interface HotOptions {
 	/**
@@ -21,6 +22,12 @@ export interface HotOptions {
 	 * A function, class or const whose hash is the same keeps its value.
 	 */
 	hashes?: Map<string, string>;
+	/**
+	 * Whether the body of a loop is a function of the module, and not text
+	 * which the runtime evaluates. The uses of the variables of the component
+	 * in it are rewritten, and nothing needs `unsafe-eval`.
+	 */
+	rewrite?: boolean;
 	/** Whether transform() ends the module with its source map. */
 	sourceMap?: boolean;
 	/** Options for compiling the body of a loop, such as the target. */
@@ -47,6 +54,8 @@ interface Component {
 	isDeclaration: boolean;
 	// Where to wrap a function which is not declared with a name of its own.
 	start: number;
+	// The statement which the function is in.
+	stmt: ts.Node;
 }
 
 /** A binding of the module, and how a change to it is noticed. */
@@ -324,6 +333,34 @@ function getLocals(
 }
 
 /**
+ * A function which is found through `with` is called with the object it was
+ * found on as its `this`. Every call of a name is written so that the name
+ * is read first, which calls it with nothing.
+ */
+function wrapCallees(
+	sf: ts.SourceFile,
+	node: ts.Node,
+	edits: Array<Edit>,
+): void {
+	if (ts.isTypeNode(node)) {
+		return;
+	}
+
+	const callee = ts.isCallExpression(node)
+		? node.expression
+		: ts.isTaggedTemplateExpression(node)
+			? node.tag
+			: undefined;
+	// A call of eval by its name is a different kind of call.
+	if (callee && ts.isIdentifier(callee) && callee.text !== "eval") {
+		edits.push([callee.getStart(sf), callee.getStart(sf), "(0, "]);
+		edits.push([callee.end, callee.end, ")"]);
+	}
+
+	ts.forEachChild(node, (child) => wrapCallees(sf, child, edits));
+}
+
+/**
  * Returns the body of a loop as the source of the body of a function, or
  * undefined when it cannot be run as one.
  *
@@ -336,6 +373,8 @@ function getLocals(
 function getView(
 	sf: ts.SourceFile,
 	loop: ts.IterationStatement,
+	// The variables in scope at the loop, when their uses are rewritten.
+	rewrite?: Map<string, boolean>,
 ): View | undefined {
 	const body = loop.statement;
 	const label = ts.isLabeledStatement(loop.parent)
@@ -361,7 +400,10 @@ function getView(
 			!isName(node)
 		) {
 			usesArguments = true;
-			edits.push([node.getStart(sf), node.end, "__arguments"]);
+			if (!rewrite) {
+				edits.push([node.getStart(sf), node.end, "__arguments"]);
+			}
+
 			return;
 		} else if (
 			ts.isCallExpression(node) &&
@@ -374,11 +416,13 @@ function getView(
 				imports.push(specifier.text);
 			}
 
-			edits.push([
-				node.expression.getStart(sf),
-				node.expression.end,
-				"__import",
-			]);
+			if (!rewrite) {
+				edits.push([
+					node.expression.getStart(sf),
+					node.expression.end,
+					"__import",
+				]);
+			}
 		}
 
 		if (ts.isFunctionLike(node)) {
@@ -445,7 +489,11 @@ function getView(
 				edits.push([
 					node.getStart(sf),
 					node.end,
-					isBreak ? "return __BREAK;" : "return;",
+					isBreak
+						? rewrite
+							? "return __hot.BREAK;"
+							: "return __BREAK;"
+						: "return;",
 				]);
 			}
 
@@ -473,6 +521,12 @@ function getView(
 
 	if (!ok) {
 		return undefined;
+	}
+
+	if (rewrite) {
+		rewriteLocals(sf, body, rewrite, "__locals", edits);
+	} else {
+		wrapCallees(sf, body, edits);
 	}
 
 	// A body which is one statement is all of the view.
@@ -768,6 +822,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 						fn: stmt,
 						isDeclaration: false,
 						start: keyword.end,
+						stmt,
 					});
 				} else {
 					isBoundary = false;
@@ -789,6 +844,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 					fn: stmt,
 					isDeclaration: true,
 					start: stmt.getStart(sf),
+					stmt,
 				});
 			} else {
 				bindings.set(name, {kind: "text", node: stmt});
@@ -826,6 +882,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 						fn: init,
 						isDeclaration: false,
 						start: init.getStart(sf),
+						stmt,
 					});
 				} else if (isFunction) {
 					bindings.set(name, {kind: "text", node: decl});
@@ -875,6 +932,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 					fn: expression,
 					isDeclaration: false,
 					start: expression.getStart(sf),
+					stmt,
 				});
 			} else {
 				isBoundary = false;
@@ -897,11 +955,33 @@ export function compile(source: string, options: HotOptions): HotResult {
 		let signature = "";
 		let viewArg = "null";
 		let inputs = "null";
+		// Whether what closes the call to register() has been written.
+		let isClosed = false;
 		if (component.kind !== "fn") {
 			// A function component has nothing which outlives a render, so every
 			// version of one is the same component.
 			const loop = findLoop(fn.body as ts.Block);
-			const view = loop && getView(sf, loop);
+			// Without evaluating text, the body of the loop is a function after
+			// the component, so what comes after the loop is moved to before
+			// it, and has to fit on a line.
+			let tail: string | undefined;
+			if (loop && options.rewrite) {
+				const after = source.slice(fn.end, component.stmt.end).trim();
+				if (after === "" || after === ";") {
+					tail = collapse(
+						sf,
+						fn,
+						loop.statement.end,
+						fn.end,
+						new Map(component.isDeclaration ? [] : [[fn.end, ")"]]),
+					);
+				}
+			}
+
+			const view =
+				loop && (!options.rewrite || tail !== undefined)
+					? getView(sf, loop, options.rewrite ? getLocals(fn, loop) : undefined)
+					: undefined;
 			const body = view && loop!.statement;
 			const uses = new Set<string>();
 			collectUses(fn, bindings, getLocals(fn, fn.body!), body, uses);
@@ -934,32 +1014,72 @@ export function compile(source: string, options: HotOptions): HotResult {
 					}
 				}
 
-				if (view.usesArguments) {
-					// A getter would have arguments of its own.
-					accessors += " __arguments: arguments,";
-				}
+				// The arguments of the component, for a view which uses them. A
+				// getter would have arguments of its own.
+				accessors += " __arguments: arguments,";
 
 				const top = fn.body!.getStart(sf) + 1;
-				edits.push([top, top, ` __hot.mount(${key}, this);`]);
-				const isBlock = ts.isBlock(body);
-				const at = body.getStart(sf) + (isBlock ? 1 : 0);
 				edits.push([
-					at,
-					at,
-					`${isBlock ? "" : "{"} { const __view = __hot.view(${key}, () => ({__proto__: null,${accessors} }));` +
-						` if (__view) { const __result = yield* __view.call(this);` +
-						` if (__result === __hot.BREAK) break;` +
-						` if (__result) return __result.value; continue; } } `,
+					top,
+					top,
+					// A var of the body is declared where the body was.
+					` __hot.mount(${key}, this);` +
+						(options.rewrite && view.vars.length
+							? ` var ${view.vars.join(", ")};`
+							: ""),
 				]);
-				if (!isBlock) {
-					edits.push([body.end, body.end, " }"]);
-				}
+				if (options.rewrite) {
+					// The loop asks for the newest view on every pass. What came
+					// after the loop comes next, on the same line, and then the
+					// view, which starts where the body of the loop did. The
+					// lines which the rest was on are left empty.
+					const end = component.stmt.end;
+					const isTyped = /\.tsx?$/.test(options.id);
+					edits.push([
+						body.getStart(sf),
+						end,
+						`{ const __result = yield* __hot.view(${key}).call(this, {__proto__: null,${accessors} });` +
+							` if (__result === __hot.BREAK) break;` +
+							` if (__result) return __result.value; }` +
+							`${tail}; __hot.setView(${key}, ${
+								component.kind === "agen" ? "async " : ""
+							}function* (${
+								isTyped ? "this: any, __locals: any" : "__locals"
+							}) {` +
+							view.text +
+							"});" +
+							"\n".repeat(source.slice(body.end, end).split("\n").length - 1),
+					]);
+					viewArg = "true";
+					isClosed = true;
+				} else {
+					const isBlock = ts.isBlock(body);
+					const at = body.getStart(sf) + (isBlock ? 1 : 0);
+					edits.push([
+						at,
+						at,
+						// The body is put in a block of its own, so that what it
+						// declares is not what the getters and setters see.
+						`${isBlock ? "" : "{"} { const __view = __hot.view(${key}, () => ({__proto__: null,${accessors} }));` +
+							` if (__view) { const __result = yield* __view.call(this);` +
+							` if (__result === __hot.BREAK) break;` +
+							` if (__result) return __result.value; continue; } } {`,
+					]);
+					edits.push([
+						body.end - (isBlock ? 1 : 0),
+						body.end - (isBlock ? 1 : 0),
+						" }",
+					]);
+					if (!isBlock) {
+						edits.push([body.end, body.end, " }"]);
+					}
 
-				for (const specifier of view.imports) {
-					viewImports.add(specifier);
-				}
+					for (const specifier of view.imports) {
+						viewImports.add(specifier);
+					}
 
-				viewArg = compileView(view, component.kind, options);
+					viewArg = compileView(view, component.kind, options);
+				}
 			} else {
 				signature = hash(
 					component.kind +
@@ -979,7 +1099,9 @@ export function compile(source: string, options: HotOptions): HotResult {
 			header += `${name} = __hot.register(${args}${name});`;
 		} else {
 			edits.push([component.start, component.start, ` __hot.register(${args}`]);
-			edits.push([fn.end, fn.end, ")"]);
+			if (!isClosed) {
+				edits.push([fn.end, fn.end, ")"]);
+			}
 		}
 	}
 

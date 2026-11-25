@@ -57,6 +57,49 @@ bun run dev           # the example, at http://localhost:8000/
   through every edit, so a reference to one is never a change. The packages
   which the app imports are built once and shared.
 
+## Without evaluating text
+
+With `rewrite: true`, or `CRANK_HOT_REWRITE=1` for the plugins, nothing is
+evaluated from text and a page does not need `unsafe-eval`.
+
+The body of a loop becomes a function of the module, which is passed the
+object of getters and setters. Nothing resolves its names for it, so
+`src/rewrite.ts` works out which names in the body are variables of the
+component, and rewrites each use: `n` becomes `__locals.n`. A name is one
+when the component has a variable with that name in scope at the loop, and
+nothing between the use and the body declares the name again.
+
+The function has to be on the lines the body was on, and after the
+component, so what came after the loop is moved to the line the loop starts
+on:
+
+```tsx
+for ({name} of this) { const __result = yield* __hot.view(key).call(this, {…}); … } } __hot.setView(key, function* (__locals) {
+	const label = format(__locals.name, __locals.n);
+	yield <button onclick={__locals.onclick}>{label}</button>;
+});
+```
+
+What this costs:
+
+- The code which runs is not the code which was written, from the first
+  render, where the other way runs the body as it was written until an edit.
+- A mistake in working out a name reads or writes the wrong variable. The
+  other way cannot make that mistake, so `test/battery/rewrite.test.tsx`
+  runs views which are hard to get right both ways and compares them.
+- In a debugger, a variable of the component is `__locals.n` in a view.
+- What came after the loop is on one line, so its lines are wrong in a
+  debugger. When it cannot be written on one line, the component is not
+  separated.
+- A component which is rendered by a statement above it in its own module
+  has no view yet.
+
+What it gains: an edited view is ordinary code of its module, with the
+source map of whatever compiled the module, and the JSX it was compiled
+with.
+
+The whole battery and the browser tests run both ways.
+
 ## Source maps
 
 The transform only adds to lines, and to the end of a module, so every line

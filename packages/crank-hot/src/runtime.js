@@ -374,6 +374,18 @@ export function value(key, signature, inputs, make) {
 }
 
 /**
+ * Gives the newest version of a component its view, when the view is a
+ * function of the module and not text. The function comes after the
+ * component in the module, so it arrives after the component is registered.
+ */
+export function setView(key, view) {
+	const family = families.get(key);
+	if (family) {
+		(family.next || family).view = view;
+	}
+}
+
+/**
  * Called by a generator component when it starts.
  */
 export function mount(key, ctx) {
@@ -464,6 +476,25 @@ export function view(key, getLocals) {
 	}
 
 	settle(family);
+	if (typeof family.view === "function") {
+		// The view is a function of the newest module, and the loop always
+		// runs it.
+		const made = family.view;
+		return family.broken
+			? keep
+			: family.kind === "agen"
+				? function (locals) {
+						return guardAsync(family, made.call(this, locals));
+					}
+				: function (locals) {
+						return guard(family, made.call(this, locals));
+					};
+	} else if (family.view === true) {
+		throw new Error(
+			`The component ${family.shell.name} was rendered before the end of its module`,
+		);
+	}
+
 	if (family.fresh || family.view == null) {
 		return undefined;
 	} else if (family.broken) {

@@ -100,6 +100,7 @@ export default function crankHot(options: HotOptions = {}): any {
 					id: relative(cwd, args.path),
 					runtime: RUNTIME,
 					hashes,
+					rewrite: process.env.CRANK_HOT_REWRITE === "1",
 					sourceMap: true,
 				});
 				if (entryPoints.includes(args.path)) {

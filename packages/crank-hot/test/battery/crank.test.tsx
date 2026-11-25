@@ -253,12 +253,23 @@ test("a page which does not allow strings to be evaluated", async () => {
 	};
 	try {
 		await s.load(gen({view: "yield <b>{n}</b>;"}));
-		// The page says why, asks to be loaded again, and is left as it was.
-		expect(read()).toBe("<p>1</p>");
+		if (process.env.CRANK_HOT_REWRITE === "1") {
+			// Nothing is evaluated, so the edit is made as usual.
+			expect(read()).toBe("<b>1</b>");
+		} else {
+			// The page says why, asks to be loaded again, and is left as it was.
+			expect(read()).toBe("<p>1</p>");
+		}
 	} finally {
 		console.error = original.error;
 		globalThis.Function = original.Function;
 		(globalThis as any).location = original.location;
+	}
+
+	if (process.env.CRANK_HOT_REWRITE === "1") {
+		expect(errors).toEqual([]);
+		expect(reloads).toBe(0);
+		return;
 	}
 
 	expect(String(errors[0])).toContain("unsafe-eval");
