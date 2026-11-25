@@ -1057,7 +1057,16 @@ export function compile(source: string, options: HotOptions): HotResult {
 					ts.isTryStatement(statement) &&
 					statement.tryBlock === block &&
 					statement.parent === fn.body &&
-					block.statements[block.statements.length - 1] === holder
+					// What comes after the loop is in the second part, where
+					// what the first part declares for the block is not.
+					(block.statements[block.statements.length - 1] === holder ||
+						!block.statements.some(
+							(s) =>
+								s.end <= holder.pos &&
+								(ts.isFunctionDeclaration(s) ||
+									ts.isClassDeclaration(s) ||
+									(ts.isVariableStatement(s) && isLexical(s.declarationList))),
+						))
 				) {
 					split = statement;
 					isNested = true;
@@ -1192,7 +1201,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 						edits.push([at, at, "__hotTry: "]);
 						// A return before the loop keeps its value the same way.
 						for (const statement of split.tryBlock.statements) {
-							if (statement !== holder) {
+							if (statement.end <= holder!.pos) {
 								collectReturns(sf, statement, edits);
 							}
 						}

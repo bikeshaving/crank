@@ -168,6 +168,26 @@ export function* Guard(this: Context) {
 	}
 }`;
 
+guarded["what comes after the loop in the try statement"] = `
+export function* Guard(this: Context) {
+	let n = 0;
+	h.inc = () => { n++; this.refresh(); };
+	try {
+		h.log.push("before");
+		for ({} of this) {
+			VIEW
+		}
+
+		const left = "left " + n;
+		h.log.push(left);
+		if (h.mode === "break") return <i>{left}</i>;
+	} catch (err: any) {
+		h.log.push("caught " + err.message);
+	} finally {
+		h.log.push("finally " + n);
+	}
+}`;
+
 const steps: Record<string, string> = {
 	renders: "yield <p>{n}</p>;",
 	throws:

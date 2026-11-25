@@ -98,6 +98,23 @@ export function* Probe(this: Context) {
 	}
 }
 
+export function* Guarded(this: Context) {
+	let count = 0;
+	const onclick = () => this.refresh(() => count++);
+	try {
+		for ({} of this) {
+			yield (
+				<button id="guarded" onclick={onclick}>
+					guarded {count}
+				</button>
+			);
+		}
+	} finally {
+		(window as any).guardedCleanups =
+			((window as any).guardedCleanups || 0) + 1;
+	}
+}
+
 export function Lab() {
 	return (
 		<main>
@@ -107,6 +124,7 @@ export function Lab() {
 			<Scroller />
 			<Feed />
 			<Probe />
+			<Guarded />
 		</main>
 	);
 }

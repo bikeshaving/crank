@@ -382,14 +382,39 @@ export const after = 1; // NEXT
 	expect(code).not.toContain("__hot.setView");
 });
 
-test("what comes after a loop in any other block is on one line", () => {
+test("what comes after a loop in a try statement stays where it was", () => {
 	const source = `export function* Counter(this: any) {
 	try {
 		for ({} of this) {
 			yield 1; // VIEW
 		}
 
-		flush() // no semicolon
+		flush() // AFTER
+	} finally {
+		done(); // FINALLY
+	}
+}
+`;
+	const code = transform(source, {...options, evaluate: false});
+	const lines = code.split("\n");
+	const sourceLines = source.split("\n");
+	for (const mark of ["// VIEW", "// AFTER", "// FINALLY"]) {
+		const line = sourceLines.findIndex((text) => text.includes(mark));
+		expect(lines[line]).toContain(mark);
+	}
+
+	expect(code).not.toContain("__hot.setView");
+});
+
+test("what comes after a loop in any other block is on one line", () => {
+	const source = `export function* Counter(this: any) {
+	try {
+		const opened = open();
+		for ({} of this) {
+			yield 1; // VIEW
+		}
+
+		opened.flush() // no semicolon
 	} finally {
 		done();
 	}
@@ -405,6 +430,10 @@ export const after = 1; // NEXT
 		expect(lines[line]).toContain(mark);
 	}
 
-	// The statements are separated as the ends of their lines separated them.
-	expect(code).toContain("} flush(); } finally { done(); } }; __hot.setView(");
+	// What the block declared before the loop is used after it, so the
+	// statement cannot be written in two parts. The statements are separated
+	// as the ends of their lines separated them.
+	expect(code).toContain(
+		"} opened.flush(); } finally { done(); } }; __hot.setView(",
+	);
 });

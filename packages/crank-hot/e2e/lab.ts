@@ -235,4 +235,25 @@ export function defineLabTests(env: Env): void {
 			})),
 		).toEqual({checked: true, scroll: 500, clicks: "fixed 4"});
 	});
+
+	test("a component with its loop in a try statement", async () => {
+		const page = env.lab();
+		const cleanups = () =>
+			page.evaluate(() => (window as any).guardedCleanups || 0);
+		await page.click("#guarded");
+		await page.click("#guarded");
+		await mark(page, "#guarded");
+		env.edit(FILE, "guarded {count}", "GUARDED {count}");
+		await shows(page, "GUARDED 2");
+		expect(await kept(page, "#guarded")).toEqual([true]);
+		expect(await cleanups()).toBe(0);
+		await page.click("#guarded");
+		expect(await page.textContent("#guarded")).toBe("GUARDED 3");
+		// An edit to the setup unmounts the instance, which runs its finally
+		// clause.
+		env.edit(FILE, "let count = 0;", "let count = 10;");
+		await shows(page, "GUARDED 10");
+		expect(await kept(page, "#guarded")).toEqual([false]);
+		expect(await cleanups()).toBe(1);
+	});
 }
