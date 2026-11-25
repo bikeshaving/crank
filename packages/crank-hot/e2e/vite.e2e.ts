@@ -15,6 +15,15 @@ defineTests(async () => {
 		server: {port: 5199},
 	});
 	await server.listen();
+	// An edit which is made before the files are being watched is not seen.
+	const watcher = server.watcher as any;
+	if (!watcher._readyEmitted) {
+		await Promise.race([
+			new Promise((resolve) => watcher.once("ready", resolve)),
+			new Promise((resolve) => setTimeout(resolve, 5000)),
+		]);
+	}
+
 	const url = server.resolvedUrls!.local[0];
 	return {
 		url,
