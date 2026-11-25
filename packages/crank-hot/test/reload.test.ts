@@ -42,10 +42,14 @@ afterAll(() => {
 	console.error = original.error;
 });
 
-test("a bundle which listens to nothing is evaluated when the page is told to", async () => {
-	client.connect("http://localhost/main.js", false);
-	client.connect("http://localhost/admin.js?hot=3", false);
-	await (globalThis as any).__crankHot.update();
+test("esbuild's server is listened to once", async () => {
+	client.connect("http://localhost/main.js");
+	const source = FakeEventSource.last;
+	client.connect("http://localhost/admin.js?hot=3");
+	expect(FakeEventSource.last).toBe(source);
+	expect(source.url).toBe("/esbuild");
+	source.send("change");
+	await Promise.resolve();
 	expect(loaded).toEqual([
 		"http://localhost/main.js?hot=1",
 		"http://localhost/admin.js?hot=1",
@@ -54,23 +58,12 @@ test("a bundle which listens to nothing is evaluated when the page is told to", 
 
 test("only the bundles which changed are evaluated", async () => {
 	loaded.length = 0;
-	await client.update(["/admin.js"]);
-	expect(loaded).toEqual(["http://localhost/admin.js?hot=2"]);
-});
-
-test("esbuild's server is listened to once", async () => {
-	loaded.length = 0;
-	client.connect("http://localhost/main.js", true);
-	const source = FakeEventSource.last;
-	client.connect("http://localhost/admin.js", true);
-	expect(FakeEventSource.last).toBe(source);
-	expect(source.url).toBe("/esbuild");
-	source.send(
+	FakeEventSource.last.send(
 		"change",
-		JSON.stringify({added: [], removed: [], updated: ["/main.js"]}),
+		JSON.stringify({added: [], removed: [], updated: ["/admin.js"]}),
 	);
 	await Promise.resolve();
-	expect(loaded).toEqual(["http://localhost/main.js?hot=3"]);
+	expect(loaded).toEqual(["http://localhost/admin.js?hot=2"]);
 });
 
 test("a bundle which cannot be evaluated is said, and the others are evaluated", async () => {
@@ -84,6 +77,6 @@ test("a bundle which cannot be evaluated is said, and the others are evaluated",
 		loaded.push(url);
 	};
 	await client.update();
-	expect(loaded).toEqual(["http://localhost/admin.js?hot=4"]);
+	expect(loaded).toEqual(["http://localhost/admin.js?hot=3"]);
 	expect(String(logged[0])).toContain("syntax");
 });

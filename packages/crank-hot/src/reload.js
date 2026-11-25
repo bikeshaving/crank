@@ -1,9 +1,6 @@
-// For a development server which builds a whole new bundle when a file
-// changes. A new bundle is evaluated in the page alongside the old ones.
-//
-// The page has to be told that there is one. esbuild's own server says so on
-// an event stream. Anything else which serves the bundles calls
-// `__crankHot.update()` in the page.
+// For esbuild's development server, which builds a whole new bundle when a
+// file changes and says so on an event stream. The new bundle is evaluated
+// in the page alongside the old ones.
 
 // Shared by every copy of this module, because each bundle has one.
 const state = (globalThis.__crankHot ||= {
@@ -12,7 +9,6 @@ const state = (globalThis.__crankHot ||= {
 	builds: 0,
 	isListening: false,
 	load: (url) => import(url),
-	update,
 });
 
 /**
@@ -38,17 +34,11 @@ export function update(updated) {
 }
 
 /**
- * Called by each bundle with its own URL, and whether to listen to esbuild's
- * server, which sends an event with the bundles which changed when a build
- * has finished.
+ * Called by each bundle with its own URL.
  */
-export function connect(url, listen) {
+export function connect(url) {
 	state.bundles.add(url.split("?")[0]);
-	if (
-		!listen ||
-		state.isListening ||
-		typeof globalThis.EventSource === "undefined"
-	) {
+	if (state.isListening || typeof globalThis.EventSource === "undefined") {
 		return;
 	}
 

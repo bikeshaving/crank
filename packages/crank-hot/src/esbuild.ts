@@ -11,16 +11,11 @@ const RELOAD = fileURLToPath(new URL("./reload.js", import.meta.url));
 export interface HotOptions {
 	/** Where the packages which the app imports are built, in the outdir. */
 	deps?: string;
-	/**
-	 * With false, the page does not listen to esbuild's server for builds,
-	 * and whatever serves it calls `__crankHot.update()` in the page.
-	 */
-	events?: false;
 }
 
 /**
- * A plugin for esbuild's development server, and for anything else which
- * builds a whole new bundle when a file changes.
+ * A plugin for esbuild's development server, which builds a whole new bundle
+ * when a file changes.
  *
  * The build must be a bundle in the esm format with an outdir. Each new
  * bundle is evaluated in the page alongside the ones before it, so the
@@ -110,7 +105,7 @@ export default function crankHot(options: HotOptions = {}): any {
 				if (entryPoints.includes(args.path)) {
 					contents =
 						`import {connect as __hotConnect} from ${JSON.stringify(RELOAD)};` +
-						`__hotConnect(import.meta.url, ${options.events !== false});` +
+						`__hotConnect(import.meta.url);` +
 						contents;
 				}
 

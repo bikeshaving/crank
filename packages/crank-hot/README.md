@@ -45,10 +45,6 @@ await ctx.watch();
 await ctx.serve({servedir: "dist"});
 ```
 
-With anything else which builds a whole new bundle for each edit, use the
-esbuild plugin for the bundles of the page, with `crankHot({events: false})`,
-and call `__crankHot.update()` in the page when a build is ready.
-
 Nothing changes in the app. What it helps to know:
 
 - A component is a function with a capitalized name at the top level of a
