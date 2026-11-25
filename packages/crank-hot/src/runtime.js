@@ -1,8 +1,12 @@
 import {Copy, createElement} from "@b9g/crank";
 
 // One family per component, shared by every version of its module.
-const families = (globalThis.__crankFamilies ||= new Map());
-const dirty = (globalThis.__crankDirty ||= new Set());
+// Everything which outlives a copy of this module is on one object, because
+// a development server which evaluates a whole new bundle evaluates this
+// module again.
+const state = (globalThis.__crankHot ||= {});
+const families = (state.families ||= new Map());
+const dirty = (state.dirty ||= new Set());
 
 export const BREAK = Symbol.for("crank.hot.break");
 
@@ -110,9 +114,7 @@ function track(set, ctx) {
 	}
 }
 
-// Shared by every copy of this module, because a development server which
-// evaluates a whole new bundle evaluates this module again.
-const extraction = (globalThis.__crankExtraction ||= {
+const extraction = (state.extraction ||= {
 	isActive: false,
 	view: undefined,
 });
@@ -354,8 +356,8 @@ export function register(key, kind, signature, view, inputs, impl) {
 		dirty.add(family);
 		// The instances are re-rendered once every module which is being
 		// replaced has been evaluated.
-		if (!globalThis.__crankFlush) {
-			globalThis.__crankFlush = setTimeout(flush);
+		if (!state.timeout) {
+			state.timeout = setTimeout(flush);
 		}
 	}
 
@@ -363,10 +365,10 @@ export function register(key, kind, signature, view, inputs, impl) {
 }
 
 // What value() last returned for each key.
-const values = (globalThis.__crankValues ||= new Map());
+const values = (state.values ||= new Map());
 // This module is evaluated again by a development server which evaluates a
 // whole new bundle, so what it counts is not its own.
-const counter = (globalThis.__crankCounter ||= {count: 0});
+const counter = (state.counter ||= {count: 0});
 
 /**
  * Evaluates a top-level binding for a development server which evaluates
@@ -487,8 +489,8 @@ export function view(key) {
  * again.
  */
 export function flush() {
-	clearTimeout(globalThis.__crankFlush);
-	globalThis.__crankFlush = undefined;
+	clearTimeout(state.timeout);
+	state.timeout = undefined;
 	const updated = [...dirty];
 	dirty.clear();
 	for (const family of updated) {

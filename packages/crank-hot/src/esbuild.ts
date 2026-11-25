@@ -3,15 +3,13 @@ import {join, relative, resolve as resolvePath} from "node:path";
 import {fileURLToPath} from "node:url";
 import {analyze} from "./graph.ts";
 import type {Graph} from "./graph.ts";
-import {getLoader, isPackage, SOURCE, transform} from "./transform.ts";
+import {compile, getLoader, isPackage, SOURCE} from "./compile.ts";
 
 const RUNTIME = fileURLToPath(new URL("./runtime.js", import.meta.url));
 const RELOAD = fileURLToPath(new URL("./reload.js", import.meta.url));
 
-export interface HotOptions {
-	/** Where the packages which the app imports are built, in the outdir. */
-	deps?: string;
-}
+// Where the packages which the app imports are built, in the outdir.
+const DEPS = "deps";
 
 /**
  * A plugin for esbuild's development server, which builds a whole new bundle
@@ -21,8 +19,7 @@ export interface HotOptions {
  * bundle is evaluated in the page alongside the ones before it, so the
  * packages are built once, on their own, and shared.
  */
-export default function crankHot(options: HotOptions = {}): any {
-	const depsName = options.deps || "deps";
+export default function crankHot(): any {
 	return {
 		name: "crank-hot",
 		setup(build: any) {
@@ -53,7 +50,7 @@ export default function crankHot(options: HotOptions = {}): any {
 					bundle: true,
 					format: "esm",
 					splitting: true,
-					outdir: join(resolvePath(cwd, initial.outdir || "."), depsName),
+					outdir: join(resolvePath(cwd, initial.outdir || "."), DEPS),
 					absWorkingDir: cwd,
 					alias: initial.alias,
 					conditions: initial.conditions,
@@ -87,7 +84,7 @@ export default function crankHot(options: HotOptions = {}): any {
 					return undefined;
 				}
 
-				return {path: `/${depsName}/${args.path}.js`, external: true};
+				return {path: `/${DEPS}/${args.path}.js`, external: true};
 			});
 
 			build.onLoad({filter: SOURCE}, (args: any) => {
@@ -96,12 +93,17 @@ export default function crankHot(options: HotOptions = {}): any {
 					return undefined;
 				}
 
-				let contents = transform(readFileSync(args.path, "utf8"), {
+				const {code, map} = compile(readFileSync(args.path, "utf8"), {
 					id: relative(cwd, args.path),
 					runtime: RUNTIME,
 					hashes,
-					sourceMap: true,
 				});
+				// esbuild reads the source map of a module from the module.
+				let contents =
+					code +
+					"//# sourceMappingURL=data:application/json;base64," +
+					Buffer.from(map).toString("base64") +
+					"\n";
 				if (entryPoints.includes(args.path)) {
 					contents =
 						`import {connect as __hotConnect} from ${JSON.stringify(RELOAD)};` +

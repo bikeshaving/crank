@@ -1,7 +1,7 @@
 import type {BunPlugin} from "bun";
 import {relative} from "node:path";
 import {fileURLToPath} from "node:url";
-import {getLoader, isPackage, SOURCE, transform} from "./transform.ts";
+import {compile, getLoader, isPackage, SOURCE} from "./compile.ts";
 
 const RUNTIME = fileURLToPath(new URL("./runtime.js", import.meta.url));
 
@@ -20,11 +20,10 @@ const plugin: BunPlugin = {
 			const source = await Bun.file(args.path).text();
 			return {
 				// The module is still in the language it was written in.
-				contents: transform(source, {
+				contents: compile(source, {
 					id: relative(process.cwd(), args.path),
 					runtime: RUNTIME,
-					accept: true,
-				}),
+				}).code,
 				loader: getLoader(args.path) as any,
 			};
 		});

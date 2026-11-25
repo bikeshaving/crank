@@ -7,7 +7,6 @@ import {transform} from "../../src/transform.ts";
 const options = {
 	id: "mod.tsx",
 	runtime: "runtime",
-	accept: true,
 };
 const ACCEPT = "import.meta.hot.accept()";
 
@@ -18,7 +17,7 @@ export const Card = () => null;
 function helper() {}
 export default function Root() { return null; }`,
 		options,
-	);
+	).code;
 	expect(code).toContain(ACCEPT);
 });
 
@@ -35,7 +34,7 @@ test("a module which exports anything else does not", () => {
 		const code = transform(
 			`export function Page() { return null; }\n${extra}`,
 			options,
-		);
+		).code;
 		expect(code).toContain("__hot.register");
 		expect(code).not.toContain(ACCEPT);
 	}
@@ -45,7 +44,7 @@ test("a module without components is left as it was written", () => {
 	const source = `export const LIMIT: number = 3;
 export function helper(value: string) { return value; }
 function* numbers() { for (;;) { yield 1; } }`;
-	expect(transform(source, options)).toBe(source);
+	expect(transform(source, options).code).toBe(source);
 });
 
 test("what is registered", () => {
@@ -58,7 +57,7 @@ export const Fancy = wrap(Page);
 export class Model {}
 function outer() { function Inner() { return null; } return Inner; }`,
 		options,
-	);
+	).code;
 	const registered = [
 		...code.matchAll(/register\("mod\.tsx#(\w+)", "(\w+)"/g),
 	].map((match) => `${match[1]}:${match[2]}`);
@@ -83,7 +82,7 @@ test("the variables which a view can reach", () => {
 	let after = 1;
 }`,
 		options,
-	);
+	).code;
 	const accessors = code.slice(
 		code.indexOf("__hot.view("),
 		code.indexOf("if (__view)"),
@@ -136,7 +135,7 @@ test("statements which leave the loop become return statements", () => {
 	}
 }`,
 		options,
-	);
+	).code;
 	const view = code.match(
 		/function\* __hotView\([^)]*\) \{(.*?)\n\t\}\n\}/s,
 	)![1];
@@ -167,7 +166,7 @@ test("loops which are not separated", () => {
 		const code = transform(
 			`export function* Legacy(this: any) { ${body} }`,
 			options,
-		);
+		).code;
 		expect(code).toContain("__hot.register");
 		expect(code).not.toContain("__hot.view");
 	}
@@ -178,7 +177,7 @@ test("the signature covers everything but the body of the loop", () => {
 		transform(
 			`export function* Counter(this: any) { ${setup} for ({} of this) { ${view} } ${after} }`,
 			options,
-		).match(/"gen", "([^"]*)"/)![1];
+		).code.match(/"gen", "([^"]*)"/)![1];
 	const base = signature("let n = 0;", "yield n;");
 	expect(signature("let n = 0;", "yield n + 1;")).toBe(base);
 	expect(signature("let n = 0; /* note */", "yield n;")).toBe(base);
@@ -201,7 +200,7 @@ test("a var and the arguments of the component in a loop", () => {
 	}
 }`,
 		options,
-	);
+	).code;
 	const view = code.match(
 		/function\* __hotView\([^)]*\) \{(.*?)\n\t\}\n\}/s,
 	)![1];
@@ -232,7 +231,7 @@ export function* Counter(this: any) {
 	}
 }`,
 		options,
-	);
+	).code;
 	// The helper is compared as text, and what it uses in turn as values.
 	expect(code).toMatch(
 		/register\("mod\.tsx#Counter", "gen", "[^"]*", "extract", \(\) => \[constant, imported\], Counter\)/,
@@ -251,7 +250,7 @@ export function* Counter(this: any) {
 
 export const Boxed = wrap(Counter);
 `;
-	const hot = transform(source, options);
+	const hot = transform(source, options).code;
 	const lineOf = (code: string) =>
 		code.split("\n").findIndex((line) => line.includes("// MARK"));
 	expect(lineOf(hot)).toBe(lineOf(source));
@@ -266,7 +265,7 @@ test("a default export without a name is registered", () => {
 		"export default () => null;",
 		"export default function* (this: any) { for ({} of this) yield null; }",
 	]) {
-		const code = transform(source, options);
+		const code = transform(source, options).code;
 		expect(code).toMatch(
 			/export default\s+__hot\.register\("mod\.tsx#default"/,
 		);
@@ -290,7 +289,7 @@ export function* Counter(this: any, {name}: any) {
 	} finally {}
 }`,
 		options,
-	);
+	).code;
 	const inputs = code.match(/\(\) => \[(.*?)\], Counter\)/s)![1];
 	const names = inputs.split(", ").sort();
 	expect(names).toEqual(
@@ -314,7 +313,7 @@ test("an import in a view is left where its module can find it", () => {
 	}
 }`,
 		options,
-	);
+	).code;
 	expect(code).toContain('const mod = import("./chart");');
 	expect(code).toContain("yield import(this.name);");
 });
@@ -333,7 +332,7 @@ export function* Counter(this: any, {name}: any) {
 	return null; // LAST
 }
 `;
-	const code = transform(source, options);
+	const code = transform(source, options).code;
 	const lines = code.split("\n");
 	const sourceLines = source.split("\n");
 	for (const mark of ["// SETUP", "// VIEW", "// AFTER", "// LAST"]) {
@@ -362,7 +361,7 @@ test("a loop in a try statement keeps the lines of its catch and finally", () =>
 
 export const after = 1; // NEXT
 `;
-	const code = transform(source, options);
+	const code = transform(source, options).code;
 	const lines = code.split("\n");
 	const sourceLines = source.split("\n");
 	for (const mark of ["// VIEW", "// CATCH", "// FINALLY", "// NEXT"]) {
@@ -388,7 +387,7 @@ test("what comes after a loop in a try statement stays where it was", () => {
 	}
 }
 `;
-	const code = transform(source, options);
+	const code = transform(source, options).code;
 	const lines = code.split("\n");
 	const sourceLines = source.split("\n");
 	for (const mark of ["// VIEW", "// AFTER", "// FINALLY"]) {
@@ -415,7 +414,7 @@ test("what comes after a loop in any other block is on one line", () => {
 
 export const after = 1; // NEXT
 `;
-	const code = transform(source, options);
+	const code = transform(source, options).code;
 	const lines = code.split("\n");
 	const sourceLines = source.split("\n");
 	for (const mark of ["// VIEW", "// NEXT"]) {

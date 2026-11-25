@@ -3,7 +3,7 @@ import type {Children} from "@b9g/crank";
 import {mkdirSync, rmSync, writeFileSync} from "node:fs";
 import {join} from "node:path";
 import * as runtime from "../../src/runtime.js";
-import {transform} from "../../src/transform.ts";
+import {compile} from "../../src/compile.ts";
 
 const RUNTIME = join(import.meta.dir, "../../src/runtime.js");
 const work = join(import.meta.dir, "../../.work/battery");
@@ -54,10 +54,10 @@ export function scenario(): Scenario {
 				`import type {Context} from "@b9g/crank";\n` +
 				`const h: any = (globalThis as any).handles[${JSON.stringify(id)}];\n` +
 				body;
-			result.code = transform(source, {
+			result.code = compile(source, {
 				id: `${id}/${name}.tsx`,
 				runtime: RUNTIME,
-			});
+			}).code;
 			versions[name] = (versions[name] || 0) + 1;
 			// The module is still in the language it was written in.
 			const file = join(dir, `${name}.${versions[name]}.tsx`);

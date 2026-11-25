@@ -1,6 +1,6 @@
 import {relative} from "node:path";
 import {fileURLToPath} from "node:url";
-import {compile, isPackage, SOURCE} from "./transform.ts";
+import {compile, isPackage, SOURCE} from "./compile.ts";
 
 const RUNTIME = fileURLToPath(new URL("./runtime.js", import.meta.url));
 
@@ -39,7 +39,6 @@ export default function crankHot(): any {
 			const {code, map} = compile(source, {
 				id: relative(root, path),
 				runtime: RUNTIME,
-				accept: true,
 			});
 			// A module without components is left to Vite.
 			return code === source ? null : {code, map: JSON.parse(map)};

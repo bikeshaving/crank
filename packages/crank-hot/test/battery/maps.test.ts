@@ -1,5 +1,5 @@
 import {expect, test} from "bun:test";
-import {compile} from "../../src/transform.ts";
+import {compile} from "../../src/compile.ts";
 
 // The source map of a module, read the way a debugger reads it.
 

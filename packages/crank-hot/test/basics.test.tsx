@@ -86,7 +86,7 @@ async function load(text: string): Promise<any> {
 	const code = transform(text, {
 		id: "app.tsx",
 		runtime: join(import.meta.dir, "../src/runtime.js"),
-	});
+	}).code;
 	const file = join(work, `app.${++version}.tsx`);
 	writeFileSync(file, code);
 	const mod = await import(file);
@@ -197,7 +197,7 @@ test("statements which leave the loop become return statements", () => {
 	}
 }`,
 		{id: "list.ts", runtime: "runtime"},
-	);
+	).code;
 	const view = code.match(
 		/function\* __hotView\([^)]*\) \{(.*?)\n\t\}\n\}/s,
 	)![1];
@@ -223,7 +223,7 @@ test("a loop which cannot be separated is left whole", () => {
 	}
 }`,
 		{id: "legacy.ts", runtime: "runtime"},
-	);
+	).code;
 	expect(code).not.toContain("__hot.view");
 	expect(code).toContain('"gen"');
 });

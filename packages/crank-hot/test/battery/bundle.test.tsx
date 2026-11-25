@@ -5,7 +5,7 @@ import {mkdirSync, rmSync, writeFileSync} from "node:fs";
 import {join} from "node:path";
 import {analyze} from "../../src/graph.ts";
 import * as runtime from "../../src/runtime.js";
-import {transform} from "../../src/transform.ts";
+import {compile} from "../../src/compile.ts";
 
 // A development server which evaluates a whole new bundle with every edit.
 // Every module is evaluated again, and a binding keeps its value when
@@ -65,12 +65,12 @@ async function build(): Promise<any> {
 		// The file keeps its name, so that the imports of the bundle find it.
 		writeFileSync(
 			join(out, name),
-			transform(files[name as keyof typeof files], {
+			compile(files[name as keyof typeof files], {
 				// Other tests have modules with these names.
 				id: "bundle/" + name,
 				runtime: join(import.meta.dir, "../../src/runtime.js"),
 				hashes: graph.hashes.get(join(src, name)),
-			}),
+			}).code,
 		);
 	}
 

@@ -2,14 +2,13 @@
 // file changes and says so on an event stream. The new bundle is evaluated
 // in the page alongside the old ones.
 
-// Shared by every copy of this module, because each bundle has one.
-const state = (globalThis.__crankHot ||= {
-	// The bundles of the page, by URL.
-	bundles: new Set(),
-	builds: 0,
-	isListening: false,
-	load: (url) => import(url),
-});
+// Shared by every copy of this module, because each bundle has one, and
+// with the runtime.
+const state = (globalThis.__crankHot ||= {});
+// The bundles of the page, by URL.
+state.bundles ||= new Set();
+state.builds ||= 0;
+state.load ||= (url) => import(url);
 
 /**
  * Evaluates the newest build of the bundles of the page.
