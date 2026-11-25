@@ -139,6 +139,35 @@ export function* Guard(this: Context) {
 }`,
 };
 
+guarded["a return before the loop, with a finally clause"] = `
+export function* Guard(this: Context) {
+	let n = 0;
+	h.inc = () => { n++; this.refresh(); };
+	try {
+		if (h.early) return <u>early {n}</u>;
+		for ({} of this) {
+			VIEW
+		}
+	} finally {
+		h.log.push("finally " + n);
+	}
+}`;
+
+guarded["a return before the loop, with a catch clause"] = `
+export function* Guard(this: Context) {
+	let n = 0;
+	h.inc = () => { n++; this.refresh(); };
+	try {
+		if (h.early) { return <u>early {n}</u> }
+		for ({} of this) {
+			VIEW
+		}
+	} catch (err: any) {
+		h.log.push("caught " + err.message);
+		return <b>caught {n}</b>;
+	}
+}`;
+
 const steps: Record<string, string> = {
 	renders: "yield <p>{n}</p>;",
 	throws:
@@ -173,6 +202,9 @@ for (const [shape, source] of Object.entries(guarded)) {
 				read(Guard);
 				s.h.mode = step.replace(/s$/, "");
 				read(Guard);
+				read(Guard);
+				// A component which has finished starts again when it is rendered.
+				s.h.early = true;
 				read(Guard);
 				s.render(null);
 				results.push([outputs, s.h.log]);

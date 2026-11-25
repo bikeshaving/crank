@@ -1,9 +1,9 @@
 import {readFileSync} from "node:fs";
-import {extname, join, relative, resolve as resolvePath} from "node:path";
+import {join, relative, resolve as resolvePath} from "node:path";
 import {fileURLToPath} from "node:url";
 import {analyze} from "./graph.ts";
 import type {Graph} from "./graph.ts";
-import {transform} from "./transform.ts";
+import {getLoader, isPackage, SOURCE, transform} from "./transform.ts";
 
 const RUNTIME = fileURLToPath(new URL("./runtime.js", import.meta.url));
 const RELOAD = fileURLToPath(new URL("./reload.js", import.meta.url));
@@ -82,7 +82,7 @@ export default function crankHot(options: HotOptions = {}): any {
 				if (
 					args.kind === "entry-point" ||
 					args.namespace !== "file" ||
-					args.importer.includes("/node_modules/")
+					isPackage(args.importer)
 				) {
 					return undefined;
 				}
@@ -90,7 +90,7 @@ export default function crankHot(options: HotOptions = {}): any {
 				return {path: `/${depsName}/${args.path}.js`, external: true};
 			});
 
-			build.onLoad({filter: /\.[jt]sx?$/}, (args: any) => {
+			build.onLoad({filter: SOURCE}, (args: any) => {
 				const hashes = graph.hashes.get(args.path);
 				if (!hashes) {
 					return undefined;
@@ -110,7 +110,7 @@ export default function crankHot(options: HotOptions = {}): any {
 				return {
 					contents,
 					// The module is still in the language it was written in.
-					loader: extname(args.path).slice(1),
+					loader: getLoader(args.path),
 					resolveDir: resolvePath(args.path, ".."),
 				};
 			});

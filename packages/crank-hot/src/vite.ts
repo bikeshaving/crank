@@ -1,6 +1,6 @@
 import {relative} from "node:path";
 import {fileURLToPath} from "node:url";
-import {compile} from "./transform.ts";
+import {compile, isPackage, SOURCE} from "./transform.ts";
 
 const RUNTIME = fileURLToPath(new URL("./runtime.js", import.meta.url));
 
@@ -14,6 +14,14 @@ export default function crankHot(): any {
 		apply: "serve",
 		// The transform reads the module as it was written.
 		enforce: "pre",
+		config(this: any) {
+			// Vite compiles JSX for React's development mode unless it is told
+			// not to, which adds props that Crank would render. This is a
+			// default: what the app's own configuration says comes after it.
+			return this && this.meta && this.meta.rolldownVersion
+				? {oxc: {jsx: {development: false}}}
+				: {esbuild: {jsxDev: false}};
+		},
 		configResolved(config: {root: string}) {
 			root = config.root;
 		},
@@ -21,8 +29,8 @@ export default function crankHot(): any {
 			const path = id.split("?")[0];
 			if (
 				(options && options.ssr) ||
-				!/\.[jt]sx?$/.test(path) ||
-				path.includes("/node_modules/") ||
+				!SOURCE.test(path) ||
+				isPackage(path) ||
 				path === RUNTIME
 			) {
 				return null;
@@ -34,7 +42,8 @@ export default function crankHot(): any {
 				accept: true,
 				evaluate: process.env.CRANK_HOT_EVALUATE === "1",
 			});
-			return {code, map: JSON.parse(map)};
+			// A module without components is left to Vite.
+			return code === source ? null : {code, map: JSON.parse(map)};
 		},
 	};
 }

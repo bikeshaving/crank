@@ -9,9 +9,6 @@ defineTests(async () => {
 		configFile: false,
 		logLevel: "silent",
 		plugins: [crankHot()],
-		// Vite compiles JSX for React's development mode unless it is told
-		// not to, which adds props that Crank would render.
-		oxc: {jsx: {development: false}},
 		// The tests write a file and wait for the page, and on the CI machine
 		// the events of the file system did not always arrive.
 		server: {port: 5199, watch: {usePolling: true, interval: 50}},

@@ -1,6 +1,8 @@
 import {createHash} from "node:crypto";
 import {extname} from "node:path";
 import ts from "typescript";
+import {applyEdits} from "./edits.ts";
+import type {Edit} from "./edits.ts";
 import {collapse, createChecker, rewriteLocals} from "./rewrite.ts";
 
 export interface HotOptions {
@@ -42,7 +44,10 @@ export interface HotResult {
 	 * on the line it was written on.
 	 */
 	code: string;
-	/** A source map which says so, as JSON. */
+	/**
+	 * A source map from the code to the source, as JSON, with a place for
+	 * every word of the source.
+	 */
 	map: string;
 }
 
@@ -74,6 +79,8 @@ interface Binding {
 interface View {
 	// The body of the loop, with the statements which leave it rewritten.
 	text: string;
+	// What was done to the body to make that, as edits to the module.
+	edits: Array<Edit>;
 	// Where the body starts in the module.
 	line: number;
 	column: number;
@@ -87,14 +94,28 @@ interface View {
 	locals: Set<string> | undefined;
 }
 
-type Edit = [number, number, string];
-
 const SCRIPT_KINDS: Record<string, ts.ScriptKind> = {
 	".ts": ts.ScriptKind.TS,
+	".mts": ts.ScriptKind.TS,
 	".tsx": ts.ScriptKind.TSX,
 	".js": ts.ScriptKind.JS,
+	".mjs": ts.ScriptKind.JS,
 	".jsx": ts.ScriptKind.JSX,
 };
+
+/** The modules which the transform is for, by their paths. */
+export const SOURCE = /\.(?:[jt]sx?|m[jt]s)$/;
+
+/** Whether a path is in a package, with the slashes of any system. */
+export function isPackage(path: string): boolean {
+	return /[\\/]node_modules[\\/]/.test(path);
+}
+
+/** The loader which a bundler has for a module, by its path. */
+export function getLoader(path: string): string {
+	const ext = extname(path).slice(1);
+	return ext === "mts" ? "ts" : ext === "mjs" ? "js" : ext;
+}
 
 function hash(text: string): string {
 	return createHash("sha1").update(text).digest("base64url").slice(0, 12);
@@ -163,14 +184,29 @@ function hasAwait(node: ts.Node): boolean {
 	return !!ts.forEachChild(node, hasAwait);
 }
 
-function hasReturn(node: ts.Node): boolean {
-	if (ts.isReturnStatement(node)) {
-		return true;
-	} else if (ts.isFunctionLike(node)) {
-		return false;
+/**
+ * Adds edits which make the return statements of a node keep what they
+ * return in a variable, for a finally clause which has been written apart
+ * from the statement they are in.
+ */
+function collectReturns(
+	sf: ts.SourceFile,
+	node: ts.Node,
+	edits: Array<Edit>,
+): void {
+	if (ts.isFunctionLike(node)) {
+		return;
+	} else if (ts.isReturnStatement(node)) {
+		if (node.expression) {
+			const start = node.expression.getStart(sf);
+			edits.push([node.getStart(sf), start, "{ __hotValue = ("]);
+			edits.push([node.expression.end, node.end, "); return; }"]);
+		}
+
+		return;
 	}
 
-	return !!ts.forEachChild(node, hasReturn);
+	ts.forEachChild(node, (child) => collectReturns(sf, child, edits));
 }
 
 function hasYield(node: ts.Node): boolean {
@@ -555,14 +591,15 @@ function getView(
 	// A body which is one statement is all of the view.
 	const start = body.getStart(sf) + (ts.isBlock(body) ? 1 : 0);
 	let text = sf.text.slice(start, body.end - (ts.isBlock(body) ? 1 : 0));
-	edits.sort((a, b) => b[0] - a[0] || b[1] - a[1]);
-	for (const [from, to, replacement] of edits) {
+	const applied = [...edits].sort((a, b) => b[0] - a[0] || b[1] - a[1]);
+	for (const [from, to, replacement] of applied) {
 		text = text.slice(0, from - start) + replacement + text.slice(to - start);
 	}
 
 	const {line, character} = sf.getLineAndCharacterOfPosition(start);
 	return {
 		text,
+		edits,
 		line,
 		column: character,
 		vars: [...new Set(vars)].sort(),
@@ -767,6 +804,25 @@ function collectValues(node: ts.Node, values: Set<string>): void {
 }
 
 /**
+ * Returns a source map which says where every word of a module was in its
+ * source, as JSON.
+ */
+function createMap(
+	source: string,
+	options: HotOptions,
+	edits: Array<Edit>,
+): string {
+	return JSON.stringify({
+		version: 3,
+		file: options.id,
+		sources: [options.id],
+		sourcesContent: [source],
+		names: [],
+		mappings: applyEdits(source, edits).mappings,
+	});
+}
+
+/**
  * Transforms a module so that its components can be hot reloaded: a component
  * keeps its state when only what it renders is edited, and is remounted when
  * anything else in it is.
@@ -782,16 +838,6 @@ export function compile(source: string, options: HotOptions): HotResult {
 		true,
 		SCRIPT_KINDS[extname(options.id)] || ts.ScriptKind.TSX,
 	);
-
-	// Every line of the module is on the line it was written on.
-	const map = JSON.stringify({
-		version: 3,
-		file: options.id,
-		sources: [options.id],
-		sourcesContent: [source],
-		names: [],
-		mappings: "AAAA" + ";AACA".repeat(source.split("\n").length - 1),
-	});
 
 	// The bindings of the module, and what it exports.
 	const bindings = new Map<string, Binding>();
@@ -965,7 +1011,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 	}
 
 	if (!components.length && !calls.length && !(hashes && kept.length)) {
-		return {code: source, map};
+		return {code: source, map: createMap(source, options, [])};
 	}
 
 	const edits: Array<Edit> = [];
@@ -1011,9 +1057,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 					ts.isTryStatement(statement) &&
 					statement.tryBlock === block &&
 					statement.parent === fn.body &&
-					block.statements[block.statements.length - 1] === holder &&
-					// A return before the loop would lose its value.
-					!block.statements.some((s) => s !== holder && hasReturn(s))
+					block.statements[block.statements.length - 1] === holder
 				) {
 					split = statement;
 					isNested = true;
@@ -1124,9 +1168,21 @@ export function compile(source: string, options: HotOptions): HotResult {
 					// did, so every line of the component stays where it was. A
 					// function declaration is there from the start of the
 					// component, which is how the first statement can return it.
-					const declaration = `${generator} __hotView(${parameters}) {${view.text}}`;
+					// The body stays where it is, with its own edits, so that the
+					// source map can say where each word of it was.
+					const isBlock = ts.isBlock(body);
+					const open: [number, number] = [
+						body.getStart(sf),
+						body.getStart(sf) + (isBlock ? 1 : 0),
+					];
+					const declaration = `${generator} __hotView(${parameters}) {`;
+					const close = isBlock ? "" : "}";
+					edits.push(...view.edits);
 					if (!split) {
-						edits.push([body.getStart(sf), body.end, `${seam} ${declaration}`]);
+						edits.push([...open, `${seam} ${declaration}`]);
+						if (close) {
+							edits.push([body.end, body.end, close]);
+						}
 					} else if (split.finallyBlock) {
 						// A return in the first part would not run the finally
 						// clause, so the first part has one of its own, which
@@ -1134,28 +1190,43 @@ export function compile(source: string, options: HotOptions): HotResult {
 						// returns.
 						const at = split.getStart(sf);
 						edits.push([at, at, "__hotTry: "]);
+						// A return before the loop keeps its value the same way.
+						for (const statement of split.tryBlock.statements) {
+							if (statement !== holder) {
+								collectReturns(sf, statement, edits);
+							}
+						}
+
 						edits.push([
 							top,
 							top,
 							" var __hotThrew, __hotError, __hotDone, __hotReturned, __hotValue;",
 						]);
 						edits.push([
-							body.getStart(sf),
-							body.end,
+							...open,
 							`{ const __result = yield* __hot.view(${key}).call(this, {__proto__: null,${accessors} });` +
 								` if (__result === __hot.BREAK) break;` +
 								` if (__result) { __hotValue = __result.value; return; } }` +
 								` __hotDone = true; } catch (__hotCaught) { __hotThrew = true; __hotError = __hotCaught; }` +
 								` finally { if (!__hotDone && !__hotThrew) { __hotReturned = true; break __hotTry; } }` +
-								` ${declaration} try { if (__hotThrew) throw __hotError; if (__hotReturned) return __hotValue;`,
+								` ${declaration}`,
+						]);
+						edits.push([
+							body.end,
+							body.end,
+							`${close} try { if (__hotThrew) throw __hotError; if (__hotReturned) return __hotValue;`,
 						]);
 					} else {
 						edits.push([top, top, " var __hotThrew, __hotError;"]);
 						edits.push([
-							body.getStart(sf),
-							body.end,
+							...open,
 							`${seam} } catch (__hotCaught) { __hotThrew = true; __hotError = __hotCaught; }` +
-								` ${declaration} try { if (__hotThrew) throw __hotError;`,
+								` ${declaration}`,
+						]);
+						edits.push([
+							body.end,
+							body.end,
+							`${close} try { if (__hotThrew) throw __hotError;`,
 						]);
 					}
 
@@ -1324,13 +1395,10 @@ export function compile(source: string, options: HotOptions): HotResult {
 	}
 
 	edits.push([lastImportEnd, lastImportEnd, header]);
-	edits.sort((a, b) => b[0] - a[0]);
-	let code = source;
-	for (const [start, end, text] of edits) {
-		code = code.slice(0, start) + text + code.slice(end);
-	}
-
-	return {code: code + footer, map};
+	return {
+		code: applyEdits(source, edits).code + footer,
+		map: createMap(source, options, edits),
+	};
 }
 
 /**

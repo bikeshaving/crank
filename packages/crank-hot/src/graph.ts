@@ -13,12 +13,14 @@ import ts from "typescript";
 // was in the last bundle keeps its value. A component is the same function
 // through every edit, so a reference to one is never a change.
 
-const EXTENSIONS = [".ts", ".tsx", ".js", ".jsx"];
+const EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mts", ".mjs"];
 
 const SCRIPT_KINDS: Record<string, ts.ScriptKind> = {
 	".ts": ts.ScriptKind.TS,
+	".mts": ts.ScriptKind.TS,
 	".tsx": ts.ScriptKind.TSX,
 	".js": ts.ScriptKind.JS,
+	".mjs": ts.ScriptKind.JS,
 	".jsx": ts.ScriptKind.JSX,
 };
 
@@ -402,7 +404,7 @@ export function analyze(entryPoints: Array<string>, build: number): Graph {
 	const queue = [...entryPoints];
 	while (queue.length) {
 		const file = queue.pop()!;
-		if (mods.has(file) || file.includes("/node_modules/")) {
+		if (mods.has(file) || /[\\/]node_modules[\\/]/.test(file)) {
 			continue;
 		}
 

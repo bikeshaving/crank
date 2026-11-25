@@ -1,7 +1,7 @@
 import type {BunPlugin} from "bun";
-import {extname, relative} from "node:path";
+import {relative} from "node:path";
 import {fileURLToPath} from "node:url";
-import {transform} from "./transform.ts";
+import {getLoader, isPackage, SOURCE, transform} from "./transform.ts";
 
 const RUNTIME = fileURLToPath(new URL("./runtime.js", import.meta.url));
 
@@ -12,8 +12,8 @@ const RUNTIME = fileURLToPath(new URL("./runtime.js", import.meta.url));
 const plugin: BunPlugin = {
 	name: "crank-hot",
 	setup(build) {
-		build.onLoad({filter: /\.[jt]sx?$/}, async (args) => {
-			if (args.path.includes("/node_modules/") || args.path === RUNTIME) {
+		build.onLoad({filter: SOURCE}, async (args) => {
+			if (isPackage(args.path) || args.path === RUNTIME) {
 				return undefined as any;
 			}
 
@@ -26,7 +26,7 @@ const plugin: BunPlugin = {
 					accept: true,
 					evaluate: process.env.CRANK_HOT_EVALUATE === "1",
 				}),
-				loader: extname(args.path).slice(1) as any,
+				loader: getLoader(args.path) as any,
 			};
 		});
 	},
