@@ -58,6 +58,8 @@ jobs:
         run: bunx playwright install --with-deps ${{ matrix.browser }}
       - name: Run core tests
         run: bunx libuild test test/ --platform ${{ matrix.browser }}
+      - name: Run end-to-end tests
+        run: BROWSER=${{ matrix.browser }} bun run test:e2e
       - name: Run eslint plugin tests
         run: bun run test:eslint
 

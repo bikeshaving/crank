@@ -33,6 +33,21 @@ describe("no-deprecated-flush", () => {
 						}
 					`,
 				},
+				// this in a class is not a context
+				{
+					code: `
+						class Stream {
+							flush() {}
+							write() {
+								setTimeout(() => this.flush());
+							}
+							end = () => this.flush();
+							static {
+								this.flush();
+							}
+						}
+					`,
+				},
 				// Non-this flush calls should not trigger
 				{
 					code: `
@@ -80,6 +95,30 @@ describe("no-deprecated-flush", () => {
 							});
 							for ({} of this) {
 								yield <div>Hello</div>;
+							}
+						}
+					`,
+					errors: [{messageId: "useAfter"}],
+				},
+				// A component inside a class method has its own this
+				{
+					code: `
+						class Factory {
+							create() {
+								return function* Component(this: Context) {
+									this.flush(() => {});
+									yield <div>Hello</div>;
+								};
+							}
+						}
+					`,
+					output: `
+						class Factory {
+							create() {
+								return function* Component(this: Context) {
+									this.after(() => {});
+									yield <div>Hello</div>;
+								};
 							}
 						}
 					`,
