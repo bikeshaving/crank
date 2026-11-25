@@ -47,7 +47,7 @@
     "test": "bun test test/",
     "test:e2e": "bun run test:e2e:one && bun run test:e2e:todomvc",
     "dev": "cd example && bun dev.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun run build && tsc --noEmit",
     "test:e2e:one": "cd example && bun test --timeout 30000 ../e2e/bun.e2e.ts && bun test --timeout 30000 ../e2e/vite.e2e.ts && bun test --timeout 30000 ../e2e/esbuild.e2e.ts",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "prepack": "bun run build",
