@@ -87,12 +87,34 @@ something which can be read from and taken apart without throwing, and
 which is never missing, so that defaults do not run. The only code of the
 component which runs is a computed key in the pattern of a parameter.
 
-When the loop is inside a block, such as a `try`, a function declared after
-it would only be there inside that block. Then the function goes after the
-whole component, and what came after the loop is moved to the line the
-loop starts on, with its lines left empty. Its lines are wrong in a
-debugger, and when it cannot be written on one line, the component is not
-separated. `this.cleanup()` in place of `try` and `finally` avoids it.
+When the loop is inside a block, a function declared after it would only
+be there inside that block, where the first statement cannot reach it.
+
+A loop which is the last statement of a `try` statement of the component is
+the usual case, and the statement is ended after the loop and started again
+after the view:
+
+```tsx
+try {
+	for ({} of this) { … } } catch (__hotCaught) { __hotThrew = true; __hotError = __hotCaught; } function* __hotView(__locals) {
+		yield <p>{__locals.n}</p>;
+	} try { if (__hotThrew) throw __hotError;
+} finally {
+	cleanup();
+}
+```
+
+What was thrown is thrown again into the `catch` and `finally` clauses as
+they were written, on the lines they were written on. When there is a
+`finally` clause, a return from the first part is turned into a return from
+the second, so that the clause runs. Two things are different: a debugger
+which stops where an error is not caught stops where it is thrown again,
+and the value passed to the `return()` of the generator is not returned.
+
+A loop in any other block has its view after the whole component, and what
+came after the loop is moved to the line the loop starts on, with its lines
+left empty. Its lines are wrong in a debugger, and when it cannot be
+written on one line, the component is not separated.
 
 In a debugger, a variable of the component is `__locals.n` in a view.
 

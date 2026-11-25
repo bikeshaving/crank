@@ -163,6 +163,16 @@ function hasAwait(node: ts.Node): boolean {
 	return !!ts.forEachChild(node, hasAwait);
 }
 
+function hasReturn(node: ts.Node): boolean {
+	if (ts.isReturnStatement(node)) {
+		return true;
+	} else if (ts.isFunctionLike(node)) {
+		return false;
+	}
+
+	return !!ts.forEachChild(node, hasReturn);
+}
+
 function hasYield(node: ts.Node): boolean {
 	if (ts.isYieldExpression(node)) {
 		return true;
@@ -985,7 +995,31 @@ export function compile(source: string, options: HotOptions): HotResult {
 			// it, and has to fit on a line.
 			const holder =
 				loop && ts.isLabeledStatement(loop.parent) ? loop.parent : loop;
-			const isNested = !!holder && holder.parent === fn.body;
+			let isNested = !!holder && holder.parent === fn.body;
+			// A loop which is the last statement of a try statement of the
+			// component. The try statement is ended after the loop, with a
+			// catch clause which keeps what was thrown, and started again
+			// after the view, where what was thrown is thrown again. So the
+			// view is declared in the component itself, and the catch and
+			// finally clauses stay where they were written.
+			let split: ts.TryStatement | undefined;
+			if (holder && !isNested && !options.evaluate) {
+				const block = holder.parent;
+				const statement = block.parent;
+				if (
+					ts.isBlock(block) &&
+					ts.isTryStatement(statement) &&
+					statement.tryBlock === block &&
+					statement.parent === fn.body &&
+					block.statements[block.statements.length - 1] === holder &&
+					// A return before the loop would lose its value.
+					!block.statements.some((s) => s !== holder && hasReturn(s))
+				) {
+					split = statement;
+					isNested = true;
+				}
+			}
+
 			let tail: string | undefined;
 			if (loop && !options.evaluate && isNested) {
 				tail = "";
@@ -1090,11 +1124,41 @@ export function compile(source: string, options: HotOptions): HotResult {
 					// did, so every line of the component stays where it was. A
 					// function declaration is there from the start of the
 					// component, which is how the first statement can return it.
-					edits.push([
-						body.getStart(sf),
-						body.end,
-						`${seam} ${generator} __hotView(${parameters}) {${view.text}}`,
-					]);
+					const declaration = `${generator} __hotView(${parameters}) {${view.text}}`;
+					if (!split) {
+						edits.push([body.getStart(sf), body.end, `${seam} ${declaration}`]);
+					} else if (split.finallyBlock) {
+						// A return in the first part would not run the finally
+						// clause, so the first part has one of its own, which
+						// leaves the statement instead, and the second part
+						// returns.
+						const at = split.getStart(sf);
+						edits.push([at, at, "__hotTry: "]);
+						edits.push([
+							top,
+							top,
+							" var __hotThrew, __hotError, __hotDone, __hotReturned, __hotValue;",
+						]);
+						edits.push([
+							body.getStart(sf),
+							body.end,
+							`{ const __result = yield* __hot.view(${key}).call(this, {__proto__: null,${accessors} });` +
+								` if (__result === __hot.BREAK) break;` +
+								` if (__result) { __hotValue = __result.value; return; } }` +
+								` __hotDone = true; } catch (__hotCaught) { __hotThrew = true; __hotError = __hotCaught; }` +
+								` finally { if (!__hotDone && !__hotThrew) { __hotReturned = true; break __hotTry; } }` +
+								` ${declaration} try { if (__hotThrew) throw __hotError; if (__hotReturned) return __hotValue;`,
+						]);
+					} else {
+						edits.push([top, top, " var __hotThrew, __hotError;"]);
+						edits.push([
+							body.getStart(sf),
+							body.end,
+							`${seam} } catch (__hotCaught) { __hotThrew = true; __hotError = __hotCaught; }` +
+								` ${declaration} try { if (__hotThrew) throw __hotError;`,
+						]);
+					}
+
 					viewArg = '"extract"';
 				} else if (!options.evaluate) {
 					// The view goes after the component. What came after the

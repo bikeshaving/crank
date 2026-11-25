@@ -87,3 +87,98 @@ for (const [title, view] of Object.entries(views)) {
 		expect(String((results[0] as any)[0])).toMatch(/^<p>/);
 	});
 }
+
+// A try statement around the loop is ended after the loop and started again
+// after the view. Evaluating text leaves the statement as it was written, so
+// the two ways have to do the same thing with what is thrown and returned.
+
+const guarded: Record<string, string> = {
+	"a finally clause": `
+export function* Guard(this: Context) {
+	let n = 0;
+	h.inc = () => { n++; this.refresh(); };
+	try {
+		for ({} of this) {
+			VIEW
+		}
+	} finally {
+		h.log.push("finally " + n);
+	}
+}`,
+	"a catch clause": `
+export function* Guard(this: Context) {
+	let n = 0;
+	h.inc = () => { n++; this.refresh(); };
+	try {
+		for ({} of this) {
+			VIEW
+		}
+	} catch (err: any) {
+		h.log.push("caught " + err.message);
+		return <b>caught {n}</b>;
+	}
+}`,
+	"a catch and a finally clause, and what comes after": `
+export function* Guard(this: Context) {
+	let n = 0;
+	h.inc = () => { n++; this.refresh(); };
+	try {
+		const inside = "in";
+		for ({} of this) {
+			h.log.push(inside);
+			VIEW
+		}
+	} catch (err: any) {
+		h.log.push("caught " + err.message);
+	} finally {
+		h.log.push("finally " + n);
+	}
+
+	h.log.push("after");
+	return <i>after {n}</i>;
+}`,
+};
+
+const steps: Record<string, string> = {
+	renders: "yield <p>{n}</p>;",
+	throws:
+		'if (h.mode === "throw") throw new Error("thrown " + n); yield <p>{n}</p>;',
+	returns:
+		'if (h.mode === "return") return <b>returned {n}</b>; yield <p>{n}</p>;',
+	breaks: 'if (h.mode === "break") break; yield <p>{n}</p>;',
+};
+
+for (const [shape, source] of Object.entries(guarded)) {
+	for (const [step, view] of Object.entries(steps)) {
+		test(`${shape}: the view ${step}`, async () => {
+			const results: Array<unknown> = [];
+			for (const rewrite of [false, true]) {
+				const s = scenario(rewrite);
+				const outputs: Array<unknown> = [];
+				const read = (Guard: any) => {
+					try {
+						outputs.push(s.render(<Guard />));
+					} catch (err: any) {
+						outputs.push("threw " + err.message);
+					}
+				};
+
+				const {Guard} = await s.load(
+					source.replace("VIEW", "yield <p>first {n}</p>;"),
+				);
+				read(Guard);
+				s.h.inc();
+				// The view is an edit.
+				await s.load(source.replace("VIEW", view));
+				read(Guard);
+				s.h.mode = step.replace(/s$/, "");
+				read(Guard);
+				read(Guard);
+				s.render(null);
+				results.push([outputs, s.h.log]);
+			}
+
+			expect(results[1]).toEqual(results[0]);
+		});
+	}
+}
