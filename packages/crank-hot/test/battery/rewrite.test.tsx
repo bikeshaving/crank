@@ -55,6 +55,13 @@ const views: Record<string, string> = {
 	"the name of the module binding which the setup also has": `yield <p>{outer}</p>;`,
 	"a generic arrow and a cast": `const id = <T,>(value: T): T => value; yield <p>{id<number>(n as number)} {(name satisfies string)}</p>;`,
 	"an await-free generator inside": `function* each() { for (const n of list) yield n * 2; } yield <p>{[...each()].join()} {n}</p>;`,
+	"a var in a function inside": `const f = () => { var n = 9; return n; }; yield <p>{f()} {n}</p>;`,
+	"a function declared in a block": `{ function n() { return 5; } h.inner = n(); } yield <p>{n}</p>;`,
+	"a class with a field and a method of the name": `class K { n = 3; list() { return this.n + n; } static n = n; } yield <p>{new K().list()} {K.n}</p>;`,
+	"a pattern with a key of the name": `const {n: renamed, point: {x}} = {n: 5, point: {x: 6}}; yield <p>{renamed} {x} {n} {point.x}</p>;`,
+	"a block which declares the name, and what comes after it": `let out = ""; { let n = 1; out += n; } out += n; yield <p>{out}</p>;`,
+	"a loop which assigns to a variable of the component": `for (n of [5, 6]) {} for ([n] of [[7]]) {} yield <p>{n}</p>;`,
+	"a function which is called at once": `yield <p>{(function (n: number) { return n + arguments.length; })(40)} {(() => n)()}</p>;`,
 	"an optional call and chain": `const o: any = {f: undefined}; yield <p>{String(o.f?.())} {double?.(n)} {point?.x}</p>;`,
 };
 

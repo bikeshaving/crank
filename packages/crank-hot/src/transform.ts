@@ -1,7 +1,7 @@
 import {createHash} from "node:crypto";
 import {extname} from "node:path";
 import ts from "typescript";
-import {collapse, rewriteLocals} from "./rewrite.ts";
+import {collapse, createChecker, rewriteLocals} from "./rewrite.ts";
 
 export interface HotOptions {
 	/**
@@ -81,6 +81,9 @@ interface View {
 	usesArguments: boolean;
 	// The specifiers which the body imports when it runs.
 	imports: Array<string>;
+	// The variables of the component which the body uses, when their uses
+	// were rewritten.
+	locals: Set<string> | undefined;
 }
 
 type Edit = [number, number, string];
@@ -373,8 +376,9 @@ function wrapCallees(
 function getView(
 	sf: ts.SourceFile,
 	loop: ts.IterationStatement,
-	// The variables in scope at the loop, when their uses are rewritten.
-	rewrite?: Map<string, boolean>,
+	// What says what a name refers to, and the component, when the uses of
+	// its variables are rewritten.
+	rewrite?: {checker: ts.TypeChecker; fn: ts.Node},
 ): View | undefined {
 	const body = loop.statement;
 	const label = ts.isLabeledStatement(loop.parent)
@@ -523,8 +527,16 @@ function getView(
 		return undefined;
 	}
 
+	let locals: Set<string> | undefined;
 	if (rewrite) {
-		rewriteLocals(sf, body, rewrite, "__locals", edits);
+		locals = rewriteLocals(
+			sf,
+			rewrite.checker,
+			rewrite.fn,
+			body,
+			"__locals",
+			edits,
+		);
 	} else {
 		wrapCallees(sf, body, edits);
 	}
@@ -545,6 +557,7 @@ function getView(
 		vars: [...new Set(vars)].sort(),
 		usesArguments,
 		imports,
+		locals,
 	};
 }
 
@@ -945,6 +958,8 @@ export function compile(source: string, options: HotOptions): HotResult {
 	}
 
 	const edits: Array<Edit> = [];
+	// Made when the first view needs it.
+	let checker: ts.TypeChecker | undefined;
 	// The specifiers which views import when they run.
 	const viewImports = new Set<string>();
 	// Nothing is put on a line of its own.
@@ -986,10 +1001,29 @@ export function compile(source: string, options: HotOptions): HotResult {
 				}
 			}
 
-			const view =
+			let view =
 				loop && (!options.rewrite || tail !== undefined)
-					? getView(sf, loop, options.rewrite ? getLocals(fn, loop) : undefined)
+					? getView(
+							sf,
+							loop,
+							options.rewrite
+								? {checker: (checker ||= createChecker(sf)), fn}
+								: undefined,
+						)
 					: undefined;
+			if (view && view.locals) {
+				// Every variable which the view uses has to be one which the
+				// component hands over. If one is not, the component is left
+				// whole, which is safe, where a missing one would be undefined.
+				const handed = getLocals(fn, loop!);
+				for (const name of view.locals) {
+					if (name !== "arguments" && !handed.has(name)) {
+						view = undefined;
+						break;
+					}
+				}
+			}
+
 			const body = view && loop!.statement;
 			const uses = new Set<string>();
 			collectUses(fn, bindings, getLocals(fn, fn.body!), body, uses);

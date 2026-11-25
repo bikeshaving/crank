@@ -7,18 +7,6 @@ import ts from "typescript";
 
 type Edit = [number, number, string];
 
-function getBindingNames(name: ts.BindingName, names: Array<string>): void {
-	if (ts.isIdentifier(name)) {
-		names.push(name.text);
-	} else {
-		for (const el of name.elements) {
-			if (!ts.isOmittedExpression(el)) {
-				getBindingNames(el.name, names);
-			}
-		}
-	}
-}
-
 function isLexical(list: ts.VariableDeclarationList): boolean {
 	return !!(list.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const));
 }
@@ -33,134 +21,101 @@ function isName(node: ts.Identifier): boolean {
 	);
 }
 
-// The vars of a function, which belong to all of it.
-function collectVars(node: ts.Node, names: Array<string>): void {
-	if (ts.isFunctionLike(node)) {
-		return;
-	} else if (ts.isVariableDeclarationList(node) && !isLexical(node)) {
-		for (const decl of node.declarations) {
-			getBindingNames(decl.name, names);
-		}
-	}
-
-	ts.forEachChild(node, (child) => collectVars(child, names));
-}
-
-// What the statements of a block declare for the block.
-function collectLexical(
-	statements: Iterable<ts.Statement>,
-	names: Array<string>,
-): void {
-	for (const stmt of statements) {
-		if (
-			(ts.isFunctionDeclaration(stmt) || ts.isClassDeclaration(stmt)) &&
-			stmt.name
-		) {
-			names.push(stmt.name.text);
-		} else if (
-			ts.isVariableStatement(stmt) &&
-			isLexical(stmt.declarationList)
-		) {
-			for (const decl of stmt.declarationList.declarations) {
-				getBindingNames(decl.name, names);
-			}
-		}
-	}
-}
-
 /**
- * Returns the names which a node declares for what is inside it, or
- * undefined if it does not make a scope.
+ * Returns TypeScript's own account of what every name in a module refers
+ * to. It is the part of the compiler which every TypeScript and JavaScript
+ * editor uses, and it needs nothing but the one file.
  */
-function getScope(node: ts.Node): Array<string> | undefined {
-	const names: Array<string> = [];
-	if (ts.isBlock(node) || ts.isModuleBlock(node)) {
-		collectLexical(node.statements, names);
-	} else if (ts.isCaseBlock(node)) {
-		for (const clause of node.clauses) {
-			collectLexical(clause.statements, names);
-		}
-	} else if (ts.isFunctionLike(node)) {
-		for (const param of node.parameters) {
-			getBindingNames(param.name, names);
-		}
-
-		if (ts.isFunctionExpression(node) && node.name) {
-			names.push(node.name.text);
-		}
-
-		const body = (node as ts.FunctionLikeDeclaration).body;
-		if (body) {
-			collectVars(body, names);
-		}
-
-		// A function has arguments of its own, unless it is an arrow function.
-		if (!ts.isArrowFunction(node)) {
-			names.push("arguments");
-		}
-	} else if (ts.isCatchClause(node)) {
-		if (node.variableDeclaration) {
-			getBindingNames(node.variableDeclaration.name, names);
-		}
-	} else if (
-		ts.isForStatement(node) ||
-		ts.isForInStatement(node) ||
-		ts.isForOfStatement(node)
-	) {
-		const init = node.initializer;
-		if (init && ts.isVariableDeclarationList(init) && isLexical(init)) {
-			for (const decl of init.declarations) {
-				getBindingNames(decl.name, names);
-			}
-		}
-	} else if (ts.isClassLike(node)) {
-		if (node.name) {
-			names.push(node.name.text);
-		}
-	} else {
-		return undefined;
-	}
-
-	return names;
+export function createChecker(sf: ts.SourceFile): ts.TypeChecker {
+	const host: ts.CompilerHost = {
+		getSourceFile: (name) => (name === sf.fileName ? sf : undefined),
+		getDefaultLibFileName: () => "lib.d.ts",
+		writeFile: () => {},
+		getCurrentDirectory: () => "",
+		getCanonicalFileName: (name) => name,
+		useCaseSensitiveFileNames: () => true,
+		getNewLine: () => "\n",
+		fileExists: (name) => name === sf.fileName,
+		readFile: () => undefined,
+	};
+	return ts
+		.createProgram(
+			[sf.fileName],
+			{
+				noLib: true,
+				noResolve: true,
+				allowJs: true,
+				jsx: ts.JsxEmit.Preserve,
+				target: ts.ScriptTarget.ESNext,
+				module: ts.ModuleKind.ESNext,
+			},
+			host,
+		)
+		.getTypeChecker();
 }
 
 /**
  * Adds an edit for every use of a variable of the component in the body of
  * its loop, so that it goes through an object: `n` becomes `__locals.n`.
  *
- * A name is a use of a variable of the component when the component has a
- * variable with that name in scope at the loop, and nothing between the use
- * and the body declares the name again.
+ * A name is a use of a variable of the component when what it refers to is
+ * declared in the component and outside the body. TypeScript says what each
+ * name refers to, so this does not have rules of its own about scope.
  *
- * @param locals - The variables in scope at the loop.
+ * @param fn - The component.
  * @param object - The name of the object.
+ * @returns The names of the variables which are used.
  */
 export function rewriteLocals(
 	sf: ts.SourceFile,
+	checker: ts.TypeChecker,
+	fn: ts.Node,
 	body: ts.Node,
-	locals: Map<string, boolean>,
 	object: string,
 	edits: Array<Edit>,
-): void {
-	// The names which are declared again, from the body inwards.
-	const shadows: Array<Array<string>> = [];
-	const isLocal = (name: string): boolean => {
-		if (!locals.has(name) && name !== "arguments") {
-			return false;
-		}
-
-		for (const names of shadows) {
-			if (names.includes(name)) {
-				return false;
+): Set<string> {
+	const used = new Set<string>();
+	const isInside = (node: ts.Node, outer: ts.Node): boolean =>
+		node.pos >= outer.pos && node.end <= outer.end;
+	// A var which is declared in the body belongs to the component.
+	const isVarOfComponent = (decl: ts.Node): boolean => {
+		let isVar = false;
+		for (let node = decl.parent; node; node = node.parent) {
+			if (ts.isVariableDeclarationList(node)) {
+				isVar = !isLexical(node);
+			} else if (ts.isFunctionLike(node)) {
+				return isVar && node === fn;
 			}
 		}
 
-		return true;
+		return false;
 	};
+
+	const isLocal = (node: ts.Identifier): boolean => {
+		const symbol = ts.isShorthandPropertyAssignment(node.parent)
+			? checker.getShorthandAssignmentValueSymbol(node.parent)
+			: checker.getSymbolAtLocation(node);
+		for (const decl of (symbol && symbol.declarations) || []) {
+			if (
+				decl !== fn &&
+				isInside(decl, fn) &&
+				(!isInside(decl, body) || isVarOfComponent(decl))
+			) {
+				return true;
+			}
+		}
+
+		return false;
+	};
+
+	// The functions between a name and the body which have arguments of
+	// their own.
+	let functions = 0;
 
 	// The name of a var of the component, where it is declared in the body.
 	const visitVarName = (name: ts.BindingName): void => {
 		if (ts.isIdentifier(name)) {
+			used.add(name.text);
 			edits.push([name.getStart(sf), name.end, `${object}.${name.text}`]);
 			return;
 		}
@@ -170,6 +125,7 @@ export function rewriteLocals(
 				continue;
 			} else if (ts.isIdentifier(el.name) && !el.propertyName) {
 				const text = el.name.text;
+				used.add(text);
 				edits.push([
 					el.name.getStart(sf),
 					el.name.end,
@@ -198,12 +154,16 @@ export function rewriteLocals(
 		} else if (ts.isIdentifier(node)) {
 			const parent = node.parent as any;
 			const name = node.text;
-			if (isName(node) || !isLocal(name)) {
+			if (isName(node)) {
 				return;
 			} else if (parent.tagName === node && /^[a-z]/.test(name)) {
 				// The name of an element in JSX.
 				return;
+			} else if (name === "arguments" ? functions > 0 : !isLocal(node)) {
+				return;
 			}
+
+			used.add(name);
 
 			const target = `${object}.${name === "arguments" ? "__arguments" : name}`;
 			const isCallee =
@@ -219,7 +179,8 @@ export function rewriteLocals(
 			return;
 		} else if (ts.isShorthandPropertyAssignment(node)) {
 			const name = node.name.text;
-			if (isLocal(name)) {
+			if (isLocal(node.name)) {
+				used.add(name);
 				edits.push([
 					node.name.getStart(sf),
 					node.name.end,
@@ -255,19 +216,16 @@ export function rewriteLocals(
 			return;
 		}
 
-		const scope = getScope(node);
-		if (scope) {
-			shadows.push(scope);
-		}
-
+		// An arrow function has the arguments of what it is in.
+		const hasArguments = ts.isFunctionLike(node) && !ts.isArrowFunction(node);
+		functions += hasArguments ? 1 : 0;
 		const inner = inFunction || ts.isFunctionLike(node);
 		ts.forEachChild(node, (child) => visit(child, inner));
-		if (scope) {
-			shadows.pop();
-		}
+		functions -= hasArguments ? 1 : 0;
 	};
 
 	visit(body, false);
+	return used;
 }
 
 /**

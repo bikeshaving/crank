@@ -64,10 +64,13 @@ evaluated from text and a page does not need `unsafe-eval`.
 
 The body of a loop becomes a function of the module, which is passed the
 object of getters and setters. Nothing resolves its names for it, so
-`src/rewrite.ts` works out which names in the body are variables of the
-component, and rewrites each use: `n` becomes `__locals.n`. A name is one
-when the component has a variable with that name in scope at the loop, and
-nothing between the use and the body declares the name again.
+each use of a variable of the component in the body is rewritten: `n`
+becomes `__locals.n`. TypeScript says what each name refers to: the part of
+the compiler which every editor uses, given only the one file. A name is
+rewritten when what it refers to is declared in the component and outside
+the body. So `src/rewrite.ts` has no rules of its own about scope. If a
+view uses a variable which the component does not hand over, the component
+is left whole.
 
 The function is declared straight after the loop, inside the component,
 starting where the body of the loop did, so every line of the component
@@ -93,7 +96,8 @@ place in its module where it is declared.
 
 The parameters of the component do run for that call, so it is called with
 something which can be read from and taken apart without throwing, and
-which is never missing, so that defaults do not run.
+which is never missing, so that defaults do not run. The only code of the
+component which runs is a computed key in the pattern of a parameter.
 
 When the loop is inside a block, such as a `try`, a function declared after
 it would only be there inside that block. Then the function goes after the
@@ -104,9 +108,9 @@ What this costs:
 
 - The code which runs is not the code which was written, from the first
   render, where the other way runs the body as it was written until an edit.
-- A mistake in working out a name reads or writes the wrong variable. The
-  other way cannot make that mistake, so `test/battery/rewrite.test.tsx`
-  runs views which are hard to get right both ways and compares them.
+- What a name refers to is TypeScript's answer and not the engine's. To
+  check that they agree, `test/battery/rewrite.test.tsx` runs views which
+  are hard to get right both ways and compares them.
 - In a debugger, a variable of the component is `__locals.n` in a view.
 - For a loop inside a block, what came after it is on one line, so its
   lines are wrong in a debugger. When it cannot be written on one line, the
