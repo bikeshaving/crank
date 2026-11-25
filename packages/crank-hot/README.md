@@ -69,14 +69,7 @@ which is all that the plugins for Vite and Bun do:
 ```ts
 import {transform} from "@b9g/crank-hot/transform";
 
-const code = transform(source, {
-	id: "src/counter.tsx",
-	// Where the module can import the runtime from.
-	runtime: "@b9g/crank-hot/runtime",
-	// End a module which only exports components with
-	// `import.meta.hot.accept()`.
-	accept: true,
-});
+const {code, map} = transform(source, {id: "src/counter.tsx"});
 ```
 
 The result is in the language the source was in, so it goes before whatever
@@ -85,9 +78,13 @@ compiles TypeScript and JSX.
 ## What it helps to know
 
 - A component is a function with a capitalized name at the top level of a
-  module, or a default export.
-- An edit inside the loop of a generator component keeps its state. An edit
-  anywhere else in it starts it again.
+  module, or a default export. What a call returns is not one, so
+  `const Fancy = withTheme(Card)` is evaluated again with its module like
+  any other const.
+- The loop of a generator component is the loop over its context:
+  `for (props of this)`, or of its second parameter. An edit inside it keeps
+  the state of the component. An edit anywhere else in it starts it again,
+  and so does any edit to a component which renders in some other loop.
 - A module which exports only components is replaced on its own. An edit to
   any other module also evaluates what imports it.
 - A helper or a constant which is edited is seen on the next render. A
@@ -106,7 +103,6 @@ compiles TypeScript and JSX.
 - A variable of a module which can be assigned to (`let`) is a new variable
   every time the module is evaluated, so a component whose setup uses one is
   started again by every edit to that module.
-- Only the first loop of a component which yields is its view.
 
 ## Trying it
 
@@ -137,10 +133,10 @@ bun run build         # dist/
 
 ## How it works
 
-- **The view** of a generator component is the body of the first loop it
-  yields in. Everything else in the function is its **signature**. A function
+- **The view** of a generator component is the body of the loop over its
+  context. Everything else in the function is its **signature**. A function
   component is all view.
-- `src/transform.ts` makes the body of each such loop a function, which is
+- `src/compile.ts` makes the body of each such loop a function, which is
   declared straight after the loop, and registers each component with the
   runtime. The module stays in the language it was written in, and every
   line stays on the line it was written on.
@@ -156,20 +152,16 @@ bun run build         # dist/
   evaluated again, a component whose signature is the same keeps its
   instances, and they run the body of the newest version from then on. A
   component whose signature changed is rendered as a new component.
-- The code outside the loop ran once, with the values the module had then.
-  The transform lists the bindings of the module which that code uses.
-  Functions of the same module are part of the signature, by their source,
-  and everything else is compared by value when the module is evaluated
-  again. If any is a different value, the component is remounted.
-  What it uses which is not a binding of the module is compared too: a
-  global, a property of the global object as far as it is written, and
-  `import()`, which makes the component different every time, because
-  nothing says which module it is for. Only what a component declares for
-  all of itself is taken to be its own, so a name which a block inside it
-  also declares is not missed.
-- A const which is named like a component and declared with a call, such as
-  `const Fancy = withTheme(Card)`, keeps its value while the call and what it
-  uses are the same, and is registered as a component when it is a function.
+- The code outside the loop ran once, with what the module had then, and
+  kept what it made. So a component also starts again when anything which
+  that code can reach is not what it was. There is one rule for what that
+  means: code is the same when its source is, and a value is the same when
+  it is the same value. A function of the module which the setup uses is
+  code, and is followed to what it uses in turn. A const, an import and a
+  global are values, compared when the module is evaluated again. A
+  variable which can be assigned to is a new variable in every evaluation of
+  a module, and nothing says which module `import()` is for, so neither is
+  ever the same.
 - An edit which throws the first time it renders is reported, and the
   component shows what it last rendered until the next edit. A setup which
   throws leaves the version before it in place.
