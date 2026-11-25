@@ -102,6 +102,9 @@ export function defineTests(start: () => Promise<Server>): void {
 
 			return button.textContent === "x1";
 		});
+		// Firefox says that a page has loaded more than once while it is
+		// being opened, so only what comes after this is counted.
+		loads = 0;
 	});
 
 	afterAll(async () => {
@@ -201,7 +204,7 @@ export function defineTests(start: () => Promise<Server>): void {
 	defineLabTests(env);
 
 	test("the pages were never loaded again", () => {
-		expect(loads).toBe(3);
+		expect(loads).toBe(0);
 		expect(errors).toEqual([]);
 	});
 
