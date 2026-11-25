@@ -265,29 +265,6 @@ test("a page which does not allow strings to be evaluated", async () => {
 	expect(reloads).toBe(1);
 });
 
-test("an error in an edited view is on the line it has in the module", async () => {
-	const s = scenario();
-	const view = (mark: string) => `const padding = 1;
-		h.stack = new Error("${mark}").stack; // MARK
-		yield <p>{n}</p>;`;
-	const {Counter} = await s.load(gen({view: view("first")}));
-	const read = () => s.render(<Counter name="a" />);
-	read();
-	await s.load(gen({view: view("second")}));
-	read();
-	expect(s.h.stack).toContain("second");
-	// The view is evaluated so that it starts where it starts in the module,
-	// which is what lets the source map of the module be used for it.
-	const line =
-		s.code
-			.split("\n")
-			.findIndex((text) => text.includes('new Error("second")')) + 1;
-	const frame = s.h.stack
-		.split("\n")
-		.find((text: string) => text.includes("?hot="))!;
-	expect(frame).toContain(`:${line}:`);
-});
-
 test("a setup which throws, and the edit which fixes it", async () => {
 	const s = scenario();
 	const {Counter} = await s.load(gen({view: "yield <p>{n}</p>;"}));

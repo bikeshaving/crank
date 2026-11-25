@@ -12,7 +12,7 @@ export default function crankHot(): any {
 	return {
 		name: "crank-hot",
 		apply: "serve",
-		// The transform compiles TypeScript and JSX itself.
+		// The transform reads the module as it was written.
 		enforce: "pre",
 		configResolved(config: {root: string}) {
 			root = config.root;

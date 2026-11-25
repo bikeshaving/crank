@@ -14,11 +14,12 @@ bun run dev           # the example, at http://localhost:8000/
 - **The view** of a generator component is the body of the first loop it
   yields in. Everything else in the function is its **signature**. A function
   component is all view.
-- `src/transform.ts` compiles a module to JavaScript, then adds a few lines
-  to the top of each such loop and registers each component with the
-  runtime. The body of the loop is left as it was written, and is also passed
-  to the runtime as text. The transform reads declarations and copies text;
-  it never works out what a name in the body of a loop refers to.
+- `src/transform.ts` adds a few lines to the top of each such loop and
+  registers each component with the runtime. The module stays in the
+  language it was written in, and the body of the loop is left as it was
+  written. The body is also compiled to a function in JavaScript, which is
+  passed to the runtime as text. The transform reads declarations and copies
+  text; it never works out what a name in the body of a loop refers to.
 - `src/runtime.js` gives each component a wrapper which is what the rest of
   the app sees, so nothing ever holds an old version. When a module is
   evaluated again, a component whose signature is the same keeps its
@@ -52,11 +53,21 @@ bun run dev           # the example, at http://localhost:8000/
 
 ## Source maps
 
-The transform only adds to the ends of lines, so the lines of a module are
-the lines which the compiler wrote, and the source map of the compiler is
-the source map of the module. An edited view is evaluated so that it starts
-at the line and column it has in its module, and is given the same map.
-Columns are not exact on a line which was added to.
+The transform only adds to lines, and to the end of a module, so every line
+of a module is on the line it was written on. Whatever compiles the module
+afterwards writes a source map which is right about lines without being
+given one, which matters because Bun's development server does not read the
+source map of a plugin.
+
+An edited view is a script of its own, named for its module. It is compiled
+with its body where it is in the module, so the map which the compiler
+writes for it is to the lines and columns of the module, and the runtime
+gives the script that map.
+
+`e2e/debug.ts` checks both through the protocol which the developer tools of
+Chrome use, with each development server: an error says which line of the
+source it was made on, and a breakpoint on a line of the source stops there
+with the variables of the component in scope, before and after an edit.
 
 ## The battery
 
@@ -66,8 +77,10 @@ of its own: `views` (edits which keep state), `setup` (edits which remount),
 shapes), `identity` (what the rest of the app holds), `crank` (keys,
 provisions, events, errors), `transform` (what is written), `maps` (source
 maps) and `bundle` (a whole new bundle with every edit). `e2e/` runs the
-example in a browser with each of the three development servers, with a
-page which renders and a page which hydrates.
+example in a browser with each of the three development servers: a page
+which renders, a page which hydrates, and a page with one component for each
+thing a page can lose when it is loaded again, such as what was typed in a
+form, the position of a scroller, and the state of keyed components.
 
 ## What is not done
 
@@ -82,9 +95,11 @@ page which renders and a page which hydrates.
 - A variable of a module which can be assigned to is a new variable every
   time the module is evaluated, so a component whose setup uses one is
   remounted by every edit to that module.
-- The browser tests run in Chromium and WebKit, and the battery runs with
-  the HTML renderer.
-- Nothing has been looked at in the developer tools of a browser: the
-  source maps are tested by reading them.
+- The browser tests run in Chromium and WebKit, and the debugger tests in
+  Chromium. Nobody has looked at the panels of the developer tools.
+- The JSX of an edited view is compiled to Crank's `createElement`, whatever
+  the module compiles its own JSX to.
+- With Vite, JSX which is compiled for React's development mode has props
+  which Crank renders. The test turns that off with `oxc.jsx.development`.
 - Pages need `unsafe-eval` in development. Without it the page says so and
   is loaded again on each edit to a view.

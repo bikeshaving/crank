@@ -14,6 +14,7 @@ defineTests(async () => {
 	for (const [page, entry] of [
 		["index.html", "main"],
 		["hydrate.html", "hydrate"],
+		["lab.html", "lab"],
 	]) {
 		writeFileSync(
 			join(dist, page),
@@ -26,10 +27,11 @@ defineTests(async () => {
 
 	const ctx = await esbuild.context({
 		absWorkingDir: example,
-		entryPoints: ["src/main.tsx", "src/hydrate.tsx"],
+		entryPoints: ["src/main.tsx", "src/hydrate.tsx", "src/lab.tsx"],
 		bundle: true,
 		format: "esm",
 		outdir: dist,
+		sourcemap: true,
 		logLevel: "silent",
 		plugins: [crankHot()],
 	});
@@ -39,6 +41,7 @@ defineTests(async () => {
 	return {
 		url,
 		hydrateUrl: url + "hydrate.html",
+		labUrl: url + "lab.html",
 		rebuild: () => ctx.rebuild(),
 		close: () => ctx.dispose(),
 	};

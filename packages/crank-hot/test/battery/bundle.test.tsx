@@ -50,6 +50,10 @@ export function App() {
 let builds = 0;
 async function build(): Promise<any> {
 	mkdirSync(src, {recursive: true});
+	writeFileSync(
+		join(work, "tsconfig.json"),
+		'{"compilerOptions": {"jsx": "react", "jsxFactory": "createElement"}}',
+	);
 	for (const [name, source] of Object.entries(files)) {
 		writeFileSync(join(src, name), source);
 	}

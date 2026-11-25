@@ -95,7 +95,7 @@ test("the new view uses an import which the module did not have", async () => {
 	read();
 	s.h.inc();
 	await s.load(
-		'import {double} from "./lib.1.js";\n' +
+		'import {double} from "./lib.1.tsx";\n' +
 			gen({view: "yield <p>{double(n)}</p>;"}),
 	);
 	expect(read()).toBe("<p>2</p>");

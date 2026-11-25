@@ -1,8 +1,12 @@
 import {createHash} from "node:crypto";
+import {extname} from "node:path";
 import ts from "typescript";
 
 export interface HotOptions {
-	/** What the keys of the components of the module start with. */
+	/**
+	 * The path of the module, which the keys of its components start with. Its
+	 * extension says whether the module has types and JSX.
+	 */
 	id: string;
 	/** The specifier which the module imports the runtime from. */
 	runtime: string;
@@ -19,17 +23,18 @@ export interface HotOptions {
 	hashes?: Map<string, string>;
 	/** Whether transform() ends the module with its source map. */
 	sourceMap?: boolean;
-	/** Options for compiling TypeScript and JSX, which happens first. */
+	/** Options for compiling the body of a loop, such as the target. */
 	compilerOptions?: ts.CompilerOptions;
 }
 
 export interface HotResult {
-	code: string;
 	/**
-	 * A source map from the code to the source, as JSON. The transform only
-	 * adds to the ends of lines, so the lines of the map are exact and the
-	 * columns of a line which was added to are not.
+	 * The module, in the language it was written in. The transform only adds
+	 * to lines, and to the end of the module, so every line of the source is
+	 * on the line it was written on.
 	 */
+	code: string;
+	/** A source map which says so, as JSON. */
 	map: string;
 }
 
@@ -53,16 +58,28 @@ interface Binding {
 	// module has a variable of its own, so it is never the same.
 	kind: "stable" | "text" | "identity" | "fresh";
 	node?: ts.Node;
+	isImport?: boolean;
 }
 
 interface View {
+	// The body of the loop, with the statements which leave it rewritten.
 	text: string;
+	// Where the body starts in the module.
+	line: number;
+	column: number;
 	// The vars which are declared in the body of the loop.
 	vars: Array<string>;
 	usesArguments: boolean;
 }
 
 type Edit = [number, number, string];
+
+const SCRIPT_KINDS: Record<string, ts.ScriptKind> = {
+	".ts": ts.ScriptKind.TS,
+	".tsx": ts.ScriptKind.TSX,
+	".js": ts.ScriptKind.JS,
+	".jsx": ts.ScriptKind.JSX,
+};
 
 function hash(text: string): string {
 	return createHash("sha1").update(text).digest("base64url").slice(0, 12);
@@ -80,11 +97,14 @@ function getBindingNames(name: ts.BindingName, names: Array<string>): void {
 	}
 }
 
-function hasModifier(node: ts.Node, kind: ts.SyntaxKind): boolean {
+function getModifier(
+	node: ts.Node,
+	kind: ts.SyntaxKind,
+): ts.Modifier | undefined {
 	const modifiers = (node as any).modifiers as
 		| ts.NodeArray<ts.Modifier>
 		| undefined;
-	return !!modifiers && modifiers.some((m) => m.kind === kind);
+	return modifiers && modifiers.find((m) => m.kind === kind);
 }
 
 function getKind(fn: ts.Node): string {
@@ -92,7 +112,7 @@ function getKind(fn: ts.Node): string {
 		return "fn";
 	}
 
-	return hasModifier(fn, ts.SyntaxKind.AsyncKeyword) ? "agen" : "gen";
+	return getModifier(fn, ts.SyntaxKind.AsyncKeyword) ? "agen" : "gen";
 }
 
 function isLoop(node: ts.Node): node is ts.IterationStatement {
@@ -136,6 +156,57 @@ function hasYield(node: ts.Node): boolean {
 	}
 
 	return !!ts.forEachChild(node, hasYield);
+}
+
+/**
+ * Compiles a piece of a module to JavaScript. JSX becomes calls to names
+ * which the runtime provides, so that the body of a loop does not need what
+ * the module compiles its JSX to.
+ */
+function compileText(
+	text: string,
+	options: HotOptions,
+	sourceMap: boolean,
+): ts.TranspileOutput {
+	return ts.transpileModule(text, {
+		fileName: options.id,
+		compilerOptions: {
+			target: ts.ScriptTarget.ESNext,
+			...options.compilerOptions,
+			module: ts.ModuleKind.ESNext,
+			jsx: ts.JsxEmit.React,
+			jsxFactory: "__hotCreateElement",
+			jsxFragmentFactory: "__hotFragment",
+			// Comments are not part of what a component is.
+			removeComments: true,
+			sourceMap,
+			inlineSourceMap: false,
+		},
+	});
+}
+
+/**
+ * Returns some source without its types, comments and spacing, for telling
+ * whether it has changed.
+ */
+function normalize(text: string, options: HotOptions): string {
+	return compileText(text, options, false).outputText;
+}
+
+/** Where a declaration starts, after `export` and `default`. */
+function getStart(sf: ts.SourceFile, node: ts.Node): number {
+	let start = node.getStart(sf);
+	for (const kind of [
+		ts.SyntaxKind.ExportKeyword,
+		ts.SyntaxKind.DefaultKeyword,
+	]) {
+		const modifier = getModifier(node, kind);
+		if (modifier) {
+			start = Math.max(start, modifier.end);
+		}
+	}
+
+	return start;
 }
 
 /**
@@ -201,7 +272,10 @@ function getLocals(
 	}
 
 	for (const name of names) {
-		locals.set(name, true);
+		// The type of `this` is written as a parameter.
+		if (name !== "this") {
+			locals.set(name, true);
+		}
 	}
 
 	// The declarations of each block around the statement.
@@ -276,7 +350,13 @@ function getView(
 		inArrow: boolean,
 		labels: Array<string>,
 	): void => {
-		if (ts.isIdentifier(node) && node.text === "arguments" && !isName(node)) {
+		if (ts.isTypeNode(node)) {
+			return;
+		} else if (
+			ts.isIdentifier(node) &&
+			node.text === "arguments" &&
+			!isName(node)
+		) {
 			usesArguments = true;
 			edits.push([node.getStart(sf), node.end, "__arguments"]);
 			return;
@@ -299,6 +379,11 @@ function getView(
 			const withInit = node.declarations.filter((d) => d.initializer).length;
 			for (const decl of node.declarations) {
 				getBindingNames(decl.name, vars);
+				// An assignment has no type.
+				const typed = decl.type || decl.exclamationToken;
+				if (typed && decl.initializer) {
+					edits.push([decl.name.end, typed.end, ""]);
+				}
 			}
 
 			if (
@@ -379,7 +464,43 @@ function getView(
 		text = text.slice(0, from - start) + replacement + text.slice(to - start);
 	}
 
-	return {text, vars: [...new Set(vars)].sort(), usesArguments};
+	const {line, character} = sf.getLineAndCharacterOfPosition(start);
+	return {
+		text,
+		line,
+		column: character,
+		vars: [...new Set(vars)].sort(),
+		usesArguments,
+	};
+}
+
+/**
+ * Compiles a view to a generator function, with a source map from it to the
+ * module. Returns the source of an array for the runtime: the function as
+ * JavaScript, and the mappings and names of its map.
+ *
+ * The body is put where it is in the module, after a first line for the
+ * function, so that the map which the compiler writes is to the lines and
+ * columns of the module.
+ */
+function compileView(view: View, kind: string, options: HotOptions): string {
+	const output = compileText(
+		`(${kind === "agen" ? "async " : ""}function* () { "use strict";` +
+			"\n".repeat(view.line) +
+			" ".repeat(view.line ? view.column : 0) +
+			view.text +
+			"\n})",
+		options,
+		true,
+	);
+	const js = output.outputText
+		.replace(/\n\/\/# sourceMappingURL=.*\s*$/, "")
+		.trim()
+		.replace(/;$/, "");
+	const map = JSON.parse(output.sourceMapText!);
+	return `[${JSON.stringify(js)}, ${JSON.stringify(map.mappings)}, ${JSON.stringify(
+		map.names || [],
+	)}]`;
 }
 
 /**
@@ -396,7 +517,7 @@ function collectUses(
 	skip: ts.Node | undefined,
 	uses: Set<string>,
 ): void {
-	if (node === skip) {
+	if (node === skip || ts.isTypeNode(node)) {
 		return;
 	} else if (
 		ts.isIdentifier(node) &&
@@ -419,6 +540,7 @@ function collectUses(
  */
 function resolveUses(
 	sf: ts.SourceFile,
+	options: HotOptions,
 	bindings: Map<string, Binding>,
 	uses: Set<string>,
 	texts: Map<string, string>,
@@ -432,7 +554,15 @@ function resolveUses(
 			identities.add("Symbol()");
 		} else if (binding.kind === "text" && !texts.has(name)) {
 			const node = binding.node!;
-			texts.set(name, node.getText(sf));
+			texts.set(
+				name,
+				normalize(
+					ts.isVariableDeclaration(node)
+						? `const ${node.getText(sf)}`
+						: sf.text.slice(getStart(sf, node), node.end),
+					options,
+				),
+			);
 			const inner = new Set<string>();
 			const fn = ts.isVariableDeclaration(node) ? node.initializer! : node;
 			const body = ts.isFunctionLike(fn)
@@ -442,7 +572,7 @@ function resolveUses(
 				? getLocals(fn as ts.FunctionLikeDeclaration, body)
 				: new Map<string, boolean>();
 			collectUses(fn, bindings, declared, undefined, inner);
-			resolveUses(sf, bindings, inner, texts, identities);
+			resolveUses(sf, options, bindings, inner, texts, identities);
 		}
 	}
 }
@@ -454,12 +584,13 @@ function resolveUses(
  */
 function getInputs(
 	sf: ts.SourceFile,
+	options: HotOptions,
 	bindings: Map<string, Binding>,
 	uses: Set<string>,
 ): [string, string] {
 	const texts = new Map<string, string>();
 	const identities = new Set<string>();
-	resolveUses(sf, bindings, uses, texts, identities);
+	resolveUses(sf, options, bindings, uses, texts, identities);
 	const text = [...texts.keys()]
 		.sort()
 		.map((name) => texts.get(name))
@@ -469,43 +600,45 @@ function getInputs(
 }
 
 /**
+ * Collects the names which are used as values somewhere in a module. An
+ * import which is only used as a type is not there when the module runs.
+ */
+function collectValues(node: ts.Node, values: Set<string>): void {
+	if (ts.isTypeNode(node) || ts.isImportDeclaration(node)) {
+		return;
+	} else if (ts.isIdentifier(node) && !isName(node)) {
+		values.add(node.text);
+	}
+
+	ts.forEachChild(node, (child) => collectValues(child, values));
+}
+
+/**
  * Transforms a module so that its components can be hot reloaded: a component
  * keeps its state when only what it renders is edited, and is remounted when
  * anything else in it is.
  *
- * The module is compiled to JavaScript first. After that the transform only
- * reads declarations and copies text: it never works out what a name in the
- * body of a loop refers to.
+ * The transform reads declarations and copies text. It never works out what
+ * a name in the body of a loop refers to.
  */
 export function compile(source: string, options: HotOptions): HotResult {
-	const output = ts.transpileModule(source, {
-		fileName: options.id,
-		compilerOptions: {
-			target: ts.ScriptTarget.ESNext,
-			module: ts.ModuleKind.ESNext,
-			jsx: ts.JsxEmit.React,
-			jsxFactory: "createElement",
-			jsxFragmentFactory: "Fragment",
-			// Comments are not part of what a component is.
-			removeComments: true,
-			...options.compilerOptions,
-			sourceMap: true,
-			inlineSourceMap: false,
-		},
-	});
-	const js = output.outputText.replace(/\n\/\/# sourceMappingURL=.*\s*$/, "\n");
-	const rawMap = JSON.parse(output.sourceMapText!);
-	rawMap.file = options.id;
-	rawMap.sources = [options.id];
-	rawMap.sourcesContent = [source];
-	const map = JSON.stringify(rawMap);
 	const sf = ts.createSourceFile(
-		options.id + ".js",
-		js,
+		options.id,
+		source,
 		ts.ScriptTarget.Latest,
 		true,
-		ts.ScriptKind.JS,
+		SCRIPT_KINDS[extname(options.id)] || ts.ScriptKind.TSX,
 	);
+
+	// Every line of the module is on the line it was written on.
+	const map = JSON.stringify({
+		version: 3,
+		file: options.id,
+		sources: [options.id],
+		sourcesContent: [source],
+		names: [],
+		mappings: "AAAA" + ";AACA".repeat(source.split("\n").length - 1),
+	});
 
 	// The bindings of the module, and what it exports.
 	const bindings = new Map<string, Binding>();
@@ -521,28 +654,37 @@ export function compile(source: string, options: HotOptions): HotResult {
 	let isBoundary = true;
 	let lastImportEnd = 0;
 	for (const stmt of sf.statements) {
-		const isExport = hasModifier(stmt, ts.SyntaxKind.ExportKeyword);
-		if (ts.isImportDeclaration(stmt)) {
+		const isExport = !!getModifier(stmt, ts.SyntaxKind.ExportKeyword);
+		if (getModifier(stmt, ts.SyntaxKind.DeclareKeyword)) {
+			continue;
+		} else if (ts.isImportDeclaration(stmt)) {
 			lastImportEnd = stmt.end;
 			const clause = stmt.importClause;
-			if (clause && clause.name) {
-				bindings.set(clause.name.text, {kind: "identity"});
+			if (!clause || clause.isTypeOnly) {
+				continue;
 			}
 
-			const named = clause && clause.namedBindings;
+			if (clause.name) {
+				bindings.set(clause.name.text, {kind: "identity", isImport: true});
+			}
+
+			const named = clause.namedBindings;
 			if (named && ts.isNamespaceImport(named)) {
-				bindings.set(named.name.text, {kind: "identity"});
+				bindings.set(named.name.text, {kind: "identity", isImport: true});
 			} else if (named) {
 				for (const el of named.elements) {
-					bindings.set(el.name.text, {kind: "identity"});
+					if (!el.isTypeOnly) {
+						bindings.set(el.name.text, {kind: "identity", isImport: true});
+					}
 				}
 			}
 		} else if (ts.isFunctionDeclaration(stmt) || ts.isClassDeclaration(stmt)) {
-			if (!stmt.name) {
-				const keyword = (stmt.modifiers || []).find(
-					(m) => m.kind === ts.SyntaxKind.DefaultKeyword,
-				);
-				if (keyword && ts.isFunctionDeclaration(stmt) && stmt.body) {
+			if (ts.isFunctionDeclaration(stmt) && !stmt.body) {
+				// An overload.
+				continue;
+			} else if (!stmt.name) {
+				const keyword = getModifier(stmt, ts.SyntaxKind.DefaultKeyword);
+				if (keyword && ts.isFunctionDeclaration(stmt)) {
 					// The declaration becomes an expression.
 					exported.add("default");
 					components.push({
@@ -564,7 +706,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 				exported.add(name);
 			}
 
-			if (ts.isFunctionDeclaration(stmt) && stmt.body && /^[A-Z]/.test(name)) {
+			if (ts.isFunctionDeclaration(stmt) && /^[A-Z]/.test(name)) {
 				bindings.set(name, {kind: "stable"});
 				components.push({
 					name,
@@ -619,13 +761,28 @@ export function compile(source: string, options: HotOptions): HotResult {
 					kept.push(decl);
 				}
 			}
+		} else if (ts.isEnumDeclaration(stmt) || ts.isModuleDeclaration(stmt)) {
+			if (ts.isIdentifier(stmt.name)) {
+				bindings.set(stmt.name.text, {kind: "identity"});
+				if (isExport) {
+					exported.add(stmt.name.text);
+				}
+			}
 		} else if (ts.isExportDeclaration(stmt)) {
 			const clause = stmt.exportClause;
-			if (stmt.moduleSpecifier || !clause || !ts.isNamedExports(clause)) {
+			if (stmt.isTypeOnly) {
+				continue;
+			} else if (
+				stmt.moduleSpecifier ||
+				!clause ||
+				!ts.isNamedExports(clause)
+			) {
 				isBoundary = false;
 			} else {
 				for (const el of clause.elements) {
-					exported.add((el.propertyName || el.name).text);
+					if (!el.isTypeOnly) {
+						exported.add((el.propertyName || el.name).text);
+					}
 				}
 			}
 		} else if (ts.isExportAssignment(stmt)) {
@@ -651,12 +808,11 @@ export function compile(source: string, options: HotOptions): HotResult {
 	}
 
 	if (!components.length && !calls.length && !(hashes && kept.length)) {
-		return {code: js, map};
+		return {code: source, map};
 	}
 
 	const edits: Array<Edit> = [];
-	// Nothing is put on a line of its own, so that the lines of the module
-	// are the lines which the compiler wrote.
+	// Nothing is put on a line of its own.
 	let header = `;import * as __hot from ${JSON.stringify(options.runtime)};`;
 	for (const component of components) {
 		const {fn, name} = component;
@@ -672,15 +828,21 @@ export function compile(source: string, options: HotOptions): HotResult {
 			const body = view && loop!.statement;
 			const uses = new Set<string>();
 			collectUses(fn, bindings, getLocals(fn, loop || fn.body!), body, uses);
-			const [texts, values] = getInputs(sf, bindings, uses);
+			const [texts, values] = getInputs(sf, options, bindings, uses);
 			inputs = values;
+			const start = getStart(sf, fn);
 			if (view && body) {
-				// The signature is the component without the body of its loop.
+				// The signature is the component without the body of its loop,
+				// and without its types, comments and spacing.
 				signature = hash(
 					component.kind +
-						// A body with braces and one without are spaced differently.
-						js.slice(fn.getStart(sf), body.getStart(sf)).trimEnd() +
-						js.slice(body.end, fn.end).trimStart() +
+						normalize(
+							`(${source.slice(start, body.getStart(sf))}{}${source.slice(
+								body.end,
+								fn.end,
+							)})`,
+							options,
+						) +
 						"\0" +
 						view.vars.join() +
 						"\0" +
@@ -700,13 +862,13 @@ export function compile(source: string, options: HotOptions): HotResult {
 					accessors += " __arguments: arguments,";
 				}
 
-				const start = fn.body!.getStart(sf) + 1;
-				edits.push([start, start, ` __hot.mount(${key}, this);`]);
+				const top = fn.body!.getStart(sf) + 1;
+				edits.push([top, top, ` __hot.mount(${key}, this);`]);
 				const isBlock = ts.isBlock(body);
-				const top = body.getStart(sf) + (isBlock ? 1 : 0);
+				const at = body.getStart(sf) + (isBlock ? 1 : 0);
 				edits.push([
-					top,
-					top,
+					at,
+					at,
 					`${isBlock ? "" : "{"} { const __view = __hot.view(${key}, () => ({__proto__: null,${accessors} }));` +
 						` if (__view) { const __result = yield* __view.call(this);` +
 						` if (__result === __hot.BREAK) break;` +
@@ -716,11 +878,14 @@ export function compile(source: string, options: HotOptions): HotResult {
 					edits.push([body.end, body.end, " }"]);
 				}
 
-				// Where the body is, for lining an edited view up with the map.
-				const {line, character} = sf.getLineAndCharacterOfPosition(top);
-				viewArg = `[${JSON.stringify(view.text)}, ${line}, ${character}]`;
+				viewArg = compileView(view, component.kind, options);
 			} else {
-				signature = hash(component.kind + fn.getText(sf) + "\0" + texts);
+				signature = hash(
+					component.kind +
+						normalize(`(${source.slice(start, fn.end)})`, options) +
+						"\0" +
+						texts,
+				);
 			}
 		}
 
@@ -745,8 +910,10 @@ export function compile(source: string, options: HotOptions): HotResult {
 		const name = (decl.name as ts.Identifier).text;
 		const uses = new Set<string>();
 		collectUses(init, bindings, new Map(), undefined, uses);
-		let [texts, values] = getInputs(sf, bindings, uses);
-		let signature = hash(init.getText(sf) + "\0" + texts);
+		let [texts, values] = getInputs(sf, options, bindings, uses);
+		let signature = hash(
+			normalize(`(${init.getText(sf)})`, options) + "\0" + texts,
+		);
 		if (hashes && hashes.has(name)) {
 			// The hash already covers what the call uses.
 			signature = hashes.get(name)!;
@@ -791,14 +958,20 @@ export function compile(source: string, options: HotOptions): HotResult {
 		}
 	}
 
+	// What a view can reach of the module. An import which is only used as a
+	// type is not there when the module runs.
+	const values = new Set<string>();
+	collectValues(sf, values);
 	let footer = "\nfunction __hotScope() { return {__proto__: null,";
-	for (const name of bindings.keys()) {
-		footer += ` get ${name}() { return ${name}; },`;
+	for (const [name, binding] of bindings) {
+		if (!binding.isImport || values.has(name)) {
+			footer += ` get ${name}() { return ${name}; },`;
+		}
 	}
 
-	footer += ` }; }\n__hotScope.map = ${JSON.stringify(
-		"data:application/json;base64," + Buffer.from(map).toString("base64"),
-	)};\n__hotScope.id = ${JSON.stringify(options.id)};\n`;
+	footer += ` }; }\n__hotScope.id = ${JSON.stringify(
+		options.id,
+	)};\n__hotScope.source = ${JSON.stringify(source)};\n`;
 	// A module which exports anything other than components cannot be
 	// replaced on its own, because what imports it would keep the old exports.
 	const names = new Set(components.map((c) => c.name));
@@ -813,7 +986,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 
 	edits.push([lastImportEnd, lastImportEnd, header]);
 	edits.sort((a, b) => b[0] - a[0]);
-	let code = js;
+	let code = source;
 	for (const [start, end, text] of edits) {
 		code = code.slice(0, start) + text + code.slice(end);
 	}

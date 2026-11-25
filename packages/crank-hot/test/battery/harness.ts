@@ -7,6 +7,14 @@ import {transform} from "../../src/transform.ts";
 
 const RUNTIME = join(import.meta.dir, "../../src/runtime.js");
 const work = join(import.meta.dir, "../../.work/battery");
+// How the modules which the tests write are compiled.
+const TSCONFIG = JSON.stringify({
+	compilerOptions: {
+		jsx: "react",
+		jsxFactory: "createElement",
+		jsxFragmentFactory: "Fragment",
+	},
+});
 const run = Math.random().toString(36).slice(2, 8);
 let count = 0;
 
@@ -32,6 +40,7 @@ export function scenario(): Scenario {
 	const dir = join(work, id);
 	rmSync(dir, {recursive: true, force: true});
 	mkdirSync(dir, {recursive: true});
+	writeFileSync(join(work, "tsconfig.json"), TSCONFIG);
 	const handles: any = {log: []};
 	((globalThis as any).handles ||= {})[id] = handles;
 	const versions: Record<string, number> = {};
@@ -50,7 +59,8 @@ export function scenario(): Scenario {
 				runtime: RUNTIME,
 			});
 			versions[name] = (versions[name] || 0) + 1;
-			const file = join(dir, `${name}.${versions[name]}.js`);
+			// The module is still in the language it was written in.
+			const file = join(dir, `${name}.${versions[name]}.tsx`);
 			writeFileSync(file, result.code);
 			const mod = await import(file);
 			runtime.flush();

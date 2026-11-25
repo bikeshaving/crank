@@ -1,4 +1,4 @@
-import {Copy, createElement} from "@b9g/crank";
+import {Copy, createElement, Fragment} from "@b9g/crank";
 
 // One family per component, shared by every version of its module.
 const families = (globalThis.__crankFamilies ||= new Map());
@@ -275,9 +275,9 @@ function createFamily(key) {
  * @param kind - "fn", "gen" or "agen".
  * @param signature - A hash of the code which holds the state of the
  * component. Instances carry on while it stays the same.
- * @param view - The body of the loop of a generator component as source,
- * with the line and column it starts at, or null when it could not be
- * separated.
+ * @param view - The body of the loop of a generator component as a function
+ * in JavaScript, with the mappings and names of its source map, or null when
+ * it could not be separated.
  * @param scope - A function which returns the bindings of the module.
  * @param inputs - A function which returns the values of the bindings which
  * the code outside the loop uses, or null. Instances carry on while they stay
@@ -383,6 +383,14 @@ export function mount(key, ctx) {
 	}
 }
 
+// What the JSX of a view is compiled to, whatever the module compiles its
+// own JSX to.
+const BASE = {
+	__proto__: null,
+	__hotCreateElement: createElement,
+	__hotFragment: Fragment,
+};
+
 /**
  * Makes a function which makes a view from the bindings of its module and
  * the variables of an instance.
@@ -391,27 +399,31 @@ export function mount(key, ctx) {
  * inside can still be strict. The engine resolves each name: a local of the
  * component, then a binding of the module, then a global.
  *
- * The body starts on the line and at the column it has in its module, so
- * that the source map of the module is the source map of the view.
+ * The view comes with a source map to its module. The function which the
+ * constructor makes has two lines before its body, so the map is moved down
+ * by two lines.
  */
 function compile(family) {
-	const [source, line, column] = family.view;
-	// The function which the constructor makes starts with two lines, and the
-	// line after them is for what goes around the body.
-	const padding = line >= 3 ? "\n".repeat(line - 2) + " ".repeat(column) : "";
+	const [js, mappings, names] = family.view;
 	const scope = family.scope;
-	const map =
-		padding && scope.map
-			? `\n//# sourceURL=${scope.id}?hot=${counter.count++}\n//# sourceMappingURL=${scope.map}`
-			: "";
+	const map = {
+		version: 3,
+		sources: [scope.id],
+		sourcesContent: [scope.source],
+		names,
+		mappings: ";;" + mappings,
+	};
 	try {
 		return new Function(
+			"__base",
 			"__module",
 			"__locals",
 			"__BREAK",
-			`with (__module) with (__locals) { return ${
-				family.kind === "agen" ? "async " : ""
-			}function* () { "use strict";${padding}${source}\n}; }${map}`,
+			`with (__base) with (__module) with (__locals) { return ${js}\n}` +
+				`\n//# sourceURL=${scope.id}?hot=${counter.count++}` +
+				`\n//# sourceMappingURL=data:application/json;charset=utf-8,${encodeURIComponent(
+					JSON.stringify(map),
+				)}`,
 		);
 	} catch (err) {
 		if (err instanceof SyntaxError) {
@@ -466,7 +478,7 @@ export function view(key, getLocals) {
 		}
 	}
 
-	const made = family.make(family.scope(), getLocals(), BREAK);
+	const made = family.make(BASE, family.scope(), getLocals(), BREAK);
 	return family.kind === "agen"
 		? function () {
 				return guardAsync(family, made.call(this));

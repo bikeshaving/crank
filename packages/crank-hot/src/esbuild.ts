@@ -1,5 +1,5 @@
 import {readFileSync} from "node:fs";
-import {join, relative, resolve as resolvePath} from "node:path";
+import {extname, join, relative, resolve as resolvePath} from "node:path";
 import {fileURLToPath} from "node:url";
 import {analyze} from "./graph.ts";
 import type {Graph} from "./graph.ts";
@@ -108,7 +108,8 @@ export default function crankHot(options: HotOptions = {}): any {
 
 				return {
 					contents,
-					loader: "js",
+					// The module is still in the language it was written in.
+					loader: extname(args.path).slice(1),
 					resolveDir: resolvePath(args.path, ".."),
 				};
 			});

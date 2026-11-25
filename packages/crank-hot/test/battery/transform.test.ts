@@ -36,15 +36,11 @@ test("a module which exports anything else does not", () => {
 	}
 });
 
-test("a module without components is only compiled", () => {
-	const code = transform(
-		`export const LIMIT: number = 3;
+test("a module without components is left as it was written", () => {
+	const source = `export const LIMIT: number = 3;
 export function helper(value: string) { return value; }
-function* numbers() { for (;;) { yield 1; } }`,
-		options,
-	);
-	expect(code).not.toContain("__hot");
-	expect(code).not.toContain(": number");
+function* numbers() { for (;;) { yield 1; } }`;
+	expect(transform(source, options)).toBe(source);
 });
 
 test("what is registered", () => {
@@ -139,11 +135,15 @@ test("statements which leave the loop become return statements", () => {
 	const view = JSON.parse(
 		code.match(/"gen", "[^"]*", \[("(?:[^"\\]|\\.)*")/)![1],
 	);
-	expect(view.replace(/\s+/g, " ").trim()).toBe(
+	expect(
+		view
+			.replace(/\s+/g, " ")
+			.replace(/^\(function\* \(\) \{ "use strict"; | \}\)$/g, ""),
+	).toBe(
 		"if (item === 1) return __BREAK; " +
 			"if (item === 2) return; " +
-			"if (item === 3) return {value: (item)}; " +
-			"if (item === 4) return {value: undefined}; " +
+			"if (item === 3) return { value: (item) }; " +
+			"if (item === 4) return { value: undefined }; " +
 			"for (const inner of item) { if (inner) break; else continue; } " +
 			"inner: while (item) { break inner; } " +
 			"switch (item) { case 5: break; } " +
@@ -199,7 +199,11 @@ test("a var and the arguments of the component in a loop", () => {
 	const view = JSON.parse(
 		code.match(/"gen", "[^"]*", \[("(?:[^"\\]|\\.)*")/)![1],
 	);
-	expect(view.replace(/\s+/g, " ").trim()).toBe(
+	expect(
+		view
+			.replace(/\s+/g, " ")
+			.replace(/^\(function\* \(\) \{ "use strict"; | \}\)$/g, ""),
+	).toBe(
 		"(count = (count || 0) + 1, other = 2); ; " +
 			"for (i = 0; i < 2; i++) { } " +
 			"for (key in props) { } " +
@@ -233,7 +237,7 @@ export function* Counter(this: any) {
 	);
 });
 
-test("the lines of the module are the lines which the compiler wrote", () => {
+test("the lines of the module are the lines of the source", () => {
 	const source = `import {createElement} from "@b9g/crank";
 
 export function* Counter(this: any) {
@@ -245,18 +249,10 @@ export function* Counter(this: any) {
 
 export const Boxed = wrap(Counter);
 `;
-	const plain = transform(
-		source
-			.replace("Counter", "counter")
-			.replace("Boxed", "boxed")
-			.replace("(Counter)", "(counter)"),
-		options,
-	);
 	const hot = transform(source, options);
 	const lineOf = (code: string) =>
 		code.split("\n").findIndex((line) => /^\s*yield n;/.test(line));
-	expect(plain).not.toContain("__hot");
-	expect(lineOf(hot)).toBe(lineOf(plain));
+	expect(lineOf(hot)).toBe(lineOf(source));
 	expect(hot).toContain("__hot.value(");
 });
 

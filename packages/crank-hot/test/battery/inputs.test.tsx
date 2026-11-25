@@ -13,7 +13,7 @@ test("a helper which the setup uses is edited in another module", async () => {
 	const s = scenario();
 	await s.load("export const step = () => 1;", "lib");
 	const counter = (version: number) =>
-		`import {step} from "./lib.${version}.js";\n` + gen({setup, view});
+		`import {step} from "./lib.${version}.tsx";\n` + gen({setup, view});
 	const {Counter} = await s.load(counter(1));
 	const read = () => s.render(<Counter name="a" />);
 	read();
@@ -31,7 +31,7 @@ test("the module is evaluated again and what the setup uses is the same", async 
 	const s = scenario();
 	await s.load("export const step = () => 1;", "lib");
 	const counter = (extra: string) =>
-		'import {step} from "./lib.1.js";\n' + gen({setup, view}) + extra;
+		'import {step} from "./lib.1.tsx";\n' + gen({setup, view}) + extra;
 	const {Counter} = await s.load(counter(""));
 	const read = () => s.render(<Counter name="a" />);
 	read();

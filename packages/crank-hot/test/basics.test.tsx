@@ -87,7 +87,7 @@ async function load(text: string): Promise<any> {
 		id: "app.tsx",
 		runtime: join(import.meta.dir, "../src/runtime.js"),
 	});
-	const file = join(work, `app.${++version}.js`);
+	const file = join(work, `app.${++version}.tsx`);
 	writeFileSync(file, code);
 	const mod = await import(file);
 	runtime.flush();
@@ -102,6 +102,10 @@ const read = () => renderer.render(<mod.App name="a" />, root) as string;
 beforeAll(() => {
 	rmSync(work, {recursive: true, force: true});
 	mkdirSync(work, {recursive: true});
+	writeFileSync(
+		join(work, "tsconfig.json"),
+		'{"compilerOptions": {"jsx": "react", "jsxFactory": "createElement"}}',
+	);
 });
 
 test("the components render as they were written", async () => {
@@ -197,7 +201,11 @@ test("statements which leave the loop become return statements", () => {
 	const view = JSON.parse(
 		code.match(/"gen", "[^"]*", \[("(?:[^"\\]|\\.)*")/)![1],
 	);
-	expect(view.replace(/\s+/g, " ").trim()).toBe(
+	expect(
+		view
+			.replace(/\s+/g, " ")
+			.replace(/^\(function\* \(\) \{ "use strict"; | \}\)$/g, ""),
+	).toBe(
 		"if (item === 1) return __BREAK; if (item === 2) return; " +
 			"for (const inner of item) { if (inner) break; } " +
 			"switch (item) { case 3: break; } yield item;",

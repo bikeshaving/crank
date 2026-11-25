@@ -46,7 +46,7 @@ test("a module which imports a component is not evaluated again", async () => {
 	const s = scenario();
 	await s.load(gen({view: "yield <p>{n}</p>;"}), "child");
 	const {Page} = await s.load(
-		'import {Counter} from "./child.1.js";\n' +
+		'import {Counter} from "./child.1.tsx";\n' +
 			'export function Page() { return <div><Counter name="a" /></div>; }',
 		"parent",
 	);

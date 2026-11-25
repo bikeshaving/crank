@@ -4,7 +4,7 @@
 	"compilerOptions": {
 		"target": "ESNext",
 		"module": "ESNext",
-		"lib": ["esnext", "dom"],
+		"lib": ["esnext", "dom", "dom.iterable"],
 		"strict": true,
 		"moduleResolution": "bundler",
 		"allowImportingTsExtensions": true,

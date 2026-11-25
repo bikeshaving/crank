@@ -1,5 +1,5 @@
 import type {BunPlugin} from "bun";
-import {relative} from "node:path";
+import {extname, relative} from "node:path";
 import {fileURLToPath} from "node:url";
 import {transform} from "./transform.ts";
 
@@ -19,13 +19,13 @@ const plugin: BunPlugin = {
 
 			const source = await Bun.file(args.path).text();
 			return {
+				// The module is still in the language it was written in.
 				contents: transform(source, {
 					id: relative(process.cwd(), args.path),
 					runtime: RUNTIME,
 					accept: true,
-					sourceMap: true,
 				}),
-				loader: "js",
+				loader: extname(args.path).slice(1) as any,
 			};
 		});
 	},

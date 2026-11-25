@@ -3,12 +3,16 @@ import {readFileSync, writeFileSync} from "node:fs";
 import {join} from "node:path";
 import * as playwright from "playwright";
 import type {Browser, Page} from "playwright";
+import {defineDebuggerTests} from "./debug.ts";
+import {defineLabTests} from "./lab.ts";
 
 export interface Server {
 	/** The page which renders the app. */
 	url: string;
 	/** The page which hydrates what a server would have sent. */
 	hydrateUrl: string;
+	/** The page with one component for each thing a page can lose. */
+	labUrl: string;
 	close(): Promise<unknown>;
 	/** For a server which does not watch the files itself. */
 	rebuild?(): Promise<unknown>;
@@ -50,6 +54,7 @@ export function defineTests(start: () => Promise<Server>): void {
 	let browser: Browser;
 	let page: Page;
 	let hydrated: Page;
+	let lab: Page;
 	let loads = 0;
 	const errors: Array<string> = [];
 	beforeAll(async () => {
@@ -61,7 +66,8 @@ export function defineTests(start: () => Promise<Server>): void {
 		browser = await playwright[name].launch();
 		page = await browser.newPage();
 		hydrated = await browser.newPage();
-		for (const each of [page, hydrated]) {
+		lab = await browser.newPage();
+		for (const each of [page, hydrated, lab]) {
 			each.on("load", () => loads++);
 			each.on("pageerror", (err) => errors.push(err.message));
 			each.on("console", (msg) => {
@@ -71,6 +77,8 @@ export function defineTests(start: () => Promise<Server>): void {
 			});
 		}
 
+		await lab.goto(server.labUrl);
+		await lab.waitForSelector("#probe");
 		await page.goto(server.url);
 		await page.waitForSelector("#count");
 
@@ -183,8 +191,17 @@ export function defineTests(start: () => Promise<Server>): void {
 		});
 	});
 
+	const env = {
+		lab: () => lab,
+		edit,
+		errors,
+		read: (file: string) => readFileSync(join(src, file), "utf8"),
+	};
+	defineDebuggerTests(env);
+	defineLabTests(env);
+
 	test("the pages were never loaded again", () => {
-		expect(loads).toBe(2);
+		expect(loads).toBe(3);
 		expect(errors).toEqual([]);
 	});
 
