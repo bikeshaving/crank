@@ -110,6 +110,77 @@ function track(set, ctx) {
 	}
 }
 
+// Shared by every copy of this module, because a development server which
+// evaluates a whole new bundle evaluates this module again.
+const extraction = (globalThis.__crankExtraction ||= {
+	isActive: false,
+	view: undefined,
+});
+
+// Something which can be read from, called and taken apart without throwing,
+// to call a component with when only its view is wanted.
+const HOLE = new Proxy(() => {}, {
+	get(_, key) {
+		if (key === Symbol.iterator) {
+			return function* () {
+				for (let i = 0; i < 32; i++) {
+					yield HOLE;
+				}
+			};
+		} else if (key === Symbol.toPrimitive) {
+			return () => "";
+		}
+
+		return HOLE;
+	},
+	apply() {
+		return HOLE;
+	},
+	construct() {
+		return HOLE;
+	},
+	has() {
+		return true;
+	},
+	ownKeys() {
+		return [];
+	},
+});
+
+/**
+ * Whether a component is being called for its view. The first statement of
+ * a component asks, and returns the view if so.
+ */
+export function isExtracting() {
+	return extraction.isActive;
+}
+
+export function extract(view) {
+	extraction.view = view;
+}
+
+/**
+ * Returns the view of a version of a component, which is a function which
+ * the component declares. The component is called and resumed once, which
+ * runs its parameters and its first statement.
+ */
+function getView(impl) {
+	extraction.isActive = true;
+	extraction.view = undefined;
+	try {
+		const result = impl.call(undefined, HOLE, HOLE).next();
+		if (result && typeof result.then === "function") {
+			result.then(undefined, () => {});
+		}
+	} catch (_) {
+		// The parameters could not be made from nothing.
+	} finally {
+		extraction.isActive = false;
+	}
+
+	return extraction.view;
+}
+
 function isSame(a, b) {
 	if (!a || !b || a.length !== b.length) {
 		return false;
@@ -171,7 +242,8 @@ function settle(family) {
 	family.kind = next.kind;
 	family.signature = next.signature;
 	family.impl = next.impl;
-	family.view = next.view;
+	family.isExtracted = next.view === "extract";
+	family.view = family.isExtracted ? getView(next.impl) : next.view;
 	family.scope = next.scope;
 	family.inputs = inputs;
 	family.make = undefined;
@@ -491,7 +563,11 @@ export function view(key, getLocals) {
 					};
 	} else if (family.view === true) {
 		throw new Error(
-			`The component ${family.shell.name} was rendered before the end of its module`,
+			`The component ${family.shell.name} was rendered before its module had been evaluated as far as its view`,
+		);
+	} else if (family.isExtracted && family.view === undefined) {
+		throw new Error(
+			`The view of the component ${family.shell.name} could not be found`,
 		);
 	}
 

@@ -961,11 +961,19 @@ export function compile(source: string, options: HotOptions): HotResult {
 			// A function component has nothing which outlives a render, so every
 			// version of one is the same component.
 			const loop = findLoop(fn.body as ts.Block);
-			// Without evaluating text, the body of the loop is a function after
+			// Without evaluating text, the body of the loop is a function. When
+			// the loop is a statement of the component itself, the function is
+			// declared after the loop, inside the component, and the runtime
+			// calls the component to get it. Otherwise the function goes after
 			// the component, so what comes after the loop is moved to before
 			// it, and has to fit on a line.
+			const holder =
+				loop && ts.isLabeledStatement(loop.parent) ? loop.parent : loop;
+			const isNested = !!holder && holder.parent === fn.body;
 			let tail: string | undefined;
-			if (loop && options.rewrite) {
+			if (loop && options.rewrite && isNested) {
+				tail = "";
+			} else if (loop && options.rewrite) {
 				const after = source.slice(fn.end, component.stmt.end).trim();
 				if (after === "" || after === ";") {
 					tail = collapse(
@@ -1023,29 +1031,45 @@ export function compile(source: string, options: HotOptions): HotResult {
 					top,
 					top,
 					// A var of the body is declared where the body was.
-					` __hot.mount(${key}, this);` +
+					// The runtime calls the component for its view. This is the
+					// first statement, so nothing else of the component runs.
+					(options.rewrite && isNested
+						? " if (__hot.isExtracting()) return __hot.extract(__hotView);"
+						: "") +
+						` __hot.mount(${key}, this);` +
 						(options.rewrite && view.vars.length
 							? ` var ${view.vars.join(", ")};`
 							: ""),
 				]);
-				if (options.rewrite) {
-					// The loop asks for the newest view on every pass. What came
-					// after the loop comes next, on the same line, and then the
-					// view, which starts where the body of the loop did. The
-					// lines which the rest was on are left empty.
+				const seam =
+					`{ const __result = yield* __hot.view(${key}).call(this, {__proto__: null,${accessors} });` +
+					` if (__result === __hot.BREAK) break;` +
+					` if (__result) return __result.value; }`;
+				const isTyped = /\.tsx?$/.test(options.id);
+				const parameters = isTyped ? "this: any, __locals: any" : "__locals";
+				const generator =
+					component.kind === "agen" ? "async function*" : "function*";
+				if (options.rewrite && isNested) {
+					// The loop asks for the newest view on every pass. The view
+					// is declared after it, starting where the body of the loop
+					// did, so every line of the component stays where it was. A
+					// function declaration is there from the start of the
+					// component, which is how the first statement can return it.
+					edits.push([
+						body.getStart(sf),
+						body.end,
+						`${seam} ${generator} __hotView(${parameters}) {${view.text}}`,
+					]);
+					viewArg = '"extract"';
+				} else if (options.rewrite) {
+					// The view goes after the component. What came after the
+					// loop comes first, on the same line, and the lines which it
+					// was on are left empty.
 					const end = component.stmt.end;
-					const isTyped = /\.tsx?$/.test(options.id);
 					edits.push([
 						body.getStart(sf),
 						end,
-						`{ const __result = yield* __hot.view(${key}).call(this, {__proto__: null,${accessors} });` +
-							` if (__result === __hot.BREAK) break;` +
-							` if (__result) return __result.value; }` +
-							`${tail}; __hot.setView(${key}, ${
-								component.kind === "agen" ? "async " : ""
-							}function* (${
-								isTyped ? "this: any, __locals: any" : "__locals"
-							}) {` +
+						`${seam}${tail}; __hot.setView(${key}, ${generator} (${parameters}) {` +
 							view.text +
 							"});" +
 							"\n".repeat(source.slice(body.end, end).split("\n").length - 1),
@@ -1092,7 +1116,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 
 		const args = `${key}, ${JSON.stringify(component.kind)}, ${JSON.stringify(
 			signature,
-		)}, ${viewArg}, __hotScope, ${inputs}, `;
+		)}, ${viewArg}, ${options.rewrite ? "null" : "__hotScope"}, ${inputs}, `;
 		if (component.isDeclaration) {
 			// Function declarations are hoisted, so the binding holds what the
 			// runtime returns before anything in the module runs.
@@ -1161,29 +1185,33 @@ export function compile(source: string, options: HotOptions): HotResult {
 		}
 	}
 
-	// What a view can reach of the module. An import which is only used as a
-	// type is not there when the module runs.
-	const values = new Set<string>();
-	collectValues(sf, values);
-	let footer = "\nfunction __hotScope() { return {__proto__: null,";
-	for (const [name, binding] of bindings) {
-		if (!binding.isImport || values.has(name)) {
-			footer += ` get ${name}() { return ${name}; },`;
+	let footer = "\n";
+	if (!options.rewrite) {
+		// What a view can reach of the module. An import which is only used as a
+		// type is not there when the module runs.
+		const values = new Set<string>();
+		collectValues(sf, values);
+		footer += "function __hotScope() { return {__proto__: null,";
+		for (const [name, binding] of bindings) {
+			if (!binding.isImport || values.has(name)) {
+				footer += ` get ${name}() { return ${name}; },`;
+			}
 		}
+
+		// The imports are written out, so that whatever bundles the module can
+		// see them.
+		footer += " __import(__specifier) { switch (__specifier) {";
+		for (const specifier of viewImports) {
+			const literal = JSON.stringify(specifier);
+			footer += ` case ${literal}: return import(${literal});`;
+		}
+
+		footer += " default: return import(__specifier); } },";
+		footer += ` }; }\n__hotScope.id = ${JSON.stringify(
+			options.id,
+		)};\n__hotScope.source = ${JSON.stringify(source)};\n`;
 	}
 
-	// The imports are written out, so that whatever bundles the module can
-	// see them.
-	footer += " __import(__specifier) { switch (__specifier) {";
-	for (const specifier of viewImports) {
-		const literal = JSON.stringify(specifier);
-		footer += ` case ${literal}: return import(${literal});`;
-	}
-
-	footer += " default: return import(__specifier); } },";
-	footer += ` }; }\n__hotScope.id = ${JSON.stringify(
-		options.id,
-	)};\n__hotScope.source = ${JSON.stringify(source)};\n`;
 	// A module which exports anything other than components cannot be
 	// replaced on its own, because what imports it would keep the old exports.
 	const names = new Set(components.map((c) => c.name));

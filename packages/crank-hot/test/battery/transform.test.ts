@@ -319,3 +319,56 @@ test("an import in a view is found from its module", () => {
 		'__import(__specifier) { switch (__specifier) { case "./chart": return import("./chart"); default: return import(__specifier); } }',
 	);
 });
+
+test("without evaluating text, every line of a component stays where it was", () => {
+	const source = `import {createElement} from "@b9g/crank";
+
+export function* Counter(this: any, {name}: any) {
+	let n = 0; // SETUP
+	for ({name} of this) {
+		const label = name + n; // VIEW
+		yield label;
+	}
+
+	console.log("left"); // AFTER
+	return null; // LAST
+}
+`;
+	const code = transform(source, {...options, rewrite: true});
+	const lines = code.split("\n");
+	const sourceLines = source.split("\n");
+	for (const mark of ["// SETUP", "// VIEW", "// AFTER", "// LAST"]) {
+		const line = sourceLines.findIndex((text) => text.includes(mark));
+		expect(lines[line]).toContain(mark);
+	}
+
+	expect(code).toContain("function* __hotView(this: any, __locals: any) {");
+	expect(code).toContain("const label = __locals.name + __locals.n;");
+	expect(code).not.toContain("__hot.setView");
+});
+
+test("without evaluating text, what comes after a loop in a block is on one line", () => {
+	const source = `export function* Counter(this: any) {
+	try {
+		for ({} of this) {
+			yield 1; // VIEW
+		}
+	} finally {
+		stop() // no semicolon
+		done();
+	}
+}
+
+export const after = 1; // NEXT
+`;
+	const code = transform(source, {...options, rewrite: true});
+	const lines = code.split("\n");
+	const sourceLines = source.split("\n");
+	for (const mark of ["// VIEW", "// NEXT"]) {
+		const line = sourceLines.findIndex((text) => text.includes(mark));
+		expect(lines[line]).toContain(mark);
+	}
+
+	// The statements are separated as the ends of their lines separated them.
+	expect(code).toContain("} finally { stop(); done(); } }; __hot.setView(");
+});

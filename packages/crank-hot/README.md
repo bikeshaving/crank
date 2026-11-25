@@ -69,16 +69,36 @@ component, and rewrites each use: `n` becomes `__locals.n`. A name is one
 when the component has a variable with that name in scope at the loop, and
 nothing between the use and the body declares the name again.
 
-The function has to be on the lines the body was on, and after the
-component, so what came after the loop is moved to the line the loop starts
-on:
+The function is declared straight after the loop, inside the component,
+starting where the body of the loop did, so every line of the component
+stays where it was:
 
 ```tsx
-for ({name} of this) { const __result = yield* __hot.view(key).call(this, {…}); … } } __hot.setView(key, function* (__locals) {
-	const label = format(__locals.name, __locals.n);
-	yield <button onclick={__locals.onclick}>{label}</button>;
-});
+export function* Counter({name}) { if (__hot.isExtracting()) return __hot.extract(__hotView); __hot.mount(key, this);
+	let n = 0;
+	for ({name} of this) { const __result = yield* __hot.view(key).call(this, {…}); … } function* __hotView(__locals) {
+		const label = format(__locals.name, __locals.n);
+		yield <button onclick={__locals.onclick}>{label}</button>;
+	}
+}
 ```
+
+A function declaration is there from the start of the function it is in.
+So when a version of a component is taken up, the runtime calls it once for
+its view: the first statement returns the function, and nothing else of the
+component runs. The function comes from the newest module, and is run
+against the instances of the old one through the object. Because the view
+is found by calling the component, a component can be rendered before the
+place in its module where it is declared.
+
+The parameters of the component do run for that call, so it is called with
+something which can be read from and taken apart without throwing, and
+which is never missing, so that defaults do not run.
+
+When the loop is inside a block, such as a `try`, a function declared after
+it would only be there inside that block. Then the function goes after the
+whole component, and what came after the loop is moved to the line the
+loop starts on, with its lines left empty.
 
 What this costs:
 
@@ -88,11 +108,9 @@ What this costs:
   other way cannot make that mistake, so `test/battery/rewrite.test.tsx`
   runs views which are hard to get right both ways and compares them.
 - In a debugger, a variable of the component is `__locals.n` in a view.
-- What came after the loop is on one line, so its lines are wrong in a
-  debugger. When it cannot be written on one line, the component is not
-  separated.
-- A component which is rendered by a statement above it in its own module
-  has no view yet.
+- For a loop inside a block, what came after it is on one line, so its
+  lines are wrong in a debugger. When it cannot be written on one line, the
+  component is not separated.
 
 What it gains: an edited view is ordinary code of its module, with the
 source map of whatever compiled the module, and the JSX it was compiled

@@ -368,7 +368,7 @@ export function collapse(
 		}
 
 		result += " " + text;
-		if (ends.has(token.end) && text !== ";") {
+		if (ends.has(token.end) && !text.endsWith(";")) {
 			result += ";";
 		}
 

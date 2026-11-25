@@ -120,3 +120,56 @@ export default function* (this: Context) {
 	expect(read()).toBe("<b>1</b>");
 	expect(s.h.log).toEqual(["setup"]);
 });
+
+test("a generator component which is rendered before its declaration", async () => {
+	const s = scenario();
+	const source = (view: string) => `
+import {renderer} from "@b9g/crank/html";
+h.roots ||= {};
+h.early = renderer.render(<Late />, h.roots);
+export function* Late(this: Context) {
+	let n = 0;
+	h.inc = () => { n++; this.refresh(); };
+	h.log.push("setup");
+	for ({} of this) {
+		${view}
+	}
+}`;
+	await s.load(source("yield <p>{n}</p>;"));
+	expect(s.h.early).toBe("<p>0</p>");
+	s.h.inc();
+	// The module renders into the same root every time it is evaluated.
+	await s.load(source("yield <b>{n}</b>;"));
+	expect(s.h.early).toBe("<b>1</b>");
+	expect(s.h.log).toEqual(["setup"]);
+});
+
+test("the parameters of a component when its view is looked for", async () => {
+	const s = scenario();
+	s.h.defaults = 0;
+	const source = (view: string) => `
+export function* Deep(
+	this: Context,
+	{user: {id}, tags: [first, ...rest], limit = ++h.defaults}: any,
+	ctx: Context,
+) {
+	let n = 0;
+	h.inc = () => { n++; this.refresh(); };
+	h.log.push("setup");
+	for ({user: {id}, tags: [first, ...rest]} of this) {
+		${view}
+	}
+}`;
+	const {Deep} = await s.load(
+		source("yield <p>{id} {first} {rest.length} {limit} {n}</p>;"),
+	);
+	const props = {user: {id: "u1"}, tags: ["a", "b", "c"]};
+	const read = () => s.render(<Deep {...props} />);
+	expect(read()).toBe("<p>u1 a 2 1 0</p>");
+	s.h.inc();
+	await s.load(source("yield <b>{id} {first} {rest.length} {limit} {n}</b>;"));
+	expect(read()).toBe("<b>u1 a 2 1 1</b>");
+	// Looking for the view did not run the default, or the setup.
+	expect(s.h.defaults).toBe(1);
+	expect(s.h.log).toEqual(["setup"]);
+});
