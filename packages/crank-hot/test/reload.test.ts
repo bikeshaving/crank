@@ -5,7 +5,6 @@ import {afterAll, beforeAll, expect, test} from "bun:test";
 
 const loaded: Array<string> = [];
 const logged: Array<unknown> = [];
-let reloads = 0;
 class FakeEventSource {
 	static last: FakeEventSource;
 	listeners: Record<string, Array<(ev: any) => void>> = {};
@@ -26,13 +25,11 @@ class FakeEventSource {
 
 const original = {
 	EventSource: (globalThis as any).EventSource,
-	location: (globalThis as any).location,
 	error: console.error,
 };
 let client: typeof import("../src/reload.js");
 beforeAll(async () => {
 	(globalThis as any).EventSource = FakeEventSource;
-	(globalThis as any).location = {reload: () => reloads++};
 	console.error = (...args: Array<unknown>) => logged.push(args[0]);
 	client = await import("../src/reload.js");
 	(globalThis as any).__crankHot.load = async (url: string) => {
@@ -42,7 +39,6 @@ beforeAll(async () => {
 
 afterAll(() => {
 	(globalThis as any).EventSource = original.EventSource;
-	(globalThis as any).location = original.location;
 	console.error = original.error;
 });
 
@@ -83,13 +79,6 @@ test("an event stream is listened to once", async () => {
 		"http://localhost/main.js?hot=4",
 		"http://localhost/admin.js?hot=4",
 	]);
-});
-
-test("the page is loaded again when it is told to be", () => {
-	FakeEventSource.last.send("reload");
-	expect(reloads).toBe(1);
-	(globalThis as any).__crankHot.reload();
-	expect(reloads).toBe(2);
 });
 
 test("a build which failed is said, and a stream which failed is not", () => {

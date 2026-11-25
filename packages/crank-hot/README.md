@@ -54,7 +54,7 @@ which bundle a file is in and when it has reloaded itself:
 - A file of the page changed, and the bundles have been built: call
   `__crankHot.update()` in the page, or send an `update` event.
 - A file which only the server uses changed, which the page cannot do
-  anything about: call `__crankHot.reload()`, or send a `reload` event.
+  anything about: load the page again, with `location.reload()`.
 - A build failed: send an `error` event with what to say.
 
 `crankHot({events: "/my-events"})` makes the page listen to an event stream

@@ -14,8 +14,7 @@ export interface HotOptions {
 	/**
 	 * The URL of the event stream which says that a build has finished. It
 	 * is esbuild's own by default. With false, the page listens to nothing,
-	 * and whatever serves it calls `__crankHot.update()` and
-	 * `__crankHot.reload()` in the page.
+	 * and whatever serves it calls `__crankHot.update()` in the page.
 	 */
 	events?: string | false;
 }

@@ -4,7 +4,9 @@
 // The page has to be told that there is one. esbuild's own server says so on
 // an event stream, which this can listen to. Anything else which serves the
 // bundles, such as a framework with a server of its own to reload first,
-// calls update() and reload() when it is ready, or sends the same events.
+// calls update() when it is ready, or sends the same events. A change which
+// the page cannot make to itself, such as one to code which only runs on a
+// server, is for whatever knows that to load the page again.
 
 // Shared by every copy of this module, because each bundle has one.
 const state = (globalThis.__crankHot ||= {
@@ -15,7 +17,6 @@ const state = (globalThis.__crankHot ||= {
 	builds: 0,
 	load: (url) => import(url),
 	update,
-	reload,
 });
 
 /**
@@ -40,14 +41,6 @@ export function update(updated) {
 	return Promise.all(loads);
 }
 
-/**
- * Loads the page again, for a change which the page cannot make to itself,
- * such as one to code which only runs on a server.
- */
-export function reload() {
-	globalThis.location.reload();
-}
-
 // The data of an event, if it is JSON.
 function parse(ev) {
 	try {
@@ -64,7 +57,6 @@ function parse(ev) {
  * - "change", which is what esbuild's server sends, or "update": a build
  *   has finished. The data may be JSON with the paths of the bundles which
  *   changed, as `updated`.
- * - "reload": the page has to be loaded again.
  * - "error": a build failed. The data is what to say.
  */
 export function connect(url, events) {
@@ -86,7 +78,6 @@ export function connect(url, events) {
 
 	source.addEventListener("change", onupdate);
 	source.addEventListener("update", onupdate);
-	source.addEventListener("reload", () => reload());
 	source.addEventListener("error", (ev) => {
 		// The stream itself failing is also an event with this name.
 		if (typeof ev.data === "string") {
