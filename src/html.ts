@@ -1,4 +1,4 @@
-import {Portal, Renderer} from "./crank.js";
+import {createElement, Portal, Renderer} from "./crank.js";
 import type {Children, Context, ElementValue, RenderAdapter} from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import {REACT_SVG_PROPS} from "./_svg.js";
@@ -116,8 +116,6 @@ function printAttrs(props: Record<string, any>, isSVG?: boolean): string {
  * The equivalent of DOM Node for the HTML Renderer. Not to be confused with
  * the DOM's Text node. It's just an object with value string so that
  * we can reference the value of the HTML by reference, not value.
- *
- * TextNode is never actually
  */
 interface TextNode {
 	value?: string;
@@ -129,15 +127,14 @@ interface TextNode {
 }
 
 /**
- * The root of a render into a stream.
+ * Something the adapter writes HTML to as nodes are committed.
  *
  * The renderer commits nodes in document order, so the adapter writes each
  * node the first time it is committed: the opening tag of an element when it
  * is patched, text when it is created, and the closing tag of an element when
  * it is arranged.
  */
-class StreamRoot {
-	declare writer: WritableStreamDefaultWriter<string>;
+class Sink {
 	/** Everything which has been written. */
 	declare text: string;
 	/**
@@ -147,17 +144,53 @@ class StreamRoot {
 	 * arranged, when its contents are written with its closing tag.
 	 */
 	declare held: TextNode | undefined;
+	constructor() {
+		this.text = "";
+		this.held = undefined;
+	}
+
+	write(chunk: string): void {
+		this.text += chunk;
+	}
+}
+
+/**
+ * The root of a render into a stream.
+ */
+class StreamRoot extends Sink {
+	declare writer: WritableStreamDefaultWriter<string>;
 	declare error: unknown;
 	/** What has been written but not flushed to the stream. */
 	declare buffer: string;
 	declare timer: ReturnType<typeof setTimeout> | undefined;
+	/** The number of boundaries which have been created. */
+	declare boundaries: number;
+	/** Boundaries whose contents have not been written or abandoned. */
+	declare pending: Set<Promise<unknown>>;
+	/**
+	 * The contents of boundaries which were ready before the document was
+	 * finished. They are written after the document, because a template can
+	 * only replace a placeholder from the top level of the body.
+	 */
+	declare patches: Array<string> | undefined;
+	/** Whether the contents of any boundary have been written. */
+	declare patched: boolean;
+	/**
+	 * The nonce of the first script element which was written with one. The
+	 * scripts which replace fallbacks are written with the same nonce.
+	 */
+	declare nonce: string | undefined;
 	constructor(writer: WritableStreamDefaultWriter<string>) {
+		super();
 		this.writer = writer;
-		this.text = "";
-		this.held = undefined;
 		this.error = undefined;
 		this.buffer = "";
 		this.timer = undefined;
+		this.boundaries = 0;
+		this.pending = new Set();
+		this.patches = [];
+		this.patched = false;
+		this.nonce = undefined;
 	}
 
 	write(chunk: string): void {
@@ -187,8 +220,34 @@ class StreamRoot {
 	}
 
 	/**
-	 * Writes whatever part of the result has not been written, and closes the
-	 * stream.
+	 * Creates a boundary: a part of the document whose contents may be written
+	 * after the document, replacing a placeholder.
+	 */
+	boundary(parent?: Boundary): Boundary {
+		return new Boundary(this, parent, "crank-" + this.boundaries++);
+	}
+
+	/**
+	 * Writes a template which replaces the placeholder of a boundary, after
+	 * the document.
+	 */
+	patch(name: string, contents: string): void {
+		// The script which defines $crank() is only written once.
+		const patch =
+			`<template for="${name}">${contents}</template>` +
+			`${OPEN_SCRIPT}${this.nonce === undefined ? "" : ` nonce="${escape(this.nonce)}"`}>` +
+			`${this.patched ? "" : PATCH_SCRIPT}$crank("${name}")</script>`;
+		this.patched = true;
+		if (this.patches) {
+			this.patches.push(patch);
+		} else {
+			this.write(patch);
+		}
+	}
+
+	/**
+	 * Writes whatever part of the document has not been written, then the
+	 * contents of its boundaries as they are ready, and closes the stream.
 	 */
 	async end(result: string): Promise<string> {
 		if (!result.startsWith(this.text)) {
@@ -198,19 +257,255 @@ class StreamRoot {
 		}
 
 		this.write(result.slice(this.text.length));
+		const patches = this.patches!;
+		this.patches = undefined;
+		for (let i = 0; i < patches.length; i++) {
+			this.write(patches[i]);
+		}
+
+		while (this.pending.size) {
+			await Promise.all(this.pending);
+		}
+
 		this.flush();
 		await this.writer.close();
 		if (this.error !== undefined) {
 			throw this.error;
 		}
 
-		return result;
+		return this.text;
 	}
 
 	abort(reason: unknown): void {
 		clearTimeout(this.timer);
 		this.writer.abort(reason).catch(() => {});
 	}
+}
+
+// This module can end up inlined in a script element, where a "<script"
+// which follows a "<!--" keeps the element from being closed.
+const OPEN_SCRIPT = ["<", "script"].join("");
+
+/**
+ * Replaces the placeholder of a boundary with its contents in browsers which
+ * do not support <template for>. These browsers parse the processing
+ * instructions which mark the placeholder as comments.
+ */
+const PATCH_SCRIPT =
+	"function $crank(n){" +
+	"var t=document.querySelector('template[for=\"'+n+'\"]'),w=document.createTreeWalker(document,128),s,e,d=0,r;" +
+	"document.currentScript.remove();" +
+	"if(!t)return;" +
+	"while((s=w.nextNode())&&s.data!=='?start name=\"'+n+'\"');" +
+	"if(!s)return;" +
+	"for(e=s.nextSibling;e;e=e.nextSibling)" +
+	"if(e.nodeType===8)" +
+	"if(!e.data.indexOf('?start'))d++;" +
+	"else if(e.data==='?end'&&!d--)break;" +
+	"r=document.createRange();" +
+	"r.setStartBefore(s);" +
+	"r.setEndAfter(e||s.parentNode.lastChild);" +
+	"r.deleteContents();" +
+	"r.insertNode(t.content);" +
+	"t.remove()" +
+	"}";
+
+/**
+ * The placeholder of a boundary: its fallback, between two processing
+ * instructions which mark what the contents are going to replace.
+ *
+ * The fallback is rendered into the placeholder, and the placeholder is also
+ * passed to a Raw element as a node, which reads its value when it is
+ * committed.
+ */
+class Placeholder extends Sink {
+	declare boundary: Boundary;
+	declare written: string | undefined;
+	constructor(boundary: Boundary) {
+		super();
+		this.boundary = boundary;
+		this.written = undefined;
+	}
+
+	get value(): string {
+		if (this.written === undefined) {
+			const boundary = this.boundary;
+			boundary.deferred = true;
+			this.written = boundary.mark(boundary.showing ? this.text : "");
+		}
+
+		return this.written;
+	}
+}
+
+/**
+ * A part of a document whose contents may be written after the rest of the
+ * document. The Suspense component renders its children into a boundary.
+ *
+ * If the contents are ready when the commit reaches the boundary, they can be
+ * written in place. Otherwise the placeholder is written in place, and the
+ * contents are written after the document in a template which the browser
+ * replaces the placeholder with.
+ */
+class Boundary extends Sink {
+	declare stream: StreamRoot;
+	/** The boundary whose contents this boundary is in. */
+	declare parent: Boundary | undefined;
+	declare name: string;
+	declare placeholder: Placeholder;
+	/** Whether the placeholder has the fallback in it. */
+	declare showing: boolean;
+	/** Whether the placeholder has been written. */
+	declare deferred: boolean;
+	/**
+	 * What is written in place. The boundary is passed to a Raw element as a
+	 * node, which reads its value when it is committed.
+	 */
+	declare value: string;
+	/**
+	 * Templates for the boundaries in the contents of this one, which cannot
+	 * replace anything until the contents are in the document.
+	 */
+	declare queue: Array<[string, string]> | undefined;
+	declare settle: () => void;
+	constructor(stream: StreamRoot, parent: Boundary | undefined, name: string) {
+		super();
+		this.stream = stream;
+		this.parent = parent;
+		this.name = name;
+		this.placeholder = new Placeholder(this);
+		this.showing = true;
+		this.deferred = false;
+		this.value = "";
+		this.queue = [];
+		const pending = new Promise<void>((resolve) => (this.settle = resolve));
+		stream.pending.add(pending);
+		pending.then(() => stream.pending.delete(pending));
+	}
+
+	/**
+	 * Creates a boundary for something in the contents of this one.
+	 */
+	boundary(): Boundary {
+		return this.stream.boundary(this);
+	}
+
+	mark(fallback: string): string {
+		return `<?start name="${this.name}">${fallback}<?end>`;
+	}
+
+	/**
+	 * Writes a template for this boundary, or for a boundary in its contents,
+	 * once the contents of the boundaries around it are in the document.
+	 */
+	patch(name: string, contents: string): void {
+		if (this.queue) {
+			this.queue.push([name, contents]);
+		} else if (this.parent) {
+			this.parent.patch(name, contents);
+		} else {
+			this.stream.patch(name, contents);
+		}
+	}
+
+	/**
+	 * Called when the contents have been written to the boundary. They are
+	 * written in place if that is allowed and the placeholder has not been
+	 * written. Otherwise the placeholder is, and the contents are held until
+	 * reveal() is called.
+	 *
+	 * @returns Whether the contents were written in place.
+	 */
+	close(inline: boolean): boolean {
+		if (inline && !this.deferred) {
+			this.value = this.text;
+			this.finish();
+			return true;
+		}
+
+		if (!this.deferred) {
+			this.value = this.placeholder.value;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Writes the contents which close() held.
+	 */
+	reveal(): void {
+		if (this.queue) {
+			const queue = this.queue;
+			this.queue = undefined;
+			this.patch(this.name, this.text);
+			this.queue = queue;
+			this.finish();
+		}
+	}
+
+	/**
+	 * Called when the fallback of a placeholder which was written without it
+	 * can be shown.
+	 */
+	fallback(): void {
+		this.showing = true;
+		if (this.deferred && this.queue) {
+			const queue = this.queue;
+			this.queue = undefined;
+			this.patch(this.name, this.mark(this.placeholder.text));
+			this.queue = queue;
+		}
+	}
+
+	/**
+	 * Called when the contents have failed to render. If the placeholder has
+	 * been written, it stays in the document, and the render rejects with the
+	 * error when the stream has closed.
+	 *
+	 * @returns Whether the boundary took the error.
+	 */
+	abort(err: unknown): boolean {
+		if (this.deferred && this.queue) {
+			// Nothing can replace the placeholders in contents which are never
+			// going to be in the document.
+			this.queue = [];
+			if (this.stream.error === undefined) {
+				this.stream.error = err;
+			}
+
+			this.finish();
+		}
+
+		return this.deferred;
+	}
+
+	/**
+	 * The contents are in the document, or are never going to be.
+	 */
+	finish(): void {
+		const queue = this.queue!;
+		this.queue = undefined;
+		for (let i = 0; i < queue.length; i++) {
+			this.patch(queue[i][0], queue[i][1]);
+		}
+
+		this.settle();
+	}
+}
+
+const SuspenseBoundaries = Symbol.for("crank.SuspenseBoundaries");
+
+/**
+ * Tells Suspense components that there is nothing to show a fallback on: they
+ * render into a boundary of the stream, or wait for their children when
+ * there is no stream.
+ */
+function BoundaryProvider(
+	this: Context,
+	{stream, children}: {stream?: StreamRoot; children: Children},
+): Children {
+	this.provide(SuspenseBoundaries as any, () => stream && stream.boundary());
+	return children;
 }
 
 /**
@@ -366,7 +661,7 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 			root: unknown;
 		}): TextNode {
 			const node = {value: escape(value), raw: value};
-			if (root instanceof StreamRoot && !root.held && !oldNode) {
+			if (root instanceof Sink && !root.held && !oldNode) {
 				root.write(node.value);
 			}
 
@@ -380,7 +675,7 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 			value: string | TextNode;
 			root: unknown;
 		}): ElementValue<TextNode> {
-			if (root instanceof StreamRoot && !root.held) {
+			if (root instanceof Sink && !root.held) {
 				root.write(typeof value === "string" ? value : value.value || "");
 			}
 
@@ -400,12 +695,15 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 			scope: string | undefined;
 			root: unknown;
 		}): void {
-			if (
-				!(root instanceof StreamRoot) ||
-				root.held ||
-				typeof tag !== "string"
-			) {
+			if (!(root instanceof Sink) || root.held || typeof tag !== "string") {
 				return;
+			}
+
+			if (tag === "script" && typeof props.nonce === "string") {
+				const stream = root instanceof Boundary ? root.stream : root;
+				if ((stream as StreamRoot).nonce === undefined) {
+					(stream as StreamRoot).nonce = props.nonce;
+				}
 			}
 
 			if (node.open === undefined) {
@@ -470,7 +768,7 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 								? joinRawText(children, tag, props["type"])
 								: join(children);
 				result = `${open}${contents}${close}`;
-				if (root instanceof StreamRoot) {
+				if (root instanceof Sink) {
 					if (root.held === node) {
 						root.held = undefined;
 						if (!node.value) {
@@ -509,18 +807,32 @@ export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
 	): Promise<string> | string {
 		const writer = getWriter(root);
 		if (writer === undefined) {
-			return super.render(children, root, bridge);
+			return super.render(
+				// Rendering nothing unmounts the tree of a root.
+				children == null
+					? children
+					: createElement(BoundaryProvider, null, children),
+				root,
+				bridge,
+			);
 		}
 
 		const stream = new StreamRoot(writer);
 		return new Promise<string>((resolve) =>
-			resolve(super.render(children, stream, bridge)),
+			resolve(
+				super.render(
+					createElement(BoundaryProvider, {stream}, children),
+					stream,
+					bridge,
+				),
+			),
 		)
-			.then((result) => {
+			.then((result) => stream.end(result))
+			.then((text) => {
 				// Renders without a root unmount when they finish, and the stream
 				// is not a root anything can render into again.
 				super.render(null, stream, bridge);
-				return stream.end(result);
+				return text;
 			})
 			.catch((err) => {
 				super.render(null, stream, bridge);

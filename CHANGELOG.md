@@ -41,6 +41,27 @@
   string. The stream is closed when the render finishes and aborted if it
   fails.
 
+- **Out-of-order streaming for `Suspense`** (#403)
+  When a `Suspense` component is rendered into a stream and its children take
+  longer than its timeout, the fallback is written in place and the rest of
+  the document carries on. The children are written after the document, and
+  the browser puts them where the fallback was.
+  ```html
+  <h1>Posts</h1>
+  <?start name="crank-0"><p>Loading…</p><?end>
+  <footer>About</footer>
+  <template for="crank-0"><ul>…</ul></template>
+  ```
+  Browsers which support `<template for>` do the replacement themselves, and
+  a small inline script does it in the others. Children which are ready
+  within the timeout are written in place with no markers. In a
+  `SuspenseList`, `revealOrder` and `tail` decide the order in which the
+  children are sent and which fallbacks are shown.
+
+- **`Context.isHydrating`** (#403)
+  Whether the component is being rendered by a `hydrate()` call which has not
+  finished.
+
 ### Performance
 - **The `jsx` template tag caches static subtrees** (#383)
   Parts of a template with no expressions are built once and the same element
@@ -126,6 +147,12 @@
   siblings. `after` callbacks still wait until the root is in place. Updates
   to a root which has already been committed, and hydration, still commit all
   at once, and synchronous renders are unchanged.
+
+- **`Suspense` waits for its children when hydrating and when rendering to a string** (#403)
+  While hydrating, `Suspense` no longer shows its fallback, so slow data in
+  the browser cannot replace what the server sent. A render to a string waits
+  for the children of every `Suspense`, where it used to return the fallback,
+  which nothing could replace afterwards.
 
 ## [0.7.10] - 2026-08-12
 ### Bug Fixes

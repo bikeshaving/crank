@@ -1126,11 +1126,30 @@ export class Renderer<
 			root,
 			hydrate: true,
 		});
-		return renderRoot(this.adapter, root, ret, children) as
-			| Promise<TResult>
-			| TResult;
+		hydratingRoots.add(root as object);
+		let result: Promise<TResult> | TResult;
+		try {
+			result = renderRoot(this.adapter, root, ret, children) as
+				| Promise<TResult>
+				| TResult;
+		} catch (err) {
+			hydratingRoots.delete(root as object);
+			throw err;
+		}
+
+		if (isPromiseLike(result)) {
+			return result.finally(() => hydratingRoots.delete(root as object));
+		}
+
+		hydratingRoots.delete(root as object);
+		return result;
 	}
 }
+
+/**
+ * The roots of renders which are hydrating.
+ */
+const hydratingRoots = new WeakSet<object>();
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
 function getRootRetainer<
@@ -2962,6 +2981,17 @@ export class Context<
 
 	get isUnmounted(): boolean {
 		return getFlag(this[_ContextState].ret, IsUnmounted);
+	}
+
+	/**
+	 * Whether the component is being rendered by a call to hydrate() which
+	 * has not finished.
+	 */
+	get isHydrating(): boolean {
+		const root = this[_ContextState].root;
+		return (
+			typeof root === "object" && root !== null && hydratingRoots.has(root)
+		);
 	}
 
 	*[Symbol.iterator](): Generator<ComponentPropsOrProps<T>, undefined> {

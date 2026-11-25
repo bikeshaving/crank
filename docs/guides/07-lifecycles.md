@@ -224,6 +224,10 @@ function *Component() {
 }
 ```
 
+### isHydrating
+
+`this.isHydrating` is `true` while the component is being rendered by a call to `hydrate()` which has not finished, and `false` for every later render. Use it when the first render in the browser has to match what the server rendered. The [`Suspense`](/api/async/components/Suspense) component uses it to leave server-rendered children in place rather than show a fallback.
+
 ## The Two-Pass Render Pattern
 
 Use `schedule()` to trigger an immediate re-render, so a component renders twice — once for setup, then again with updated state:
