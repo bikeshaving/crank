@@ -10,6 +10,8 @@ export interface Server {
 	/** The page which hydrates what a server would have sent. */
 	hydrateUrl: string;
 	close(): Promise<unknown>;
+	/** For a server which does not watch the files itself. */
+	rebuild?(): Promise<unknown>;
 }
 
 interface State {
@@ -39,9 +41,12 @@ export function defineTests(start: () => Promise<Server>): void {
 		}
 
 		writeFileSync(path, text.replace(from, to));
+		pending = pending.then(() => server.rebuild && server.rebuild());
 	};
 
 	let server: Server;
+	// The builds which edits have asked for.
+	let pending: Promise<unknown> = Promise.resolve();
 	let browser: Browser;
 	let page: Page;
 	let hydrated: Page;
@@ -181,5 +186,26 @@ export function defineTests(start: () => Promise<Server>): void {
 	test("the pages were never loaded again", () => {
 		expect(loads).toBe(2);
 		expect(errors).toEqual([]);
+	});
+
+	test("a module which stops exporting only components", async () => {
+		// What imports the module has to be evaluated again, which a
+		// development server may do by loading the page again.
+		edit("app.tsx", "<h1>Edited</h1>", "<h1>{LIMIT}</h1>");
+		edit(
+			"app.tsx",
+			"export function App",
+			"export const LIMIT = 7;\n\nexport function App",
+		);
+		await page.waitForFunction(
+			() => document.querySelector("h1")?.textContent === "7",
+			undefined,
+			{timeout: 10000},
+		);
+		const before = Number(
+			(await page.textContent("#count"))!.replace(/\D/g, ""),
+		);
+		await page.click("#count");
+		expect(await page.textContent("#count")).toBe(`Count: #${before + 1}`);
 	});
 }

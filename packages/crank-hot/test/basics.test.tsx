@@ -207,7 +207,11 @@ test("statements which leave the loop become return statements", () => {
 test("a loop which cannot be separated is left whole", () => {
 	const code = transform(
 		`export function* Legacy(this: any) {
-	for (const props of this) yield props;
+	if (true) {
+		for (const props of this) {
+			yield props;
+		}
+	}
 }`,
 		{id: "legacy.ts", runtime: "runtime"},
 	);

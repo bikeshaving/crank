@@ -25,7 +25,6 @@ test("a module which exports anything else does not", () => {
 		"export default 3;",
 		'export * from "./other";',
 		'export {thing} from "./other";',
-		"export default function () { return null; }",
 		"export const Fancy = wrap(Page);",
 	]) {
 		const code = transform(
@@ -156,7 +155,7 @@ test("statements which leave the loop become return statements", () => {
 
 test("loops which are not separated", () => {
 	for (const body of [
-		"for (const props of this) yield 1;",
+		"outer: { for (const props of this) { if (props) break outer; yield 1; } }",
 		"if (true) { for (const props of this) { yield 1; } }",
 	]) {
 		const code = transform(
@@ -259,4 +258,20 @@ export const Boxed = wrap(Counter);
 	expect(plain).not.toContain("__hot");
 	expect(lineOf(hot)).toBe(lineOf(plain));
 	expect(hot).toContain("__hot.value(");
+});
+
+test("a default export without a name is registered", () => {
+	for (const source of [
+		"export default function () { return null; }",
+		"export default function* (this: any) { for ({} of this) { yield null; } }",
+		"export default async function () { return null; }",
+		"export default () => null;",
+		"export default function* (this: any) { for ({} of this) yield null; }",
+	]) {
+		const code = transform(source, options);
+		expect(code).toMatch(
+			/export default\s+__hot\.register\("mod\.tsx#default"/,
+		);
+		expect(code).toContain(ACCEPT);
+	}
 });

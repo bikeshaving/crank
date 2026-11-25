@@ -306,7 +306,26 @@ export function register(key, kind, signature, view, scope, inputs, impl) {
 
 // What value() last returned for each key.
 const values = (globalThis.__crankValues ||= new Map());
-let evaluations = 0;
+// This module is evaluated again by a development server which evaluates a
+// whole new bundle, so what it counts is not its own.
+const counter = (globalThis.__crankCounter ||= {count: 0});
+
+/**
+ * Evaluates a top-level binding for a development server which evaluates
+ * every module again with every edit. The hash covers the source of the
+ * binding and of everything it refers to, and the value is kept while the
+ * hash is the same.
+ */
+export function reuse(key, signature, make) {
+	const last = values.get(key);
+	if (last && last.signature === signature) {
+		return last.result;
+	}
+
+	const result = make();
+	values.set(key, {signature, inputs: undefined, result});
+	return result;
+}
 
 /**
  * Evaluates a const which is declared with a call and named like a
@@ -342,7 +361,7 @@ export function value(key, signature, inputs, make) {
 		result = register(
 			key,
 			kind,
-			kind === "fn" ? "" : `${signature}:${evaluations++}`,
+			kind === "fn" ? "" : `${signature}:${counter.count++}`,
 			null,
 			undefined,
 			null,
@@ -383,7 +402,7 @@ function compile(family) {
 	const scope = family.scope;
 	const map =
 		padding && scope.map
-			? `\n//# sourceURL=${scope.id}?hot=${evaluations++}\n//# sourceMappingURL=${scope.map}`
+			? `\n//# sourceURL=${scope.id}?hot=${counter.count++}\n//# sourceMappingURL=${scope.map}`
 			: "";
 	try {
 		return new Function(

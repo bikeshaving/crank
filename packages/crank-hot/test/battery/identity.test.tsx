@@ -101,3 +101,22 @@ test("a default export with a name", async () => {
 	expect(second.default).toBe(first.default);
 	expect(s.render(createElement(first.default, null))).toBe("<b>page</b>");
 });
+
+test("a default export without a name", async () => {
+	const s = scenario();
+	const source = (view: string) => `
+export default function* (this: Context) {
+	let n = 0;
+	h.inc = () => { n++; this.refresh(); };
+	h.log.push("setup");
+	for ({} of this) ${view}
+}`;
+	const first = await s.load(source("yield <p>{n}</p>;"));
+	const read = () => s.render(createElement(first.default, null));
+	read();
+	s.h.inc();
+	const second = await s.load(source("yield <b>{n}</b>;"));
+	expect(second.default).toBe(first.default);
+	expect(read()).toBe("<b>1</b>");
+	expect(s.h.log).toEqual(["setup"]);
+});

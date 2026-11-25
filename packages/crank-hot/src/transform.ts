@@ -11,6 +11,12 @@ export interface HotOptions {
 	 * replacement with `import.meta.hot.accept()`.
 	 */
 	accept?: boolean;
+	/**
+	 * The hashes of the top-level names of the module, from analyze(), for a
+	 * development server which evaluates every module again with every edit.
+	 * A function, class or const whose hash is the same keeps its value.
+	 */
+	hashes?: Map<string, string>;
 	/** Whether transform() ends the module with its source map. */
 	sourceMap?: boolean;
 	/** Options for compiling TypeScript and JSX, which happens first. */
@@ -34,6 +40,8 @@ interface Component {
 	// The function declaration, or the function which a const is declared with.
 	fn: ts.FunctionLikeDeclaration;
 	isDeclaration: boolean;
+	// Where to wrap a function which is not declared with a name of its own.
+	start: number;
 }
 
 /** A binding of the module, and how a change to it is noticed. */
@@ -41,7 +49,9 @@ interface Binding {
 	// "stable": a component, which is the same function through every edit.
 	// "text": a function or class, which is the same while its source is.
 	// "identity": anything else, which is the same while it is the same value.
-	kind: "stable" | "text" | "identity";
+	// "fresh": a variable which can be assigned to. Every evaluation of the
+	// module has a variable of its own, so it is never the same.
+	kind: "stable" | "text" | "identity" | "fresh";
 	node?: ts.Node;
 }
 
@@ -106,6 +116,16 @@ function isName(node: ts.Identifier): boolean {
 		(parent.name === node && !ts.isShorthandPropertyAssignment(parent)) ||
 		parent.label === node
 	);
+}
+
+function hasAwait(node: ts.Node): boolean {
+	if (ts.isAwaitExpression(node)) {
+		return true;
+	} else if (ts.isFunctionLike(node)) {
+		return false;
+	}
+
+	return !!ts.forEachChild(node, hasAwait);
 }
 
 function hasYield(node: ts.Node): boolean {
@@ -242,10 +262,6 @@ function getView(
 	loop: ts.IterationStatement,
 ): View | undefined {
 	const body = loop.statement;
-	if (!ts.isBlock(body)) {
-		return undefined;
-	}
-
 	const label = ts.isLabeledStatement(loop.parent)
 		? loop.parent.label.text
 		: undefined;
@@ -343,16 +359,21 @@ function getView(
 		);
 	};
 
-	for (const stmt of body.statements) {
-		visit(stmt, false, false, false, []);
+	if (ts.isBlock(body)) {
+		for (const stmt of body.statements) {
+			visit(stmt, false, false, false, []);
+		}
+	} else {
+		visit(body, false, false, false, []);
 	}
 
 	if (!ok) {
 		return undefined;
 	}
 
-	const start = body.getStart(sf) + 1;
-	let text = sf.text.slice(start, body.end - 1);
+	// A body which is one statement is all of the view.
+	const start = body.getStart(sf) + (ts.isBlock(body) ? 1 : 0);
+	let text = sf.text.slice(start, body.end - (ts.isBlock(body) ? 1 : 0));
 	edits.sort((a, b) => b[0] - a[0] || b[1] - a[1]);
 	for (const [from, to, replacement] of edits) {
 		text = text.slice(0, from - start) + replacement + text.slice(to - start);
@@ -407,6 +428,8 @@ function resolveUses(
 		const binding = bindings.get(name)!;
 		if (binding.kind === "identity") {
 			identities.add(name);
+		} else if (binding.kind === "fresh") {
+			identities.add("Symbol()");
 		} else if (binding.kind === "text" && !texts.has(name)) {
 			const node = binding.node!;
 			texts.set(name, node.getText(sf));
@@ -491,6 +514,10 @@ export function compile(source: string, options: HotOptions): HotResult {
 	// Consts which are declared with the result of a call, and are named like
 	// components.
 	const calls: Array<ts.VariableDeclaration> = [];
+	// The other functions, classes and consts, which keep their values
+	// between bundles when there are hashes for them.
+	const kept: Array<ts.Node> = [];
+	const hashes = options.hashes;
 	let isBoundary = true;
 	let lastImportEnd = 0;
 	for (const stmt of sf.statements) {
@@ -512,8 +539,23 @@ export function compile(source: string, options: HotOptions): HotResult {
 			}
 		} else if (ts.isFunctionDeclaration(stmt) || ts.isClassDeclaration(stmt)) {
 			if (!stmt.name) {
-				// A default export without a name cannot be registered.
-				isBoundary = false;
+				const keyword = (stmt.modifiers || []).find(
+					(m) => m.kind === ts.SyntaxKind.DefaultKeyword,
+				);
+				if (keyword && ts.isFunctionDeclaration(stmt) && stmt.body) {
+					// The declaration becomes an expression.
+					exported.add("default");
+					components.push({
+						name: "default",
+						kind: getKind(stmt),
+						fn: stmt,
+						isDeclaration: false,
+						start: keyword.end,
+					});
+				} else {
+					isBoundary = false;
+				}
+
 				continue;
 			}
 
@@ -529,9 +571,11 @@ export function compile(source: string, options: HotOptions): HotResult {
 					kind: getKind(stmt),
 					fn: stmt,
 					isDeclaration: true,
+					start: stmt.getStart(sf),
 				});
 			} else {
 				bindings.set(name, {kind: "text", node: stmt});
+				kept.push(stmt);
 			}
 		} else if (ts.isVariableStatement(stmt)) {
 			const isConst = !!(stmt.declarationList.flags & ts.NodeFlags.Const);
@@ -539,13 +583,17 @@ export function compile(source: string, options: HotOptions): HotResult {
 				const names: Array<string> = [];
 				getBindingNames(decl.name, names);
 				for (const name of names) {
-					bindings.set(name, {kind: "identity"});
+					bindings.set(name, {kind: isConst ? "identity" : "fresh"});
 					if (isExport) {
 						exported.add(name);
 					}
 				}
 
 				const init = decl.initializer;
+				if (isConst && init && !ts.isIdentifier(decl.name) && !hasAwait(init)) {
+					kept.push(decl);
+				}
+
 				if (!isConst || !init || !ts.isIdentifier(decl.name)) {
 					continue;
 				}
@@ -560,11 +608,15 @@ export function compile(source: string, options: HotOptions): HotResult {
 						kind: getKind(init),
 						fn: init,
 						isDeclaration: false,
+						start: init.getStart(sf),
 					});
 				} else if (isFunction) {
 					bindings.set(name, {kind: "text", node: decl});
+					kept.push(decl);
 				} else if (ts.isCallExpression(init) && /^[A-Z]/.test(name)) {
 					calls.push(decl);
+				} else if (!hasAwait(init)) {
+					kept.push(decl);
 				}
 			}
 		} else if (ts.isExportDeclaration(stmt)) {
@@ -577,15 +629,28 @@ export function compile(source: string, options: HotOptions): HotResult {
 				}
 			}
 		} else if (ts.isExportAssignment(stmt)) {
-			if (ts.isIdentifier(stmt.expression)) {
-				exported.add(stmt.expression.text);
+			const expression = stmt.expression;
+			if (ts.isIdentifier(expression)) {
+				exported.add(expression.text);
+			} else if (
+				!stmt.isExportEquals &&
+				(ts.isArrowFunction(expression) || ts.isFunctionExpression(expression))
+			) {
+				exported.add("default");
+				components.push({
+					name: "default",
+					kind: getKind(expression),
+					fn: expression,
+					isDeclaration: false,
+					start: expression.getStart(sf),
+				});
 			} else {
 				isBoundary = false;
 			}
 		}
 	}
 
-	if (!components.length && !calls.length) {
+	if (!components.length && !calls.length && !(hashes && kept.length)) {
 		return {code: js, map};
 	}
 
@@ -613,8 +678,9 @@ export function compile(source: string, options: HotOptions): HotResult {
 				// The signature is the component without the body of its loop.
 				signature = hash(
 					component.kind +
-						js.slice(fn.getStart(sf), body.getStart(sf)) +
-						js.slice(body.end, fn.end) +
+						// A body with braces and one without are spaced differently.
+						js.slice(fn.getStart(sf), body.getStart(sf)).trimEnd() +
+						js.slice(body.end, fn.end).trimStart() +
 						"\0" +
 						view.vars.join() +
 						"\0" +
@@ -636,15 +702,20 @@ export function compile(source: string, options: HotOptions): HotResult {
 
 				const start = fn.body!.getStart(sf) + 1;
 				edits.push([start, start, ` __hot.mount(${key}, this);`]);
-				const top = body.getStart(sf) + 1;
+				const isBlock = ts.isBlock(body);
+				const top = body.getStart(sf) + (isBlock ? 1 : 0);
 				edits.push([
 					top,
 					top,
-					` { const __view = __hot.view(${key}, () => ({__proto__: null,${accessors} }));` +
+					`${isBlock ? "" : "{"} { const __view = __hot.view(${key}, () => ({__proto__: null,${accessors} }));` +
 						` if (__view) { const __result = yield* __view.call(this);` +
 						` if (__result === __hot.BREAK) break;` +
-						` if (__result) return __result.value; continue; } }`,
+						` if (__result) return __result.value; continue; } } `,
 				]);
+				if (!isBlock) {
+					edits.push([body.end, body.end, " }"]);
+				}
+
 				// Where the body is, for lining an edited view up with the map.
 				const {line, character} = sf.getLineAndCharacterOfPosition(top);
 				viewArg = `[${JSON.stringify(view.text)}, ${line}, ${character}]`;
@@ -661,7 +732,7 @@ export function compile(source: string, options: HotOptions): HotResult {
 			// runtime returns before anything in the module runs.
 			header += `${name} = __hot.register(${args}${name});`;
 		} else {
-			edits.push([fn.getStart(sf), fn.getStart(sf), `__hot.register(${args}`]);
+			edits.push([component.start, component.start, ` __hot.register(${args}`]);
 			edits.push([fn.end, fn.end, ")"]);
 		}
 	}
@@ -674,15 +745,50 @@ export function compile(source: string, options: HotOptions): HotResult {
 		const name = (decl.name as ts.Identifier).text;
 		const uses = new Set<string>();
 		collectUses(init, bindings, new Map(), undefined, uses);
-		const [texts, values] = getInputs(sf, bindings, uses);
+		let [texts, values] = getInputs(sf, bindings, uses);
+		let signature = hash(init.getText(sf) + "\0" + texts);
+		if (hashes && hashes.has(name)) {
+			// The hash already covers what the call uses.
+			signature = hashes.get(name)!;
+			values = "null";
+		}
+
 		edits.push([
 			init.getStart(sf),
 			init.getStart(sf),
 			`__hot.value(${JSON.stringify(`${options.id}#${name}`)}, ${JSON.stringify(
-				hash(init.getText(sf) + "\0" + texts),
+				signature,
 			)}, ${values}, () => (`,
 		]);
 		edits.push([init.end, init.end, "))"]);
+	}
+
+	for (const node of hashes ? kept : []) {
+		const names: Array<string> = [];
+		if (ts.isVariableDeclaration(node)) {
+			getBindingNames(node.name, names);
+		} else {
+			names.push((node as ts.FunctionDeclaration).name!.text);
+		}
+
+		const signature = hashes!.get(names[0]);
+		if (signature === undefined) {
+			continue;
+		}
+
+		const open = `__hot.reuse(${JSON.stringify(
+			`${options.id}#${names.join()}`,
+		)}, ${JSON.stringify(signature)}, () => (`;
+		if (ts.isVariableDeclaration(node)) {
+			const init = node.initializer!;
+			edits.push([init.getStart(sf), init.getStart(sf), open]);
+			edits.push([init.end, init.end, "))"]);
+		} else if (ts.isFunctionDeclaration(node)) {
+			header += `${names[0]} = ${open}${names[0]}));`;
+		} else {
+			// A class declaration is not hoisted.
+			edits.push([node.end, node.end, `;${names[0]} = ${open}${names[0]}));`]);
+		}
 	}
 
 	let footer = "\nfunction __hotScope() { return {__proto__: null,";

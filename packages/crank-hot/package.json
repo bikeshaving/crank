@@ -14,11 +14,12 @@
     "./transform": "./src/transform.ts",
     "./runtime": "./src/runtime.js",
     "./bun": "./src/bun.ts",
-    "./vite": "./src/vite.ts"
+    "./vite": "./src/vite.ts",
+    "./esbuild": "./src/esbuild.ts"
   },
   "scripts": {
     "test": "bun test test/",
-    "test:e2e": "cd example && bun test ../e2e/bun.e2e.ts && bun test ../e2e/vite.e2e.ts",
+    "test:e2e": "cd example && bun test ../e2e/bun.e2e.ts && bun test ../e2e/vite.e2e.ts && bun test ../e2e/esbuild.e2e.ts",
     "dev": "cd example && bun dev.ts",
     "typecheck": "tsc --noEmit"
   },
@@ -31,6 +32,7 @@
   "devDependencies": {
     "@b9g/crank": "file:../../",
     "@types/bun": "^1.3.0",
+    "esbuild": "^0.28.2",
     "vite": "^8.3.8"
   }
 }

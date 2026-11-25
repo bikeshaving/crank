@@ -363,3 +363,23 @@ test("an edit which only changes whitespace and comments", async () => {
 	expect(read()).toBe("<p>1</p>");
 	expect(s.h.log).toEqual(["setup"]);
 });
+
+test("a loop whose body is one statement", async () => {
+	const s = scenario();
+	const source = (view: string) => `
+export function* Counter(this: Context) {
+	let n = 0;
+	h.inc = () => { n++; this.refresh(); };
+	h.log.push("setup");
+	for ({} of this) ${view}
+}`;
+	const {Counter} = await s.load(source("yield <p>{n}</p>;"));
+	const read = () => s.render(<Counter />);
+	read();
+	s.h.inc();
+	await s.load(source("yield <b>{n}</b>;"));
+	expect(read()).toBe("<b>1</b>");
+	await s.load(source("{ const double = n * 2; yield <i>{double}</i>; }"));
+	expect(read()).toBe("<i>2</i>");
+	expect(s.h.log).toEqual(["setup"]);
+});

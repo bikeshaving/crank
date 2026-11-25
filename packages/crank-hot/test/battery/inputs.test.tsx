@@ -140,3 +140,21 @@ test("a const named like a component which is not one", async () => {
 	expect(third.Config).toEqual({limit: 2});
 	expect(s.render(<first.Page />)).toBe("<p>2</p>");
 });
+
+test("a variable of the module which the setup assigns to", async () => {
+	const s = scenario();
+	const counter = (view: string) =>
+		"let total = 0;\n" +
+		gen({setup: "h.add = () => { total += 1; this.refresh(); };", view});
+	const {Counter} = await s.load(counter("yield <p>{total}</p>;"));
+	const read = () => s.render(<Counter name="a" />);
+	read();
+	s.h.add();
+	expect(read()).toBe("<p>1</p>");
+	// The module has a new variable, so the handler which the setup made
+	// would assign to one which the new view cannot see.
+	await s.load(counter("yield <b>{total}</b>;"));
+	expect(s.h.log).toEqual(["setup", "setup", "cleanup"]);
+	s.h.add();
+	expect(read()).toBe("<b>1</b>");
+});
