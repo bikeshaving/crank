@@ -45,6 +45,22 @@ await ctx.watch();
 await ctx.serve({servedir: "dist"});
 ```
 
+With anything else which builds a whole new bundle for each edit, such as
+a framework with a server of its own, use the esbuild plugin for the
+bundles of the page, with `crankHot({events: false})`, and tell the page
+when a build is ready. That is for the server to do, because only it knows
+which bundle a file is in and when it has reloaded itself:
+
+- A file of the page changed, and the bundles have been built: call
+  `__crankHot.update()` in the page, or send an `update` event.
+- A file which only the server uses changed, which the page cannot do
+  anything about: call `__crankHot.reload()`, or send a `reload` event.
+- A build failed: send an `error` event with what to say.
+
+`crankHot({events: "/my-events"})` makes the page listen to an event stream
+at that URL for those events. An `update` event may have JSON with the paths
+of the bundles which changed, as `updated`.
+
 Nothing changes in the app. What it helps to know:
 
 - A component is a function with a capitalized name at the top level of a
@@ -229,8 +245,9 @@ form, the position of a scroller, and the state of keyed components.
   edits, and nothing here reloads the server, or the page when only the
   server's code changed.
 - Shovel. Its client bundles are built by esbuild, so the plugin is the
-  part it needs, and its development server would have to tell the page
-  when a build has finished.
+  part it needs. Its development server has to tell the page when a build
+  is ready, after it has reloaded itself, and tell it to load again when
+  only the server's code changed.
 - A loop which is left through a label outside it is not separated, so any
   edit to that component remounts it.
 - A variable of a module which can be assigned to is a new variable every

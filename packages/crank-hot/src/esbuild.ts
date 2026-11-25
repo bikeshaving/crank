@@ -11,6 +11,13 @@ const RELOAD = fileURLToPath(new URL("./reload.js", import.meta.url));
 export interface HotOptions {
 	/** Where the packages which the app imports are built, in the outdir. */
 	deps?: string;
+	/**
+	 * The URL of the event stream which says that a build has finished. It
+	 * is esbuild's own by default. With false, the page listens to nothing,
+	 * and whatever serves it calls `__crankHot.update()` and
+	 * `__crankHot.reload()` in the page.
+	 */
+	events?: string | false;
 }
 
 /**
@@ -104,7 +111,12 @@ export default function crankHot(options: HotOptions = {}): any {
 					sourceMap: true,
 				});
 				if (entryPoints.includes(args.path)) {
-					contents = `import ${JSON.stringify(RELOAD)};` + contents;
+					const events =
+						options.events === undefined ? "/esbuild" : options.events;
+					contents =
+						`import {connect as __hotConnect} from ${JSON.stringify(RELOAD)};` +
+						`__hotConnect(import.meta.url, ${JSON.stringify(events || null)});` +
+						contents;
 				}
 
 				return {

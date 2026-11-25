@@ -14,8 +14,11 @@ export interface Server {
 	/** The page with one component for each thing a page can lose. */
 	labUrl: string;
 	close(): Promise<unknown>;
-	/** For a server which does not watch the files itself. */
-	rebuild?(): Promise<unknown>;
+	/**
+	 * For a server which does not watch the files itself. It is given the
+	 * pages, for one which tells them about a build itself.
+	 */
+	rebuild?(pages: Array<Page>): Promise<unknown>;
 }
 
 interface State {
@@ -45,7 +48,9 @@ export function defineTests(start: () => Promise<Server>): void {
 		}
 
 		writeFileSync(path, text.replace(from, to));
-		pending = pending.then(() => server.rebuild && server.rebuild());
+		pending = pending.then(
+			() => server.rebuild && server.rebuild([page, hydrated, lab]),
+		);
 	};
 
 	let server: Server;
