@@ -60,6 +60,14 @@ jobs:
         run: bunx libuild test test/ --platform ${{ matrix.browser }}
       - name: Run eslint plugin tests
         run: bun run test:eslint
+      # The hot reload package resolves Crank to the build
+      - name: Build
+        run: bun run build
+      - name: Run hot reload tests
+        run: bun run test:hot
+      - name: Run hot reload tests in the browser
+        run: BROWSER=${{ matrix.browser }} bun run test:e2e
+        working-directory: packages/crank-hot
 
   changes:
     name: Detect Changes
