@@ -1,0 +1,2 @@
+[serve.static]
+plugins = ["@b9g/crank-hot/bun"]

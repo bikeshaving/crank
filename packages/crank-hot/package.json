@@ -1,0 +1,70 @@
+{
+  "name": "@b9g/crank-hot",
+  "version": "0.1.0",
+  "description": "Hot reloading for Crank components",
+  "keywords": [
+    "crank",
+    "hmr",
+    "hot-reload",
+    "vite",
+    "bun",
+    "esbuild"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bikeshaving/crank.git",
+    "directory": "packages/crank-hot"
+  },
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    "./transform": {
+      "types": "./dist/transform.d.ts",
+      "default": "./dist/transform.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "default": "./dist/runtime.js"
+    },
+    "./bun": {
+      "types": "./dist/bun.d.ts",
+      "default": "./dist/bun.js"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "default": "./dist/vite.js"
+    },
+    "./esbuild": {
+      "types": "./dist/esbuild.d.ts",
+      "default": "./dist/esbuild.js"
+    }
+  },
+  "scripts": {
+    "test": "bun test test/",
+    "test:e2e": "bun run test:e2e:one && bun run test:e2e:todomvc",
+    "dev": "cd example && bun dev.ts",
+    "typecheck": "bun run build && tsc --noEmit",
+    "test:e2e:one": "cd example && bun test --timeout 30000 ../e2e/bun.e2e.ts && bun test --timeout 30000 ../e2e/vite.e2e.ts && bun test --timeout 30000 ../e2e/esbuild.e2e.ts",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "bun run build",
+    "todomvc:vite": "cd todomvc && vite",
+    "todomvc:bun": "cd todomvc && bun bun.ts",
+    "todomvc:esbuild": "cd todomvc && bun esbuild.ts",
+    "test:e2e:todomvc": "bun run build && bun test --timeout 30000 ./e2e/todomvc.e2e.ts"
+  },
+  "peerDependencies": {
+    "@b9g/crank": ">=0.7.0",
+    "typescript": ">=5.0.0"
+  },
+  "devDependencies": {
+    "@b9g/crank": "file:../../",
+    "@types/bun": "^1.3.0",
+    "esbuild": "^0.28.2",
+    "vite": "^8.3.8",
+    "typescript": "^5.9.3"
+  }
+}

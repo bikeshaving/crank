@@ -1,0 +1,1571 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`reads and assigns 1`] = `
+[
+  "<p>3 1,2,3,2,3</p>",
+  "<p>4 1,2,3,2,3,4</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+      2,
+      3,
+      4,
+    ],
+    "n": 4,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a block declares the name again 1`] = `
+[
+  "<p>1</p>",
+  "<p>1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  "inner",
+]
+`;
+
+exports[`a let after its use in the same block 1`] = `
+[
+  "<p>shadow</p>",
+  "<p>shadow</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a parameter 1`] = `
+[
+  "<p>11 1</p>",
+  "<p>11 1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a function declaration and its var 1`] = `
+[
+  "<p>5 1</p>",
+  "<p>5 1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a named function expression 1`] = `
+[
+  "<p>7 4</p>",
+  "<p>7 4</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a catch clause 1`] = `
+[
+  "<p>true 1</p>",
+  "<p>true 1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`the head of a loop 1`] = `
+[
+  "<p>9 1 a</p>",
+  "<p>9 1 a</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a class 1`] = `
+[
+  "<p>3 1</p>",
+  "<p>3 1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a property with the name 1`] = `
+[
+  "<p>5 6 1</p>",
+  "<p>5 6 1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a short property 1`] = `
+[
+  "<p>1 2 a</p>",
+  "<p>1 2 a</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a destructuring declaration 1`] = `
+[
+  "<p>1 2 9</p>",
+  "<p>1 2 9</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a destructuring assignment 1`] = `
+[
+  "<p>1 1</p>",
+  "<p>1 1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a short destructuring assignment with a default 1`] = `
+[
+  "<p>4 0</p>",
+  "<p>4 0</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [],
+    "n": 4,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a function called without an object 1`] = `
+[
+  "<p>true 8</p>",
+  "<p>true 8</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a tagged template 1`] = `
+[
+  "<p>a|b1 c|a</p>",
+  "<p>a|b1 c|a</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a component in JSX 1`] = `
+[
+  "<p><i>1</i><i>a</i></p>",
+  "<p><i>1</i><i>a</i></p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a label and a property 1`] = `
+[
+  "<p>1</p>",
+  "<p>1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`typeof and a computed key 1`] = `
+[
+  "<p>1 number undefined</p>",
+  "<p>1 number undefined</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a closure which assigns later 1`] = `
+[
+  "<p>1 3</p>",
+  "<p>100 0</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [],
+    "n": 100,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a method and a getter 1`] = `
+[
+  "<p>8 3</p>",
+  "<p>8 3</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 8,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`an arrow function with a default 1`] = `
+[
+  "<p>1a</p>",
+  "<p>1a</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a var in the loop 1`] = `
+[
+  "<p>2 1 2 1 2</p>",
+  "<p>3 1 2 1 2</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`the arguments and the context 1`] = `
+[
+  "<p>2 true false</p>",
+  "<p>2 true false</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`the name of the module binding which the setup also has 1`] = `
+[
+  "<p>setup</p>",
+  "<p>setup</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a generic arrow and a cast 1`] = `
+[
+  "<p>1 a</p>",
+  "<p>1 a</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`an await-free generator inside 1`] = `
+[
+  "<p>2,4,6 1</p>",
+  "<p>2,4,6 1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a var in a function inside 1`] = `
+[
+  "<p>9 1</p>",
+  "<p>9 1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a function declared in a block 1`] = `
+[
+  "<p>1</p>",
+  "<p>1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  5,
+]
+`;
+
+exports[`a class with a field and a method of the name 1`] = `
+[
+  "<p>4 1</p>",
+  "<p>4 1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a pattern with a key of the name 1`] = `
+[
+  "<p>5 6 1 1</p>",
+  "<p>5 6 1 1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a block which declares the name, and what comes after it 1`] = `
+[
+  "<p>11</p>",
+  "<p>11</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a loop which assigns to a variable of the component 1`] = `
+[
+  "<p>7</p>",
+  "<p>7</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 7,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a function which is called at once 1`] = `
+[
+  "<p>41 1</p>",
+  "<p>41 1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`an assignment which depends on the value 1`] = `
+[
+  "<p>3 3 5</p>",
+  "<p>4 4 6</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+      2,
+      3,
+      4,
+    ],
+    "n": 4,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a template with the names in it 1`] = `
+[
+  "<p>1-a-1</p>",
+  "<p>1-a-1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a component of the setup with children 1`] = `
+[
+  "<p><u><i>1</i><i>a</i></u></p>",
+  "<p><u><i>1</i><i>a</i></u></p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a member of a variable as an element 1`] = `
+[
+  "<p><i>1</i><i>a</i></p>",
+  "<p><i>1</i><i>a</i></p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a method of a variable 1`] = `
+[
+  "<p>1,2,3,1,1 2,4,6,2,2</p>",
+  "<p>1,2,3,1,1,1 2,4,6,2,2,2</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+      1,
+      1,
+      1,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a regular expression, a string and a property with the name 1`] = `
+[
+  "<p>a prop 1</p>",
+  "<p>a prop 1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a spread and a rest 1`] = `
+[
+  "<p>1 y,n 1 2</p>",
+  "<p>1 y,n 1 2</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a generator in the view which is delegated to 1`] = `
+[
+  "<p>2</p>",
+  "<p>2</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a variable with the name of a global 1`] = `
+[
+  "<p>mine object</p>",
+  "<p>mine object</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`variables named with a dollar sign and an underscore 1`] = `
+[
+  "<p>3 7</p>",
+  "<p>4 11</p>",
+  {
+    "$": 4,
+    "_": 11,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a property which is assigned through a variable 1`] = `
+[
+  "<p>3 4</p>",
+  "<p>4 5</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 4,
+      "y": 5,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a comma, a conditional and void 1`] = `
+[
+  "<p>3 3 undefined 3</p>",
+  "<p>3 4 undefined 4</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 4,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a function with the name of a variable as a parameter, called with the variable 1`] = `
+[
+  "<p>4</p>",
+  "<p>4</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`an optional call and chain 1`] = `
+[
+  "<p>undefined 2 1</p>",
+  "<p>undefined 2 1</p>",
+  {
+    "$": 1,
+    "_": 2,
+    "list": [
+      1,
+      2,
+      3,
+    ],
+    "n": 1,
+    "point": {
+      "x": 1,
+      "y": 2,
+    },
+  },
+  undefined,
+]
+`;
+
+exports[`a finally clause: the view renders 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+  ],
+  [
+    "finally 1",
+  ],
+]
+`;
+
+exports[`a finally clause: the view throws 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "threw thrown 1",
+    "<p>1</p>",
+    "<p>1</p>",
+  ],
+  [
+    "finally 1",
+    "finally 0",
+  ],
+]
+`;
+
+exports[`a finally clause: the view returns 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<b>returned 1</b>",
+    "<b>returned 0</b>",
+    "<b>returned 0</b>",
+  ],
+  [
+    "finally 1",
+    "finally 0",
+    "finally 0",
+  ],
+]
+`;
+
+exports[`a finally clause: the view breaks 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "",
+    "",
+    "",
+  ],
+  [
+    "finally 1",
+    "finally 0",
+    "finally 0",
+  ],
+]
+`;
+
+exports[`a catch clause: the view renders 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+  ],
+  [],
+]
+`;
+
+exports[`a catch clause: the view throws 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<b>caught 1</b>",
+    "<b>caught 0</b>",
+    "<b>caught 0</b>",
+  ],
+  [
+    "caught thrown 1",
+    "caught thrown 0",
+    "caught thrown 0",
+  ],
+]
+`;
+
+exports[`a catch clause: the view returns 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<b>returned 1</b>",
+    "<b>returned 0</b>",
+    "<b>returned 0</b>",
+  ],
+  [],
+]
+`;
+
+exports[`a catch clause: the view breaks 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "",
+    "",
+    "",
+  ],
+  [],
+]
+`;
+
+exports[`a catch and a finally clause, and what comes after: the view renders 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+  ],
+  [
+    "in",
+    "in",
+    "in",
+    "in",
+    "in",
+    "in",
+    "in",
+    "finally 1",
+    "after",
+  ],
+]
+`;
+
+exports[`a catch and a finally clause, and what comes after: the view throws 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<i>after 1</i>",
+    "<i>after 0</i>",
+    "<i>after 0</i>",
+  ],
+  [
+    "in",
+    "in",
+    "in",
+    "in",
+    "in",
+    "caught thrown 1",
+    "finally 1",
+    "after",
+    "in",
+    "caught thrown 0",
+    "finally 0",
+    "after",
+    "in",
+    "caught thrown 0",
+    "finally 0",
+    "after",
+  ],
+]
+`;
+
+exports[`a catch and a finally clause, and what comes after: the view returns 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<b>returned 1</b>",
+    "<b>returned 0</b>",
+    "<b>returned 0</b>",
+  ],
+  [
+    "in",
+    "in",
+    "in",
+    "in",
+    "in",
+    "finally 1",
+    "in",
+    "finally 0",
+    "in",
+    "finally 0",
+  ],
+]
+`;
+
+exports[`a catch and a finally clause, and what comes after: the view breaks 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<i>after 1</i>",
+    "<i>after 0</i>",
+    "<i>after 0</i>",
+  ],
+  [
+    "in",
+    "in",
+    "in",
+    "in",
+    "in",
+    "finally 1",
+    "after",
+    "in",
+    "finally 0",
+    "after",
+    "in",
+    "finally 0",
+    "after",
+  ],
+]
+`;
+
+exports[`a return before the loop, with a finally clause: the view renders 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+  ],
+  [
+    "finally 1",
+  ],
+]
+`;
+
+exports[`a return before the loop, with a finally clause: the view throws 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "threw thrown 1",
+    "<p>1</p>",
+    "<p>1</p>",
+  ],
+  [
+    "finally 1",
+    "finally 0",
+  ],
+]
+`;
+
+exports[`a return before the loop, with a finally clause: the view returns 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<b>returned 1</b>",
+    "<b>returned 0</b>",
+    "<u>early 0</u>",
+  ],
+  [
+    "finally 1",
+    "finally 0",
+    "finally 0",
+  ],
+]
+`;
+
+exports[`a return before the loop, with a finally clause: the view breaks 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "",
+    "",
+    "<u>early 0</u>",
+  ],
+  [
+    "finally 1",
+    "finally 0",
+    "finally 0",
+  ],
+]
+`;
+
+exports[`a return before the loop, with a catch clause: the view renders 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+  ],
+  [],
+]
+`;
+
+exports[`a return before the loop, with a catch clause: the view throws 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<b>caught 1</b>",
+    "<b>caught 0</b>",
+    "<u>early 0</u>",
+  ],
+  [
+    "caught thrown 1",
+    "caught thrown 0",
+  ],
+]
+`;
+
+exports[`a return before the loop, with a catch clause: the view returns 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<b>returned 1</b>",
+    "<b>returned 0</b>",
+    "<u>early 0</u>",
+  ],
+  [],
+]
+`;
+
+exports[`a return before the loop, with a catch clause: the view breaks 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "",
+    "",
+    "<u>early 0</u>",
+  ],
+  [],
+]
+`;
+
+exports[`what comes after the loop in the try statement: the view renders 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+    "<p>1</p>",
+  ],
+  [
+    "before",
+    "left 1",
+    "finally 1",
+  ],
+]
+`;
+
+exports[`what comes after the loop in the try statement: the view throws 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "",
+    "",
+    "",
+  ],
+  [
+    "before",
+    "caught thrown 1",
+    "finally 1",
+    "before",
+    "caught thrown 0",
+    "finally 0",
+    "before",
+    "caught thrown 0",
+    "finally 0",
+  ],
+]
+`;
+
+exports[`what comes after the loop in the try statement: the view returns 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<b>returned 1</b>",
+    "<b>returned 0</b>",
+    "<b>returned 0</b>",
+  ],
+  [
+    "before",
+    "finally 1",
+    "before",
+    "finally 0",
+    "before",
+    "finally 0",
+  ],
+]
+`;
+
+exports[`what comes after the loop in the try statement: the view breaks 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p>1</p>",
+    "<i>left 1</i>",
+    "<i>left 0</i>",
+    "<i>left 0</i>",
+  ],
+  [
+    "before",
+    "left 1",
+    "finally 1",
+    "before",
+    "left 0",
+    "finally 0",
+    "before",
+    "left 0",
+    "finally 0",
+  ],
+]
+`;
+
+exports[`an error from what the view renders, which the view catches 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<p><i>safe</i> 0</p>",
+    "<b>recovered 1</b>",
+    "<p><i>safe</i> 1</p>",
+    "<p><i>safe</i> 1</p>",
+  ],
+  [
+    "caught boom 1",
+  ],
+]
+`;
+
+exports[`a handler which keeps what the loop declared for one render 1`] = `
+[
+  [
+    "<p>a</p>",
+    "<b>b</b>",
+    "<b>c</b>",
+    [
+      "a1",
+      "Aa1",
+      "Bb1",
+      "Bb1",
+      "Cc1",
+    ],
+  ],
+  [],
+]
+`;
+
+exports[`a loop which assigns its props with defaults 1`] = `
+[
+  [
+    "<p>anon</p>",
+    "<b>anon none 0</b>",
+    "<b>u1 a 2</b>",
+    "<b>anon none 0</b>",
+  ],
+  [],
+]
+`;
+
+exports[`what a view schedules 1`] = `
+[
+  [
+    "<p>0</p>",
+    "<b>0</b>",
+    "<b>1</b>",
+  ],
+  [
+    "schedule 0",
+    "after 0",
+    "schedule 0",
+    "after 0",
+    "schedule 1",
+    "after 1",
+    "schedule 1",
+    "after 1",
+    "cleanup 1",
+    "cleanup 1",
+    "cleanup 1",
+    "cleanup 1",
+  ],
+]
+`;
+
+exports[`an async generator component with a try statement 1`] = `
+[
+  [
+    "<p>first 0</p>",
+    "<b>0</b>",
+    "<b>2</b>",
+    "<i>caught 1</i>",
+    "<i>caught 0</i>",
+  ],
+  [
+    "caught thrown 1",
+    "finally 1",
+    "caught thrown 0",
+    "finally 0",
+  ],
+]
+`;

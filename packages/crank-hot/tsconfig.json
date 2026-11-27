@@ -1,0 +1,18 @@
+{
+	"include": ["src", "test", "example", "e2e", "todomvc"],
+	"exclude": ["node_modules", ".work", "dist"],
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"lib": ["esnext", "dom", "dom.iterable"],
+		"strict": true,
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
+		"allowJs": true,
+		"skipLibCheck": true,
+		"noEmit": true,
+		"jsx": "react",
+		"jsxFactory": "createElement",
+		"jsxFragmentFactory": "Fragment"
+	}
+}
