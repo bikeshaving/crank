@@ -311,3 +311,140 @@ test("a listener which the setup gives to something outside the component", asyn
 	expect(s.h.log).toEqual(["ping 3", "ping 4"]);
 	delete (globalThis as any).hotTestBus;
 });
+
+test("a component which the setup calls is edited", async () => {
+	const s = scenario();
+	const source = (end: string) =>
+		gen({
+			setup: "const items = [...Range(2)];",
+			view: "yield <p>{items}</p>;",
+		}) +
+		`export function* Range(n: number) { for (let i = 0; i < ${end}; i++) yield i; }\n`;
+	const {Counter} = await s.load(source("n"));
+	const read = () => s.render(<Counter name="a" />);
+	expect(read()).toBe("<p>01</p>");
+	// What is named like a component is not always rendered as one. The setup
+	// ran the old one, and kept what it returned.
+	await s.load(source("n + 1"));
+	expect(read()).toBe("<p>012</p>");
+	expect(s.h.log).toEqual(["setup", "setup", "cleanup"]);
+});
+
+test("a component of another module which the setup calls is edited", async () => {
+	const s = scenario();
+	const lib = (end: string) =>
+		`export function* Range(n: number) { for (let i = 0; i < ${end}; i++) yield i; }\n` +
+		"export function Label() { return <i>label</i>; }\n";
+	await s.load(lib("n"), "lib");
+	const {Counter} = await s.load(
+		'import {Range, Label} from "./lib.1.tsx";\n' +
+			gen({
+				setup: "const items = [...Range(2)]; const Tag = Label;",
+				view: "yield <p>{items}<Tag /></p>;",
+			}),
+	);
+	const read = () => s.render(<Counter name="a" />);
+	expect(read()).toBe("<p>01<i>label</i></p>");
+	// The module of the components accepts its own replacement, so nothing
+	// evaluates this one again, and the runtime starts the component again.
+	await s.load(lib("n + 1"), "lib");
+	expect(read()).toBe("<p>012<i>label</i></p>");
+	expect(s.h.log).toEqual(["setup", "setup", "cleanup"]);
+});
+
+test("a function of the module is the same function through every edit", async () => {
+	const s = scenario();
+	const source = (view: string, text: string) =>
+		gen({
+			setup: "h.listeners = new Set([onTick]); h.tick = () => onTick();",
+			view,
+		}) + `function onTick() { return "${text}"; }\n`;
+	const {Counter} = await s.load(
+		source("yield <p>{String(h.listeners.has(onTick))}</p>;", "one"),
+	);
+	const read = () => s.render(<Counter name="a" />);
+	expect(read()).toBe("<p>true</p>");
+	// The view of the new module asks about the function which the setup of
+	// the old one kept.
+	await s.load(
+		source("yield <b>{String(h.listeners.has(onTick))}</b>;", "one"),
+	);
+	expect(read()).toBe("<b>true</b>");
+	expect(s.h.log).toEqual(["setup"]);
+	// An edit to the function starts the component again, and what kept the
+	// function calls the newest version of it.
+	const tick = s.h.tick;
+	await s.load(
+		source("yield <b>{String(h.listeners.has(onTick))}</b>;", "two"),
+	);
+	expect(s.h.log).toEqual(["setup", "setup", "cleanup"]);
+	expect(tick()).toBe("two");
+});
+
+test("a function which another module imports is edited", async () => {
+	const s = scenario();
+	const lib = (amount: number) =>
+		`export const step = () => ${amount};\n` +
+		"export function Label() { return <i>label</i>; }\n";
+	await s.load(lib(1), "lib");
+	const counter = (version: number) =>
+		`import {step} from "./lib.${version}.tsx";\n` + gen({setup, view});
+	const {Counter} = await s.load(counter(1));
+	const read = () => s.render(<Counter name="a" />);
+	read();
+	s.h.add();
+	expect(read()).toBe("<p>1</p>");
+	// The function is the same function in the new module, so the runtime
+	// says that it is not the same code.
+	await s.load(lib(10), "lib");
+	await s.load(counter(2));
+	expect(s.h.log).toEqual(["setup", "setup", "cleanup"]);
+	s.h.add();
+	expect(read()).toBe("<p>10</p>");
+});
+
+test("a class of the module is kept while it is the same", async () => {
+	const s = scenario();
+	const source = (view: string, start: number) =>
+		gen({
+			setup: "h.add = () => { Store.count++; this.refresh(); };",
+			view,
+		}) +
+		`class Store { static count = ${start}; }\n` +
+		"export const made = new Store();\n" +
+		"export const isStore = (value: unknown) => value instanceof Store;\n";
+	const first = await s.load(source("yield <p>{Store.count}</p>;", 0));
+	const read = () => s.render(<first.Counter name="a" />);
+	read();
+	s.h.add();
+	s.h.add();
+	expect(read()).toBe("<p>2</p>");
+	// The setup of the old module and the view of the new one have one class.
+	const second = await s.load(source("yield <b>{Store.count}</b>;", 0));
+	s.h.add();
+	expect(read()).toBe("<b>3</b>");
+	expect(s.h.log).toEqual(["setup"]);
+	expect(second.isStore(first.made)).toBe(true);
+	expect(second.isStore(second.made)).toBe(true);
+	// An edit to the class makes a new one, and starts what used the old one
+	// again.
+	await s.load(source("yield <b>{Store.count}</b>;", 10));
+	expect(read()).toBe("<b>10</b>");
+	expect(s.h.log).toEqual(["setup", "setup", "cleanup"]);
+});
+
+test("a class which uses a value which is made again is made again", async () => {
+	const s = scenario();
+	const source = (view: string) =>
+		"const cache = new Map();\n" +
+		"class Store { static count = 0; static cache = cache; }\n" +
+		gen({setup: "h.add = () => { Store.count++; this.refresh(); };", view});
+	const {Counter} = await s.load(source("yield <p>{Store.count}</p>;"));
+	const read = () => s.render(<Counter name="a" />);
+	read();
+	s.h.add();
+	expect(read()).toBe("<p>1</p>");
+	await s.load(source("yield <b>{Store.count}</b>;"));
+	expect(read()).toBe("<b>0</b>");
+	expect(s.h.log).toEqual(["setup", "setup", "cleanup"]);
+});

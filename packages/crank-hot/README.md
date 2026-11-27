@@ -90,6 +90,10 @@ compiles TypeScript and JSX.
 - A helper or a constant which is edited is seen on the next render. A
   component whose setup used it is started again, so that nothing which ran
   once is left holding an old value.
+- A function at the top level of a module with components is the same
+  function through every edit, and calls its newest version. A class is the
+  same class, with its static fields, until its source or something it uses
+  changes.
 - `this.cleanup()` runs when a component is started again, like any
   unmount. What a component gave to something outside itself and did not
   take back is still there.
@@ -157,11 +161,19 @@ bun run build         # dist/
   that code can reach is not what it was. There is one rule for what that
   means: code is the same when its source is, and a value is the same when
   it is the same value. A function of the module which the setup uses is
-  code, and is followed to what it uses in turn. A const, an import and a
-  global are values, compared when the module is evaluated again. A
-  variable which can be assigned to is a new variable in every evaluation of
-  a module, and nothing says which module `import()` is for, so neither is
-  ever the same.
+  code, and is followed to what it uses in turn. So is a component which the
+  setup calls, where one which it only renders is not used until it is
+  rendered. A const, a class, an import and a global are values, compared
+  when the module is evaluated again. A variable which can be assigned to is
+  a new variable in every evaluation of a module, and nothing says which
+  module `import()` is for, so neither is ever the same.
+- Code which is the same is also the same object. Every function at the top
+  level of a module gets a wrapper like the one a component has, so what the
+  setup of an old version kept and what the view of a new one names are one
+  function. A class cannot be wrapped, so the class of the version before is
+  kept when its source and the values it uses are the same, and it is a new
+  class otherwise. An import which is one of these wrappers is compared by
+  the version it calls.
 - An edit which throws the first time it renders is reported, and the
   component shows what it last rendered until the next edit. A setup which
   throws leaves the version before it in place.
@@ -298,6 +310,13 @@ form, the position of a scroller, and the state of keyed components.
 - What the setup read from an object and kept, such as `config.limit`, is
   not noticed when the property is assigned to later. Only bindings, globals
   and properties of the global object are compared.
+- A function of a module has the `length` of its wrapper, which is 0, and
+  is not a generator function or an async function to anything which asks.
+- A class which uses a const declared after it, or one which is made again
+  with every evaluation, such as `new Map()`, is a new class with every
+  edit to its module, and what uses it starts again.
+- A component whose setup calls a component of another module starts again
+  with every edit to that module.
 - The debugger tests run in Chromium only, and nobody has looked at the
   panels of the developer tools.
 - With Vite, JSX which is compiled for React's development mode has props

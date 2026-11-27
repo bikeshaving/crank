@@ -234,7 +234,7 @@ export function* Counter(this: any) {
 	).code;
 	// The helper is compared as text, and what it uses in turn as values.
 	expect(code).toMatch(
-		/register\("mod\.tsx#Counter", "gen", "[^"]*", "extract", \(\) => \[constant, imported\], Counter\)/,
+		/register\("mod\.tsx#Counter", "gen", "[^"]*", "extract", \(\) => \[__hot\.unwrap\(imported\), constant\], Counter\)/,
 	);
 });
 

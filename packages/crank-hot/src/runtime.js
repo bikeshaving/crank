@@ -183,6 +183,26 @@ function getView(impl) {
 	return extraction.view;
 }
 
+// The component whose inputs are being read.
+let reader;
+
+// Returns the values which a function says some code uses.
+function read(inputs) {
+	try {
+		return inputs ? inputs() : [];
+	} catch (_) {
+		// A binding which cannot be read yet is one which has changed.
+		return undefined;
+	}
+}
+
+// Returns a function which is a different component with the same code.
+function restart(impl) {
+	return function () {
+		return impl.apply(this, arguments);
+	};
+}
+
 function isSame(a, b) {
 	if (!a || !b || a.length !== b.length) {
 		return false;
@@ -211,14 +231,9 @@ function settle(family) {
 	}
 
 	family.next = undefined;
-	let inputs;
-	try {
-		inputs = next.inputs ? next.inputs() : [];
-	} catch (_) {
-		// A binding which cannot be read yet is one which has changed.
-		inputs = undefined;
-	}
-
+	reader = family;
+	const inputs = read(next.inputs);
+	reader = undefined;
 	const isFirst = family.impl === undefined;
 	// What to go back to if the new version cannot be mounted.
 	family.previous = isFirst
@@ -262,6 +277,8 @@ function createFamily(key) {
 		// The body of the loop of the newest version, as a function.
 		view: undefined,
 		inputs: undefined,
+		// The components of other modules whose setups call this one.
+		callers: new Set(),
 		// The newest version, until something needs the component.
 		next: undefined,
 		previous: undefined,
@@ -349,6 +366,7 @@ export function register(key, kind, signature, view, inputs, impl) {
 	if (!family) {
 		family = createFamily(key);
 		families.set(key, family);
+		owners.set(family.shell, family);
 	}
 
 	family.next = {kind, signature, view, inputs, impl};
@@ -364,23 +382,81 @@ export function register(key, kind, signature, view, inputs, impl) {
 	return family.shell;
 }
 
+// The functions of modules which are not components, by key, and what each
+// function which this module made stands for.
+const functions = (state.functions ||= new Map());
+const owners = (state.owners ||= new WeakMap());
+
+function createStable(key) {
+	const record = {impl: undefined, shell: undefined};
+	record.shell = function () {
+		return record.impl.apply(this, arguments);
+	};
+
+	Object.defineProperty(record.shell, "name", {
+		value: key.slice(key.indexOf("#") + 1),
+	});
+	return record;
+}
+
+/**
+ * Returns the function which the rest of the app sees for a function of a
+ * module: the same function for as long as the page lives, which calls the
+ * newest version.
+ */
+export function stable(key, impl) {
+	let record = functions.get(key);
+	if (!record) {
+		record = createStable(key);
+		functions.set(key, record);
+		owners.set(record.shell, record);
+	}
+
+	record.impl = impl;
+	return record.shell;
+}
+
+/**
+ * Returns what to compare for a binding of another module. A function which
+ * stable() returned is the same through every edit, so its newest version is
+ * compared. A component is too, and only what calls it uses its code.
+ */
+export function unwrap(value, isCalled) {
+	const owner = owners.get(value);
+	if (!owner) {
+		return value;
+	} else if (owner.instances) {
+		if (!isCalled) {
+			return value;
+		}
+
+		if (reader) {
+			owner.callers.add(reader);
+		}
+
+		settle(owner);
+	}
+
+	return owner.impl;
+}
+
 // What reuse() last returned for each key.
 const values = (state.values ||= new Map());
 
 /**
- * Evaluates a top-level binding for a development server which evaluates
- * every module again with every edit. The hash covers the source of the
- * binding and of everything it refers to, and the value is kept while the
- * hash is the same.
+ * Evaluates a top-level binding which is kept while it is the same: its
+ * signature is a hash of its source, and its inputs are a function which
+ * returns the values it uses, or null.
  */
-export function reuse(key, signature, make) {
+export function reuse(key, signature, inputs, make) {
+	const current = read(inputs);
 	const last = values.get(key);
-	if (last && last.signature === signature) {
+	if (last && last.signature === signature && isSame(last.inputs, current)) {
 		return last.result;
 	}
 
 	const result = make();
-	values.set(key, {signature, result});
+	values.set(key, {signature, inputs: current, result});
 	return result;
 }
 
@@ -443,10 +519,27 @@ export function view(key) {
 export function flush() {
 	clearTimeout(state.timeout);
 	state.timeout = undefined;
-	const updated = [...dirty];
+	const updated = new Set(dirty);
 	dirty.clear();
 	for (const family of updated) {
 		settle(family);
+	}
+
+	// A module which only exports components is replaced on its own, so a
+	// component of another module whose setup called one of them is not
+	// registered again, and is started again here.
+	for (const family of [...updated]) {
+		for (const caller of family.callers) {
+			if (!updated.has(caller) && !caller.next) {
+				caller.stable = restart(caller.impl);
+				caller.previous = undefined;
+				caller.remount = true;
+				updated.add(caller);
+			}
+		}
+	}
+
+	for (const family of updated) {
 		const isRemount = family.remount;
 		const contexts =
 			family.kind === "fn" || isRemount ? family.shells : family.instances;

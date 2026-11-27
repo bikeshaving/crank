@@ -51,11 +51,14 @@ interface Component {
 /** A binding of the module, and how a change to it is noticed. */
 interface Binding {
 	// "stable": a component, which is the same function through every edit.
-	// "text": a function or class, which is the same while its source is.
+	// Only a call of one uses its code, which is then compared as text.
+	// "text": a function, which is the same while its source is.
+	// "import": a binding of another module, which may be a function of this
+	// kind or a component, so the runtime says what stands for its code.
 	// "identity": anything else, which is the same while it is the same value.
 	// "fresh": a variable which can be assigned to. Every evaluation of the
 	// module has a variable of its own, so it is never the same.
-	kind: "stable" | "text" | "identity" | "fresh";
+	kind: "stable" | "text" | "import" | "identity" | "fresh";
 	node?: ts.Node;
 }
 
@@ -515,7 +518,8 @@ function getGlobalChain(
 /**
  * Collects what a node uses which was made outside it: the names of bindings
  * of the module, and, with an equals sign before them, expressions for
- * everything else, to be compared when the module is evaluated again.
+ * everything else, to be compared when the module is evaluated again. The
+ * name of a binding which is called has "()" after it.
  *
  * Only what the function declares for all of itself is taken to be its own.
  * A name which a block or a function inside it declares may be something
@@ -553,7 +557,11 @@ function collectUses(
 		if (declared.has(name) || name === "arguments" || name === "undefined") {
 			// Its own.
 		} else if (bindings.has(name)) {
-			uses.add(name);
+			// A name which is called is collected with "()" after it.
+			const isCalled =
+				(ts.isCallExpression(parent) || ts.isNewExpression(parent)) &&
+				parent.expression === node;
+			uses.add(isCalled ? name + "()" : name);
 		} else if (parent.tagName !== node || !/^[a-z]/.test(name)) {
 			// The name of an element in JSX is not a variable.
 			uses.add(`=typeof ${name} === "undefined" ? undefined : ${name}`);
@@ -584,15 +592,22 @@ function resolveUses(
 			continue;
 		}
 
-		const binding = bindings.get(name)!;
-		if (binding.kind === "identity") {
-			identities.add(name);
+		const isCalled = name.endsWith("()");
+		const id = isCalled ? name.slice(0, -2) : name;
+		const binding = bindings.get(id)!;
+		if (binding.kind === "import") {
+			identities.add(`__hot.unwrap(${id}${isCalled ? ", true" : ""})`);
+		} else if (binding.kind === "identity") {
+			identities.add(id);
 		} else if (binding.kind === "fresh") {
 			identities.add("Symbol()");
-		} else if (binding.kind === "text" && !texts.has(name)) {
+		} else if (
+			(binding.kind === "text" || (binding.kind === "stable" && isCalled)) &&
+			!texts.has(id)
+		) {
 			const node = binding.node!;
 			texts.set(
-				name,
+				id,
 				normalize(
 					ts.isVariableDeclaration(node)
 						? `const ${node.getText(sf)}`
@@ -679,10 +694,9 @@ export function compile(
 	const bindings = new Map<string, Binding>();
 	const exported = new Set<string>();
 	const components: Array<Component> = [];
-	// Consts which are declared with the result of a call, and are named like
-	// components.
-	// The other functions, classes and consts, which keep their values
-	// between bundles when there are hashes for them.
+	// The other functions, classes and consts. A function is the same
+	// function through every edit, and a class is kept while it is the same.
+	// With hashes, each of them is kept while its hash is the same.
 	const kept: Array<ts.Node> = [];
 	const hashes = options.hashes;
 	let isBoundary = true;
@@ -699,16 +713,16 @@ export function compile(
 			}
 
 			if (clause.name) {
-				bindings.set(clause.name.text, {kind: "identity"});
+				bindings.set(clause.name.text, {kind: "import"});
 			}
 
 			const named = clause.namedBindings;
 			if (named && ts.isNamespaceImport(named)) {
-				bindings.set(named.name.text, {kind: "identity"});
+				bindings.set(named.name.text, {kind: "import"});
 			} else if (named) {
 				for (const el of named.elements) {
 					if (!el.isTypeOnly) {
-						bindings.set(el.name.text, {kind: "identity"});
+						bindings.set(el.name.text, {kind: "import"});
 					}
 				}
 			}
@@ -742,7 +756,7 @@ export function compile(
 			}
 
 			if (ts.isFunctionDeclaration(stmt) && /^[A-Z]/.test(name)) {
-				bindings.set(name, {kind: "stable"});
+				bindings.set(name, {kind: "stable", node: stmt});
 				components.push({
 					name,
 					kind: getKind(stmt),
@@ -752,7 +766,14 @@ export function compile(
 					stmt,
 				});
 			} else {
-				bindings.set(name, {kind: "text", node: stmt});
+				// A class is kept while its source is the same, so it is
+				// compared as a value.
+				bindings.set(
+					name,
+					ts.isClassDeclaration(stmt)
+						? {kind: "identity"}
+						: {kind: "text", node: stmt},
+				);
 				kept.push(stmt);
 			}
 		} else if (ts.isVariableStatement(stmt)) {
@@ -780,7 +801,7 @@ export function compile(
 				const isFunction =
 					ts.isArrowFunction(init) || ts.isFunctionExpression(init);
 				if (isFunction && /^[A-Z]/.test(name)) {
-					bindings.set(name, {kind: "stable"});
+					bindings.set(name, {kind: "stable", node: decl});
 					components.push({
 						name,
 						kind: getKind(init),
@@ -942,6 +963,8 @@ export function compile(
 			const body = view && loop!.statement;
 			const uses = new Set<string>();
 			collectUses(fn, bindings, getLocals(fn, fn.body!), body, uses);
+			// A component which calls itself does not use itself.
+			uses.delete(name + "()");
 			const [texts, values] = getInputs(sf, options, bindings, uses);
 			inputs = values;
 			const start = getStart(sf, fn);
@@ -1106,7 +1129,7 @@ export function compile(
 		}
 	}
 
-	for (const node of hashes ? kept : []) {
+	for (const node of kept) {
 		const names: Array<string> = [];
 		if (ts.isVariableDeclaration(node)) {
 			getBindingNames(node.name, names);
@@ -1114,23 +1137,59 @@ export function compile(
 			names.push((node as ts.FunctionDeclaration).name!.text);
 		}
 
-		const signature = hashes!.get(names[0]);
+		const name = names[0];
+		const key = JSON.stringify(`${options.id}#${names.join()}`);
+		const init = ts.isVariableDeclaration(node) ? node.initializer! : node;
+		if (!hashes && !ts.isClassDeclaration(node)) {
+			// A function is the same function through every edit, and calls
+			// the newest version of itself.
+			if (ts.isFunctionDeclaration(node)) {
+				header += `${name} = __hot.stable(${key}, ${name});`;
+			} else if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) {
+				edits.push([
+					init.getStart(sf),
+					init.getStart(sf),
+					`__hot.stable(${key}, `,
+				]);
+				edits.push([init.end, init.end, ")"]);
+			}
+
+			continue;
+		}
+
+		let signature = hashes && hashes.get(name);
+		let inputs = "null";
+		if (!hashes) {
+			// A class is kept while its source is the same, and the values
+			// which it uses are.
+			const uses = new Set<string>();
+			collectUses(node, bindings, new Map(), undefined, uses);
+			uses.delete(name);
+			uses.delete(name + "()");
+			const [texts, values] = getInputs(sf, options, bindings, uses);
+			signature = hash(
+				normalize(source.slice(getStart(sf, node), node.end), options) +
+					"\0" +
+					texts,
+			);
+			inputs = values;
+		}
+
 		if (signature === undefined) {
 			continue;
 		}
 
-		const open = `__hot.reuse(${JSON.stringify(
-			`${options.id}#${names.join()}`,
-		)}, ${JSON.stringify(signature)}, () => (`;
+		const open = `__hot.reuse(${key}, ${JSON.stringify(
+			signature,
+		)}, ${inputs}, () => (`;
 		if (ts.isVariableDeclaration(node)) {
-			const init = node.initializer!;
 			edits.push([init.getStart(sf), init.getStart(sf), open]);
 			edits.push([init.end, init.end, "))"]);
 		} else if (ts.isFunctionDeclaration(node)) {
-			header += `${names[0]} = ${open}${names[0]}));`;
+			header += `${name} = ${open}${name}));`;
 		} else {
 			// A class declaration is not hoisted.
-			edits.push([node.end, node.end, `;${names[0]} = ${open}${names[0]}));`]);
+			edits.push([node.end, node.end, `;${name} = ${open}${name}));`]);
 		}
 	}
 
